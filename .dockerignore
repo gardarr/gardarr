@@ -1,0 +1,54 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+LICENSE
+README-INTEGRATION.md
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build artifacts
+backend/web/
+frontend/dist/
+*.log
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# CI/CD
+.gitlab-ci.yml
+.github/
+
+# Development files
+backend/Makefile
+backend/.tool-versions
+backend/test-integration.sh
+
+# Temporary files
+**/__debug_bin*

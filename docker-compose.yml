@@ -1,0 +1,67 @@
+services:
+  gardarr:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gardarr
+    env_file: "backend/.env"
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      - APP_PORT=${APP_PORT:-3000}
+      - APP_DOMAINS=${APP_DOMAINS:-http://localhost:3000,http://localhost:5173}
+      # Adicione outras variáveis de ambiente conforme necessário
+      # - OPEN_SEEDBOX_DATABASE_URL=${OPEN_SEEDBOX_DATABASE_URL}
+      # - OPEN_SEEDBOX_REDIS_URL=${OPEN_SEEDBOX_REDIS_URL}
+    volumes:
+      # Montar volume para dados persistentes se necessário
+      - gardarr_data:/app/data
+    restart: unless-stopped
+    networks:
+      - gardarr-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Exemplo de serviço de banco de dados (descomente se necessário)
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: gardarr-postgres
+  #   environment:
+  #     - POSTGRES_DB=${POSTGRES_DB:-seedbox}
+  #     - POSTGRES_USER=${POSTGRES_USER:-seedbox}
+  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-seedbox123}
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  #   restart: unless-stopped
+  #   networks:
+  #     - seedbox-network
+
+  # Exemplo de serviço Redis (descomente se necessário)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: gardarr-redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   restart: unless-stopped
+  #   networks:
+  #     - seedbox-network
+
+volumes:
+  gardarr_data:
+    driver: local
+  # postgres_data:
+  #   driver: local
+  # redis_data:
+  #   driver: local
+
+networks:
+  gardarr-network:
+    driver: bridge
