@@ -24,6 +24,10 @@ jobs:
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
+      with:
+        platforms: linux/amd64,linux/arm64,linux/arm/v7
+        driver-opts: |
+          image=moby/buildkit:buildx-stable-1
 
     - name: Log in to Container Registry
       uses: docker/login-action@v3
@@ -57,7 +61,7 @@ jobs:
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
-        platforms: linux/amd64,linux/arm64
+        platforms: linux/amd64,linux/arm64,linux/arm/v7
         build-args: |
           GO_IMAGE=golang:1.24.4-alpine
           NODE_IMAGE=node:20-alpine
@@ -69,11 +73,30 @@ jobs:
         image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
         format: 'sarif'
         output: 'trivy-results.sarif'
+        severity: 'CRITICAL,HIGH,MEDIUM'
+        scanners: 'vuln,secret,license'
+        exit-code: '1'
 
-    - name: Upload Trivy scan results to GitHub Security tab
+    - name: Run Trivy filesystem scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-fs-results.sarif'
+        severity: 'CRITICAL,HIGH'
+        scanners: 'vuln,secret,license'
+
+    - name: Upload Trivy image scan results to GitHub Security tab
       uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: 'trivy-results.sarif'
+
+    - name: Upload Trivy filesystem scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-fs-results.sarif'
+
 
     - name: Generate artifact attestation
       uses: actions/attest-build-provenance@v1
@@ -86,5 +109,80 @@ jobs:
       run: |
         echo "Package published to: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
         echo "Tags: ${{ steps.meta.outputs.tags }}"
+        echo "Platforms: linux/amd64,linux/arm64,linux/arm/v7"
         echo "To make the package public, go to:"
         echo "https://github.com/${{ github.repository }}/packages"
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
+    if: github.event_name == 'release'
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=semver,pattern={{version}}
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Run comprehensive Trivy scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+        format: 'sarif'
+        output: 'trivy-comprehensive.sarif'
+        severity: 'CRITICAL,HIGH,MEDIUM,LOW'
+        scanners: 'vuln,secret,license,config'
+        exit-code: '0'
+        ignore-unfixed: true
+
+    - name: Run Trivy filesystem scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-fs-comprehensive.sarif'
+        severity: 'CRITICAL,HIGH,MEDIUM'
+        scanners: 'vuln,secret,license'
+
+    - name: Upload comprehensive scan results
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-comprehensive.sarif'
+
+    - name: Upload filesystem scan results
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-fs-comprehensive.sarif'
+
+    - name: Generate security summary
+      run: |
+        echo "## 🔒 Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Image vulnerability scan completed" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Filesystem security scan completed" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ License compliance check completed" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Secret detection completed" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Scanned Image:** \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Platforms:** linux/amd64, linux/arm64, linux/arm/v7" >> $GITHUB_STEP_SUMMARY

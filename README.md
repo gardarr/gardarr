@@ -30,8 +30,8 @@ docker-compose up --build
 
 This project uses GitHub Actions to automatically build and publish Docker images to GitHub Container Registry (GHCR) when you publish a GitHub release or push version tags.
 
-- **Multi-platform support**: Images are built for both AMD64 and ARM64 architectures
-- **Security scanning**: Automatic vulnerability scanning with Trivy
+- **Multi-platform support**: Images are built for AMD64, ARM64, and ARMv7 architectures
+- **Comprehensive security scanning**: Multi-layer vulnerability scanning with Trivy
 - **Release-based publishing**: Images are only published for official releases
 
 See [.github/workflows/README.md](.github/workflows/README.md) for detailed information about the CI/CD pipeline.
