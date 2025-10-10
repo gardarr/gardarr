@@ -7,7 +7,6 @@ This directory contains GitHub Actions workflows for the Gardarr project.
 The `docker-build.yml` workflow automatically builds and publishes Docker images to GitHub Container Registry (GHCR) when:
 
 - A GitHub release is published
-- Tags starting with `v` are pushed (e.g., `v1.0.0`)
 
 ### Features
 
@@ -33,7 +32,7 @@ The workflow generates the following tags:
 
 ### Usage
 
-1. **Automatic**: The workflow runs automatically when you publish a GitHub release or push a version tag
+1. **Automatic**: The workflow runs automatically when you publish a GitHub release
 2. **Manual**: You can also trigger it manually from the Actions tab
 3. **Package visibility**: After first release, make the package public in GitHub Packages settings
 
@@ -46,7 +45,7 @@ To trigger the workflow and publish a Docker image:
 3. Go to GitHub → Releases → Create a new release
 4. Select the tag and publish the release
 
-The workflow will automatically build and publish the Docker image.
+**Important**: The workflow only runs when you publish a GitHub release, not when you push tags. This ensures images are only published for official releases.
 
 ### Accessing the Image
 
