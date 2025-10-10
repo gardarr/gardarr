@@ -1,0 +1,251 @@
+package agent
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+
+	"github.com/gardarr/gardarr/internal/entities"
+	"github.com/gardarr/gardarr/internal/infra/database"
+	"github.com/gardarr/gardarr/internal/mappers"
+	"github.com/gardarr/gardarr/internal/models"
+	"github.com/gardarr/gardarr/internal/schemas"
+	"github.com/gardarr/gardarr/internal/services/crypto"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
+
+type Repository struct {
+	db     *database.Database
+	crypto *crypto.CryptoService
+	http   *http.Client
+}
+
+func NewRepository(db *database.Database, crypto *crypto.CryptoService) *Repository {
+	return &Repository{
+		db:     db,
+		crypto: crypto,
+		http:   http.DefaultClient,
+	}
+}
+
+// Create inserts a new instance into the database
+func (r *Repository) CreateAgent(ctx context.Context, agent entities.Agent) (*entities.Agent, error) {
+	encToken, err := r.crypto.Encrypt(agent.Token)
+	if err != nil {
+		return nil, err
+	}
+
+	handler := &models.Agent{
+		Name:            agent.Name,
+		Address:         agent.Address,
+		EncrypetedToken: encToken,
+	}
+
+	if err := r.db.DB.Create(handler).Error; err != nil {
+		if errors.Is(err, gorm.ErrDuplicatedKey) || strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			return nil, errors.New("agent already exists")
+		}
+
+		return nil, err
+	}
+
+	return toAgent(*handler), nil
+}
+
+// List retrieves all agents from the database
+func (r *Repository) ListAgents() ([]*entities.Agent, error) {
+	var handler []models.Agent
+	if err := r.db.DB.Find(&handler).Error; err != nil {
+		return nil, err
+	}
+
+	result := make([]*entities.Agent, len(handler))
+	for i, item := range handler {
+		result[i] = toAgent(item)
+	}
+
+	return result, nil
+}
+
+// GetByUUID retrieves a single instance by its UUID
+func (r *Repository) GetAgentByUUID(uid uuid.UUID) (*entities.Agent, error) {
+	var handler models.Agent
+	if err := r.db.DB.Where("uuid = ?", uid).First(&handler).Error; err != nil {
+		return nil, err
+	}
+
+	return toAgent(handler), nil
+}
+
+// GetByUUID retrieves a single instance by its UUID
+func (r *Repository) GetInstance(agent *entities.Agent) (*entities.Instance, error) {
+	url := fmt.Sprintf("%s/v1/instance", agent.Address)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	decryptedToken, err := r.crypto.Decrypt(agent.Token)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", decryptedToken))
+
+	response, err := r.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode != http.StatusOK {
+		return nil, errors.New("failed to get instance")
+	}
+
+	var handler models.InstanceResponse
+	body, err := io.ReadAll(response.Body)
+	defer response.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := json.NewDecoder(bytes.NewReader(body)).Decode(&handler); err != nil {
+		return nil, err
+	}
+
+	return mappers.ToInstance(handler), nil
+}
+
+// Delete removes an agent from the database by UUID
+func (r *Repository) DeleteAgent(uid uuid.UUID) error {
+	if err := r.db.DB.Where("uuid = ?", uid).Delete(&models.Agent{}).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *Repository) ListAgentTasks(agent *entities.Agent) ([]*entities.Task, error) {
+	url := fmt.Sprintf("%s/v1/tasks", agent.Address)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	decryptedToken, err := r.crypto.Decrypt(agent.Token)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", decryptedToken))
+
+	response, err := r.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode != http.StatusOK {
+		return nil, errors.New("failed to list tasks")
+	}
+
+	var handler []models.TaskResponseModel
+	body, err := io.ReadAll(response.Body)
+	defer response.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := json.NewDecoder(bytes.NewReader(body)).Decode(&handler); err != nil {
+		return nil, err
+	}
+
+	result := make([]*entities.Task, len(handler))
+	for i, item := range handler {
+		task := mappers.ToTask(item)
+		task.Agent = agent
+		result[i] = task
+	}
+
+	return result, nil
+}
+
+func (r *Repository) CreateAgentTask(agent *entities.Agent, schema schemas.TaskCreateSchema) (*entities.Task, error) {
+	url := fmt.Sprintf("%s/v1/tasks", agent.Address)
+
+	req, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	decryptedToken, err := r.crypto.Decrypt(agent.Token)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", decryptedToken))
+
+	response, err := r.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode != http.StatusOK {
+		return nil, errors.New("failed to create task")
+	}
+
+	var handler models.TaskResponseModel
+	body, err := io.ReadAll(response.Body)
+	defer response.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := json.NewDecoder(bytes.NewReader(body)).Decode(&handler); err != nil {
+		return nil, err
+	}
+
+	return mappers.ToTask(handler), nil
+}
+
+func (r *Repository) DeleteAgentTask(agent *entities.Agent, id string) error {
+	url := fmt.Sprintf("%s/v1/tasks/%s", agent.Address, id)
+
+	req, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return err
+	}
+
+	decryptedToken, err := r.crypto.Decrypt(agent.Token)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", decryptedToken))
+
+	response, err := r.http.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if response.StatusCode != http.StatusOK {
+		return errors.New("failed to delete task")
+	}
+
+	return nil
+}
+
+func toAgent(item models.Agent) *entities.Agent {
+	return &entities.Agent{
+		UUID:    item.UUID,
+		Name:    item.Name,
+		Address: item.Address,
+		Token:   item.EncrypetedToken,
+	}
+}
