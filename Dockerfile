@@ -12,8 +12,9 @@ WORKDIR /app/frontend
 # Copy frontend package files
 COPY frontend/package*.json ./
 
-# Install frontend dependencies and build in one layer
-RUN npm ci --only=production && \
+# Install all frontend dependencies (including dev dependencies for build)
+# Note: We need dev dependencies like TypeScript and Vite for the build process
+RUN npm ci && \
     npm cache clean --force
 
 # Copy frontend source code
