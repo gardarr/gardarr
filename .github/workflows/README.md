@@ -10,7 +10,7 @@ The `docker-build.yml` workflow automatically builds and publishes Docker images
 
 ### Features
 
-- **Multi-platform builds**: Supports `linux/amd64`, `linux/arm64`, and `linux/arm/v7` architectures
+- **Multi-platform builds**: Supports `linux/amd64` and `linux/arm64` architectures
 - **Smart tagging**: Automatically generates appropriate tags based on releases and version tags
 - **Comprehensive security scanning**: 
   - Trivy vulnerability scanning for images and filesystem

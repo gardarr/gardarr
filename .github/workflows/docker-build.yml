@@ -23,7 +23,7 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
       with:
-        platforms: linux/amd64,linux/arm64,linux/arm/v7
+        platforms: linux/amd64,linux/arm64
         driver-opts: |
           image=moby/buildkit:buildx-stable-1
 
@@ -56,7 +56,7 @@ jobs:
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
-        platforms: linux/amd64,linux/arm64,linux/arm/v7
+        platforms: linux/amd64,linux/arm64
         build-args: |
           GO_IMAGE=golang:1.24.4-alpine
           NODE_IMAGE=node:20-alpine
@@ -104,7 +104,7 @@ jobs:
       run: |
         echo "Package published to: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
         echo "Tags: ${{ steps.meta.outputs.tags }}"
-        echo "Platforms: linux/amd64,linux/arm64,linux/arm/v7"
+        echo "Platforms: linux/amd64,linux/arm64"
         echo "To make the package public, go to:"
         echo "https://github.com/${{ github.repository }}/packages"
 
@@ -180,4 +180,4 @@ jobs:
         echo "- ✅ Secret detection completed" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Scanned Image:** \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
-        echo "**Platforms:** linux/amd64, linux/arm64, linux/arm/v7" >> $GITHUB_STEP_SUMMARY
+        echo "**Platforms:** linux/amd64, linux/arm64" >> $GITHUB_STEP_SUMMARY
