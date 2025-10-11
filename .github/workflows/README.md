@@ -12,14 +12,8 @@ The `docker-build.yml` workflow automatically builds and publishes Docker images
 
 - **Multi-platform builds**: Supports `linux/amd64` and `linux/arm64` architectures
 - **Smart tagging**: Automatically generates appropriate tags based on releases and version tags
-- **Comprehensive security scanning**: 
-  - Trivy vulnerability scanning for images and filesystem
-  - License compliance checking
-  - Secret detection
-  - Configuration security analysis
 - **Build caching**: Leverages GitHub Actions cache for faster builds
 - **Artifact attestation**: Generates build provenance for supply chain security
-- **Parallel security scanning**: Dedicated security job runs after build completion
 
 ### Image Tags
 
@@ -67,12 +61,7 @@ services:
 
 ### Security
 
-- **Multi-layer scanning**: Images and filesystem are scanned for vulnerabilities using Trivy
-- **Comprehensive analysis**: Includes vulnerability, secret, license, and configuration scanning
 - **Build provenance**: Attested for supply chain security
-- **Results integration**: All scan results are available in the GitHub Security tab
-- **Severity filtering**: Configurable severity levels (CRITICAL, HIGH, MEDIUM, LOW)
-- **Parallel execution**: Security scanning runs in a separate job for better performance
 
 ### Requirements
 
