@@ -68,7 +68,7 @@ export function AgentFilter({
       </Button>
       {isOpen && (
         <div 
-          className="absolute right-0 mt-1 w-56 rounded-md border bg-card text-card-foreground shadow-md z-10 py-1"
+          className="absolute right-0 mt-1 w-56 rounded-md border bg-card text-card-foreground shadow-md z-[100] py-1"
           role="listbox"
           aria-label="Filtrar por agents"
         >
@@ -111,5 +111,3 @@ export function AgentFilter({
 }
 
 export default AgentFilter;
-
-

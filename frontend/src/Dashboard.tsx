@@ -1,49 +1,52 @@
 // DashboardPage.tsx
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { BarChart3, Download, Users, HardDrive, Activity, Clock } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
+  
   const stats = [
     { 
-      title: "Downloads Ativos", 
+      title: t("dashboard.activeDownloads"), 
       value: "24", 
       icon: Download,
-      description: "+12% em relação ao mês passado",
+      description: t("dashboard.activeDownloadsDesc"),
       color: "text-blue-500"
     },
     { 
-      title: "Usuários Online", 
+      title: t("dashboard.onlineUsers"), 
       value: "156", 
       icon: Users,
-      description: "12 usuários ativos agora",
+      description: t("dashboard.onlineUsersDesc"),
       color: "text-green-500"
     },
     { 
-      title: "Espaço Utilizado", 
+      title: t("dashboard.usedSpace"), 
       value: "2.4 TB", 
       icon: HardDrive,
-      description: "78% da capacidade total",
+      description: t("dashboard.usedSpaceDesc"),
       color: "text-orange-500"
     },
     { 
-      title: "Velocidade Média", 
+      title: t("dashboard.averageSpeed"), 
       value: "45 MB/s", 
       icon: Activity,
-      description: "Taxa de transferência atual",
+      description: t("dashboard.averageSpeedDesc"),
       color: "text-purple-500"
     },
     { 
-      title: "Tempo Médio", 
+      title: t("dashboard.averageTime"), 
       value: "2.3h", 
       icon: Clock,
-      description: "Tempo médio de download",
+      description: t("dashboard.averageTimeDesc"),
       color: "text-cyan-500"
     },
     { 
-      title: "Taxa de Sucesso", 
+      title: t("dashboard.successRate"), 
       value: "98.5%", 
       icon: BarChart3,
-      description: "Downloads completados com sucesso",
+      description: t("dashboard.successRateDesc"),
       color: "text-emerald-500"
     },
   ];
@@ -53,9 +56,9 @@ export default function DashboardPage() {
       {/* Título da página */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("dashboard.title")}</h1>
           <p className="text-muted-foreground">
-            Visão geral do seu servidor Seedbox
+            {t("dashboard.subtitle")}
           </p>
         </div>
       </div>
@@ -87,7 +90,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Downloads Recentes</CardTitle>
+            <CardTitle>{t("dashboard.recentDownloads")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -109,7 +112,7 @@ export default function DashboardPage() {
                     />
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {item.progress}% completo
+                    {item.progress}% {t("dashboard.complete")}
                   </div>
                 </div>
               ))}
@@ -119,16 +122,16 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Atividade do Sistema</CardTitle>
+            <CardTitle>{t("dashboard.systemActivity")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {[
-                { time: "2 min atrás", event: "Novo usuário registrado", type: "info" },
-                { time: "5 min atrás", event: "Download iniciado: Ubuntu", type: "success" },
-                { time: "12 min atrás", event: "Espaço em disco baixo", type: "warning" },
-                { time: "18 min atrás", event: "Backup automático concluído", type: "success" },
-                { time: "25 min atrás", event: "Usuário desconectado", type: "info" },
+                { time: "2", event: t("dashboard.activities.newUser"), type: "info" },
+                { time: "5", event: t("dashboard.activities.downloadStarted"), type: "success" },
+                { time: "12", event: t("dashboard.activities.lowDiskSpace"), type: "warning" },
+                { time: "18", event: t("dashboard.activities.backupCompleted"), type: "success" },
+                { time: "25", event: t("dashboard.activities.userDisconnected"), type: "info" },
               ].map((activity, index) => (
                 <div key={index} className="flex items-start space-x-3">
                   <div className={`w-2 h-2 rounded-full mt-2 ${
@@ -137,7 +140,9 @@ export default function DashboardPage() {
                   }`} />
                   <div className="flex-1 space-y-1">
                     <p className="text-sm font-medium">{activity.event}</p>
-                    <p className="text-xs text-muted-foreground">{activity.time}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {activity.time} {parseInt(activity.time) === 1 ? t("dashboard.timeAgo.minAgo") : t("dashboard.timeAgo.minsAgo")}
+                    </p>
                   </div>
                 </div>
               ))}

@@ -4,6 +4,7 @@ import AppLayout from './AppLayout'
 import DashboardPage from './Dashboard'
 import TorrentsPage from './Torrents'
 import AgentsPage from './Agents'
+import SettingsPage from './Settings'
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="torrents" element={<TorrentsPage />} />
           <Route path="agents" element={<AgentsPage />} />
+          <Route path="settings" element={<SettingsPage />} />
           {/* Outras rotas podem ser adicionadas aqui */}
         </Route>
       </Routes>

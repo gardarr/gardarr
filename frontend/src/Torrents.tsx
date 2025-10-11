@@ -9,6 +9,9 @@ import { agentService } from "./services/agents";
 import type { Task } from "./types/torrent";
 import type { Agent, AgentStatus } from "./types/agent";
 import AgentFilter from "@/components/ui/AgentFilter";
+import { TorrentDetailsModal } from "@/components/TorrentDetailsModal";
+import { ProgressBar } from "@/components/ui/ProgressBar";
+import { RatioBadge } from "@/components/ui/RatioBadge";
 
 type TorrentStatus = 
   | "ERROR" 
@@ -117,34 +120,6 @@ function truncateText(text: string, maxLength: number = 50): string {
 function isTextTruncated(text: string, maxLength: number = 50): boolean {
   return text.length > maxLength;
 }
-
-// Função para calcular nota baseada no ratio (estilo Devil May Cry)
-function getRatioGrade(ratio: number): string {
-  if (ratio >= 30) return "S";
-  if (ratio >= 15) return "A";
-  if (ratio >= 7) return "B";
-  if (ratio >= 3) return "C";
-  return "D";
-}
-
-// Função para obter cor da badge baseada na nota (estilo Devil May Cry)
-function getGradeColor(grade: string): string {
-  switch (grade) {
-    case "S":
-      return "bg-gradient-to-r from-yellow-200 via-yellow-300 to-yellow-400 text-yellow-700 font-bold shadow-sm shadow-yellow-300/30";
-    case "A":
-      return "bg-gradient-to-r from-green-400 via-green-500 to-green-600 text-green-900 font-bold shadow-sm shadow-green-500/30";
-    case "B":
-      return "bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600 text-blue-900 font-semibold shadow-sm shadow-blue-500/20";
-    case "C":
-      return "bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600 text-orange-900 font-semibold shadow-sm shadow-orange-500/20";
-    case "D":
-      return "bg-gradient-to-r from-red-400 via-red-500 to-red-600 text-red-900 font-semibold shadow-sm shadow-red-500/20";
-    default:
-      return "bg-gray-400 text-gray-900 font-semibold";
-  }
-}
-
 
 function getStatusIcon(status: TorrentStatus) {
   switch (status) {
@@ -265,6 +240,60 @@ function getAgentStatusColor(status?: AgentStatus): string {
   }
 }
 
+// Função para obter cor do status com suporte a modo escuro (cores mais claras)
+function getStatusColorLight(status: TorrentStatus): string {
+  switch (status) {
+    // Error states - red colors
+    case "ERROR":
+      return "text-red-600 dark:text-red-400";
+    case "MISSING_FILES":
+      return "text-red-500 dark:text-red-400";
+    
+    // Download states - green colors
+    case "DOWNLOADING":
+      return "text-green-600 dark:text-green-400";
+    case "METADATA_DOWNLOAD":
+    case "FORCED_METADATA_DOWNLOAD":
+      return "text-green-500 dark:text-green-400";
+    case "PAUSED_DOWNLOAD":
+    case "STOPPED_DOWNLOAD":
+      return "text-orange-500 dark:text-orange-400";
+    case "QUEUED_DOWNLOAD":
+      return "text-green-400 dark:text-green-300";
+    case "FORCED_DOWNLOAD":
+      return "text-green-700 dark:text-green-300";
+    case "STALLED_DOWNLOAD":
+      return "text-orange-600 dark:text-orange-400";
+    case "CHECKING_DOWNLOAD":
+    case "CHECKING_RESUME_DATA":
+      return "text-cyan-500 dark:text-cyan-400";
+    
+    // Upload states - purple/lilac colors
+    case "UPLOADING":
+      return "text-purple-600 dark:text-purple-400";
+    case "PAUSED_UPLOAD":
+    case "STOPPED_UPLOAD":
+      return "text-orange-500 dark:text-orange-400";
+    case "QUEUED_UPLOAD":
+      return "text-purple-400 dark:text-purple-300";
+    case "STALLED_UPLOAD":
+      return "text-orange-600 dark:text-orange-400";
+    case "CHECKING_UPLOAD":
+      return "text-cyan-500 dark:text-cyan-400";
+    case "FORCED_UPLOAD":
+      return "text-purple-700 dark:text-purple-300";
+    
+    // Other states - neutral colors
+    case "ALLOCATING":
+      return "text-indigo-500 dark:text-indigo-400";
+    case "MOVING":
+      return "text-indigo-500 dark:text-indigo-400";
+    case "UNKNOWN":
+    default:
+      return "text-gray-500 dark:text-gray-400";
+  }
+}
+
 // Função para obter label do tipo de ordenação
 function getSortTypeLabel(sortType: SortType): string {
   switch (sortType) {
@@ -335,44 +364,11 @@ function getStatusPriority(status: TorrentStatus): number {
   }
 }
 
-// Componente Badge para exibir nota do ratio (estilo Devil May Cry)
-function RatioBadge({ ratio }: { ratio: number }) {
-  const grade = getRatioGrade(ratio);
-  const colorClass = getGradeColor(grade);
-  
-  return (
-    <div className="flex items-center gap-2">
-      <span 
-        className={`inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-mono tracking-widest border-2 border-black/20 transform transition-all duration-200 hover:scale-105 ${colorClass}`}
-        title={`Ratio: ${ratio.toFixed(2)} - Nota: ${grade} (${getGradeDescription(grade)})`}
-      >
-        {grade}
-      </span>
-      <span className="text-xs text-muted-foreground font-mono">
-        {ratio.toFixed(1)}
-      </span>
-    </div>
-  );
-}
-
-// Função para obter descrição da nota
-function getGradeDescription(grade: string): string {
-  switch (grade) {
-    case "SSS": return "PERFEITO!";
-    case "SS": return "EXCELENTE!";
-    case "S": return "MUITO BOM!";
-    case "A": return "BOM";
-    case "B": return "REGULAR";
-    case "C": return "RUIM";
-    case "D": return "MUITO RUIM";
-    default: return "DESCONHECIDO";
-  }
-}
-
-function TorrentCard({ torrent, onDelete, isDeleting }: { 
+function TorrentCard({ torrent, onDelete, isDeleting, onShowDetails }: { 
   torrent: Torrent; 
   onDelete: (id: string, purge: boolean) => void;
   isDeleting: boolean;
+  onShowDetails: (id: string) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -451,7 +447,7 @@ function TorrentCard({ torrent, onDelete, isDeleting }: {
                 className="w-full flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
                 onClick={() => {
                   setMenuOpen(false);
-                  // ação: abrir detalhes
+                  onShowDetails(torrent.id);
                 }}
               >
                 <Info className="h-4 w-4" />
@@ -479,17 +475,7 @@ function TorrentCard({ torrent, onDelete, isDeleting }: {
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold mb-1">{formatBytes(torrent.totalSizeBytes)}</div>
-        <div className="mb-2">
-          <div className="w-full bg-secondary rounded-full h-2">
-            <div 
-              className="bg-primary h-2 rounded-full transition-all duration-300" 
-              style={{ width: `${torrent.progress}%` }}
-            ></div>
-          </div>
-          <div className="text-xs text-muted-foreground mt-1">
-            {torrent.progress.toFixed(1)}% concluído
-          </div>
-        </div>
+        <ProgressBar progress={torrent.progress} height="md" className="mb-2" />
         <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
             <Tooltip>
@@ -511,11 +497,15 @@ function TorrentCard({ torrent, onDelete, isDeleting }: {
           </div>
           <div>
             <span className="font-medium">Download: </span>
-            <span>{formatRate(torrent.downloadRateBps)}</span>
+            <span className={torrent.downloadRateBps > 0 ? getStatusColorLight(torrent.status) : ''}>
+              {formatRate(torrent.downloadRateBps)}
+            </span>
           </div>
           <div>
             <span className="font-medium">Upload: </span>
-            <span>{formatRate(torrent.uploadRateBps)}</span>
+            <span className={torrent.uploadRateBps > 0 ? getStatusColorLight(torrent.status) : ''}>
+              {formatRate(torrent.uploadRateBps)}
+            </span>
           </div>
           <div>
             <span className="font-medium">Seeds: </span>
@@ -539,10 +529,11 @@ function TorrentCard({ torrent, onDelete, isDeleting }: {
   );
 }
 
-function TorrentRow({ torrent, onDelete, isDeleting }: { 
+function TorrentRow({ torrent, onDelete, isDeleting, onShowDetails }: { 
   torrent: Torrent; 
   onDelete: (id: string, purge: boolean) => void;
   isDeleting: boolean;
+  onShowDetails: (id: string) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -570,26 +561,24 @@ function TorrentRow({ torrent, onDelete, isDeleting }: {
   return (
     <tr className="border-b hover:bg-muted/50 transition-colors">
       <td className="px-4 py-3">
-        <div className="flex items-center justify-center">
+        <div className="flex items-center gap-2">
           <Tooltip>
             <TooltipTrigger asChild>
               <StatusIcon 
-                className={`h-4 w-4 ${getStatusColor(torrent.status)}`} 
+                className={`h-4 w-4 flex-shrink-0 ${getStatusColor(torrent.status)}`} 
               />
             </TooltipTrigger>
             <TooltipContent>
               <p>{torrent.status}</p>
             </TooltipContent>
           </Tooltip>
+          <span 
+            className="text-sm font-medium truncate" 
+            title={isTextTruncated(torrent.name) ? `${torrent.name} (truncado)` : torrent.name}
+          >
+            {truncateText(torrent.name)}
+          </span>
         </div>
-      </td>
-      <td className="px-4 py-3">
-        <span 
-          className="text-sm font-medium truncate block" 
-          title={isTextTruncated(torrent.name) ? `${torrent.name} (truncado)` : torrent.name}
-        >
-          {truncateText(torrent.name)}
-        </span>
       </td>
       <td className="px-4 py-3 text-sm">
         {formatBytes(torrent.totalSizeBytes)}
@@ -606,10 +595,14 @@ function TorrentRow({ torrent, onDelete, isDeleting }: {
         </div>
       </td>
       <td className="px-4 py-3 text-sm">
-        {formatRate(torrent.downloadRateBps)}
+        <span className={torrent.downloadRateBps > 0 ? getStatusColorLight(torrent.status) : ''}>
+          {formatRate(torrent.downloadRateBps)}
+        </span>
       </td>
       <td className="px-4 py-3 text-sm">
-        {formatRate(torrent.uploadRateBps)}
+        <span className={torrent.uploadRateBps > 0 ? getStatusColorLight(torrent.status) : ''}>
+          {formatRate(torrent.uploadRateBps)}
+        </span>
       </td>
       <td className="px-4 py-3 text-sm">
         {formatBytes(torrent.downloadedBytes)}
@@ -653,7 +646,7 @@ function TorrentRow({ torrent, onDelete, isDeleting }: {
                 className="w-full flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
                 onClick={() => {
                   setMenuOpen(false);
-                  // ação: abrir detalhes
+                  onShowDetails(torrent.id);
                 }}
               >
                 <Info className="h-4 w-4" />
@@ -774,7 +767,7 @@ function ItemsPerPageDropdown({
       
       {isOpen && (
         <div 
-          className="absolute right-0 mt-1 w-20 rounded-md border bg-card text-card-foreground shadow-md z-10 py-1"
+          className="absolute right-0 mt-1 w-20 rounded-md border bg-card text-card-foreground shadow-md z-[100] py-1"
           role="listbox"
           aria-label="Opções de itens por página"
         >
@@ -851,7 +844,7 @@ function UpdateIntervalDropdown({
 
       {isOpen && (
         <div
-          className="absolute right-0 mt-1 w-24 rounded-md border bg-card text-card-foreground shadow-md z-10 py-1"
+          className="absolute right-0 mt-1 w-24 rounded-md border bg-card text-card-foreground shadow-md z-[100] py-1"
           role="listbox"
           aria-label="Intervalo de atualização (segundos)"
         >
@@ -888,6 +881,9 @@ export default function TorrentsPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgentIds, setSelectedAgentIds] = useState<Set<string>>(new Set());
   const [refreshIntervalSec, setRefreshIntervalSec] = useState<number>(5);
+  const [selectedTorrent, setSelectedTorrent] = useState<Task | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [originalTasks, setOriginalTasks] = useState<Task[]>([]);
 
   // Carregar torrents da API
   const loadTorrents = async () => {
@@ -902,6 +898,7 @@ export default function TorrentsPage() {
       }
       
       if (response.data) {
+        setOriginalTasks(response.data);
         const mappedTorrents = response.data.map(mapTaskToTorrent);
         setTorrents(mappedTorrents);
       }
@@ -917,6 +914,7 @@ export default function TorrentsPage() {
     try {
       const response = await torrentService.listTasks();
       if (response?.data) {
+        setOriginalTasks(response.data);
         const mappedTorrents = response.data.map(mapTaskToTorrent);
         setTorrents(mappedTorrents);
       }
@@ -940,6 +938,21 @@ export default function TorrentsPage() {
     } catch {
       // silencioso; filtro de agentes é opcional
     }
+  };
+
+  // Abrir modal de detalhes
+  const handleShowDetails = (torrentId: string) => {
+    const task = originalTasks.find(t => t.id === torrentId);
+    if (task) {
+      setSelectedTorrent(task);
+      setIsModalOpen(true);
+    }
+  };
+
+  // Fechar modal
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedTorrent(null);
   };
 
   // Remover torrent
@@ -1168,7 +1181,7 @@ export default function TorrentsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-h-full">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Torrents</h1>
@@ -1179,8 +1192,9 @@ export default function TorrentsPage() {
       </div>
 
       {/* Filtro de busca e controles */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-        <div className="relative flex-1 max-w-sm w-full">
+      <div className="flex flex-col gap-4 w-full">
+        {/* Busca */}
+        <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
             placeholder="Buscar torrents..."
@@ -1189,40 +1203,70 @@ export default function TorrentsPage() {
             className="pl-10"
           />
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground hidden sm:inline">Itens por página:</span>
-          <span className="text-sm text-muted-foreground sm:hidden">Por página:</span>
-          <ItemsPerPageDropdown 
-            value={itemsPerPage} 
-            onChange={handleItemsPerPageChange} 
-          />
+        
+        {/* Controles agrupados - desktop */}
+        <div className="hidden sm:flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-sm text-muted-foreground">Itens por página:</span>
+            <ItemsPerPageDropdown 
+              value={itemsPerPage} 
+              onChange={handleItemsPerPageChange} 
+            />
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-sm text-muted-foreground">Update:</span>
+            <UpdateIntervalDropdown
+              value={refreshIntervalSec}
+              onChange={setRefreshIntervalSec}
+            />
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <AgentFilter 
+              agents={agents}
+              selectedAgentIds={selectedAgentIds}
+              onToggleAgent={toggleAgent}
+              onSetAll={setAllAgents}
+            />
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {filteredTorrents.length} de {torrents.length} torrents
+            <span className="ml-2 text-xs">
+              (ordenados por {getSortTypeLabel(sortType)} {sortDirection === "asc" ? "↑" : "↓"})
+            </span>
+          </div>
         </div>
-      {/* Dropdown de atualização */}
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-muted-foreground hidden sm:inline">Update:</span>
-        <span className="text-sm text-muted-foreground sm:hidden">Upd.:</span>
-        <UpdateIntervalDropdown
-          value={refreshIntervalSec}
-          onChange={setRefreshIntervalSec}
-        />
-      </div>
-      {/* Dropdown de agentes */}
-      <div className="flex items-center gap-2">
-        <div className="relative">
-          <AgentFilter 
-            agents={agents}
-            selectedAgentIds={selectedAgentIds}
-            onToggleAgent={toggleAgent}
-            onSetAll={setAllAgents}
-          />
+
+        {/* Controles agrupados - mobile (em linha) */}
+        <div className="sm:hidden relative mb-2">
+          <div className="flex items-center gap-2 overflow-x-auto pb-52 -mb-52 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">Por página:</span>
+              <ItemsPerPageDropdown 
+                value={itemsPerPage} 
+                onChange={handleItemsPerPageChange} 
+              />
+            </div>
+            <div className="h-6 w-px bg-border flex-shrink-0" />
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <UpdateIntervalDropdown
+                value={refreshIntervalSec}
+                onChange={setRefreshIntervalSec}
+              />
+            </div>
+            <div className="h-6 w-px bg-border flex-shrink-0" />
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <Server className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <AgentFilter 
+                agents={agents}
+                selectedAgentIds={selectedAgentIds}
+                onToggleAgent={toggleAgent}
+                onSetAll={setAllAgents}
+              />
+            </div>
+          </div>
         </div>
-      </div>
-        <div className="text-sm text-muted-foreground">
-          {filteredTorrents.length} de {torrents.length} torrents
-          <span className="ml-2 text-xs">
-            (ordenados por {getSortTypeLabel(sortType)} {sortDirection === "asc" ? "↑" : "↓"})
-          </span>
-        </div>
+
       </div>
       
       {/* Estado vazio */}
@@ -1250,9 +1294,9 @@ export default function TorrentsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground w-12">
+                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
                     <div className="flex items-center gap-1">
-                      <span>Status</span>
+                      <span>Nome</span>
                       <SortButton
                         sortType="priority"
                         currentSortType={sortType}
@@ -1262,9 +1306,6 @@ export default function TorrentsPage() {
                         prioridade
                       </SortButton>
                     </div>
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                    Nome
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
                     <div className="flex items-center gap-1">
@@ -1362,6 +1403,7 @@ export default function TorrentsPage() {
                     torrent={t} 
                     onDelete={handleDeleteTorrent}
                     isDeleting={deletingTorrents.has(t.id)}
+                    onShowDetails={handleShowDetails}
                   />
                 ))}
               </tbody>
@@ -1400,46 +1442,20 @@ export default function TorrentsPage() {
       </div>
 
       {/* Layout para mobile - Cards em coluna única */}
-      <div className="md:hidden">
+      <div className="md:hidden w-full">
         {/* Mobile sorting controls */}
         <div className="mb-4">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-sm font-medium text-muted-foreground">Ordenar por:</span>
-            <span className="text-xs text-muted-foreground">
-              {getSortTypeLabel(sortType)} {sortDirection === "asc" ? "↑" : "↓"}
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-muted-foreground">Ordenar por:</span>
+              <span className="text-xs text-muted-foreground">
+                {getSortTypeLabel(sortType)} {sortDirection === "asc" ? "↑" : "↓"}
+              </span>
+            </div>
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              {filteredTorrents.length} de {torrents.length}
             </span>
           </div>
-        {/* Filtro de agentes no mobile */}
-        {agents.length > 0 && (
-          <Card className="mb-3 py-2 px-3">
-            <div className="flex items-center gap-2 p-0">
-              <span className="text-sm font-medium whitespace-nowrap">Agentes</span>
-              <div className="flex gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                <Button
-                  variant={selectedAgentIds.size === agents.length ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setAllAgents(true)}
-                  className="flex-shrink-0 text-xs"
-                >
-                  Todos
-                </Button>
-                {agents.map((a) => (
-                  <Button
-                    key={a.uuid}
-                    variant={selectedAgentIds.has(a.uuid) ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => toggleAgent(a.uuid)}
-                    className="flex-shrink-0 text-xs flex items-center gap-1"
-                    title={a.name}
-                  >
-                    <Server className={`h-3 w-3 ${getAgentStatusColor(a.status)}`} />
-                    {a.name}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </Card>
-        )}
           <div className="flex gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             <Button
               variant={sortType === "priority" ? "default" : "outline"}
@@ -1564,13 +1580,14 @@ export default function TorrentsPage() {
           </div>
         </div>
         
-        <div className="space-y-4">
+        <div className="space-y-4 w-full">
           {paginatedTorrents.map((t) => (
             <TorrentCard 
               key={t.id} 
               torrent={t} 
               onDelete={handleDeleteTorrent}
               isDeleting={deletingTorrents.has(t.id)}
+              onShowDetails={handleShowDetails}
             />
           ))}
         </div>
@@ -1604,6 +1621,13 @@ export default function TorrentsPage() {
       </div>
         </>
       )}
+
+      {/* Modal de detalhes do torrent */}
+      <TorrentDetailsModal
+        torrent={selectedTorrent}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+      />
     </div>
   );
 }

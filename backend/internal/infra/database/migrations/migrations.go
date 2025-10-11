@@ -44,5 +44,15 @@ func Register(m *migration.Migrator) {
 				return db.Migrator().DropColumn(&User{}, "Role")
 			},
 		},
+		{
+			Version:     "004_create_categories_table",
+			Description: "Cria a tabela de categorias",
+			Up: func(db *gorm.DB) error {
+				return db.AutoMigrate(&models.Category{})
+			},
+			Down: func(db *gorm.DB) error {
+				return db.Migrator().DropTable(&models.Category{})
+			},
+		},
 	})
 }

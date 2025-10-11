@@ -5,12 +5,12 @@ import (
 	"github.com/gardarr/gardarr/internal/models"
 )
 
-func ToAgentResponse(e *entities.Agent) models.AgentResponse {
+func ToAgentResponse(e *entities.Agent) *models.AgentResponse {
 	if e == nil {
-		return models.AgentResponse{}
+		return &models.AgentResponse{}
 	}
 
-	return models.AgentResponse{
+	return &models.AgentResponse{
 		UUID:     e.UUID.String(),
 		Name:     e.Name,
 		Address:  e.Address,

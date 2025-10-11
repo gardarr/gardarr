@@ -1,0 +1,105 @@
+{
+    "common": {
+      "save": "Save",
+      "cancel": "Cancel",
+      "reset": "Reset",
+      "loading": "Loading...",
+      "error": "Error",
+      "success": "Success"
+    },
+    "navigation": {
+      "dashboard": "Dashboard",
+      "torrents": "Torrents",
+      "agents": "Agents",
+      "analytics": "Analytics",
+      "settings": "Settings",
+      "profile": "Profile"
+    },
+    "theme": {
+      "toggle": "Toggle theme"
+    },
+    "dashboard": {
+      "title": "Dashboard",
+      "subtitle": "Overview of your Gardarr server",
+      "activeDownloads": "Active Downloads",
+      "activeDownloadsDesc": "+12% compared to last month",
+      "onlineUsers": "Online Users",
+      "onlineUsersDesc": "12 active users now",
+      "usedSpace": "Used Space",
+      "usedSpaceDesc": "78% of total capacity",
+      "averageSpeed": "Average Speed",
+      "averageSpeedDesc": "Current transfer rate",
+      "averageTime": "Average Time",
+      "averageTimeDesc": "Average download time",
+      "successRate": "Success Rate",
+      "successRateDesc": "Successfully completed downloads",
+      "recentDownloads": "Recent Downloads",
+      "systemActivity": "System Activity",
+      "complete": "complete",
+      "activities": {
+        "newUser": "New user registered",
+        "downloadStarted": "Download started: Ubuntu",
+        "lowDiskSpace": "Low disk space",
+        "backupCompleted": "Automatic backup completed",
+        "userDisconnected": "User disconnected"
+      },
+      "timeAgo": {
+        "minAgo": "min ago",
+        "minsAgo": "mins ago"
+      }
+    },
+    "settings": {
+      "title": "Settings",
+      "subtitle": "Manage system preferences",
+      "timezone": {
+        "title": "Timezone",
+        "description": "Configure the timezone for displaying dates and times in the system",
+        "currentTime": "Current Time",
+        "selectLabel": "Select Timezone",
+        "selectPlaceholder": "Select a timezone...",
+        "detected": "Detected Timezone",
+        "saved": "Saved Timezone",
+        "saveChanges": "Save Changes",
+        "resetToDetected": "Reset to Detected",
+        "saveSuccess": "Timezone saved successfully"
+      },
+      "language": {
+        "title": "Language",
+        "description": "Choose your preferred language for the interface",
+        "selectLabel": "Select Language",
+        "selectPlaceholder": "Select a language...",
+        "current": "Current Language",
+        "saveSuccess": "Language changed successfully",
+        "languages": {
+          "en-US": "English (United States)",
+          "pt-BR": "Portuguese (Brazil)"
+        }
+      },
+      "other": {
+        "title": "Other Settings",
+        "description": "Additional settings will be available soon",
+        "comingSoon": "Future settings such as notification preferences, download limits, and privacy settings will be added here."
+      }
+    },
+    "timezones": {
+      "America/New_York": "Eastern Time (ET) - New York",
+      "America/Chicago": "Central Time (CT) - Chicago",
+      "America/Denver": "Mountain Time (MT) - Denver",
+      "America/Los_Angeles": "Pacific Time (PT) - Los Angeles",
+      "America/Sao_Paulo": "Brasília Time (BRT) - São Paulo",
+      "America/Argentina/Buenos_Aires": "Argentina Time (ART) - Buenos Aires",
+      "Europe/London": "Greenwich Mean Time (GMT) - London",
+      "Europe/Paris": "Central European Time (CET) - Paris",
+      "Europe/Berlin": "Central European Time (CET) - Berlin",
+      "Europe/Moscow": "Moscow Standard Time (MSK) - Moscow",
+      "Asia/Tokyo": "Japan Standard Time (JST) - Tokyo",
+      "Asia/Shanghai": "China Standard Time (CST) - Shanghai",
+      "Asia/Dubai": "Gulf Standard Time (GST) - Dubai",
+      "Asia/Kolkata": "India Standard Time (IST) - Mumbai",
+      "Australia/Sydney": "Australian Eastern Time (AET) - Sydney",
+      "Pacific/Auckland": "New Zealand Time (NZST) - Auckland",
+      "UTC": "Coordinated Universal Time (UTC)"
+    }
+  }
+  
+  

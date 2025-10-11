@@ -1,0 +1,104 @@
+{
+    "common": {
+      "save": "Salvar",
+      "cancel": "Cancelar",
+      "reset": "Redefinir",
+      "loading": "Carregando...",
+      "error": "Erro",
+      "success": "Sucesso"
+    },
+    "navigation": {
+      "dashboard": "Dashboard",
+      "torrents": "Torrents",
+      "agents": "Agentes",
+      "analytics": "Análises",
+      "settings": "Configurações",
+      "profile": "Perfil"
+    },
+    "theme": {
+      "toggle": "Alternar tema"
+    },
+    "dashboard": {
+      "title": "Dashboard",
+      "subtitle": "Visão geral do seu servidor Gardarr",
+      "activeDownloads": "Downloads Ativos",
+      "activeDownloadsDesc": "+12% em relação ao mês passado",
+      "onlineUsers": "Usuários Online",
+      "onlineUsersDesc": "12 usuários ativos agora",
+      "usedSpace": "Espaço Utilizado",
+      "usedSpaceDesc": "78% da capacidade total",
+      "averageSpeed": "Velocidade Média",
+      "averageSpeedDesc": "Taxa de transferência atual",
+      "averageTime": "Tempo Médio",
+      "averageTimeDesc": "Tempo médio de download",
+      "successRate": "Taxa de Sucesso",
+      "successRateDesc": "Downloads completados com sucesso",
+      "recentDownloads": "Downloads Recentes",
+      "systemActivity": "Atividade do Sistema",
+      "complete": "completo",
+      "activities": {
+        "newUser": "Novo usuário registrado",
+        "downloadStarted": "Download iniciado: Ubuntu",
+        "lowDiskSpace": "Espaço em disco baixo",
+        "backupCompleted": "Backup automático concluído",
+        "userDisconnected": "Usuário desconectado"
+      },
+      "timeAgo": {
+        "minAgo": "min atrás",
+        "minsAgo": "mins atrás"
+      }
+    },
+    "settings": {
+      "title": "Configurações",
+      "subtitle": "Gerencie as preferências do sistema",
+      "timezone": {
+        "title": "Fuso Horário",
+        "description": "Configure o fuso horário para exibição de datas e horários no sistema",
+        "currentTime": "Hora Atual",
+        "selectLabel": "Selecione o Fuso Horário",
+        "selectPlaceholder": "Selecione um fuso horário...",
+        "detected": "Fuso Horário Detectado",
+        "saved": "Fuso Horário Salvo",
+        "saveChanges": "Salvar Alterações",
+        "resetToDetected": "Redefinir para Detectado",
+        "saveSuccess": "Fuso horário salvo com sucesso"
+      },
+      "language": {
+        "title": "Idioma",
+        "description": "Escolha seu idioma preferido para a interface",
+        "selectLabel": "Selecione o Idioma",
+        "selectPlaceholder": "Selecione um idioma...",
+        "current": "Idioma Atual",
+        "saveSuccess": "Idioma alterado com sucesso",
+        "languages": {
+          "en-US": "Inglês (Estados Unidos)",
+          "pt-BR": "Português (Brasil)"
+        }
+      },
+      "other": {
+        "title": "Outras Configurações",
+        "description": "Configurações adicionais estarão disponíveis em breve",
+        "comingSoon": "Futuras configurações como preferências de notificação, limites de download, e configurações de privacidade serão adicionadas aqui."
+      }
+    },
+    "timezones": {
+      "America/New_York": "Horário do Leste (ET) - Nova York",
+      "America/Chicago": "Horário Central (CT) - Chicago",
+      "America/Denver": "Horário das Montanhas (MT) - Denver",
+      "America/Los_Angeles": "Horário do Pacífico (PT) - Los Angeles",
+      "America/Sao_Paulo": "Horário de Brasília (BRT) - São Paulo",
+      "America/Argentina/Buenos_Aires": "Horário da Argentina (ART) - Buenos Aires",
+      "Europe/London": "Horário de Greenwich (GMT) - Londres",
+      "Europe/Paris": "Horário da Europa Central (CET) - Paris",
+      "Europe/Berlin": "Horário da Europa Central (CET) - Berlim",
+      "Europe/Moscow": "Horário de Moscou (MSK) - Moscou",
+      "Asia/Tokyo": "Horário Padrão do Japão (JST) - Tóquio",
+      "Asia/Shanghai": "Horário Padrão da China (CST) - Xangai",
+      "Asia/Dubai": "Horário Padrão do Golfo (GST) - Dubai",
+      "Asia/Kolkata": "Horário Padrão da Índia (IST) - Mumbai",
+      "Australia/Sydney": "Horário do Leste da Austrália (AET) - Sydney",
+      "Pacific/Auckland": "Horário da Nova Zelândia (NZST) - Auckland",
+      "UTC": "Tempo Universal Coordenado (UTC)"
+    }
+  }
+  

@@ -52,7 +52,7 @@ func (m *Module) listAgents(c *gin.Context) {
 		return
 	}
 
-	resp := make([]models.AgentResponse, len(result))
+	resp := make([]*models.AgentResponse, len(result))
 	for i, item := range result {
 		resp[i] = mappers.ToAgentResponse(item)
 	}
