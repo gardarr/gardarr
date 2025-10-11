@@ -26,6 +26,34 @@ services:
       retries: 3
       start_period: 40s
 
+  # Agent service - runs the agent subcommand
+  gardarr-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gardarr-agent
+    command: ["./main", "agent"]
+    env_file: "backend/.agent.red.env"
+    ports:
+      - "${AGENT_PORT:-3100}:3100"
+    environment:
+      - AGENT_PORT=${AGENT_PORT:-3100}
+      - AGENT_SECRET=${AGENT_SECRET}
+      - QBITTORRENT_BASEURL=${QBITTORRENT_BASEURL}
+      - QBITTORRENT_USERNAME=${QBITTORRENT_USERNAME}
+      - QBITTORRENT_PASSWORD=${QBITTORRENT_PASSWORD}
+    volumes:
+      - gardarr_data:/app/data
+    restart: unless-stopped
+    networks:
+      - gardarr-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3100/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
   # Exemplo de serviço de banco de dados (descomente se necessário)
   # postgres:
   #   image: postgres:15-alpine

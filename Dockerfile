@@ -59,8 +59,16 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -a -installsuffix cgo \
     -o main .
 
-# Stage 3: Create a minimal runtime image using distroless
-FROM gcr.io/distroless/static-debian12:nonroot
+# Stage 3: Create a minimal runtime image with curl for healthchecks
+FROM alpine:3.20
+
+# Install curl and ca-certificates for healthchecks and HTTPS
+RUN apk add --no-cache curl ca-certificates && \
+    rm -rf /var/cache/apk/*
+
+# Create a non-root user
+RUN addgroup -g 65532 -S nonroot && \
+    adduser -u 65532 -S nonroot -G nonroot
 
 # Set build argument for port
 ARG APP_PORT=3000
