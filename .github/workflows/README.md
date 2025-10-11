@@ -28,7 +28,7 @@ The workflow generates the following tags:
 
 1. **Automatic**: The workflow runs automatically when you publish a GitHub release
 2. **Manual**: You can also trigger it manually from the Actions tab
-3. **Package visibility**: After first release, make the package public in GitHub Packages settings
+3. **Package visibility**: The package is automatically made public after publishing
 
 ### Creating a Release
 
@@ -39,7 +39,7 @@ To trigger the workflow and publish a Docker image:
 3. Go to GitHub → Releases → Create a new release
 4. Select the tag and publish the release
 
-**Important**: The workflow only runs when you publish a GitHub release, not when you push tags. This ensures images are only published for official releases.
+**Important**: The workflow only runs when you publish a GitHub release, not when you push tags. This ensures images are only published for official releases. The package will be automatically made public after publishing.
 
 ### Accessing the Image
 
@@ -62,6 +62,7 @@ services:
 ### Security
 
 - **Build provenance**: Attested for supply chain security
+- **Secure builds**: Images are built in a secure GitHub Actions environment
 
 ### Requirements
 
