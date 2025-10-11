@@ -65,6 +65,8 @@ jobs:
         provenance: true
 
     - name: Make package public
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
         echo "Package published to: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
         echo "Tags: ${{ steps.meta.outputs.tags }}"
