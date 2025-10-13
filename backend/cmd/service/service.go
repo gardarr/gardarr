@@ -15,6 +15,7 @@ import (
 	"github.com/gardarr/gardarr/internal/constants"
 	"github.com/gardarr/gardarr/internal/infra/database"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/agents"
+	"github.com/gardarr/gardarr/internal/routes/api/v1/auth"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/health"
 	"github.com/gardarr/gardarr/internal/schemas"
 	"github.com/gardarr/gardarr/internal/services/agentmanager"
@@ -140,6 +141,7 @@ func setRoutes(db *database.Database, a *agentmanager.Service) {
 	// API routes
 	v1 := router.Group("/v1")
 	health.NewModule(v1, db).Register()
+	auth.NewModule(v1, db).Register()
 	agents.NewModule(v1, a).Register()
 
 	// Serve the main index.html for all non-API routes (SPA fallback)

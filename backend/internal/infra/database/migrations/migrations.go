@@ -54,5 +54,49 @@ func Register(m *migration.Migrator) {
 				return db.Migrator().DropTable(&models.Category{})
 			},
 		},
+		{
+			Version:     "005_add_user_auth_fields",
+			Description: "Adiciona campos de email, password_hash e salt na tabela users",
+			Up: func(db *gorm.DB) error {
+				// Add columns
+				if err := db.Migrator().AddColumn(&models.User{}, "Email"); err != nil {
+					return err
+				}
+				if err := db.Migrator().AddColumn(&models.User{}, "PasswordHash"); err != nil {
+					return err
+				}
+				if err := db.Migrator().AddColumn(&models.User{}, "Salt"); err != nil {
+					return err
+				}
+
+				// Create unique index on email using GORM (portable across databases)
+				return db.Migrator().CreateIndex(&models.User{}, "Email")
+			},
+			Down: func(db *gorm.DB) error {
+				// Drop index
+				if err := db.Migrator().DropIndex(&models.User{}, "Email"); err != nil {
+					return err
+				}
+
+				// Drop columns
+				if err := db.Migrator().DropColumn(&models.User{}, "Email"); err != nil {
+					return err
+				}
+				if err := db.Migrator().DropColumn(&models.User{}, "PasswordHash"); err != nil {
+					return err
+				}
+				return db.Migrator().DropColumn(&models.User{}, "Salt")
+			},
+		},
+		{
+			Version:     "006_create_sessions_table",
+			Description: "Cria a tabela de sessões",
+			Up: func(db *gorm.DB) error {
+				return db.AutoMigrate(&models.Session{})
+			},
+			Down: func(db *gorm.DB) error {
+				return db.Migrator().DropTable(&models.Session{})
+			},
+		},
 	})
 }
