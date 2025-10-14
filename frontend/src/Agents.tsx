@@ -3,9 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
   Server, 
-  AlertTriangle, 
   CheckCircle, 
-  XCircle, 
+  XCircle,
+  AlertTriangle,
   Plus, 
   Trash2, 
   Search, 
@@ -37,6 +37,8 @@ import {
 import { useEffect, useState } from "react";
 import { agentService } from "./services/agents";
 import type { Agent, AgentStatus, CreateAgentRequest } from "./types/agent";
+import { useToast } from "./hooks/useToast";
+import { ToastContainer } from "./components/ui/toast-container";
 
 type SortType = "name" | "status" | "address";
 
@@ -81,7 +83,6 @@ const availableColors = [
 function Agents() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<SortType>("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -94,6 +95,8 @@ function Agents() {
     icon: "Server",
     color: "#3b82f6"
   });
+  
+  const { toasts, showSuccess, showError, removeToast } = useToast();
 
   // Load agents on component mount
   useEffect(() => {
@@ -103,16 +106,15 @@ function Agents() {
   const loadAgents = async () => {
     try {
       setLoading(true);
-      setError(null);
       const response = await agentService.listAgents();
       
       if (response.error) {
-        setError(response.error);
+        showError(response.error);
       } else if (response.data) {
         setAgents(response.data);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load agents');
+      showError(err instanceof Error ? err.message : 'Failed to load agents');
     } finally {
       setLoading(false);
     }
@@ -126,33 +128,35 @@ function Agents() {
     try {
       const response = await agentService.deleteAgent(agentId);
       if (response.error) {
-        setError(response.error);
+        showError(response.error);
       } else {
         // Remove agent from local state
         setAgents(agents.filter(agent => agent.uuid !== agentId));
+        showSuccess('Agent deleted successfully');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete agent');
+      showError(err instanceof Error ? err.message : 'Failed to delete agent');
     }
   };
 
   const handleCreateAgent = async () => {
     if (!createForm.name || !createForm.address || !createForm.token) {
-      setError('Please fill in all required fields');
+      showError('Please fill in all required fields');
       return;
     }
 
     try {
       const response = await agentService.createAgent(createForm);
       if (response.error) {
-        setError(response.error);
+        showError(response.error);
       } else if (response.data) {
         setAgents([...agents, response.data]);
         setShowCreateForm(false);
         setCreateForm({ name: "", type: "qbittorrent", address: "", token: "", icon: "Server", color: "#3b82f6" });
+        showSuccess('Agent created successfully');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create agent');
+      showError(err instanceof Error ? err.message : 'Failed to create agent');
     }
   };
 
@@ -249,18 +253,6 @@ function Agents() {
           </Button>
         </div>
       </div>
-
-      {/* Error Display */}
-      {error && (
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="pt-6">
-            <div className="flex items-center space-x-2 text-red-600">
-              <AlertTriangle className="h-4 w-4" />
-              <span>{error}</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Create Agent Form */}
       {showCreateForm && (
@@ -513,6 +505,8 @@ function Agents() {
           ))}
         </div>
       )}
+      
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }

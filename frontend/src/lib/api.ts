@@ -1,10 +1,13 @@
 // API client para comunicação com o backend
+import type { ResponseError } from '../types/errors';
+import { isResponseError, getErrorMessage } from '../types/errors';
+
 const API_BASE_URL = '/v1';
 
 export interface ApiResponse<T> {
   data?: T;
   error?: string;
-  message?: string;
+  errorDetails?: ResponseError;
 }
 
 class ApiClient {
@@ -25,15 +28,12 @@ class ApiClient {
         'Content-Type': 'application/json',
         ...options.headers,
       },
+      credentials: 'include', // Include cookies in requests
     };
 
     try {
       const response = await fetch(url, { ...defaultOptions, ...options });
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
       // Handle 204 No Content responses (no body to parse)
       if (response.status === 204) {
         return { data: null as T };
@@ -43,8 +43,34 @@ class ApiClient {
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('application/json')) {
         const data = await response.json();
+        
+        // Handle error responses
+        if (!response.ok) {
+          // Check if it's a structured ResponseError from backend
+          if (isResponseError(data)) {
+            return { 
+              error: data.message || data.error || `HTTP error! status: ${response.status}`,
+              errorDetails: data,
+              data: undefined
+            };
+          }
+          
+          // Fallback for other error formats
+          return { 
+            error: getErrorMessage(data) || `HTTP error! status: ${response.status}`,
+            data: undefined
+          };
+        }
+        
         return { data };
       } else {
+        if (!response.ok) {
+          const text = await response.text();
+          return { 
+            error: text || `HTTP error! status: ${response.status}`,
+            data: undefined
+          };
+        }
         // For non-JSON responses, return the response text or null
         const text = await response.text();
         return { data: (text || null) as T };

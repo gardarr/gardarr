@@ -7,7 +7,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { Separator } from "@/components/ui/separator";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { 
   Copy, 
   Check, 
@@ -30,15 +32,22 @@ import {
   Globe,
   Users,
   UserPlus,
-  UserMinus
+  UserMinus,
+  Play,
+  Pause,
+  Trash2
 } from "lucide-react";
 import { ProgressBar } from "@/components/ui/ProgressBar";
+import { useTranslation } from "react-i18next";
 import type { Task } from "@/types/torrent";
 
 interface TorrentDetailsModalProps {
   torrent: Task | null;
   isOpen: boolean;
   onClose: () => void;
+  onPlay?: (torrentId: string) => void;
+  onPause?: (torrentId: string) => void;
+  onDelete?: (torrentId: string) => void;
 }
 
 function formatBytes(bytes: number): string {
@@ -73,9 +82,10 @@ function useIsMobile(): boolean {
 }
 
 
-export function TorrentDetailsModal({ torrent, isOpen, onClose }: TorrentDetailsModalProps) {
+export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause, onDelete }: TorrentDetailsModalProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const isMobile = useIsMobile();
+  const { t } = useTranslation();
 
   const copyToClipboard = async (text: string, field: string) => {
     try {
@@ -93,13 +103,73 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose }: TorrentDetails
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-[90vw] max-w-[90vw] max-h-[85vh] overflow-y-auto mx-4 sm:mx-0 sm:w-auto sm:max-w-4xl sm:max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Detalhes do Torrent
-          </DialogTitle>
-          <DialogDescription>
-            Informações completas sobre o torrent selecionado
-          </DialogDescription>
+          <div className="flex items-start justify-between gap-4 pr-8">
+            <div className="flex-1">
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Detalhes do Torrent
+              </DialogTitle>
+              <DialogDescription>
+                Informações completas sobre o torrent selecionado
+              </DialogDescription>
+            </div>
+            <ButtonGroup className="flex-shrink-0 mt-1">
+              {onPlay && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => onPlay(torrent.id)}
+                      className="h-10 w-10"
+                      aria-label={t('torrents.actionButtons.play')}
+                    >
+                      <Play className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {t('torrents.actionButtons.play')}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              {onPause && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => onPause(torrent.id)}
+                      className="h-10 w-10"
+                      aria-label={t('torrents.actionButtons.pause')}
+                    >
+                      <Pause className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {t('torrents.actionButtons.pause')}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              {onDelete && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => onDelete(torrent.id)}
+                      className="h-10 w-10 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 dark:text-red-400 dark:hover:text-red-300"
+                      aria-label={t('torrents.actionButtons.delete')}
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {t('torrents.actionButtons.delete')}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </ButtonGroup>
+          </div>
         </DialogHeader>
 
         <div className="space-y-3 sm:space-y-6">

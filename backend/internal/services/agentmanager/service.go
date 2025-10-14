@@ -153,12 +153,12 @@ func (s *Service) ListTasks(agents []*entities.Agent) ([]*entities.Task, error) 
 func (s *Service) Get(ctx context.Context, id string) (*entities.Agent, error) {
 	parsedID, err := uuid.Parse(id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid UUID format: %w", err)
 	}
 
 	agent, err := s.repository.GetAgentByUUID(parsedID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("agent not found: %w", err)
 	}
 
 	// Set default status to ACTIVE
@@ -215,15 +215,20 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 func (s *Service) CreateAgentTask(ctx context.Context, id string, schema schemas.TaskCreateSchema) (*entities.Task, error) {
 	uid, err := uuid.Parse(id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid UUID format: %w", err)
 	}
 
 	agent, err := s.repository.GetAgentByUUID(uid)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("agent not found: %w", err)
 	}
 
-	return s.repository.CreateAgentTask(agent, schema)
+	task, err := s.repository.CreateAgentTask(agent, schema)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create task: %w", err)
+	}
+
+	return task, nil
 }
 
 func ToResponse(item *entities.Agent) models.AgentResponse {

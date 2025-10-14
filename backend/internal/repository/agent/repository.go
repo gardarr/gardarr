@@ -177,9 +177,14 @@ func (r *Repository) ListAgentTasks(agent *entities.Agent) ([]*entities.Task, er
 }
 
 func (r *Repository) CreateAgentTask(agent *entities.Agent, schema schemas.TaskCreateSchema) (*entities.Task, error) {
-	url := fmt.Sprintf("%s/v1/tasks", agent.Address)
+	url := fmt.Sprintf("%s/v1/task", agent.Address)
 
-	req, err := http.NewRequest("POST", url, nil)
+	payload, err := json.Marshal(schema)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewReader(payload))
 	if err != nil {
 		return nil, err
 	}

@@ -1,13 +1,17 @@
 // AppLayout.tsx
 import { Button } from "@/components/ui/button";
-import { Home, Settings, Users, BarChart3, Download, Menu, Sun, Moon } from "lucide-react";
+import { Home, Settings, Users, BarChart3, Download, Menu, Sun, Moon, Info, LogOut, FolderOpen } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import PageTransition from "@/components/PageTransition";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "@/contexts/AuthContext";
+import logoImage from "@/assets/img/logo/logo_64x64.png";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
+  const { logout, user } = useAuth();
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isDark, setIsDark] = useState<boolean>(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -16,8 +20,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const root = document.documentElement;
     const stored = localStorage.getItem("theme");
-    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const dark = stored ? stored === "dark" : prefersDark;
+    // Default to dark theme if no preference is stored
+    const dark = stored ? stored === "dark" : true;
     if (dark) {
       root.classList.add('dark');
     } else {
@@ -50,10 +54,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setIsDark(nextDark);
   }
 
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
+
   const menuItems = [
     { href: "/dashboard", icon: Home, label: t("navigation.dashboard") },
     { href: "/torrents", icon: Download, label: t("navigation.torrents") },
     { href: "/agents", icon: Users, label: t("navigation.agents") },
+    { href: "/categories", icon: FolderOpen, label: t("navigation.categories") },
     { href: "/analytics", icon: BarChart3, label: t("navigation.analytics") },
   ];
 
@@ -80,8 +90,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Header da Sidebar */}
         <div className="border-b border-border p-4">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-              <span className="text-primary-foreground font-bold text-sm">G</span>
+            <div className="h-8 w-8 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
+              <img 
+                src={logoImage} 
+                alt="Gardarr Logo" 
+                className="h-full w-full object-contain"
+              />
             </div>
             {(sidebarOpen || isMobile) && (
               <span className="font-semibold text-lg whitespace-nowrap">Gardarr</span>
@@ -118,7 +132,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </nav>
         
         {/* Footer da Sidebar */}
-        <div className="border-t border-border p-2 mt-auto">
+        <div className="border-t border-border p-2 mt-auto space-y-1">
+          <Link
+            to="/profile"
+            onClick={() => isMobile && setSidebarOpen(false)}
+            className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
+              location.pathname === "/profile"
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            }`}
+          >
+            <Users className="h-4 w-4 flex-shrink-0" />
+            {(sidebarOpen || isMobile) && (
+              <span className="whitespace-nowrap">{t("navigation.profile")}</span>
+            )}
+          </Link>
           <Link
             to="/settings"
             onClick={() => isMobile && setSidebarOpen(false)}
@@ -133,6 +161,32 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <span className="whitespace-nowrap">{t("navigation.settings")}</span>
             )}
           </Link>
+          <Link
+            to="/about"
+            onClick={() => isMobile && setSidebarOpen(false)}
+            className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
+              location.pathname === "/about"
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            }`}
+          >
+            <Info className="h-4 w-4 flex-shrink-0" />
+            {(sidebarOpen || isMobile) && (
+              <span className="whitespace-nowrap">{t("navigation.about")}</span>
+            )}
+          </Link>
+          <button
+            onClick={() => {
+              handleLogout();
+              isMobile && setSidebarOpen(false);
+            }}
+            className="flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground w-full"
+          >
+            <LogOut className="h-4 w-4 flex-shrink-0" />
+            {(sidebarOpen || isMobile) && (
+              <span className="whitespace-nowrap">{t("auth.logout")}</span>
+            )}
+          </button>
         </div>
       </div>
 
@@ -163,8 +217,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {location.pathname === "/torrents" && t("navigation.torrents")}
               {location.pathname === "/instances" && "Instances"}
               {location.pathname === "/agents" && t("navigation.agents")}
+              {location.pathname === "/categories" && t("navigation.categories")}
               {location.pathname === "/analytics" && t("navigation.analytics")}
               {location.pathname === "/settings" && t("navigation.settings")}
+              {location.pathname === "/profile" && t("navigation.profile")}
+              {location.pathname === "/about" && t("navigation.about")}
             </h1>
           </div>
           
@@ -172,15 +229,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Button variant="ghost" size="icon" aria-label={t("theme.toggle")} onClick={toggleTheme} className="h-8 w-8">
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
-            <Button variant="ghost" size="sm" className="hidden sm:flex">
-              <Users className="h-4 w-4 mr-2" />
-              {t("navigation.profile")}
-            </Button>
-            <Button variant="ghost" size="sm" className="hidden sm:flex" asChild>
-              <Link to="/settings">
-                <Settings className="h-4 w-4 mr-2" />
-                {t("navigation.settings")}
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/profile" className="hidden sm:flex">
+                <Users className="h-4 w-4 mr-2" />
+                {user?.email || t("navigation.profile")}
               </Link>
+            </Button>
+            <Button variant="ghost" size="sm" className="hidden sm:flex" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" />
+              {t("auth.logout")}
             </Button>
           </div>
         </header>

@@ -58,13 +58,15 @@ export function AgentFilter({
         variant="outline"
         size="sm"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 min-w-[140px] justify-between"
+        className="flex items-center gap-1.5 min-w-[100px] justify-between text-xs sm:min-w-[140px] sm:text-sm w-full"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-label="Filtrar por agent"
       >
-        {allSelected ? "Todos" : someSelected ? `${selectedAgentIds.size} selecionado(s)` : "Nenhum agent"}
-        <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <span className="truncate">
+          {allSelected ? "Todos" : someSelected ? `${selectedAgentIds.size} agent${selectedAgentIds.size > 1 ? 's' : ''}` : "Nenhum"}
+        </span>
+        <ChevronDown className={`h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
       </Button>
       {isOpen && (
         <div 

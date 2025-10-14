@@ -5,6 +5,16 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Gardarr</title>
+    <script>
+      // Apply dark theme immediately to prevent flash
+      (function() {
+        const theme = localStorage.getItem('theme');
+        const isDark = theme ? theme === 'dark' : true; // Default to dark
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

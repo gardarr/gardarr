@@ -2,6 +2,7 @@
     "common": {
       "save": "Salvar",
       "cancel": "Cancelar",
+      "delete": "Excluir",
       "reset": "Redefinir",
       "loading": "Carregando...",
       "error": "Erro",
@@ -11,9 +12,40 @@
       "dashboard": "Dashboard",
       "torrents": "Torrents",
       "agents": "Agentes",
+      "categories": "Categorias",
       "analytics": "Análises",
       "settings": "Configurações",
-      "profile": "Perfil"
+      "profile": "Perfil",
+      "about": "Sobre"
+    },
+    "profile": {
+      "personalInfo": {
+        "title": "Informações Pessoais",
+        "description": "Gerencie seus dados pessoais",
+        "email": "Email",
+        "uuid": "ID do Usuário",
+        "memberSince": "Membro desde"
+      },
+      "preferences": {
+        "title": "Preferências",
+        "description": "Personalize sua experiência",
+        "theme": "Tema",
+        "dark": "Escuro",
+        "light": "Claro",
+        "switchToDark": "Mudar para Escuro",
+        "switchToLight": "Mudar para Claro",
+        "language": "Idioma"
+      },
+      "sessions": {
+        "title": "Sessões Ativas",
+        "description": "Gerencie seus dispositivos conectados",
+        "logoutAll": "Sair de Todos",
+        "noSessions": "Nenhuma sessão ativa",
+        "active": "Ativo",
+        "signedIn": "Entrou em",
+        "expires": "Expira em"
+      },
+      "confirmLogoutAll": "Tem certeza que deseja sair de todos os dispositivos? Você será desconectado."
     },
     "theme": {
       "toggle": "Alternar tema"
@@ -99,6 +131,184 @@
       "Australia/Sydney": "Horário do Leste da Austrália (AET) - Sydney",
       "Pacific/Auckland": "Horário da Nova Zelândia (NZST) - Auckland",
       "UTC": "Tempo Universal Coordenado (UTC)"
+    },
+    "about": {
+      "title": "Sobre",
+      "subtitle": "Informações sobre o projeto Gardarr",
+      "tagline": "Ferramenta leve de gerenciamento e análise do qBittorrent, otimizada para mobile",
+      "version": "Versão",
+      "description": {
+        "title": "Sobre o Projeto",
+        "text1": "Gardarr é uma ferramenta moderna e leve de gerenciamento e análise projetada especificamente para qBittorrent. Construído com foco na otimização para dispositivos móveis, oferece uma interface intuitiva para monitorar e gerenciar seus torrents de qualquer dispositivo.",
+        "text2": "O projeto é open-source e orientado pela comunidade, priorizando código limpo e de fácil manutenção que pode ser auto-hospedado por qualquer pessoa. Seja gerenciando uma única instância ou múltiplos agentes, o Gardarr oferece as ferramentas que você precisa em uma interface bonita e responsiva."
+      },
+      "features": {
+        "title": "Recursos Principais",
+        "multiPlatform": "Suporte multiplataforma com imagens Docker para AMD64 e ARM64",
+        "automated": "Pipeline automatizado de CI/CD com GitHub Actions",
+        "lightweight": "Leve e otimizado para desempenho",
+        "openSource": "Código aberto com licença GPL-3.0",
+        "mobileOptimized": "Design mobile-first com interface responsiva"
+      },
+      "links": {
+        "title": "Links do Projeto",
+        "repository": "Repositório GitHub",
+        "documentation": "Documentação de Desenvolvimento"
+      },
+      "attribution": {
+        "title": "Atribuições",
+        "logo": "Logo do projeto baseado em ícones de brotos:"
+      },
+      "license": {
+        "title": "Licença",
+        "description": "Este projeto é licenciado sob a Licença Pública Geral GNU v3.0. Você é livre para usar, modificar e distribuir este software sob os termos da licença GPL-3.0."
+      },
+      "footer": "Construído com ❤️ pela comunidade"
+    },
+    "auth": {
+      "login": {
+        "title": "Entrar",
+        "subtitle": "Gerencie seus torrents de qualquer lugar",
+        "description": "Entre com suas credenciais para acessar sua conta",
+        "email": "Email",
+        "emailPlaceholder": "seu@email.com",
+        "password": "Senha",
+        "passwordPlaceholder": "Digite sua senha",
+        "forgotPassword": "Esqueceu a senha?",
+        "submit": "Entrar",
+        "noAccount": "Não tem uma conta?",
+        "signupLink": "Cadastre-se"
+      },
+      "signup": {
+        "title": "Criar Conta",
+        "subtitle": "Comece a gerenciar seus torrents hoje",
+        "description": "Crie uma nova conta para começar",
+        "email": "Email",
+        "emailPlaceholder": "seu@email.com",
+        "password": "Senha",
+        "passwordPlaceholder": "Mínimo 8 caracteres",
+        "confirmPassword": "Confirmar Senha",
+        "confirmPasswordPlaceholder": "Digite sua senha novamente",
+        "submit": "Criar Conta",
+        "hasAccount": "Já tem uma conta?",
+        "loginLink": "Entrar",
+        "passwordMismatch": "As senhas não correspondem",
+        "passwordTooShort": "A senha deve ter pelo menos 8 caracteres"
+      },
+      "logout": "Sair"
+    },
+    "torrents": {
+      "title": "Torrents",
+      "subtitle": "Gerencie seus downloads e uploads",
+      "addTorrent": "Adicionar Torrent",
+      "search": "Buscar torrents...",
+      "itemsPerPage": "Itens por página",
+      "update": "Atualizar",
+      "agent": "Agente",
+      "agents": "Agentes",
+      "of": "de",
+      "torrents": "torrents",
+      "sortedBy": "ordenados por",
+      "loading": "Carregando torrents...",
+      "error": "Erro ao carregar torrents",
+      "tryAgain": "Tentar novamente",
+      "noTorrents": "Nenhum torrent encontrado",
+      "noTorrentsDesc": "Adicione um torrent para começar a fazer download",
+      "page": "Página",
+      "previous": "Anterior",
+      "next": "Próxima",
+      "details": "Detalhes",
+      "remove": "Remover",
+      "removing": "Removendo...",
+      "moreOptions": "Mais opções",
+      "status": "Status",
+      "ratio": "Ratio",
+      "download": "Download",
+      "upload": "Upload",
+      "downloaded": "Baixado",
+      "uploaded": "Enviado",
+      "seeds": "Seeds",
+      "leechs": "Leechs",
+      "size": "Tamanho",
+      "progress": "Progresso",
+      "name": "Nome",
+      "actions": "Ações",
+      "sortBy": {
+        "priority": "prioridade",
+        "alphabetical": "alfabético",
+        "size": "tamanho",
+        "progress": "progresso",
+        "downloadSpeed": "velocidade de download",
+        "uploadSpeed": "velocidade de upload",
+        "downloaded": "baixado",
+        "uploaded": "enviado"
+      },
+      "sortButtons": {
+        "priority": "Prioridade",
+        "name": "Nome",
+        "size": "Tamanho",
+        "progress": "Progresso",
+        "download": "Download",
+        "upload": "Upload",
+        "downloaded": "Baixado",
+        "uploaded": "Enviado"
+      },
+      "notifications": {
+        "addSuccess": "Torrent adicionado com sucesso!",
+        "addError": "Erro ao criar torrent: {{error}}",
+        "deleteSuccess": "Torrent removido com sucesso!",
+        "deleteError": "Erro ao remover torrent"
+      },
+      "actionButtons": {
+        "play": "Iniciar/Retomar",
+        "pause": "Pausar",
+        "delete": "Remover"
+      }
+    },
+    "categories": {
+      "title": "Categorias",
+      "subtitle": "Gerencie categorias de torrents",
+      "addCategory": "Adicionar Categoria",
+      "createNew": "Criar Nova Categoria",
+      "create": "Criar Categoria",
+      "edit": "Editar",
+      "refresh": "Atualizar",
+      "search": "Buscar categorias...",
+      "loading": "Carregando categorias...",
+      "noCategories": "Nenhuma categoria encontrada",
+      "noCategoriesDesc": "Crie uma categoria para organizar seus torrents",
+      "confirmDelete": "Tem certeza que deseja excluir esta categoria?",
+      "deleteConfirmTitle": "Excluir Categoria",
+      "deleteConfirmMessage": "Tem certeza que deseja excluir a categoria \"{{name}}\"? Esta ação não pode ser desfeita.",
+      "immutableName": "O nome da categoria não pode ser alterado",
+      "fields": {
+        "name": "Nome",
+        "defaultTags": "Tags Padrão",
+        "directories": "Diretórios",
+        "color": "Cor",
+        "icon": "Ícone"
+      },
+      "placeholders": {
+        "name": "Digite o nome da categoria...",
+        "tag": "Adicionar uma tag...",
+        "directory": "Adicionar um caminho de diretório..."
+      },
+      "sortBy": {
+        "name": "Nome",
+        "date": "Data de Criação"
+      },
+      "notifications": {
+        "createSuccess": "Categoria criada com sucesso!",
+        "updateSuccess": "Categoria atualizada com sucesso!",
+        "deleteSuccess": "Categoria excluída com sucesso!"
+      },
+      "errors": {
+        "nameRequired": "O nome da categoria é obrigatório",
+        "loadFailed": "Falha ao carregar categorias",
+        "createFailed": "Falha ao criar categoria",
+        "updateFailed": "Falha ao atualizar categoria",
+        "deleteFailed": "Falha ao excluir categoria"
+      }
     }
   }
   

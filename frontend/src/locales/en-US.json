@@ -2,6 +2,7 @@
     "common": {
       "save": "Save",
       "cancel": "Cancel",
+      "delete": "Delete",
       "reset": "Reset",
       "loading": "Loading...",
       "error": "Error",
@@ -11,9 +12,40 @@
       "dashboard": "Dashboard",
       "torrents": "Torrents",
       "agents": "Agents",
+      "categories": "Categories",
       "analytics": "Analytics",
       "settings": "Settings",
-      "profile": "Profile"
+      "profile": "Profile",
+      "about": "About"
+    },
+    "profile": {
+      "personalInfo": {
+        "title": "Personal Information",
+        "description": "Manage your personal data",
+        "email": "Email",
+        "uuid": "User ID",
+        "memberSince": "Member since"
+      },
+      "preferences": {
+        "title": "Preferences",
+        "description": "Customize your experience",
+        "theme": "Theme",
+        "dark": "Dark",
+        "light": "Light",
+        "switchToDark": "Switch to Dark",
+        "switchToLight": "Switch to Light",
+        "language": "Language"
+      },
+      "sessions": {
+        "title": "Active Sessions",
+        "description": "Manage your connected devices",
+        "logoutAll": "Logout All",
+        "noSessions": "No active sessions",
+        "active": "Active",
+        "signedIn": "Signed in",
+        "expires": "Expires"
+      },
+      "confirmLogoutAll": "Are you sure you want to logout from all devices? You will be disconnected."
     },
     "theme": {
       "toggle": "Toggle theme"
@@ -99,6 +131,184 @@
       "Australia/Sydney": "Australian Eastern Time (AET) - Sydney",
       "Pacific/Auckland": "New Zealand Time (NZST) - Auckland",
       "UTC": "Coordinated Universal Time (UTC)"
+    },
+    "about": {
+      "title": "About",
+      "subtitle": "Information about the Gardarr project",
+      "tagline": "Lightweight qBittorrent management and analytics tool, optimized for mobile",
+      "version": "Version",
+      "description": {
+        "title": "About the Project",
+        "text1": "Gardarr is a modern, lightweight management and analytics tool designed specifically for qBittorrent. Built with a focus on mobile optimization, it provides an intuitive interface for monitoring and managing your torrents from any device.",
+        "text2": "The project is open-source and community-driven, prioritizing clean, maintainable code that can be self-hosted by anyone. Whether you're managing a single instance or multiple agents, Gardarr offers the tools you need in a beautiful, responsive interface."
+      },
+      "features": {
+        "title": "Key Features",
+        "multiPlatform": "Multi-platform support with Docker images for AMD64 and ARM64",
+        "automated": "Automated CI/CD pipeline with GitHub Actions",
+        "lightweight": "Lightweight and optimized for performance",
+        "openSource": "Open-source with GPL-3.0 license",
+        "mobileOptimized": "Mobile-first design with responsive UI"
+      },
+      "links": {
+        "title": "Project Links",
+        "repository": "GitHub Repository",
+        "documentation": "Development Documentation"
+      },
+      "attribution": {
+        "title": "Attributions",
+        "logo": "Project logo based on sprout icons:"
+      },
+      "license": {
+        "title": "License",
+        "description": "This project is licensed under the GNU General Public License v3.0. You are free to use, modify, and distribute this software under the terms of the GPL-3.0 license."
+      },
+      "footer": "Built with ❤️ by the community"
+    },
+    "auth": {
+      "login": {
+        "title": "Sign In",
+        "subtitle": "Manage your torrents from anywhere",
+        "description": "Enter your credentials to access your account",
+        "email": "Email",
+        "emailPlaceholder": "you@email.com",
+        "password": "Password",
+        "passwordPlaceholder": "Enter your password",
+        "forgotPassword": "Forgot password?",
+        "submit": "Sign In",
+        "noAccount": "Don't have an account?",
+        "signupLink": "Sign up"
+      },
+      "signup": {
+        "title": "Create Account",
+        "subtitle": "Start managing your torrents today",
+        "description": "Create a new account to get started",
+        "email": "Email",
+        "emailPlaceholder": "you@email.com",
+        "password": "Password",
+        "passwordPlaceholder": "Minimum 8 characters",
+        "confirmPassword": "Confirm Password",
+        "confirmPasswordPlaceholder": "Enter your password again",
+        "submit": "Create Account",
+        "hasAccount": "Already have an account?",
+        "loginLink": "Sign in",
+        "passwordMismatch": "Passwords do not match",
+        "passwordTooShort": "Password must be at least 8 characters"
+      },
+      "logout": "Logout"
+    },
+    "torrents": {
+      "title": "Torrents",
+      "subtitle": "Manage your downloads and uploads",
+      "addTorrent": "Add Torrent",
+      "search": "Search torrents...",
+      "itemsPerPage": "Items per page",
+      "update": "Update",
+      "agent": "Agent",
+      "agents": "Agents",
+      "of": "of",
+      "torrents": "torrents",
+      "sortedBy": "sorted by",
+      "loading": "Loading torrents...",
+      "error": "Error loading torrents",
+      "tryAgain": "Try again",
+      "noTorrents": "No torrents found",
+      "noTorrentsDesc": "Add a torrent to start downloading",
+      "page": "Page",
+      "previous": "Previous",
+      "next": "Next",
+      "details": "Details",
+      "remove": "Remove",
+      "removing": "Removing...",
+      "moreOptions": "More options",
+      "status": "Status",
+      "ratio": "Ratio",
+      "download": "Download",
+      "upload": "Upload",
+      "downloaded": "Downloaded",
+      "uploaded": "Uploaded",
+      "seeds": "Seeds",
+      "leechs": "Leechs",
+      "size": "Size",
+      "progress": "Progress",
+      "name": "Name",
+      "actions": "Actions",
+      "sortBy": {
+        "priority": "priority",
+        "alphabetical": "alphabetical",
+        "size": "size",
+        "progress": "progress",
+        "downloadSpeed": "download speed",
+        "uploadSpeed": "upload speed",
+        "downloaded": "downloaded",
+        "uploaded": "uploaded"
+      },
+      "sortButtons": {
+        "priority": "Priority",
+        "name": "Name",
+        "size": "Size",
+        "progress": "Progress",
+        "download": "Download",
+        "upload": "Upload",
+        "downloaded": "Downloaded",
+        "uploaded": "Uploaded"
+      },
+      "notifications": {
+        "addSuccess": "Torrent added successfully!",
+        "addError": "Error creating torrent: {{error}}",
+        "deleteSuccess": "Torrent removed successfully!",
+        "deleteError": "Error removing torrent"
+      },
+      "actionButtons": {
+        "play": "Start/Resume",
+        "pause": "Pause",
+        "delete": "Remove"
+      }
+    },
+    "categories": {
+      "title": "Categories",
+      "subtitle": "Manage torrent categories",
+      "addCategory": "Add Category",
+      "createNew": "Create New Category",
+      "create": "Create Category",
+      "edit": "Edit",
+      "refresh": "Refresh",
+      "search": "Search categories...",
+      "loading": "Loading categories...",
+      "noCategories": "No categories found",
+      "noCategoriesDesc": "Create a category to organize your torrents",
+      "confirmDelete": "Are you sure you want to delete this category?",
+      "deleteConfirmTitle": "Delete Category",
+      "deleteConfirmMessage": "Are you sure you want to delete the category \"{{name}}\"? This action cannot be undone.",
+      "immutableName": "Category name cannot be changed",
+      "fields": {
+        "name": "Name",
+        "defaultTags": "Default Tags",
+        "directories": "Directories",
+        "color": "Color",
+        "icon": "Icon"
+      },
+      "placeholders": {
+        "name": "Enter category name...",
+        "tag": "Add a tag...",
+        "directory": "Add a directory path..."
+      },
+      "sortBy": {
+        "name": "Name",
+        "date": "Creation Date"
+      },
+      "notifications": {
+        "createSuccess": "Category created successfully!",
+        "updateSuccess": "Category updated successfully!",
+        "deleteSuccess": "Category deleted successfully!"
+      },
+      "errors": {
+        "nameRequired": "Category name is required",
+        "loadFailed": "Failed to load categories",
+        "createFailed": "Failed to create category",
+        "updateFailed": "Failed to update category",
+        "deleteFailed": "Failed to delete category"
+      }
     }
   }
   

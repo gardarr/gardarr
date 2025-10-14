@@ -7,8 +7,16 @@ import (
 	"github.com/gardarr/gardarr/internal/models"
 	"github.com/gardarr/gardarr/internal/schemas"
 	"github.com/gardarr/gardarr/internal/services/agentmanager"
+	"github.com/gardarr/gardarr/pkg/errors"
 	"github.com/gin-gonic/gin"
 )
+
+// Module holds agent routes configuration
+type Module struct {
+	service      *agentmanager.Service
+	agentsRouter *gin.RouterGroup
+	agentRouter  *gin.RouterGroup
+}
 
 func NewModule(router *gin.RouterGroup, svc *agentmanager.Service) *Module {
 	return &Module{
@@ -32,13 +40,14 @@ func (m Module) Register() {
 func (m *Module) createAgent(c *gin.Context) {
 	var body schemas.AgentCreateSchema
 	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, err.Error())
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
 		return
 	}
 
 	result, err := m.service.CreateAgent(c.Request.Context(), &body)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
+		errors.HandleError(c, err)
 		return
 	}
 
@@ -48,7 +57,7 @@ func (m *Module) createAgent(c *gin.Context) {
 func (m *Module) listAgents(c *gin.Context) {
 	result, err := m.service.ListAgents()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
+		errors.HandleError(c, err)
 		return
 	}
 
@@ -65,7 +74,7 @@ func (m *Module) getAgent(c *gin.Context) {
 
 	result, err := m.service.Get(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
+		errors.HandleError(c, err)
 		return
 	}
 
@@ -76,7 +85,7 @@ func (m *Module) deleteAgent(c *gin.Context) {
 	id := c.Param("id")
 
 	if err := m.service.Delete(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
+		errors.HandleError(c, err)
 		return
 	}
 

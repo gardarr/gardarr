@@ -7,26 +7,22 @@ import (
 	"github.com/gardarr/gardarr/internal/mappers"
 	"github.com/gardarr/gardarr/internal/models"
 	"github.com/gardarr/gardarr/internal/schemas"
-	"github.com/gardarr/gardarr/internal/services/agentmanager"
+	"github.com/gardarr/gardarr/pkg/errors"
 	"github.com/gin-gonic/gin"
 )
 
-type Module struct {
-	service      *agentmanager.Service
-	agentsRouter *gin.RouterGroup
-	agentRouter  *gin.RouterGroup
-}
+// Task route handlers for Module
 
 func (m *Module) listAgentsTasks(c *gin.Context) {
 	agents, err := m.service.ListAgents()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
+		errors.HandleError(c, err)
 		return
 	}
 
 	tasks, err := m.service.ListTasks(agents)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
+		errors.HandleError(c, err)
 		return
 	}
 
@@ -43,13 +39,14 @@ func (m *Module) createAgentTask(c *gin.Context) {
 
 	var body schemas.TaskCreateSchema
 	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, err.Error())
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
 		return
 	}
 
 	result, err := m.service.CreateAgentTask(c.Request.Context(), id, body)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
+		errors.HandleError(c, err)
 		return
 	}
 
@@ -61,13 +58,13 @@ func (m *Module) listAgentTasks(c *gin.Context) {
 
 	result, err := m.service.Get(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
+		errors.HandleError(c, err)
 		return
 	}
 
 	tasks, err := m.service.ListTasks([]*entities.Agent{result})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
+		errors.HandleError(c, err)
 		return
 	}
 

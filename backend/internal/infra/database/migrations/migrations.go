@@ -98,5 +98,26 @@ func Register(m *migration.Migrator) {
 				return db.Migrator().DropTable(&models.Session{})
 			},
 		},
+		{
+			Version:     "007_add_color_icon_to_categories",
+			Description: "Adiciona colunas color e icon na tabela categories",
+			Up: func(db *gorm.DB) error {
+				type Category struct {
+					Color string `gorm:"size:50"`
+					Icon  string `gorm:"size:100"`
+				}
+				if err := db.Migrator().AddColumn(&Category{}, "Color"); err != nil {
+					return err
+				}
+				return db.Migrator().AddColumn(&Category{}, "Icon")
+			},
+			Down: func(db *gorm.DB) error {
+				type Category struct{}
+				if err := db.Migrator().DropColumn(&Category{}, "Color"); err != nil {
+					return err
+				}
+				return db.Migrator().DropColumn(&Category{}, "Icon")
+			},
+		},
 	})
 }

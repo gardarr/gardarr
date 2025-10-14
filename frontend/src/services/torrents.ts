@@ -19,10 +19,10 @@ export class TorrentService {
   }
 
   /**
-   * Cria uma nova task/torrent
+   * Cria uma nova task/torrent para um agente específico
    */
-  async createTask(taskData: CreateTaskRequest): Promise<ApiResponse<null>> {
-    return api.post<null>(this.baseEndpoint, taskData);
+  async createTask(agentId: string, taskData: CreateTaskRequest): Promise<ApiResponse<null>> {
+    return api.post<null>(`/agent/${agentId}/task`, taskData);
   }
 
   /**

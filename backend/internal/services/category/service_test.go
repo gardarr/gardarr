@@ -35,6 +35,8 @@ func TestService_CreateCategory(t *testing.T) {
 		Name:        "Test Category",
 		DefaultTags: []string{"tag1", "tag2"},
 		Directories: []string{"/path1", "/path2"},
+		Color:       "#FF5733",
+		Icon:        "folder-icon",
 	}
 
 	created, err := service.CreateCategory(ctx, category)
@@ -53,6 +55,14 @@ func TestService_CreateCategory(t *testing.T) {
 
 	if created.Name != category.Name {
 		t.Errorf("Expected name %s, got %s", category.Name, created.Name)
+	}
+
+	if created.Color != category.Color {
+		t.Errorf("Expected color %s, got %s", category.Color, created.Color)
+	}
+
+	if created.Icon != category.Icon {
+		t.Errorf("Expected icon %s, got %s", category.Icon, created.Icon)
 	}
 }
 
@@ -170,9 +180,10 @@ func TestService_UpdateCategory(t *testing.T) {
 
 	// Create a category
 	category := entities.Category{
-		Name:        "Original Name",
+		Name:        "Immutable Name",
 		DefaultTags: []string{"tag1"},
 		Directories: []string{"/path1"},
+		Color:       "#FF0000",
 	}
 
 	created, err := service.CreateCategory(ctx, category)
@@ -180,22 +191,32 @@ func TestService_UpdateCategory(t *testing.T) {
 		t.Fatalf("Failed to create category: %v", err)
 	}
 
-	// Update the category
-	created.Name = "Updated Name"
+	// Update only mutable fields (name and ID are immutable)
 	created.DefaultTags = []string{"tag1", "tag2"}
 	created.Directories = []string{"/path1", "/path2"}
+	created.Color = "#00FF00"
+	created.Icon = "new-icon"
 
 	updated, err := service.UpdateCategory(ctx, *created)
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
 
-	if updated.Name != "Updated Name" {
-		t.Errorf("Expected updated name, got %s", updated.Name)
+	// Name should remain immutable
+	if updated.Name != "Immutable Name" {
+		t.Errorf("Expected name to remain 'Immutable Name', got %s", updated.Name)
 	}
 
 	if len(updated.DefaultTags) != 2 {
 		t.Errorf("Expected 2 tags, got %d", len(updated.DefaultTags))
+	}
+
+	if updated.Color != "#00FF00" {
+		t.Errorf("Expected color #00FF00, got %s", updated.Color)
+	}
+
+	if updated.Icon != "new-icon" {
+		t.Errorf("Expected icon 'new-icon', got %s", updated.Icon)
 	}
 }
 
@@ -239,6 +260,8 @@ func TestService_Integration_FullCRUD(t *testing.T) {
 		Name:        "Integration Test",
 		DefaultTags: []string{"test"},
 		Directories: []string{"/test"},
+		Color:       "#123456",
+		Icon:        "test-icon",
 	}
 
 	created, err := service.CreateCategory(ctx, category)
@@ -266,15 +289,21 @@ func TestService_Integration_FullCRUD(t *testing.T) {
 		t.Errorf("Expected ID %s, got %s", created.ID, retrievedByName.ID)
 	}
 
-	// Update
-	created.Name = "Updated Integration Test"
+	// Update (only mutable fields - name and ID are immutable)
+	created.DefaultTags = []string{"test", "updated"}
+	created.Color = "#654321"
 	updated, err := service.UpdateCategory(ctx, *created)
 	if err != nil {
 		t.Fatalf("Update failed: %v", err)
 	}
 
-	if updated.Name != "Updated Integration Test" {
-		t.Errorf("Expected updated name, got %s", updated.Name)
+	// Name should remain unchanged (immutable)
+	if updated.Name != "Integration Test" {
+		t.Errorf("Expected name to remain 'Integration Test', got %s", updated.Name)
+	}
+
+	if updated.Color != "#654321" {
+		t.Errorf("Expected color #654321, got %s", updated.Color)
 	}
 
 	// List

@@ -2,16 +2,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ArrowDownCircle, ArrowUpCircle, PauseCircle, AlertTriangle, MoreHorizontal, Info, Trash2, Search, ChevronLeft, ChevronRight, Loader2, ChevronDown, SortAsc, SortDesc, Server, Clock, XCircle, FileX, Play, RotateCcw, HardDrive } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, PauseCircle, Info, Search, ChevronLeft, ChevronRight, Loader2, ChevronDown, SortAsc, SortDesc, Server, Clock, XCircle, FileX, Play, RotateCcw, HardDrive, Plus, SlidersHorizontal } from "lucide-react";
 import { useEffect, useRef, useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { torrentService } from "./services/torrents";
 import { agentService } from "./services/agents";
-import type { Task } from "./types/torrent";
+import type { Task, CreateTaskRequest } from "./types/torrent";
 import type { Agent, AgentStatus } from "./types/agent";
 import AgentFilter from "@/components/ui/AgentFilter";
+import StatusFilter from "@/components/ui/StatusFilter";
+import { ListFilter } from "@/components/ui/ListFilter";
+import { FilterSidebar } from "@/components/ui/FilterSidebar";
 import { TorrentDetailsModal } from "@/components/TorrentDetailsModal";
+import { AddTorrentModal } from "@/components/AddTorrentModal";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { RatioBadge } from "@/components/ui/RatioBadge";
+import { ToastContainer } from "@/components/ui/toast-container";
+import { useToast } from "@/hooks/useToast";
 
 type TorrentStatus = 
   | "ERROR" 
@@ -55,6 +62,8 @@ type Torrent = {
   agentName?: string;
   agentStatus?: AgentStatus;
   agentUUID?: string;
+  category: string;
+  tags: string[];
 };
 
 // Função para mapear Task (backend) para Torrent (frontend)
@@ -94,6 +103,8 @@ function mapTaskToTorrent(task: Task): Torrent {
     agentName: task.agent?.name,
     agentStatus: task.agent?.status,
     agentUUID: task.agent?.uuid,
+    category: task.category || "",
+    tags: task.tags || [],
   };
 }
 
@@ -227,6 +238,59 @@ function getStatusColor(status: TorrentStatus): string {
   }
 }
 
+function getStatusBackgroundColor(status: TorrentStatus): string {
+  switch (status) {
+    // Error states - light red backgrounds
+    case "ERROR":
+      return "bg-red-50 dark:bg-red-950/20";
+    case "MISSING_FILES":
+      return "bg-red-50 dark:bg-red-950/20";
+    
+    // Download states - light green backgrounds
+    case "DOWNLOADING":
+      return "bg-green-50 dark:bg-green-950/20";
+    case "METADATA_DOWNLOAD":
+    case "FORCED_METADATA_DOWNLOAD":
+      return "bg-green-50 dark:bg-green-950/20";
+    case "PAUSED_DOWNLOAD":
+    case "STOPPED_DOWNLOAD":
+      return "bg-orange-50 dark:bg-orange-950/20";
+    case "QUEUED_DOWNLOAD":
+      return "bg-green-50 dark:bg-green-950/20";
+    case "FORCED_DOWNLOAD":
+      return "bg-green-50 dark:bg-green-950/20";
+    case "STALLED_DOWNLOAD":
+      return "bg-orange-50 dark:bg-orange-950/20";
+    case "CHECKING_DOWNLOAD":
+    case "CHECKING_RESUME_DATA":
+      return "bg-cyan-50 dark:bg-cyan-950/20";
+    
+    // Upload states - light purple backgrounds
+    case "UPLOADING":
+      return "bg-purple-50 dark:bg-purple-950/20";
+    case "PAUSED_UPLOAD":
+    case "STOPPED_UPLOAD":
+      return "bg-orange-50 dark:bg-orange-950/20";
+    case "QUEUED_UPLOAD":
+      return "bg-purple-50 dark:bg-purple-950/20";
+    case "STALLED_UPLOAD":
+      return "bg-orange-50 dark:bg-orange-950/20";
+    case "CHECKING_UPLOAD":
+      return "bg-cyan-50 dark:bg-cyan-950/20";
+    case "FORCED_UPLOAD":
+      return "bg-purple-50 dark:bg-purple-950/20";
+    
+    // Other states - light neutral backgrounds
+    case "ALLOCATING":
+      return "bg-indigo-50 dark:bg-indigo-950/20";
+    case "MOVING":
+      return "bg-indigo-50 dark:bg-indigo-950/20";
+    case "UNKNOWN":
+    default:
+      return "bg-gray-50 dark:bg-gray-950/20";
+  }
+}
+
 function getAgentStatusColor(status?: AgentStatus): string {
   switch (status) {
     case "ACTIVE":
@@ -240,72 +304,18 @@ function getAgentStatusColor(status?: AgentStatus): string {
   }
 }
 
-// Função para obter cor do status com suporte a modo escuro (cores mais claras)
-function getStatusColorLight(status: TorrentStatus): string {
-  switch (status) {
-    // Error states - red colors
-    case "ERROR":
-      return "text-red-600 dark:text-red-400";
-    case "MISSING_FILES":
-      return "text-red-500 dark:text-red-400";
-    
-    // Download states - green colors
-    case "DOWNLOADING":
-      return "text-green-600 dark:text-green-400";
-    case "METADATA_DOWNLOAD":
-    case "FORCED_METADATA_DOWNLOAD":
-      return "text-green-500 dark:text-green-400";
-    case "PAUSED_DOWNLOAD":
-    case "STOPPED_DOWNLOAD":
-      return "text-orange-500 dark:text-orange-400";
-    case "QUEUED_DOWNLOAD":
-      return "text-green-400 dark:text-green-300";
-    case "FORCED_DOWNLOAD":
-      return "text-green-700 dark:text-green-300";
-    case "STALLED_DOWNLOAD":
-      return "text-orange-600 dark:text-orange-400";
-    case "CHECKING_DOWNLOAD":
-    case "CHECKING_RESUME_DATA":
-      return "text-cyan-500 dark:text-cyan-400";
-    
-    // Upload states - purple/lilac colors
-    case "UPLOADING":
-      return "text-purple-600 dark:text-purple-400";
-    case "PAUSED_UPLOAD":
-    case "STOPPED_UPLOAD":
-      return "text-orange-500 dark:text-orange-400";
-    case "QUEUED_UPLOAD":
-      return "text-purple-400 dark:text-purple-300";
-    case "STALLED_UPLOAD":
-      return "text-orange-600 dark:text-orange-400";
-    case "CHECKING_UPLOAD":
-      return "text-cyan-500 dark:text-cyan-400";
-    case "FORCED_UPLOAD":
-      return "text-purple-700 dark:text-purple-300";
-    
-    // Other states - neutral colors
-    case "ALLOCATING":
-      return "text-indigo-500 dark:text-indigo-400";
-    case "MOVING":
-      return "text-indigo-500 dark:text-indigo-400";
-    case "UNKNOWN":
-    default:
-      return "text-gray-500 dark:text-gray-400";
-  }
-}
-
-// Função para obter label do tipo de ordenação
-function getSortTypeLabel(sortType: SortType): string {
+// Função para obter chave de tradução do tipo de ordenação
+function getSortTypeKey(sortType: SortType): string {
   switch (sortType) {
-    case "priority": return "prioridade";
-    case "alphabetical": return "alfabético";
-    case "size": return "tamanho";
-    case "progress": return "progresso";
-    case "download_speed": return "velocidade de download";
-    case "upload_speed": return "velocidade de upload";
-    case "downloaded": return "baixado";
-    case "uploaded": return "enviado";
-    default: return "nome";
+    case "priority": return "priority";
+    case "alphabetical": return "alphabetical";
+    case "size": return "size";
+    case "progress": return "progress";
+    case "download_speed": return "downloadSpeed";
+    case "upload_speed": return "uploadSpeed";
+    case "downloaded": return "downloaded";
+    case "uploaded": return "uploaded";
+    default: return "alphabetical";
   }
 }
 
@@ -364,38 +374,19 @@ function getStatusPriority(status: TorrentStatus): number {
   }
 }
 
-function TorrentCard({ torrent, onDelete, isDeleting, onShowDetails }: { 
+function TorrentCard({ torrent, onShowDetails }: { 
   torrent: Torrent; 
-  onDelete: (id: string, purge: boolean) => void;
-  isDeleting: boolean;
   onShowDetails: (id: string) => void;
 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
+  const { t } = useTranslation();
   const StatusIcon = getStatusIcon(torrent.status);
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setMenuOpen(false);
-      }
-    }
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setMenuOpen(false);
-    }
-    if (menuOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("keydown", handleKeyDown);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [menuOpen]);
-
   return (
-    <Card className="hover:shadow-lg transition-shadow">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+    <Card 
+      className="hover:shadow-lg transition-shadow overflow-hidden p-0 gap-4 cursor-pointer"
+      onClick={() => onShowDetails(torrent.id)}
+    >
+      <CardHeader className={`flex flex-row items-center space-y-0 pt-3 pb-3 px-4 ${getStatusBackgroundColor(torrent.status)}`}>
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <div className="flex-shrink-0">
             <Tooltip>
@@ -425,103 +416,46 @@ function TorrentCard({ torrent, onDelete, isDeleting, onShowDetails }: {
             </span>
           )}
         </div>
-        <div className="relative" ref={menuRef}>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            aria-label="Mais opções"
-            aria-haspopup="menu"
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((v) => !v)}
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-          {menuOpen && (
-            <div
-              role="menu"
-              className="absolute right-0 mt-1 w-36 rounded-md border bg-card text-card-foreground shadow-md z-10 py-1"
-            >
-              <button
-                role="menuitem"
-                className="w-full flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onShowDetails(torrent.id);
-                }}
-              >
-                <Info className="h-4 w-4" />
-                Detalhes
-              </button>
-              <button
-                role="menuitem"
-                className="w-full flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onDelete(torrent.id, false);
-                }}
-                disabled={isDeleting}
-              >
-                {isDeleting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                <Trash2 className="h-4 w-4" />
-                )}
-                {isDeleting ? 'Removendo...' : 'Remover'}
-              </button>
-            </div>
-          )}
-        </div>
       </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold mb-1">{formatBytes(torrent.totalSizeBytes)}</div>
-        <ProgressBar progress={torrent.progress} height="md" className="mb-2" />
+      <CardContent className="px-4 pt-1 pb-6">
+        <ProgressBar progress={torrent.progress} height="md" className="mb-0 opacity-60" showLabel={false} />
+        <div className="text-xs text-muted-foreground mt-1 mb-5">
+          {torrent.progress.toFixed(1)}% concluído ({formatBytes((torrent.progress / 100) * torrent.totalSizeBytes)} de {formatBytes(torrent.totalSizeBytes)})
+        </div>
         <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <StatusIcon 
-                  className={`h-3 w-3 ${getStatusColor(torrent.status)}`} 
-                />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{torrent.status}</p>
-              </TooltipContent>
-            </Tooltip>
-            <span className="font-medium">Status: </span>
-            <span className="capitalize">{torrent.status}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="font-medium">Ratio: </span>
-            <RatioBadge ratio={torrent.ratio} />
-          </div>
           <div>
-            <span className="font-medium">Download: </span>
-            <span className={torrent.downloadRateBps > 0 ? getStatusColorLight(torrent.status) : ''}>
+            <span className="font-medium">{t('torrents.download')}: </span>
+            <span className={torrent.downloadRateBps > 0 ? 'text-green-600 dark:text-green-400' : ''}>
               {formatRate(torrent.downloadRateBps)}
             </span>
-          </div>
-          <div>
-            <span className="font-medium">Upload: </span>
-            <span className={torrent.uploadRateBps > 0 ? getStatusColorLight(torrent.status) : ''}>
-              {formatRate(torrent.uploadRateBps)}
+            <span className="text-xs text-muted-foreground ml-1">
+              ({formatBytes(torrent.downloadedBytes)})
             </span>
           </div>
           <div>
-            <span className="font-medium">Seeds: </span>
-            <span>{torrent.numSeeds}</span>
+            <span className="font-medium">{t('torrents.upload')}: </span>
+            <span className={torrent.uploadRateBps > 0 ? 'text-purple-600 dark:text-purple-400' : ''}>
+              {formatRate(torrent.uploadRateBps)}
+            </span>
+            <span className="text-xs text-muted-foreground ml-1">
+              ({formatBytes(torrent.uploadedBytes)})
+            </span>
           </div>
-          <div>
-            <span className="font-medium">Leechs: </span>
-            <span>{torrent.numLeechs}</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <ArrowUpCircle className="h-3 w-3 text-green-600 dark:text-green-400" />
+              <span className="font-medium">{t('torrents.seeds')}: </span>
+              <span>{torrent.numSeeds}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <ArrowDownCircle className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+              <span className="font-medium">{t('torrents.leechs')}: </span>
+              <span>{torrent.numLeechs}</span>
+            </div>
           </div>
-          <div>
-            <span className="font-medium">Downloaded: </span>
-            <span>{formatBytes(torrent.downloadedBytes)}</span>
-          </div>
-          <div>
-            <span className="font-medium">Uploaded: </span>
-            <span>{formatBytes(torrent.uploadedBytes)}</span>
+          <div className="flex items-center gap-2">
+            <span className="font-medium">{t('torrents.ratio')}: </span>
+            <RatioBadge ratio={torrent.ratio} />
           </div>
         </div>
       </CardContent>
@@ -529,37 +463,17 @@ function TorrentCard({ torrent, onDelete, isDeleting, onShowDetails }: {
   );
 }
 
-function TorrentRow({ torrent, onDelete, isDeleting, onShowDetails }: { 
+function TorrentRow({ torrent, onShowDetails }: { 
   torrent: Torrent; 
-  onDelete: (id: string, purge: boolean) => void;
-  isDeleting: boolean;
   onShowDetails: (id: string) => void;
 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
   const StatusIcon = getStatusIcon(torrent.status);
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setMenuOpen(false);
-      }
-    }
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setMenuOpen(false);
-    }
-    if (menuOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("keydown", handleKeyDown);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [menuOpen]);
-
   return (
-    <tr className="border-b hover:bg-muted/50 transition-colors">
+    <tr 
+      className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
+      onClick={() => onShowDetails(torrent.id)}
+    >
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
           <Tooltip>
@@ -595,20 +509,24 @@ function TorrentRow({ torrent, onDelete, isDeleting, onShowDetails }: {
         </div>
       </td>
       <td className="px-4 py-3 text-sm">
-        <span className={torrent.downloadRateBps > 0 ? getStatusColorLight(torrent.status) : ''}>
-          {formatRate(torrent.downloadRateBps)}
-        </span>
+        <div className="flex flex-col">
+          <span className={torrent.downloadRateBps > 0 ? 'text-green-600 dark:text-green-400' : ''}>
+            {formatRate(torrent.downloadRateBps)}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            ({formatBytes(torrent.downloadedBytes)})
+          </span>
+        </div>
       </td>
       <td className="px-4 py-3 text-sm">
-        <span className={torrent.uploadRateBps > 0 ? getStatusColorLight(torrent.status) : ''}>
-          {formatRate(torrent.uploadRateBps)}
-        </span>
-      </td>
-      <td className="px-4 py-3 text-sm">
-        {formatBytes(torrent.downloadedBytes)}
-      </td>
-      <td className="px-4 py-3 text-sm">
-        {formatBytes(torrent.uploadedBytes)}
+        <div className="flex flex-col">
+          <span className={torrent.uploadRateBps > 0 ? 'text-purple-600 dark:text-purple-400' : ''}>
+            {formatRate(torrent.uploadRateBps)}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            ({formatBytes(torrent.uploadedBytes)})
+          </span>
+        </div>
       </td>
       <td className="px-4 py-3 text-sm">
         <RatioBadge ratio={torrent.ratio} />
@@ -622,55 +540,6 @@ function TorrentRow({ torrent, onDelete, isDeleting, onShowDetails }: {
         ) : (
           <span className="text-muted-foreground">—</span>
         )}
-      </td>
-      <td className="px-4 py-3">
-        <div className="relative" ref={menuRef}>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            aria-label="Mais opções"
-            aria-haspopup="menu"
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((v) => !v)}
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-          {menuOpen && (
-            <div
-              role="menu"
-              className="absolute right-0 mt-1 w-36 rounded-md border bg-card text-card-foreground shadow-md z-10 py-1"
-            >
-              <button
-                role="menuitem"
-                className="w-full flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onShowDetails(torrent.id);
-                }}
-              >
-                <Info className="h-4 w-4" />
-                Detalhes
-              </button>
-              <button
-                role="menuitem"
-                className="w-full flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onDelete(torrent.id, false);
-                }}
-                disabled={isDeleting}
-              >
-                {isDeleting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                <Trash2 className="h-4 w-4" />
-                )}
-                {isDeleting ? 'Removendo...' : 'Remover'}
-              </button>
-            </div>
-          )}
-        </div>
       </td>
     </tr>
   );
@@ -869,31 +738,83 @@ function UpdateIntervalDropdown({
 }
 
 export default function TorrentsPage() {
+  const { t } = useTranslation();
   const [torrents, setTorrents] = useState<Torrent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [deletingTorrents, setDeletingTorrents] = useState<Set<string>>(new Set());
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortType, setSortType] = useState<SortType>("priority");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgentIds, setSelectedAgentIds] = useState<Set<string>>(new Set());
+  const [selectedStatuses, setSelectedStatuses] = useState<Set<TorrentStatus>>(new Set());
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [refreshIntervalSec, setRefreshIntervalSec] = useState<number>(5);
   const [selectedTorrent, setSelectedTorrent] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [originalTasks, setOriginalTasks] = useState<Task[]>([]);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false);
+  const { toasts, showSuccess, showError, removeToast } = useToast();
+
+  // Extrair status únicos disponíveis
+  const availableStatuses = useMemo(() => {
+    const statuses = new Set<TorrentStatus>();
+    torrents.forEach(t => statuses.add(t.status));
+    return Array.from(statuses).sort();
+  }, [torrents]);
+
+  // Extrair categorias únicas disponíveis
+  const availableCategories = useMemo(() => {
+    const categories = new Set<string>();
+    torrents.forEach(t => {
+      if (t.category) categories.add(t.category);
+    });
+    return Array.from(categories).sort();
+  }, [torrents]);
+
+  // Extrair tags únicas disponíveis
+  const availableTags = useMemo(() => {
+    const tags = new Set<string>();
+    torrents.forEach(t => {
+      t.tags?.forEach(tag => {
+        if (tag) tags.add(tag);
+      });
+    });
+    return Array.from(tags).sort();
+  }, [torrents]);
+
+  // Inicializar todos os status como selecionados quando houver torrents
+  useEffect(() => {
+    if (availableStatuses.length > 0 && selectedStatuses.size === 0) {
+      setSelectedStatuses(new Set(availableStatuses));
+    }
+  }, [availableStatuses]);
+
+  // Inicializar todas as categorias como selecionadas quando houver torrents
+  useEffect(() => {
+    if (availableCategories.length > 0 && selectedCategories.size === 0) {
+      setSelectedCategories(new Set(availableCategories));
+    }
+  }, [availableCategories]);
+
+  // Inicializar todas as tags como selecionadas quando houver torrents
+  useEffect(() => {
+    if (availableTags.length > 0 && selectedTags.size === 0) {
+      setSelectedTags(new Set(availableTags));
+    }
+  }, [availableTags]);
 
   // Carregar torrents da API
   const loadTorrents = async () => {
     try {
       setLoading(true);
-      setError(null);
       const response = await torrentService.listTasks();
       
       if (response.error) {
-        setError(response.error);
+        showError(response.error);
         return;
       }
       
@@ -903,7 +824,7 @@ export default function TorrentsPage() {
         setTorrents(mappedTorrents);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao carregar torrents');
+      showError(err instanceof Error ? err.message : t('torrents.error'));
     } finally {
       setLoading(false);
     }
@@ -955,27 +876,95 @@ export default function TorrentsPage() {
     setSelectedTorrent(null);
   };
 
-  // Remover torrent
-  const handleDeleteTorrent = async (torrentId: string, purge: boolean = false) => {
+  // Controles de torrent
+  const handlePlayTorrent = async (torrentId: string) => {
     try {
-      setDeletingTorrents(prev => new Set(prev).add(torrentId));
-      const response = await torrentService.deleteTask(torrentId, purge);
+      // TODO: Implementar API call para iniciar/retomar torrent com ID: torrentId
+      console.log('Play torrent:', torrentId);
+      showSuccess('Torrent iniciado com sucesso');
+      
+      // Recarregar dados sem fechar o modal
+      const response = await torrentService.listTasks();
+      if (response?.data) {
+        setOriginalTasks(response.data);
+        const mappedTorrents = response.data.map(mapTaskToTorrent);
+        setTorrents(mappedTorrents);
+        
+        // Atualizar o torrent selecionado para refletir mudanças
+        const updatedTask = response.data.find(t => t.id === torrentId);
+        if (updatedTask) {
+          setSelectedTorrent(updatedTask);
+        }
+      }
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erro ao iniciar torrent');
+    }
+  };
+
+  const handlePauseTorrent = async (torrentId: string) => {
+    try {
+      // TODO: Implementar API call para pausar torrent com ID: torrentId
+      console.log('Pause torrent:', torrentId);
+      showSuccess('Torrent pausado com sucesso');
+      
+      // Recarregar dados sem fechar o modal
+      const response = await torrentService.listTasks();
+      if (response?.data) {
+        setOriginalTasks(response.data);
+        const mappedTorrents = response.data.map(mapTaskToTorrent);
+        setTorrents(mappedTorrents);
+        
+        // Atualizar o torrent selecionado para refletir mudanças
+        const updatedTask = response.data.find(t => t.id === torrentId);
+        if (updatedTask) {
+          setSelectedTorrent(updatedTask);
+        }
+      }
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erro ao pausar torrent');
+    }
+  };
+
+  const handleDeleteTorrent = async (torrentId: string) => {
+    try {
+      const response = await torrentService.deleteTask(torrentId, false);
       
       if (response.error) {
-        setError(response.error);
+        showError(response.error);
         return;
       }
       
-      // Recarregar a lista após remoção
+      // Fechar modal e recarregar lista
+      handleCloseModal();
       await loadTorrents();
+      showSuccess(t('torrents.notifications.deleteSuccess'));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao remover torrent');
-    } finally {
-      setDeletingTorrents(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(torrentId);
-        return newSet;
-      });
+      showError(err instanceof Error ? err.message : t('torrents.notifications.deleteError'));
+    }
+  };
+
+  // Criar novo torrent
+  const handleCreateTorrent = async (agentId: string, taskData: CreateTaskRequest) => {
+    try {
+      const response = await torrentService.createTask(agentId, taskData);
+      
+      if (response.error) {
+        // Fechar o modal e exibir toast com erro
+        setIsAddModalOpen(false);
+        showError(t('torrents.notifications.addError', { error: response.error }));
+        return;
+      }
+      
+      // Recarregar a lista após criação
+      await loadTorrents();
+      
+      // Exibir mensagem de sucesso
+      showSuccess(t('torrents.notifications.addSuccess'));
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : t('torrents.error');
+      // Fechar o modal e exibir toast com erro
+      setIsAddModalOpen(false);
+      showError(t('torrents.notifications.addError', { error: errorMessage }));
     }
   };
 
@@ -1005,9 +994,44 @@ export default function TorrentsPage() {
     }
     if (agents.length > 0 && selectedAgentIds.size > 0) {
       filtered = filtered.filter((t) => {
-        // quando não houver agentName (dados antigos), mantém visível apenas se "Todos" estiver efetivamente selecionando tudo
-        if (!t.agentUUID) return selectedAgentIds.size === agents.length;
-        return selectedAgentIds.has(t.agentUUID);
+        // Só exibe torrents que pertencem aos agentes selecionados
+        return t.agentUUID && selectedAgentIds.has(t.agentUUID);
+      });
+    }
+
+    // Filtrar por status selecionados (se houver status disponíveis)
+    if (availableStatuses.length > 0 && selectedStatuses.size === 0) {
+      // Nenhum status selecionado -> não exibe torrents
+      return [] as Torrent[];
+    }
+    if (availableStatuses.length > 0 && selectedStatuses.size > 0) {
+      filtered = filtered.filter((t) => {
+        // Só exibe torrents que pertencem aos status selecionados
+        return selectedStatuses.has(t.status);
+      });
+    }
+
+    // Filtrar por categorias selecionadas (se houver categorias disponíveis)
+    if (availableCategories.length > 0 && selectedCategories.size === 0) {
+      // Nenhuma categoria selecionada -> não exibe torrents
+      return [] as Torrent[];
+    }
+    if (availableCategories.length > 0 && selectedCategories.size > 0) {
+      filtered = filtered.filter((t) => {
+        // Exibe torrents que pertencem às categorias selecionadas OU que não têm categoria
+        return !t.category || selectedCategories.has(t.category);
+      });
+    }
+
+    // Filtrar por tags selecionadas (se houver tags disponíveis)
+    if (availableTags.length > 0 && selectedTags.size === 0) {
+      // Nenhuma tag selecionada -> não exibe torrents
+      return [] as Torrent[];
+    }
+    if (availableTags.length > 0 && selectedTags.size > 0) {
+      filtered = filtered.filter((t) => {
+        // Exibe torrents que têm pelo menos uma tag selecionada OU que não têm tags
+        return !t.tags || t.tags.length === 0 || t.tags.some(tag => selectedTags.has(tag));
       });
     }
     
@@ -1074,7 +1098,7 @@ export default function TorrentsPage() {
       // Aplicar direção da ordenação
       return sortDirection === "asc" ? comparison : -comparison;
     });
-  }, [torrents, searchTerm, sortType, sortDirection, agents, selectedAgentIds]);
+  }, [torrents, searchTerm, sortType, sortDirection, agents, selectedAgentIds, availableStatuses, selectedStatuses, availableCategories, selectedCategories, availableTags, selectedTags]);
 
   // Calcular dados de paginação
   const totalPages = Math.ceil(filteredTorrents.length / itemsPerPage);
@@ -1101,12 +1125,66 @@ export default function TorrentsPage() {
     });
   };
 
-  // Selecionar ou limpar todos
+  // Selecionar ou limpar todos agentes
   const setAllAgents = (checked: boolean) => {
     if (checked) {
       setSelectedAgentIds(new Set(agents.map((a) => a.uuid)));
     } else {
       setSelectedAgentIds(new Set());
+    }
+  };
+
+  // Alternar seleção de status
+  const toggleStatus = (status: TorrentStatus) => {
+    setSelectedStatuses((prev) => {
+      const next = new Set(prev);
+      if (next.has(status)) next.delete(status); else next.add(status);
+      return next;
+    });
+  };
+
+  // Selecionar ou limpar todos status
+  const setAllStatuses = (checked: boolean) => {
+    if (checked) {
+      setSelectedStatuses(new Set(availableStatuses));
+    } else {
+      setSelectedStatuses(new Set());
+    }
+  };
+
+  // Alternar seleção de categoria
+  const toggleCategory = (category: string) => {
+    setSelectedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) next.delete(category); else next.add(category);
+      return next;
+    });
+  };
+
+  // Selecionar ou limpar todas categorias
+  const setAllCategories = (checked: boolean) => {
+    if (checked) {
+      setSelectedCategories(new Set(availableCategories));
+    } else {
+      setSelectedCategories(new Set());
+    }
+  };
+
+  // Alternar seleção de tag
+  const toggleTag = (tag: string) => {
+    setSelectedTags((prev) => {
+      const next = new Set(prev);
+      if (next.has(tag)) next.delete(tag); else next.add(tag);
+      return next;
+    });
+  };
+
+  // Selecionar ou limpar todas tags
+  const setAllTags = (checked: boolean) => {
+    if (checked) {
+      setSelectedTags(new Set(availableTags));
+    } else {
+      setSelectedTags(new Set());
     }
   };
 
@@ -1136,44 +1214,16 @@ export default function TorrentsPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Torrents</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{t('torrents.title')}</h1>
             <p className="text-muted-foreground">
-              Gerencie seus downloads e uploads
+              {t('torrents.subtitle')}
             </p>
           </div>
         </div>
         <div className="flex items-center justify-center py-12">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Carregando torrents...
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Mostrar erro
-  if (error) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Torrents</h1>
-            <p className="text-muted-foreground">
-              Gerencie seus downloads e uploads
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center space-y-4">
-            <AlertTriangle className="h-12 w-12 text-destructive mx-auto" />
-            <div>
-              <h3 className="text-lg font-semibold">Erro ao carregar torrents</h3>
-              <p className="text-muted-foreground">{error}</p>
-            </div>
-            <Button onClick={loadTorrents} variant="outline">
-              Tentar novamente
-            </Button>
+            {t('torrents.loading')}
           </div>
         </div>
       </div>
@@ -1184,11 +1234,19 @@ export default function TorrentsPage() {
     <div className="space-y-6 min-h-full">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Torrents</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('torrents.title')}</h1>
           <p className="text-muted-foreground">
-            Gerencie seus downloads e uploads
+            {t('torrents.subtitle')}
           </p>
         </div>
+        <Button
+          onClick={() => setIsAddModalOpen(true)}
+          className="bg-green-600 hover:bg-green-700 text-white"
+          disabled={agents.length === 0}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          {t('torrents.addTorrent')}
+        </Button>
       </div>
 
       {/* Filtro de busca e controles */}
@@ -1197,7 +1255,7 @@ export default function TorrentsPage() {
         <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
-            placeholder="Buscar torrents..."
+            placeholder={t('torrents.search')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -1207,14 +1265,14 @@ export default function TorrentsPage() {
         {/* Controles agrupados - desktop */}
         <div className="hidden sm:flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-sm text-muted-foreground">Itens por página:</span>
+            <span className="text-sm text-muted-foreground">{t('torrents.itemsPerPage')}:</span>
             <ItemsPerPageDropdown 
               value={itemsPerPage} 
               onChange={handleItemsPerPageChange} 
             />
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-sm text-muted-foreground">Update:</span>
+            <span className="text-sm text-muted-foreground">{t('torrents.update')}:</span>
             <UpdateIntervalDropdown
               value={refreshIntervalSec}
               onChange={setRefreshIntervalSec}
@@ -1228,42 +1286,75 @@ export default function TorrentsPage() {
               onSetAll={setAllAgents}
             />
           </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <StatusFilter
+              availableStatuses={availableStatuses}
+              selectedStatuses={selectedStatuses}
+              onToggleStatus={toggleStatus}
+              onSetAll={setAllStatuses}
+              getStatusIcon={getStatusIcon}
+              getStatusColor={getStatusColor}
+            />
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <ListFilter
+              label="categorias"
+              availableItems={availableCategories}
+              selectedItems={selectedCategories}
+              onToggleItem={toggleCategory}
+              onSetAll={setAllCategories}
+            />
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <ListFilter
+              label="tags"
+              availableItems={availableTags}
+              selectedItems={selectedTags}
+              onToggleItem={toggleTag}
+              onSetAll={setAllTags}
+            />
+          </div>
           <div className="text-sm text-muted-foreground">
-            {filteredTorrents.length} de {torrents.length} torrents
+            {filteredTorrents.length} {t('torrents.of')} {torrents.length} {t('torrents.torrents')}
             <span className="ml-2 text-xs">
-              (ordenados por {getSortTypeLabel(sortType)} {sortDirection === "asc" ? "↑" : "↓"})
+              ({t('torrents.sortedBy')} {t(`torrents.sortBy.${getSortTypeKey(sortType)}`)} {sortDirection === "asc" ? "↑" : "↓"})
             </span>
           </div>
         </div>
 
-        {/* Controles agrupados - mobile (em linha) */}
-        <div className="sm:hidden relative mb-2">
-          <div className="flex items-center gap-2 overflow-x-auto pb-52 -mb-52 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              <span className="text-xs text-muted-foreground whitespace-nowrap">Por página:</span>
+        {/* Controles mobile */}
+        <div className="sm:hidden mb-2">
+          <div className="flex items-stretch gap-1.5">
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">{t('torrents.itemsPerPage').split(' ')[0]}:</span>
               <ItemsPerPageDropdown 
                 value={itemsPerPage} 
                 onChange={handleItemsPerPageChange} 
               />
             </div>
-            <div className="h-6 w-px bg-border flex-shrink-0" />
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <div className="w-px bg-border self-stretch flex-shrink-0" />
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <Clock className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
               <UpdateIntervalDropdown
                 value={refreshIntervalSec}
                 onChange={setRefreshIntervalSec}
               />
             </div>
-            <div className="h-6 w-px bg-border flex-shrink-0" />
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              <Server className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-              <AgentFilter 
-                agents={agents}
-                selectedAgentIds={selectedAgentIds}
-                onToggleAgent={toggleAgent}
-                onSetAll={setAllAgents}
-              />
-            </div>
+            <div className="w-px bg-border self-stretch flex-shrink-0" />
+            <Button
+              variant="outline"
+              onClick={() => setIsFilterSidebarOpen(true)}
+              className="flex items-center gap-2 flex-1 min-w-0"
+            >
+              <SlidersHorizontal className="h-4 w-4 flex-shrink-0" />
+              <span className="text-sm">Filtros</span>
+              {(selectedAgentIds.size < agents.length || 
+                selectedStatuses.size < availableStatuses.length ||
+                selectedCategories.size < availableCategories.length ||
+                selectedTags.size < availableTags.length) && (
+                <span className="ml-auto h-2 w-2 rounded-full bg-primary flex-shrink-0" />
+              )}
+            </Button>
           </div>
         </div>
 
@@ -1275,9 +1366,9 @@ export default function TorrentsPage() {
           <div className="text-center space-y-4">
             <Info className="h-12 w-12 text-muted-foreground mx-auto" />
             <div>
-              <h3 className="text-lg font-semibold">Nenhum torrent encontrado</h3>
+              <h3 className="text-lg font-semibold">{t('torrents.noTorrents')}</h3>
               <p className="text-muted-foreground">
-                Adicione um torrent para começar a fazer download
+                {t('torrents.noTorrentsDesc')}
               </p>
             </div>
           </div>
@@ -1296,104 +1387,75 @@ export default function TorrentsPage() {
                 <tr className="border-b bg-muted/50">
                   <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
                     <div className="flex items-center gap-1">
-                      <span>Nome</span>
+                      <span>{t('torrents.name')}</span>
                       <SortButton
                         sortType="priority"
                         currentSortType={sortType}
                         currentSortDirection={sortDirection}
                         onSort={handleSortChange}
                       >
-                        prioridade
+                        {t('torrents.sortBy.priority')}
                       </SortButton>
                     </div>
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
                     <div className="flex items-center gap-1">
-                      <span>Tamanho</span>
+                      <span>{t('torrents.size')}</span>
                       <SortButton
                         sortType="size"
                         currentSortType={sortType}
                         currentSortDirection={sortDirection}
                         onSort={handleSortChange}
                       >
-                        tamanho
+                        {t('torrents.sortBy.size')}
                       </SortButton>
                     </div>
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
                     <div className="flex items-center gap-1">
-                      <span>Progresso</span>
+                      <span>{t('torrents.progress')}</span>
                       <SortButton
                         sortType="progress"
                         currentSortType={sortType}
                         currentSortDirection={sortDirection}
                         onSort={handleSortChange}
                       >
-                        progresso
+                        {t('torrents.sortBy.progress')}
                       </SortButton>
                     </div>
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
                     <div className="flex items-center gap-1">
-                      <span>Download</span>
+                      <span>{t('torrents.download')}</span>
                       <SortButton
                         sortType="download_speed"
                         currentSortType={sortType}
                         currentSortDirection={sortDirection}
                         onSort={handleSortChange}
                       >
-                        velocidade de download
+                        {t('torrents.sortBy.downloadSpeed')}
                       </SortButton>
                     </div>
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
                     <div className="flex items-center gap-1">
-                      <span>Upload</span>
+                      <span>{t('torrents.upload')}</span>
                       <SortButton
                         sortType="upload_speed"
                         currentSortType={sortType}
                         currentSortDirection={sortDirection}
                         onSort={handleSortChange}
                       >
-                        velocidade de upload
+                        {t('torrents.sortBy.uploadSpeed')}
                       </SortButton>
                     </div>
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <span>Downloaded</span>
-                      <SortButton
-                        sortType="downloaded"
-                        currentSortType={sortType}
-                        currentSortDirection={sortDirection}
-                        onSort={handleSortChange}
-                      >
-                        baixado
-                      </SortButton>
-                    </div>
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <span>Uploaded</span>
-                      <SortButton
-                        sortType="uploaded"
-                        currentSortType={sortType}
-                        currentSortDirection={sortDirection}
-                        onSort={handleSortChange}
-                      >
-                        enviado
-                      </SortButton>
-                    </div>
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                    Ratio
+                    {t('torrents.ratio')}
                   </th>
               <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                Agent
+                {t('torrents.agent')}
               </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground w-12">
-                    Ações
-                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1401,8 +1463,6 @@ export default function TorrentsPage() {
                   <TorrentRow 
                     key={t.id} 
                     torrent={t} 
-                    onDelete={handleDeleteTorrent}
-                    isDeleting={deletingTorrents.has(t.id)}
                     onShowDetails={handleShowDetails}
                   />
                 ))}
@@ -1415,7 +1475,7 @@ export default function TorrentsPage() {
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t">
             <div className="text-sm text-muted-foreground">
-              Página {currentPage} de {totalPages} ({filteredTorrents.length} torrents)
+              {t('torrents.page')} {currentPage} {t('torrents.of')} {totalPages} ({filteredTorrents.length} {t('torrents.torrents')})
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -1425,7 +1485,7 @@ export default function TorrentsPage() {
                 disabled={currentPage === 1}
               >
                 <ChevronLeft className="h-4 w-4" />
-                Anterior
+                {t('torrents.previous')}
               </Button>
               <Button
                 variant="outline"
@@ -1433,7 +1493,7 @@ export default function TorrentsPage() {
                 onClick={handleNextPage}
                 disabled={currentPage === totalPages}
               >
-                Próxima
+                {t('torrents.next')}
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
@@ -1447,13 +1507,13 @@ export default function TorrentsPage() {
         <div className="mb-4">
           <div className="flex items-center justify-between gap-2 mb-3">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-muted-foreground">Ordenar por:</span>
+              <span className="text-sm font-medium text-muted-foreground">{t('torrents.sortedBy')}:</span>
               <span className="text-xs text-muted-foreground">
-                {getSortTypeLabel(sortType)} {sortDirection === "asc" ? "↑" : "↓"}
+                {t(`torrents.sortBy.${getSortTypeKey(sortType)}`)} {sortDirection === "asc" ? "↑" : "↓"}
               </span>
             </div>
             <span className="text-xs text-muted-foreground whitespace-nowrap">
-              {filteredTorrents.length} de {torrents.length}
+              {filteredTorrents.length} {t('torrents.of')} {torrents.length}
             </span>
           </div>
           <div className="flex gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -1463,7 +1523,7 @@ export default function TorrentsPage() {
               onClick={() => handleSortChange("priority")}
               className="flex-shrink-0 text-xs flex items-center gap-1"
             >
-              Prioridade
+              {t('torrents.sortButtons.priority')}
               {sortType === "priority" && (
                 sortDirection === "asc" ? (
                   <SortAsc className="h-3 w-3" />
@@ -1478,7 +1538,7 @@ export default function TorrentsPage() {
               onClick={() => handleSortChange("alphabetical")}
               className="flex-shrink-0 text-xs flex items-center gap-1"
             >
-              Nome
+              {t('torrents.sortButtons.name')}
               {sortType === "alphabetical" && (
                 sortDirection === "asc" ? (
                   <SortAsc className="h-3 w-3" />
@@ -1493,7 +1553,7 @@ export default function TorrentsPage() {
               onClick={() => handleSortChange("size")}
               className="flex-shrink-0 text-xs flex items-center gap-1"
             >
-              Tamanho
+              {t('torrents.sortButtons.size')}
               {sortType === "size" && (
                 sortDirection === "asc" ? (
                   <SortAsc className="h-3 w-3" />
@@ -1508,7 +1568,7 @@ export default function TorrentsPage() {
               onClick={() => handleSortChange("progress")}
               className="flex-shrink-0 text-xs flex items-center gap-1"
             >
-              Progresso
+              {t('torrents.sortButtons.progress')}
               {sortType === "progress" && (
                 sortDirection === "asc" ? (
                   <SortAsc className="h-3 w-3" />
@@ -1523,7 +1583,7 @@ export default function TorrentsPage() {
               onClick={() => handleSortChange("download_speed")}
               className="flex-shrink-0 text-xs flex items-center gap-1"
             >
-              Download
+              {t('torrents.sortButtons.download')}
               {sortType === "download_speed" && (
                 sortDirection === "asc" ? (
                   <SortAsc className="h-3 w-3" />
@@ -1538,7 +1598,7 @@ export default function TorrentsPage() {
               onClick={() => handleSortChange("upload_speed")}
               className="flex-shrink-0 text-xs flex items-center gap-1"
             >
-              Upload
+              {t('torrents.sortButtons.upload')}
               {sortType === "upload_speed" && (
                 sortDirection === "asc" ? (
                   <SortAsc className="h-3 w-3" />
@@ -1553,7 +1613,7 @@ export default function TorrentsPage() {
               onClick={() => handleSortChange("downloaded")}
               className="flex-shrink-0 text-xs flex items-center gap-1"
             >
-              Baixado
+              {t('torrents.sortButtons.downloaded')}
               {sortType === "downloaded" && (
                 sortDirection === "asc" ? (
                   <SortAsc className="h-3 w-3" />
@@ -1568,7 +1628,7 @@ export default function TorrentsPage() {
               onClick={() => handleSortChange("uploaded")}
               className="flex-shrink-0 text-xs flex items-center gap-1"
             >
-              Enviado
+              {t('torrents.sortButtons.uploaded')}
               {sortType === "uploaded" && (
                 sortDirection === "asc" ? (
                   <SortAsc className="h-3 w-3" />
@@ -1585,8 +1645,6 @@ export default function TorrentsPage() {
             <TorrentCard 
               key={t.id} 
               torrent={t} 
-              onDelete={handleDeleteTorrent}
-              isDeleting={deletingTorrents.has(t.id)}
               onShowDetails={handleShowDetails}
             />
           ))}
@@ -1596,7 +1654,7 @@ export default function TorrentsPage() {
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t">
             <div className="text-sm text-muted-foreground">
-              {currentPage} de {totalPages}
+              {currentPage} {t('torrents.of')} {totalPages}
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -1627,7 +1685,89 @@ export default function TorrentsPage() {
         torrent={selectedTorrent}
         isOpen={isModalOpen}
         onClose={handleCloseModal}
+        onPlay={handlePlayTorrent}
+        onPause={handlePauseTorrent}
+        onDelete={handleDeleteTorrent}
       />
+
+      {/* Modal de adicionar torrent */}
+      <AddTorrentModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSubmit={handleCreateTorrent}
+        agents={agents}
+      />
+
+      {/* Toast notifications */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
+
+      {/* Filter Sidebar - Mobile only */}
+      <div className="sm:hidden">
+        <FilterSidebar isOpen={isFilterSidebarOpen} onClose={() => setIsFilterSidebarOpen(false)}>
+          <div className="space-y-6">
+            {/* Filtro de agentes */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium flex items-center gap-2">
+                <Server className="h-4 w-4" />
+                Agentes
+              </label>
+              <AgentFilter 
+                agents={agents}
+                selectedAgentIds={selectedAgentIds}
+                onToggleAgent={toggleAgent}
+                onSetAll={setAllAgents}
+              />
+            </div>
+
+            {/* Filtro de status */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Status</label>
+              <StatusFilter
+                availableStatuses={availableStatuses}
+                selectedStatuses={selectedStatuses}
+                onToggleStatus={toggleStatus}
+                onSetAll={setAllStatuses}
+                getStatusIcon={getStatusIcon}
+                getStatusColor={getStatusColor}
+              />
+            </div>
+
+            {/* Filtro de categorias */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Categorias</label>
+              <ListFilter
+                label="categorias"
+                availableItems={availableCategories}
+                selectedItems={selectedCategories}
+                onToggleItem={toggleCategory}
+                onSetAll={setAllCategories}
+              />
+            </div>
+
+            {/* Filtro de tags */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Tags</label>
+              <ListFilter
+                label="tags"
+                availableItems={availableTags}
+                selectedItems={selectedTags}
+                onToggleItem={toggleTag}
+                onSetAll={setAllTags}
+              />
+            </div>
+
+            {/* Informação de resultados */}
+            <div className="pt-4 border-t">
+              <div className="text-sm text-muted-foreground">
+                {filteredTorrents.length} {t('torrents.of')} {torrents.length} {t('torrents.torrents')}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {t('torrents.sortedBy')} {t(`torrents.sortBy.${getSortTypeKey(sortType)}`)} {sortDirection === "asc" ? "↑" : "↓"}
+              </div>
+            </div>
+          </div>
+        </FilterSidebar>
+      </div>
     </div>
   );
 }

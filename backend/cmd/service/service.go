@@ -16,6 +16,7 @@ import (
 	"github.com/gardarr/gardarr/internal/infra/database"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/agents"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/auth"
+	"github.com/gardarr/gardarr/internal/routes/api/v1/category"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/health"
 	"github.com/gardarr/gardarr/internal/schemas"
 	"github.com/gardarr/gardarr/internal/services/agentmanager"
@@ -91,6 +92,75 @@ func Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// securityHeadersMiddleware adds comprehensive security headers
+func securityHeadersMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Content Security Policy - Restrictive but compatible with React/Vite
+		csp := []string{
+			"default-src 'self'",
+			"script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Vite needs unsafe-inline/eval in dev
+			"style-src 'self' 'unsafe-inline'",                // React/Tailwind need unsafe-inline
+			"img-src 'self' data: blob: https:",
+			"font-src 'self' data:",
+			"connect-src 'self' ws: wss:", // Allow WebSocket for dev HMR
+			"frame-ancestors 'none'",
+			"base-uri 'self'",
+			"form-action 'self'",
+			"object-src 'none'",
+			"media-src 'self'",
+			"worker-src 'self' blob:",
+			"manifest-src 'self'",
+		}
+
+		// Allow custom CSP override via environment variable
+		if customCSP := os.Getenv("CUSTOM_CSP"); customCSP != "" {
+			c.Header("Content-Security-Policy", customCSP)
+		} else {
+			c.Header("Content-Security-Policy", strings.Join(csp, "; "))
+		}
+
+		// Prevent clickjacking
+		c.Header("X-Frame-Options", "DENY")
+
+		// XSS Protection (legacy but still good to have)
+		c.Header("X-XSS-Protection", "1; mode=block")
+
+		// Strict Transport Security - Force HTTPS (enable in production)
+		c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
+
+		// Referrer Policy - Control referrer information
+		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
+
+		// Prevent MIME type sniffing
+		c.Header("X-Content-Type-Options", "nosniff")
+
+		// Permissions Policy - Restrict browser features
+		permissions := []string{
+			"geolocation=()",
+			"midi=()",
+			"notifications=()",
+			"push=()",
+			"sync-xhr=()",
+			"microphone=()",
+			"camera=()",
+			"magnetometer=()",
+			"gyroscope=()",
+			"speaker=()",
+			"vibrate=()",
+			"fullscreen=(self)",
+			"payment=()",
+		}
+		c.Header("Permissions-Policy", strings.Join(permissions, ", "))
+
+		// Cross-Origin policies
+		c.Header("Cross-Origin-Embedder-Policy", "require-corp")
+		c.Header("Cross-Origin-Opener-Policy", "same-origin")
+		c.Header("Cross-Origin-Resource-Policy", "same-origin")
+
+		c.Next()
+	}
+}
+
 func setRouter() {
 	router = gin.Default()
 
@@ -115,16 +185,7 @@ func setRouter() {
 	router.Use(cors.New(corsConfig))
 
 	// Setup Security Headers
-	router.Use(func(c *gin.Context) {
-		c.Header("X-Frame-Options", "DENY")
-		c.Header("Content-Security-Policy", "default-src 'self'; connect-src *; font-src *; script-src-elem * 'unsafe-inline'; img-src * data:; style-src * 'unsafe-inline';")
-		c.Header("X-XSS-Protection", "1; mode=block")
-		c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
-		c.Header("Referrer-Policy", "strict-origin")
-		c.Header("X-Content-Type-Options", "nosniff")
-		c.Header("Permissions-Policy", "geolocation=(),midi=(),sync-xhr=(),microphone=(),camera=(),magnetometer=(),gyroscope=(),fullscreen=(self),payment=()")
-		c.Next()
-	})
+	router.Use(securityHeadersMiddleware())
 }
 
 func setRoutes(db *database.Database, a *agentmanager.Service) {
@@ -143,6 +204,7 @@ func setRoutes(db *database.Database, a *agentmanager.Service) {
 	health.NewModule(v1, db).Register()
 	auth.NewModule(v1, db).Register()
 	agents.NewModule(v1, a).Register()
+	category.NewModule(v1, db).Register()
 
 	// Serve the main index.html for all non-API routes (SPA fallback)
 	router.NoRoute(func(c *gin.Context) {

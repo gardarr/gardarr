@@ -41,6 +41,8 @@ type Category struct {
 	Name        string      `gorm:"size:100;not null;uniqueIndex"`
 	DefaultTags StringArray `gorm:"type:text"`
 	Directories StringArray `gorm:"type:text"`
+	Color       string      `gorm:"size:50"`
+	Icon        string      `gorm:"size:100"`
 	CreatedAt   time.Time   `gorm:"autoCreateTime"`
 	UpdatedAt   time.Time   `gorm:"autoUpdateTime"`
 }
@@ -57,4 +59,16 @@ func (c *Category) BeforeCreate(tx *gorm.DB) (err error) {
 func (c *Category) BeforeUpdate(tx *gorm.DB) (err error) {
 	c.UpdatedAt = time.Now()
 	return
+}
+
+// CategoryResponse represents the response body for category operations
+type CategoryResponse struct {
+	ID          string      `json:"id"`
+	Name        string      `json:"name"`
+	DefaultTags StringArray `json:"default_tags"`
+	Directories StringArray `json:"directories"`
+	Color       string      `json:"color,omitempty"`
+	Icon        string      `json:"icon,omitempty"`
+	CreatedAt   time.Time   `json:"created_at"`
+	UpdatedAt   time.Time   `json:"updated_at"`
 }

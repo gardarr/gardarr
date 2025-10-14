@@ -55,6 +55,7 @@ export interface TaskMagnetLink {
 export interface CreateTaskRequest {
   magnet_uri: string;
   category: string;
+  directory?: string;
   tags: string[];
 }
 
