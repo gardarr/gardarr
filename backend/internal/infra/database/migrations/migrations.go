@@ -119,5 +119,26 @@ func Register(m *migration.Migrator) {
 				return db.Migrator().DropColumn(&Category{}, "Icon")
 			},
 		},
+		{
+			Version:     "008_add_color_icon_to_agents",
+			Description: "Adiciona colunas color e icon na tabela agents",
+			Up: func(db *gorm.DB) error {
+				type Agent struct {
+					Color string `gorm:"size:50"`
+					Icon  string `gorm:"size:100"`
+				}
+				if err := db.Migrator().AddColumn(&Agent{}, "Color"); err != nil {
+					return err
+				}
+				return db.Migrator().AddColumn(&Agent{}, "Icon")
+			},
+			Down: func(db *gorm.DB) error {
+				type Agent struct{}
+				if err := db.Migrator().DropColumn(&Agent{}, "Color"); err != nil {
+					return err
+				}
+				return db.Migrator().DropColumn(&Agent{}, "Icon")
+			},
+		},
 	})
 }

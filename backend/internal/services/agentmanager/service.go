@@ -29,21 +29,25 @@ func (s *Service) CreateAgent(ctx context.Context, schema *schemas.AgentCreateSc
 		Name:    schema.Name,
 		Address: schema.Address,
 		Token:   schema.Token,
+		Icon:    schema.Icon,
+		Color:   schema.Color,
 	}
 
+	// Validate instance connectivity BEFORE persisting to database
+	instance, err := s.repository.GetInstance(&input)
+	if err != nil {
+		return nil, fmt.Errorf("não foi possível conectar com a instância: %s", err.Error())
+	}
+
+	// If connection is successful, create the agent
 	agent, err := s.repository.CreateAgent(ctx, input)
 	if err != nil {
 		return nil, err
 	}
 
-	instance, err := s.repository.GetInstance(agent)
-	if err != nil {
-		agent.Status = entities.AgentStatusErrored
-		agent.Error = err.Error()
-		agent.Instance = nil
-	} else {
-		agent.Instance = instance
-	}
+	// Set status and instance data
+	agent.Status = entities.AgentStatusActive
+	agent.Instance = instance
 
 	return agent, nil
 }
@@ -199,6 +203,73 @@ func (s *Service) GetAgent(ctx context.Context, id string) (*entities.Agent, err
 	} else {
 		agent.Instance = instance
 	}
+
+	return agent, nil
+}
+
+func (s *Service) UpdateAgent(ctx context.Context, id string, schema *schemas.AgentUpdateSchema) (*entities.Agent, error) {
+	parsedID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UUID format: %w", err)
+	}
+
+	// Get the current agent first
+	currentAgent, err := s.repository.GetAgentByUUID(parsedID)
+	if err != nil {
+		return nil, fmt.Errorf("agent not found: %w", err)
+	}
+
+	// Convert schema to map for updates
+	updates := make(map[string]interface{})
+	if schema.Name != "" {
+		updates["name"] = schema.Name
+	}
+	if schema.Address != "" {
+		updates["address"] = schema.Address
+	}
+	if schema.Token != "" {
+		updates["token"] = schema.Token
+	}
+	if schema.Icon != "" {
+		updates["icon"] = schema.Icon
+	}
+	if schema.Color != "" {
+		updates["color"] = schema.Color
+	}
+
+	// Create a test agent with updated values to validate connectivity
+	testAgent := *currentAgent
+	if schema.Name != "" {
+		testAgent.Name = schema.Name
+	}
+	if schema.Address != "" {
+		testAgent.Address = schema.Address
+	}
+	if schema.Token != "" {
+		testAgent.Token = schema.Token
+	}
+	if schema.Icon != "" {
+		testAgent.Icon = schema.Icon
+	}
+	if schema.Color != "" {
+		testAgent.Color = schema.Color
+	}
+
+	// Validate instance connectivity BEFORE updating the database
+	instance, err := s.repository.GetInstance(&testAgent)
+	if err != nil {
+		return nil, fmt.Errorf("não foi possível conectar com a instância: %s", err.Error())
+	}
+
+	// If connection is successful, update the agent in the database
+	agent, err := s.repository.UpdateAgent(ctx, parsedID, updates)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update agent: %w", err)
+	}
+
+	// Set status and instance data
+	agent.Status = entities.AgentStatusActive
+	agent.Instance = instance
 
 	return agent, nil
 }

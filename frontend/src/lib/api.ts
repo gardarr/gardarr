@@ -49,7 +49,7 @@ class ApiClient {
           // Check if it's a structured ResponseError from backend
           if (isResponseError(data)) {
             return { 
-              error: data.message || data.error || `HTTP error! status: ${response.status}`,
+              error: getErrorMessage(data) || `HTTP error! status: ${response.status}`,
               errorDetails: data,
               data: undefined
             };

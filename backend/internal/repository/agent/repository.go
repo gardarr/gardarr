@@ -45,6 +45,8 @@ func (r *Repository) CreateAgent(ctx context.Context, agent entities.Agent) (*en
 		Name:            agent.Name,
 		Address:         agent.Address,
 		EncrypetedToken: encToken,
+		Icon:            agent.Icon,
+		Color:           agent.Color,
 	}
 
 	if err := r.db.DB.Create(handler).Error; err != nil {
@@ -120,6 +122,40 @@ func (r *Repository) GetInstance(agent *entities.Agent) (*entities.Instance, err
 	}
 
 	return mappers.ToInstance(handler), nil
+}
+
+// UpdateAgent updates an existing agent in the database
+func (r *Repository) UpdateAgent(ctx context.Context, uid uuid.UUID, updates map[string]interface{}) (*entities.Agent, error) {
+	var agent models.Agent
+
+	// First, get the existing agent
+	if err := r.db.DB.Where("uuid = ?", uid).First(&agent).Error; err != nil {
+		return nil, err
+	}
+
+	// If token is being updated, encrypt it
+	if token, exists := updates["token"]; exists {
+		if tokenStr, ok := token.(string); ok {
+			encToken, err := r.crypto.Encrypt(tokenStr)
+			if err != nil {
+				return nil, err
+			}
+			updates["EncrypetedToken"] = encToken
+			delete(updates, "token")
+		}
+	}
+
+	// Update the agent
+	if err := r.db.DB.Model(&agent).Updates(updates).Error; err != nil {
+		return nil, err
+	}
+
+	// Get the updated agent
+	if err := r.db.DB.Where("uuid = ?", uid).First(&agent).Error; err != nil {
+		return nil, err
+	}
+
+	return toAgent(agent), nil
 }
 
 // Delete removes an agent from the database by UUID
@@ -252,5 +288,7 @@ func toAgent(item models.Agent) *entities.Agent {
 		Name:    item.Name,
 		Address: item.Address,
 		Token:   item.EncrypetedToken,
+		Icon:    item.Icon,
+		Color:   item.Color,
 	}
 }

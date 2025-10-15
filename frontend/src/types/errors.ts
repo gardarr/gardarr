@@ -26,6 +26,11 @@ export function isResponseError(obj: any): obj is ResponseError {
 export function getErrorMessage(error: any): string {
   // If it's a structured ResponseError from backend
   if (isResponseError(error)) {
+    // Prioritize the 'error' field if it contains more specific information
+    // than the generic 'message' field
+    if (error.error && error.error !== error.message) {
+      return error.error;
+    }
     return error.message || error.error || 'An error occurred';
   }
   

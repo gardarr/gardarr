@@ -27,11 +27,12 @@ func NewModule(router *gin.RouterGroup, svc *agentmanager.Service) *Module {
 }
 
 func (m Module) Register() {
-	m.agentsRouter.POST("/", m.createAgent)
 	m.agentsRouter.GET("/", m.listAgents)
 	m.agentsRouter.GET("/tasks", m.listAgentsTasks)
 
+	m.agentRouter.POST("/", m.createAgent)
 	m.agentRouter.GET("/:id", m.getAgent)
+	m.agentRouter.PUT("/:id", m.updateAgent)
 	m.agentRouter.GET("/:id/tasks", m.listAgentTasks)
 	m.agentRouter.DELETE("/:id", m.deleteAgent)
 	m.agentRouter.POST("/:id/task", m.createAgentTask)
@@ -73,6 +74,25 @@ func (m *Module) getAgent(c *gin.Context) {
 	id := c.Param("id")
 
 	result, err := m.service.Get(c.Request.Context(), id)
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, mappers.ToAgentResponse(result))
+}
+
+func (m *Module) updateAgent(c *gin.Context) {
+	id := c.Param("id")
+
+	var body schemas.AgentUpdateSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	result, err := m.service.UpdateAgent(c.Request.Context(), id, &body)
 	if err != nil {
 		errors.HandleError(c, err)
 		return

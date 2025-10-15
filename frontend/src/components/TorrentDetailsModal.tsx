@@ -17,7 +17,6 @@ import {
   Link, 
   FileText, 
   HardDrive, 
-  Server,
   Tag,
   FolderOpen,
   Activity,
@@ -38,6 +37,7 @@ import {
   Trash2
 } from "lucide-react";
 import { ProgressBar } from "@/components/ui/ProgressBar";
+import { AgentIcon } from "@/components/ui/AgentIcon";
 import { useTranslation } from "react-i18next";
 import type { Task } from "@/types/torrent";
 
@@ -316,7 +316,11 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                 </div>
                 {torrent.agent && (
                   <div className="flex items-center gap-2">
-                    <Server className="h-4 w-4 text-muted-foreground" />
+                    <AgentIcon 
+                      iconName={torrent.agent.icon}
+                      color={torrent.agent.color}
+                      size="sm"
+                    />
                     <span className="text-sm font-medium">Agent:</span>
                     <span className="text-sm text-muted-foreground">{torrent.agent.name}</span>
                   </div>

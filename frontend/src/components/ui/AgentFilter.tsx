@@ -1,19 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, Server, Check } from "lucide-react";
-import type { Agent, AgentStatus } from "@/types/agent";
+import { ChevronDown, Check, HardDrive } from "lucide-react";
+import type { Agent } from "@/types/agent";
+import { AgentIcon } from "@/components/ui/AgentIcon";
 
-function getAgentStatusColor(status?: AgentStatus): string {
-  switch (status) {
-    case "ACTIVE":
-      return "text-green-600";
-    case "INACTIVE":
-      return "text-muted-foreground";
-    case "ERRORED":
-      return "text-red-600";
-    default:
-      return "text-muted-foreground";
-  }
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  const value = bytes / Math.pow(k, i);
+  return `${value.toFixed(value >= 100 ? 0 : value >= 10 ? 1 : 2)} ${sizes[i]}`;
 }
 
 export function AgentFilter({
@@ -70,7 +67,7 @@ export function AgentFilter({
       </Button>
       {isOpen && (
         <div 
-          className="absolute right-0 mt-1 w-56 rounded-md border bg-card text-card-foreground shadow-md z-[100] py-1"
+          className="absolute right-0 mt-1 w-64 rounded-md border bg-card text-card-foreground shadow-md z-[100] py-1"
           role="listbox"
           aria-label="Filtrar por agents"
         >
@@ -81,7 +78,7 @@ export function AgentFilter({
             aria-selected={allSelected}
           >
             <span className="flex items-center gap-2">
-              <Server className="h-4 w-4" />
+              <AgentIcon size="md" className="w-4 h-4" />
               Todos
             </span>
             {allSelected && <Check className="h-4 w-4" />}
@@ -89,6 +86,7 @@ export function AgentFilter({
           <div className="my-1 h-px bg-border" />
           {agents.map((a) => {
             const selected = selectedAgentIds.has(a.uuid);
+            const freeSpace = a.instance?.server?.free_space_on_disk || 0;
             return (
               <button
                 key={a.uuid}
@@ -96,13 +94,24 @@ export function AgentFilter({
                 onClick={() => onToggleAgent(a.uuid)}
                 role="option"
                 aria-selected={selected}
-                title={a.name}
+                title={`${a.name} - Espaço livre: ${formatBytes(freeSpace)}`}
               >
-                <span className="flex items-center gap-2">
-                  <Server className={`h-4 w-4 ${getAgentStatusColor(a.status)}`} />
-                  <span className="truncate max-w-[180px]">{a.name}</span>
-                </span>
-                {selected && <span className="text-xs">✓</span>}
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <AgentIcon 
+                    iconName={a.icon}
+                    color={a.color}
+                    size="md"
+                    className="w-4 h-4 flex-shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate max-w-[140px]">{a.name}</div>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <HardDrive className="h-3 w-3" />
+                      <span>{formatBytes(freeSpace)}</span>
+                    </div>
+                  </div>
+                </div>
+                {selected && <span className="text-xs flex-shrink-0">✓</span>}
               </button>
             );
           })}

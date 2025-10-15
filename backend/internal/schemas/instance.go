@@ -6,12 +6,23 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-// InstanceCreateSchema represents the request body for creating an instance
+// AgentCreateSchema represents the request body for creating an agent
 type AgentCreateSchema struct {
 	Name    string `json:"name"     binding:"required"`
 	Type    string `json:"type"     binding:"required,instancetype"`
-	Address string `josn:"address"  binding:"required"`
-	Token   string `josn:"token"    binding:"required"`
+	Address string `json:"address"  binding:"required"`
+	Token   string `json:"token"    binding:"required"`
+	Icon    string `json:"icon"     binding:"omitempty,max=100"`
+	Color   string `json:"color"    binding:"omitempty,max=50"`
+}
+
+// AgentUpdateSchema represents the request body for updating an agent
+type AgentUpdateSchema struct {
+	Name    string `json:"name"     binding:"omitempty"`
+	Address string `json:"address"  binding:"omitempty"`
+	Token   string `json:"token"    binding:"omitempty"`
+	Icon    string `json:"icon"     binding:"omitempty,max=100"`
+	Color   string `json:"color"    binding:"omitempty,max=50"`
 }
 
 var validInstanceTypes = []string{

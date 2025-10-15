@@ -45,6 +45,14 @@ export interface CreateAgentRequest {
   color?: string;
 }
 
+export interface UpdateAgentRequest {
+  name?: string;
+  address?: string;
+  token?: string;
+  icon?: string;
+  color?: string;
+}
+
 export interface AgentListResponse {
   data: Agent[];
 }

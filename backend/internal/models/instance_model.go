@@ -13,6 +13,8 @@ type Agent struct {
 	Type            string    `gorm:"size:25"`
 	Address         string    `gorm:"size:600;not null"`
 	EncrypetedToken string    `gorm:"size:600;not null"`
+	Icon            string    `gorm:"size:100"`
+	Color           string    `gorm:"size:50"`
 	CreatedAt       time.Time `gorm:"autoCreateTime"`
 	UpdatedAt       time.Time `gorm:"autoUpdateTime"`
 }
@@ -37,6 +39,8 @@ type AgentResponse struct {
 	Address  string           `json:"address"`
 	Status   string           `json:"status"`
 	Error    string           `json:"error,omitempty"`
+	Icon     string           `json:"icon,omitempty"`
+	Color    string           `json:"color,omitempty"`
 	Instance InstanceResponse `json:"instance"`
 }
 

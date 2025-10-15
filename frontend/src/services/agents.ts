@@ -2,7 +2,8 @@ import { api } from '../lib/api';
 import type { ApiResponse } from '../lib/api';
 import type {
   Agent,
-  CreateAgentRequest
+  CreateAgentRequest,
+  UpdateAgentRequest
 } from '../types/agent';
 
 /**
@@ -30,6 +31,13 @@ export class AgentService {
    */
   async createAgent(agentData: CreateAgentRequest): Promise<ApiResponse<Agent>> {
     return api.post<Agent>(this.baseEndpoint, agentData);
+  }
+
+  /**
+   * Updates an existing agent
+   */
+  async updateAgent(agentId: string, agentData: UpdateAgentRequest): Promise<ApiResponse<Agent>> {
+    return api.put<Agent>(`/agent/${agentId}`, agentData);
   }
 
   /**

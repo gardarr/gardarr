@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ArrowDownCircle, ArrowUpCircle, PauseCircle, Info, Search, ChevronLeft, ChevronRight, Loader2, ChevronDown, SortAsc, SortDesc, Server, Clock, XCircle, FileX, Play, RotateCcw, HardDrive, Plus, SlidersHorizontal } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, PauseCircle, Info, Search, ChevronLeft, ChevronRight, Loader2, ChevronDown, SortAsc, SortDesc, Clock, XCircle, FileX, Play, RotateCcw, HardDrive, Plus, SlidersHorizontal } from "lucide-react";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { torrentService } from "./services/torrents";
@@ -19,6 +19,7 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { RatioBadge } from "@/components/ui/RatioBadge";
 import { ToastContainer } from "@/components/ui/toast-container";
 import { useToast } from "@/hooks/useToast";
+import { AgentIcon } from "@/components/ui/AgentIcon";
 
 type TorrentStatus = 
   | "ERROR" 
@@ -45,6 +46,7 @@ type TorrentStatus =
   | "UNKNOWN";
 type SortType = "priority" | "alphabetical" | "size" | "progress" | "download_speed" | "upload_speed" | "downloaded" | "uploaded";
 
+
 type Torrent = {
   id: string;
   name: string;
@@ -62,6 +64,8 @@ type Torrent = {
   agentName?: string;
   agentStatus?: AgentStatus;
   agentUUID?: string;
+  agentIcon?: string;
+  agentColor?: string;
   category: string;
   tags: string[];
 };
@@ -103,6 +107,8 @@ function mapTaskToTorrent(task: Task): Torrent {
     agentName: task.agent?.name,
     agentStatus: task.agent?.status,
     agentUUID: task.agent?.uuid,
+    agentIcon: task.agent?.icon,
+    agentColor: task.agent?.color,
     category: task.category || "",
     tags: task.tags || [],
   };
@@ -291,18 +297,6 @@ function getStatusBackgroundColor(status: TorrentStatus): string {
   }
 }
 
-function getAgentStatusColor(status?: AgentStatus): string {
-  switch (status) {
-    case "ACTIVE":
-      return "text-green-600";
-    case "INACTIVE":
-      return "text-muted-foreground";
-    case "ERRORED":
-      return "text-red-600";
-    default:
-      return "text-muted-foreground";
-  }
-}
 
 // Função para obter chave de tradução do tipo de ordenação
 function getSortTypeKey(sortType: SortType): string {
@@ -386,7 +380,7 @@ function TorrentCard({ torrent, onShowDetails }: {
       className="hover:shadow-lg transition-shadow overflow-hidden p-0 gap-4 cursor-pointer"
       onClick={() => onShowDetails(torrent.id)}
     >
-      <CardHeader className={`flex flex-row items-center space-y-0 pt-3 pb-3 px-4 ${getStatusBackgroundColor(torrent.status)}`}>
+      <CardHeader className={`flex flex-row items-center justify-between space-y-0 pt-3 pb-3 px-4 ${getStatusBackgroundColor(torrent.status)}`}>
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <div className="flex-shrink-0">
             <Tooltip>
@@ -406,16 +400,22 @@ function TorrentCard({ torrent, onShowDetails }: {
           >
             {truncateText(torrent.name)}
           </CardTitle>
-          {torrent.agentName && (
+        </div>
+        {torrent.agentName && (
+          <div className="flex-shrink-0 ml-2">
             <span
-              className="ml-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium text-foreground"
+              className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium text-foreground"
               title={`Agent: ${torrent.agentName}${torrent.agentStatus ? ` (${torrent.agentStatus})` : ""}`}
             >
-              <Server className={`h-3 w-3 ${getAgentStatusColor(torrent.agentStatus)}`} />
+              <AgentIcon 
+                iconName={torrent.agentIcon}
+                color={torrent.agentColor}
+                size="sm"
+              />
               {torrent.agentName}
             </span>
-          )}
-        </div>
+          </div>
+        )}
       </CardHeader>
       <CardContent className="px-4 pt-1 pb-6">
         <ProgressBar progress={torrent.progress} height="md" className="mb-0 opacity-60" showLabel={false} />
@@ -534,7 +534,11 @@ function TorrentRow({ torrent, onShowDetails }: {
       <td className="px-4 py-3 text-sm">
         {torrent.agentName ? (
           <div className="flex items-center gap-2">
-            <Server className={`h-3 w-3 ${getAgentStatusColor(torrent.agentStatus)}`} />
+            <AgentIcon 
+              iconName={torrent.agentIcon}
+              color={torrent.agentColor}
+              size="md"
+            />
             <span className="truncate max-w-[160px]" title={torrent.agentName}>{torrent.agentName}</span>
           </div>
         ) : (
@@ -1708,7 +1712,7 @@ export default function TorrentsPage() {
             {/* Filtro de agentes */}
             <div className="space-y-2">
               <label className="text-sm font-medium flex items-center gap-2">
-                <Server className="h-4 w-4" />
+                <AgentIcon size="md" className="w-4 h-4" />
                 Agentes
               </label>
               <AgentFilter 

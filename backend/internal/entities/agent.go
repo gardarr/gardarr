@@ -15,5 +15,7 @@ type Agent struct {
 	Address  string
 	Status   string
 	Error    string
+	Icon     string // Optional icon for frontend display
+	Color    string // Optional color for frontend display
 	Instance *Instance
 }
