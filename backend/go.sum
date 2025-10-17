@@ -51,6 +51,8 @@ github.com/jackc/puddle/v2 v2.2.2 h1:PR8nw+E/1w0GLuRFSmiioY6UooMp6KJv0/61nB7icHo
 github.com/jackc/puddle/v2 v2.2.2/go.mod h1:vriiEXHvEE654aYKXXjOvZM39qJ0q+azkZFrfEOc3H4=
 github.com/jfxdev/go-qbt v1.0.12 h1:E27c9JiLnYHnwnZK/Gr04/2WN1kDlrOlUDP+gP0VlVM=
 github.com/jfxdev/go-qbt v1.0.12/go.mod h1:qucG0t+fcSR4R23Ahb6CBW5JbM6KGuXawk+iwNCJfWE=
+github.com/jfxdev/go-qbt v1.0.13 h1:TUUENcbkAz0XqWwUwcFbhn7blxrJhBFQ4DfUlnAjlUA=
+github.com/jfxdev/go-qbt v1.0.13/go.mod h1:qucG0t+fcSR4R23Ahb6CBW5JbM6KGuXawk+iwNCJfWE=
 github.com/jinzhu/inflection v1.0.0 h1:K317FqzuhWc8YvSVlFMCCUb36O/S9MCKRDI7QkRKD/E=
 github.com/jinzhu/inflection v1.0.0/go.mod h1:h+uFLlag+Qp1Va5pdKtLDYj+kHp5pxUVkryuEj+Srlc=
 github.com/jinzhu/now v1.1.5 h1:/o9tlHleP7gOFmsnYNz3RGnqzefHA47wQpKrrdTIwXQ=

@@ -1,6 +1,7 @@
-package task
+package agent
 
 import (
+	"context"
 	"strconv"
 
 	"github.com/gardarr/gardarr/internal/entities"
@@ -72,6 +73,22 @@ func (s *Repository) GetInstance() (*entities.Instance, error) {
 	}, nil
 }
 
+func (s *Repository) GetPreferences(ctx context.Context) (*entities.InstancePreferences, error) {
+	settings, err := s.client.GetGlobalSettings()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get global settings")
+	}
+
+	return &entities.InstancePreferences{
+		GlobalRateLimits: entities.InstancePreferencesGlobalRateLimits{
+			DownloadSpeedLimit:        settings.GlobalDLSpeedLimit,
+			DownloadSpeedLimitEnabled: settings.GlobalDLSpeedLimitEnabled,
+			UploadSpeedLimit:          settings.GlobalUPSpeedLimit,
+			UploadSpeedLimitEnabled:   settings.GlobalUPSpeedLimitEnabled,
+		},
+	}, nil
+}
+
 func (s *Repository) Ping() error {
 	version, err := s.client.GetAppVersion()
 	if err != nil {
@@ -80,6 +97,22 @@ func (s *Repository) Ping() error {
 
 	if version == "" {
 		return errors.New("failed to get app version")
+	}
+
+	return nil
+}
+
+func (s *Repository) SetDownloadSpeedLimit(limit int) error {
+	if err := s.client.SetDownloadSpeedLimit(limit); err != nil {
+		return errors.Wrap(err, "failed to set download speed limit")
+	}
+
+	return nil
+}
+
+func (s *Repository) SetUploadSpeedLimit(limit int) error {
+	if err := s.client.SetUploadSpeedLimit(limit); err != nil {
+		return errors.Wrap(err, "failed to set upload speed limit")
 	}
 
 	return nil

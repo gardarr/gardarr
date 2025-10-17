@@ -28,6 +28,21 @@ func ToInstanceResponse(e *entities.Instance) models.InstanceResponse {
 	}
 }
 
+func ToInstancePreferencesResponse(e *entities.InstancePreferences) models.InstancePreferencesResponse {
+	if e == nil {
+		return models.InstancePreferencesResponse{}
+	}
+
+	return models.InstancePreferencesResponse{
+		GlobalRateLimits: models.InstancePreferencesGlobalRateLimitsResponse{
+			DownloadSpeedLimit:        e.GlobalRateLimits.DownloadSpeedLimit,
+			DownloadSpeedLimitEnabled: e.GlobalRateLimits.DownloadSpeedLimitEnabled,
+			UploadSpeedLimit:          e.GlobalRateLimits.UploadSpeedLimit,
+			UploadSpeedLimitEnabled:   e.GlobalRateLimits.UploadSpeedLimitEnabled,
+		},
+	}
+}
+
 func ToInstance(body models.InstanceResponse) *entities.Instance {
 	return &entities.Instance{
 		Server: entities.InstanceServer{

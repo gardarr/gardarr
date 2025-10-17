@@ -14,3 +14,21 @@ type TaskDeleteSchema struct {
 type TaskDeleteOptionsSchema struct {
 	Purge bool `form:"purge"`
 }
+
+type TaskSetShareLimitSchema struct {
+	Hash             string  `json:"hash" binding:"required"`
+	RatioLimit       float64 `json:"ratio_limit" binding:"required,min=0"`
+	SeedingTimeLimit int     `json:"seeding_time_limit" binding:"required,min=0"`
+}
+
+type TaskSetLocationSchema struct {
+	Location string `json:"location" binding:"required"`
+}
+
+type TaskRenameSchema struct {
+	NewName string `json:"new_name" binding:"required,min=1"`
+}
+
+type TaskSuperSeedingSchema struct {
+	Enabled bool `json:"enabled"`
+}

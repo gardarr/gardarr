@@ -11,7 +11,7 @@ import (
 )
 
 type service struct {
-	repository *repository.Repository
+	repository repository.RepositoryInterface
 }
 
 func New() (interfaces.TaskService, error) {
@@ -67,4 +67,32 @@ func (s *service) DeleteTask(ctx context.Context, id string, deleteFiles bool) e
 
 func (s *service) ResumeTask(ctx context.Context, hash string) error {
 	return s.repository.Resume(hash)
+}
+
+func (s *service) ForceResumeTask(ctx context.Context, hash string) error {
+	return s.repository.ForceResume(hash)
+}
+
+func (s *service) SetTaskShareLimit(ctx context.Context, schema schemas.TaskSetShareLimitSchema) error {
+	return s.repository.SetShareLimit(schema)
+}
+
+func (s *service) SetTaskLocation(ctx context.Context, hash string, schema schemas.TaskSetLocationSchema) error {
+	return s.repository.SetLocation(hash, schema)
+}
+
+func (s *service) RenameTask(ctx context.Context, hash string, schema schemas.TaskRenameSchema) error {
+	return s.repository.Rename(hash, schema)
+}
+
+func (s *service) SetTaskSuperSeeding(ctx context.Context, hash string, schema schemas.TaskSuperSeedingSchema) error {
+	return s.repository.SetSuperSeeding(hash, schema)
+}
+
+func (s *service) ForceRecheckTask(ctx context.Context, hash string) error {
+	return s.repository.ForceRecheck(hash)
+}
+
+func (s *service) ForceReannounceTask(ctx context.Context, hash string) error {
+	return s.repository.ForceReannounce(hash)
 }

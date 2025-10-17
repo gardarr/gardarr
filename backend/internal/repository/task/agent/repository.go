@@ -119,6 +119,14 @@ func (s *Repository) Resume(hash string) error {
 	return nil
 }
 
+func (s *Repository) ForceResume(hash string) error {
+	if err := s.client.ForceStart(hash); err != nil {
+		return errors.Wrap(err, "failed to force resume torrent")
+	}
+
+	return nil
+}
+
 func (s *Repository) SetTags(hash string, tags []string) error {
 	items, err := s.client.ListTorrents(qbt.ListOptions{})
 	if err != nil {
@@ -134,6 +142,30 @@ func (s *Repository) SetTags(hash string, tags []string) error {
 	return errors.ErrTaskNotFound
 }
 
+func (s *Repository) SetShareLimit(schema schemas.TaskSetShareLimitSchema) error {
+	if err := s.client.SetTorrentShareLimit(schema.Hash, schema.RatioLimit, schema.SeedingTimeLimit); err != nil {
+		return errors.Wrap(err, "failed to set torrent share limit")
+	}
+
+	return nil
+}
+
+func (s *Repository) SetLocation(hash string, schema schemas.TaskSetLocationSchema) error {
+	if err := s.client.SetTorrentLocation(hash, schema.Location); err != nil {
+		return errors.Wrap(err, "failed to set torrent location")
+	}
+
+	return nil
+}
+
+func (s *Repository) Rename(hash string, schema schemas.TaskRenameSchema) error {
+	if err := s.client.RenameTorrent(hash, schema.NewName); err != nil {
+		return errors.Wrap(err, "failed to rename torrent")
+	}
+
+	return nil
+}
+
 func ParseMagnetLink(magnetURI string) (*entities.TaskMagnetLink, error) {
 	uri, err := qbt.ParseMagnetLink(magnetURI)
 	if err != nil {
@@ -147,6 +179,30 @@ func ParseMagnetLink(magnetURI string) (*entities.TaskMagnetLink, error) {
 		ExactLength: uri.ExactLength,
 		ExactSource: uri.ExactSource,
 	}, nil
+}
+
+func (s *Repository) SetSuperSeeding(hash string, schema schemas.TaskSuperSeedingSchema) error {
+	if err := s.client.SuperSeedingMode(hash, schema.Enabled); err != nil {
+		return errors.Wrap(err, "failed to set super seeding mode")
+	}
+
+	return nil
+}
+
+func (s *Repository) ForceRecheck(hash string) error {
+	if err := s.client.ForceRecheck(hash); err != nil {
+		return errors.Wrap(err, "failed to force recheck torrent")
+	}
+
+	return nil
+}
+
+func (s *Repository) ForceReannounce(hash string) error {
+	if err := s.client.ForceReannounce(hash); err != nil {
+		return errors.Wrap(err, "failed to force reannounce torrent")
+	}
+
+	return nil
 }
 
 func toTask(item *qbt.TorrentResponse) *entities.Task {

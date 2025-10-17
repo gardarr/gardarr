@@ -6,6 +6,17 @@ type Instance struct {
 	Transfer    InstanceTransfer
 }
 
+type InstancePreferences struct {
+	GlobalRateLimits InstancePreferencesGlobalRateLimits
+}
+
+type InstancePreferencesGlobalRateLimits struct {
+	DownloadSpeedLimit        int
+	DownloadSpeedLimitEnabled bool
+	UploadSpeedLimit          int
+	UploadSpeedLimitEnabled   bool
+}
+
 type InstanceApplication struct {
 	Version    string
 	APIVersion string

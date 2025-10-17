@@ -6,6 +6,7 @@ import (
 	"github.com/gardarr/gardarr/internal/entities"
 	"github.com/gardarr/gardarr/internal/interfaces"
 	repository "github.com/gardarr/gardarr/internal/repository/instance/agent"
+	"github.com/gardarr/gardarr/internal/schemas"
 )
 
 func New() (interfaces.InstanceService, error) {
@@ -19,7 +20,7 @@ func New() (interfaces.InstanceService, error) {
 }
 
 type service struct {
-	repository *repository.Repository
+	repository repository.RepositoryInterface
 }
 
 func (s *service) GetInstance(ctx context.Context) (*entities.Instance, error) {
@@ -33,4 +34,16 @@ func (s *service) GetInstance(ctx context.Context) (*entities.Instance, error) {
 
 func (s *service) Ping(ctx context.Context) error {
 	return s.repository.Ping()
+}
+
+func (s *service) GetPreferences(ctx context.Context) (*entities.InstancePreferences, error) {
+	return s.repository.GetPreferences(ctx)
+}
+
+func (s *service) SetDownloadSpeedLimit(ctx context.Context, schema schemas.InstanceSetDownloadSpeedLimitSchema) error {
+	return s.repository.SetDownloadSpeedLimit(schema.Limit)
+}
+
+func (s *service) SetUploadSpeedLimit(ctx context.Context, schema schemas.InstanceSetUploadSpeedLimitSchema) error {
+	return s.repository.SetUploadSpeedLimit(schema.Limit)
 }

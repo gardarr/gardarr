@@ -34,3 +34,13 @@ func validateInstanceType(fl validator.FieldLevel) bool {
 	instanceType := fl.Field().String()
 	return slices.Contains(validInstanceTypes, instanceType)
 }
+
+// InstanceSetDownloadSpeedLimitSchema represents the request body for setting download speed limit
+type InstanceSetDownloadSpeedLimitSchema struct {
+	Limit int `json:"limit" binding:"required,min=0"`
+}
+
+// InstanceSetUploadSpeedLimitSchema represents the request body for setting upload speed limit
+type InstanceSetUploadSpeedLimitSchema struct {
+	Limit int `json:"limit" binding:"required,min=0"`
+}

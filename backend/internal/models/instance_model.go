@@ -66,3 +66,14 @@ type InstanceTransferResponse struct {
 	LastExternalAddressV4 string  `json:"last_external_address_v4"`
 	LastExternalAddressV6 string  `json:"last_external_address_v6"`
 }
+
+type InstancePreferencesResponse struct {
+	GlobalRateLimits InstancePreferencesGlobalRateLimitsResponse `json:"global_rate_limits"`
+}
+
+type InstancePreferencesGlobalRateLimitsResponse struct {
+	DownloadSpeedLimit        int  `json:"download_speed_limit"`
+	DownloadSpeedLimitEnabled bool `json:"download_speed_limit_enabled"`
+	UploadSpeedLimit          int  `json:"upload_speed_limit"`
+	UploadSpeedLimitEnabled   bool `json:"upload_speed_limit_enabled"`
+}
