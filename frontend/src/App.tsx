@@ -10,6 +10,7 @@ import CategoriesPage from './Categories'
 import SettingsPage from './Settings'
 import AboutPage from './About'
 import ProfilePage from './Profile'
+import UsersPage from './Users'
 import LoginPage from './Login'
 import SignupPage from './Signup'
 
@@ -35,6 +36,7 @@ function App() {
             <Route path="torrents" element={<TorrentsPage />} />
             <Route path="agents" element={<AgentsPage />} />
             <Route path="categories" element={<CategoriesPage />} />
+            <Route path="users" element={<UsersPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="about" element={<AboutPage />} />

@@ -1,6 +1,6 @@
 // AppLayout.tsx
 import { Button } from "@/components/ui/button";
-import { Home, Settings, Users, BarChart3, Download, Menu, Sun, Moon, Info, LogOut, FolderOpen } from "lucide-react";
+import { Home, Settings, Users, BarChart3, Download, Menu, Sun, Moon, Info, LogOut, FolderOpen, UserCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import PageTransition from "@/components/PageTransition";
@@ -64,6 +64,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/torrents", icon: Download, label: t("navigation.torrents") },
     { href: "/agents", icon: Users, label: t("navigation.agents") },
     { href: "/categories", icon: FolderOpen, label: t("navigation.categories") },
+    { href: "/users", icon: UserCircle, label: t("navigation.users") },
     { href: "/analytics", icon: BarChart3, label: t("navigation.analytics") },
   ];
 
@@ -196,6 +197,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {location.pathname === "/instances" && "Instances"}
               {location.pathname === "/agents" && t("navigation.agents")}
               {location.pathname === "/categories" && t("navigation.categories")}
+              {location.pathname === "/users" && t("navigation.users")}
               {location.pathname === "/analytics" && t("navigation.analytics")}
               {location.pathname === "/settings" && t("navigation.settings")}
               {location.pathname === "/profile" && t("navigation.profile")}
