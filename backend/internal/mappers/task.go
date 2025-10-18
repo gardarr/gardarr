@@ -98,3 +98,27 @@ func ToTaskResponse(e *entities.Task) models.TaskResponseModel {
 	}
 
 }
+
+func ToTaskFileResponse(e *entities.TaskFile) models.TaskFileResponse {
+	return models.TaskFileResponse{
+		Name:         e.Name,
+		Size:         e.Size,
+		Progress:     e.Progress,
+		Priority:     e.Priority,
+		IsSeed:       e.IsSeed,
+		PieceRange:   e.PieceRange,
+		Availability: e.Availability,
+	}
+}
+
+func ToTaskFilesResponse(files []*entities.TaskFile) []models.TaskFileResponse {
+	if files == nil {
+		return []models.TaskFileResponse{}
+	}
+
+	response := make([]models.TaskFileResponse, len(files))
+	for i, file := range files {
+		response[i] = ToTaskFileResponse(file)
+	}
+	return response
+}

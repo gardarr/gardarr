@@ -19,6 +19,8 @@
       "about": "Sobre"
     },
     "profile": {
+      "title": "Perfil",
+      "subtitle": "Gerencie sua conta e preferências",
       "personalInfo": {
         "title": "Informações Pessoais",
         "description": "Gerencie seus dados pessoais",
@@ -105,6 +107,31 @@
         "languages": {
           "en-US": "Inglês (Estados Unidos)",
           "pt-BR": "Português (Brasil)"
+        }
+      },
+      "colorVariant": {
+        "title": "Variante de Cor",
+        "description": "Personalize a paleta de cores da interface",
+        "selectLabel": "Selecione a Variante de Cor",
+        "current": "Variante Atual",
+        "preview": "Pré-visualização de Cores",
+        "saveSuccess": "Variante de cor salva com sucesso",
+        "saveChanges": "Salvar Alterações",
+        "variants": {
+          "default": "Padrão",
+          "aura": "Aura",
+          "sunset": "Pôr do Sol",
+          "ocean": "Oceano",
+          "forest": "Floresta",
+          "lavender": "Lavanda",
+          "rose": "Rosa",
+          "amber": "Âmbar",
+          "mint": "Menta",
+          "crimson": "Carmesim",
+          "cyberpunk": "Cyberpunk",
+          "golden": "Dourado",
+          "earth": "Terra",
+          "silver": "Prata"
         }
       },
       "other": {

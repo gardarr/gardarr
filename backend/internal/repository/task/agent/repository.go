@@ -95,9 +95,9 @@ func (s *Repository) Add(schema schemas.TaskCreateSchema) (*entities.Task, error
 	return toTask(task), nil
 }
 
-func (s *Repository) Pause(hash string) error {
-	if err := s.client.PauseTorrents(hash); err != nil {
-		return errors.Wrap(err, "failed to pause torrent")
+func (s *Repository) Stop(hash string) error {
+	if err := s.client.StopTorrents(hash); err != nil {
+		return errors.Wrap(err, "failed to stop torrent")
 	}
 
 	return nil
@@ -111,9 +111,9 @@ func (s *Repository) Delete(id string, deleteFiles bool) error {
 	return nil
 }
 
-func (s *Repository) Resume(hash string) error {
-	if err := s.client.ResumeTorrents(hash); err != nil {
-		return errors.Wrap(err, "failed to resume torrent")
+func (s *Repository) Start(hash string) error {
+	if err := s.client.StartTorrents(hash); err != nil {
+		return errors.Wrap(err, "failed to start torrent")
 	}
 
 	return nil
@@ -203,6 +203,44 @@ func (s *Repository) ForceReannounce(hash string) error {
 	}
 
 	return nil
+}
+
+func (s *Repository) SetDownloadLimit(hash string, schema schemas.TaskSetDownloadLimitSchema) error {
+	if err := s.client.SetTorrentDownloadLimit(hash, schema.Limit); err != nil {
+		return errors.Wrap(err, "failed to set torrent download limit")
+	}
+
+	return nil
+}
+
+func (s *Repository) SetUploadLimit(hash string, schema schemas.TaskSetUploadLimitSchema) error {
+	if err := s.client.SetTorrentUploadLimit(hash, schema.Limit); err != nil {
+		return errors.Wrap(err, "failed to set torrent upload limit")
+	}
+
+	return nil
+}
+
+func (s *Repository) ListFiles(hash string) ([]*entities.TaskFile, error) {
+	files, err := s.client.ListTorrentFiles(hash)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to list torrent files")
+	}
+
+	result := make([]*entities.TaskFile, len(files))
+	for i, file := range files {
+		result[i] = &entities.TaskFile{
+			Name:         file.Name,
+			Size:         file.Size,
+			Progress:     file.Progress,
+			Priority:     file.Priority,
+			IsSeed:       file.IsSeed,
+			PieceRange:   file.PieceRange,
+			Availability: file.Availability,
+		}
+	}
+
+	return result, nil
 }
 
 func toTask(item *qbt.TorrentResponse) *entities.Task {

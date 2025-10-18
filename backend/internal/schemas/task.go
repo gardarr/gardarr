@@ -32,3 +32,11 @@ type TaskRenameSchema struct {
 type TaskSuperSeedingSchema struct {
 	Enabled bool `json:"enabled"`
 }
+
+type TaskSetDownloadLimitSchema struct {
+	Limit int `json:"limit" binding:"required,min=0"`
+}
+
+type TaskSetUploadLimitSchema struct {
+	Limit int `json:"limit" binding:"required,min=0"`
+}

@@ -34,7 +34,8 @@ import {
   UserMinus,
   Play,
   Pause,
-  Trash2
+  Trash2,
+  Zap
 } from "lucide-react";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { AgentIcon } from "@/components/ui/AgentIcon";
@@ -48,6 +49,7 @@ interface TorrentDetailsModalProps {
   onPlay?: (torrentId: string) => void;
   onPause?: (torrentId: string) => void;
   onDelete?: (torrentId: string) => void;
+  onForceDownload?: (torrentId: string) => void;
 }
 
 function formatBytes(bytes: number): string {
@@ -82,7 +84,7 @@ function useIsMobile(): boolean {
 }
 
 
-export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause, onDelete }: TorrentDetailsModalProps) {
+export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause, onDelete, onForceDownload }: TorrentDetailsModalProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const isMobile = useIsMobile();
   const { t } = useTranslation();
@@ -147,6 +149,24 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                   </TooltipTrigger>
                   <TooltipContent>
                     {t('torrents.actionButtons.pause')}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              {onForceDownload && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => onForceDownload(torrent.id)}
+                      className="h-10 w-10 text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-950 dark:text-orange-400 dark:hover:text-orange-300"
+                      aria-label="Force Download"
+                    >
+                      <Zap className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Force Download
                   </TooltipContent>
                 </Tooltip>
               )}

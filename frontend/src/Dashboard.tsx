@@ -55,11 +55,16 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {/* Título da página */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t("dashboard.title")}</h1>
-          <p className="text-muted-foreground">
-            {t("dashboard.subtitle")}
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+            <BarChart3 className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">{t("dashboard.title")}</h1>
+            <p className="text-muted-foreground">
+              {t("dashboard.subtitle")}
+            </p>
+          </div>
         </div>
       </div>
 

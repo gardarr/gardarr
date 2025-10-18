@@ -44,6 +44,10 @@ func Run(cmd *cobra.Command, args []string) error {
 		panic(fmt.Sprintf("erro ao conectar no banco: %v", err))
 	}
 
+	if err := db.Ping(context.Background()); err != nil {
+		panic(fmt.Sprintf("erro ao fazer conexão com banco: %v", err))
+	}
+
 	if err := database.RunMigrations(db); err != nil {
 		panic(fmt.Sprintf("erro ao rodar migrations: %v", err))
 	}

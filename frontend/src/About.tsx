@@ -10,9 +10,14 @@ export default function AboutPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">{t("about.title")}</h1>
-        <p className="text-muted-foreground mt-1">{t("about.subtitle")}</p>
+      <div className="flex items-center gap-3">
+        <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+          <Leaf className="h-6 w-6 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">{t("about.title")}</h1>
+          <p className="text-muted-foreground mt-1">{t("about.subtitle")}</p>
+        </div>
       </div>
 
       {/* Project Logo and Version */}

@@ -36,8 +36,8 @@ func (m Module) Register() {
 	m.taskRouter.DELETE("/:id", m.deleteTask)
 
 	m.taskRouter.GET("/:id", m.getTask)
-	m.taskRouter.POST("/:id/pause", m.pauseTask)
-	m.taskRouter.POST("/:id/resume", m.resumeTask)
+	m.taskRouter.POST("/:id/stop", m.stopTask)
+	m.taskRouter.POST("/:id/start", m.startTask)
 	m.taskRouter.POST("/:id/force_resume", m.forceResumeTask)
 	m.taskRouter.POST("/:id/share_limit", m.setTaskShareLimit)
 	m.taskRouter.POST("/:id/location", m.setTaskLocation)
@@ -45,6 +45,9 @@ func (m Module) Register() {
 	m.taskRouter.POST("/:id/super_seeding", m.setTaskSuperSeeding)
 	m.taskRouter.POST("/:id/force_recheck", m.forceRecheckTask)
 	m.taskRouter.POST("/:id/force_reannounce", m.forceReannounceTask)
+	m.taskRouter.POST("/:id/limit_download_rate", m.setTaskDownloadLimit)
+	m.taskRouter.POST("/:id/limit_upload_rate", m.setTaskUploadLimit)
+	m.taskRouter.GET("/:id/files", m.listTaskFiles)
 }
 
 func (m *Module) listTasks(c *gin.Context) {
@@ -115,34 +118,34 @@ func (m *Module) deleteTask(c *gin.Context) {
 	c.JSON(http.StatusOK, nil)
 }
 
-func (m *Module) pauseTask(c *gin.Context) {
+func (m *Module) stopTask(c *gin.Context) {
 	taskID := c.Param("id")
 	if taskID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "task ID is required"})
 		return
 	}
 
-	if err := m.controller.PauseTask(c.Request.Context(), taskID); err != nil {
+	if err := m.controller.StopTask(c.Request.Context(), taskID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "task paused successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "task stopped successfully"})
 }
 
-func (m *Module) resumeTask(c *gin.Context) {
+func (m *Module) startTask(c *gin.Context) {
 	taskID := c.Param("id")
 	if taskID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "task ID is required"})
 		return
 	}
 
-	if err := m.controller.ResumeTask(c.Request.Context(), taskID); err != nil {
+	if err := m.controller.StartTask(c.Request.Context(), taskID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "task resumed successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "task started successfully"})
 }
 
 func (m *Module) forceResumeTask(c *gin.Context) {
@@ -275,4 +278,62 @@ func (m *Module) forceReannounceTask(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "task force reannounce initiated successfully"})
+}
+
+func (m *Module) setTaskDownloadLimit(c *gin.Context) {
+	taskID := c.Param("id")
+	if taskID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "task ID is required"})
+		return
+	}
+
+	var body schemas.TaskSetDownloadLimitSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := m.controller.SetTaskDownloadLimit(c.Request.Context(), taskID, body); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "task download limit set successfully"})
+}
+
+func (m *Module) setTaskUploadLimit(c *gin.Context) {
+	taskID := c.Param("id")
+	if taskID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "task ID is required"})
+		return
+	}
+
+	var body schemas.TaskSetUploadLimitSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := m.controller.SetTaskUploadLimit(c.Request.Context(), taskID, body); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "task upload limit set successfully"})
+}
+
+func (m *Module) listTaskFiles(c *gin.Context) {
+	taskID := c.Param("id")
+	if taskID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "task ID is required"})
+		return
+	}
+
+	files, err := m.controller.ListTaskFiles(c.Request.Context(), taskID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, mappers.ToTaskFilesResponse(files))
 }

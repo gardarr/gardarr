@@ -124,6 +124,44 @@ func (r *Repository) GetInstance(agent *entities.Agent) (*entities.Instance, err
 	return mappers.ToInstance(handler), nil
 }
 
+func (r *Repository) GetAgentPreferences(agent *entities.Agent) (*entities.InstancePreferences, error) {
+	url := fmt.Sprintf("%s/v1/instance/preferences", agent.Address)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	decryptedToken, err := r.crypto.Decrypt(agent.Token)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", decryptedToken))
+
+	response, err := r.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return nil, errors.New("failed to get preferences")
+	}
+
+	var handler models.InstancePreferencesResponse
+	if err := json.NewDecoder(bytes.NewReader(body)).Decode(&handler); err != nil {
+		return nil, err
+	}
+
+	return mappers.ToInstancePreferences(handler), nil
+}
+
 // UpdateAgent updates an existing agent in the database
 func (r *Repository) UpdateAgent(ctx context.Context, uid uuid.UUID, updates map[string]interface{}) (*entities.Agent, error) {
 	var agent models.Agent
@@ -256,7 +294,7 @@ func (r *Repository) CreateAgentTask(agent *entities.Agent, schema schemas.TaskC
 }
 
 func (r *Repository) DeleteAgentTask(agent *entities.Agent, id string) error {
-	url := fmt.Sprintf("%s/v1/tasks/%s", agent.Address, id)
+	url := fmt.Sprintf("%s/v1/task/%s", agent.Address, id)
 
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
@@ -277,6 +315,87 @@ func (r *Repository) DeleteAgentTask(agent *entities.Agent, id string) error {
 
 	if response.StatusCode != http.StatusOK {
 		return errors.New("failed to delete task")
+	}
+
+	return nil
+}
+
+func (r *Repository) PauseAgentTask(agent *entities.Agent, taskID string) error {
+	url := fmt.Sprintf("%s/v1/task/%s/pause", agent.Address, taskID)
+
+	req, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		return err
+	}
+
+	decryptedToken, err := r.crypto.Decrypt(agent.Token)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", decryptedToken))
+
+	response, err := r.http.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if response.StatusCode != http.StatusOK {
+		return errors.New("failed to pause task")
+	}
+
+	return nil
+}
+
+func (r *Repository) ResumeAgentTask(agent *entities.Agent, taskID string) error {
+	url := fmt.Sprintf("%s/v1/task/%s/resume", agent.Address, taskID)
+
+	req, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		return err
+	}
+
+	decryptedToken, err := r.crypto.Decrypt(agent.Token)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", decryptedToken))
+
+	response, err := r.http.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if response.StatusCode != http.StatusOK {
+		return errors.New("failed to resume task")
+	}
+
+	return nil
+}
+
+func (r *Repository) ForceDownloadAgentTask(agent *entities.Agent, taskID string) error {
+	url := fmt.Sprintf("%s/v1/task/%s/force_download", agent.Address, taskID)
+
+	req, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		return err
+	}
+
+	decryptedToken, err := r.crypto.Decrypt(agent.Token)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", decryptedToken))
+
+	response, err := r.http.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if response.StatusCode != http.StatusOK {
+		return errors.New("failed to force download task")
 	}
 
 	return nil

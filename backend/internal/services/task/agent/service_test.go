@@ -12,8 +12,8 @@ import (
 // mockRepository is a mock implementation of the task repository for testing
 type mockRepository struct {
 	tasks       map[string]*entities.Task
-	pauseError  error
-	resumeError error
+	stopError   error
+	startError  error
 	forceError  error
 	deleteError error
 	createError error
@@ -59,9 +59,9 @@ func (m *mockRepository) Add(schema schemas.TaskCreateSchema) (*entities.Task, e
 	return task, nil
 }
 
-func (m *mockRepository) Pause(hash string) error {
-	if m.pauseError != nil {
-		return m.pauseError
+func (m *mockRepository) Stop(hash string) error {
+	if m.stopError != nil {
+		return m.stopError
 	}
 	if task, exists := m.tasks[hash]; exists {
 		task.State = "PAUSED_DOWNLOAD"
@@ -70,9 +70,9 @@ func (m *mockRepository) Pause(hash string) error {
 	return errors.New("task not found")
 }
 
-func (m *mockRepository) Resume(hash string) error {
-	if m.resumeError != nil {
-		return m.resumeError
+func (m *mockRepository) Start(hash string) error {
+	if m.startError != nil {
+		return m.startError
 	}
 	if task, exists := m.tasks[hash]; exists {
 		task.State = "DOWNLOADING"
@@ -159,7 +159,50 @@ func (m *mockRepository) ForceReannounce(hash string) error {
 	return errors.New("task not found")
 }
 
-func TestService_PauseTask(t *testing.T) {
+func (m *mockRepository) SetDownloadLimit(hash string, schema schemas.TaskSetDownloadLimitSchema) error {
+	if _, exists := m.tasks[hash]; exists {
+		// Simulate setting download limit (in real implementation, this would be handled by qBittorrent)
+		return nil
+	}
+	return errors.New("task not found")
+}
+
+func (m *mockRepository) SetUploadLimit(hash string, schema schemas.TaskSetUploadLimitSchema) error {
+	if _, exists := m.tasks[hash]; exists {
+		// Simulate setting upload limit (in real implementation, this would be handled by qBittorrent)
+		return nil
+	}
+	return errors.New("task not found")
+}
+
+func (m *mockRepository) ListFiles(hash string) ([]*entities.TaskFile, error) {
+	if _, exists := m.tasks[hash]; exists {
+		// Return mock files for testing
+		return []*entities.TaskFile{
+			{
+				Name:         "file1.txt",
+				Size:         1024,
+				Progress:     0.5,
+				Priority:     1,
+				IsSeed:       false,
+				PieceRange:   [2]int{0, 10},
+				Availability: 1.0,
+			},
+			{
+				Name:         "file2.txt",
+				Size:         2048,
+				Progress:     1.0,
+				Priority:     1,
+				IsSeed:       true,
+				PieceRange:   [2]int{11, 20},
+				Availability: 1.0,
+			},
+		}, nil
+	}
+	return nil, errors.New("task not found")
+}
+
+func TestService_StopTask(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := newMockRepository()
 	service := &service{repository: mockRepo}
@@ -173,8 +216,8 @@ func TestService_PauseTask(t *testing.T) {
 	}
 	mockRepo.tasks["test-hash"] = task
 
-	// Test successful pause
-	err := service.PauseTask(ctx, "test-hash")
+	// Test successful stop
+	err := service.StopTask(ctx, "test-hash")
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
@@ -183,22 +226,22 @@ func TestService_PauseTask(t *testing.T) {
 		t.Errorf("Expected task state to be PAUSED_DOWNLOAD, got %s", task.State)
 	}
 
-	// Test pause with repository error
-	mockRepo.pauseError = errors.New("repository error")
-	err = service.PauseTask(ctx, "test-hash")
+	// Test stop with repository error
+	mockRepo.stopError = errors.New("repository error")
+	err = service.StopTask(ctx, "test-hash")
 	if err == nil {
 		t.Error("Expected error, got nil")
 	}
 
-	// Test pause with non-existent task
-	mockRepo.pauseError = nil
-	err = service.PauseTask(ctx, "non-existent-hash")
+	// Test stop with non-existent task
+	mockRepo.stopError = nil
+	err = service.StopTask(ctx, "non-existent-hash")
 	if err == nil {
 		t.Error("Expected error for non-existent task, got nil")
 	}
 }
 
-func TestService_ResumeTask(t *testing.T) {
+func TestService_StartTask(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := newMockRepository()
 	service := &service{repository: mockRepo}
@@ -212,8 +255,8 @@ func TestService_ResumeTask(t *testing.T) {
 	}
 	mockRepo.tasks["test-hash"] = task
 
-	// Test successful resume
-	err := service.ResumeTask(ctx, "test-hash")
+	// Test successful start
+	err := service.StartTask(ctx, "test-hash")
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
@@ -222,16 +265,16 @@ func TestService_ResumeTask(t *testing.T) {
 		t.Errorf("Expected task state to be DOWNLOADING, got %s", task.State)
 	}
 
-	// Test resume with repository error
-	mockRepo.resumeError = errors.New("repository error")
-	err = service.ResumeTask(ctx, "test-hash")
+	// Test start with repository error
+	mockRepo.startError = errors.New("repository error")
+	err = service.StartTask(ctx, "test-hash")
 	if err == nil {
 		t.Error("Expected error, got nil")
 	}
 
-	// Test resume with non-existent task
-	mockRepo.resumeError = nil
-	err = service.ResumeTask(ctx, "non-existent-hash")
+	// Test start with non-existent task
+	mockRepo.startError = nil
+	err = service.StartTask(ctx, "non-existent-hash")
 	if err == nil {
 		t.Error("Expected error for non-existent task, got nil")
 	}
@@ -550,6 +593,112 @@ func TestService_ForceReannounceTask(t *testing.T) {
 
 	// Test with non-existent task
 	err = service.ForceReannounceTask(ctx, "non-existent-hash")
+	if err == nil {
+		t.Error("Expected error for non-existent task, got nil")
+	}
+}
+
+func TestService_SetTaskDownloadLimit(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := newMockRepository()
+	service := &service{repository: mockRepo}
+
+	// Add a test task
+	task := &entities.Task{ID: "test-hash", Hash: "test-hash", Name: "Test Task"}
+	mockRepo.tasks["test-hash"] = task
+
+	schema := schemas.TaskSetDownloadLimitSchema{
+		Limit: 1024000, // 1 MB/s in bytes
+	}
+
+	// Test successful download limit setting
+	err := service.SetTaskDownloadLimit(ctx, "test-hash", schema)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	// Test with non-existent task
+	err = service.SetTaskDownloadLimit(ctx, "non-existent-hash", schema)
+	if err == nil {
+		t.Error("Expected error for non-existent task, got nil")
+	}
+}
+
+func TestService_SetTaskUploadLimit(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := newMockRepository()
+	service := &service{repository: mockRepo}
+
+	// Add a test task
+	task := &entities.Task{ID: "test-hash", Hash: "test-hash", Name: "Test Task"}
+	mockRepo.tasks["test-hash"] = task
+
+	schema := schemas.TaskSetUploadLimitSchema{
+		Limit: 512000, // 512 KB/s in bytes
+	}
+
+	// Test successful upload limit setting
+	err := service.SetTaskUploadLimit(ctx, "test-hash", schema)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	// Test with non-existent task
+	err = service.SetTaskUploadLimit(ctx, "non-existent-hash", schema)
+	if err == nil {
+		t.Error("Expected error for non-existent task, got nil")
+	}
+}
+
+func TestService_ListTaskFiles(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := newMockRepository()
+	service := &service{repository: mockRepo}
+
+	// Add a test task
+	task := &entities.Task{ID: "test-hash", Hash: "test-hash", Name: "Test Task"}
+	mockRepo.tasks["test-hash"] = task
+
+	// Test successful list files
+	files, err := service.ListTaskFiles(ctx, "test-hash")
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	if len(files) != 2 {
+		t.Errorf("Expected 2 files, got %d", len(files))
+	}
+
+	// Verify first file
+	if files[0].Name != "file1.txt" {
+		t.Errorf("Expected file name 'file1.txt', got %s", files[0].Name)
+	}
+	if files[0].Size != 1024 {
+		t.Errorf("Expected file size 1024, got %d", files[0].Size)
+	}
+	if files[0].Progress != 0.5 {
+		t.Errorf("Expected progress 0.5, got %f", files[0].Progress)
+	}
+	if files[0].IsSeed {
+		t.Error("Expected IsSeed to be false")
+	}
+
+	// Verify second file
+	if files[1].Name != "file2.txt" {
+		t.Errorf("Expected file name 'file2.txt', got %s", files[1].Name)
+	}
+	if files[1].Size != 2048 {
+		t.Errorf("Expected file size 2048, got %d", files[1].Size)
+	}
+	if files[1].Progress != 1.0 {
+		t.Errorf("Expected progress 1.0, got %f", files[1].Progress)
+	}
+	if !files[1].IsSeed {
+		t.Error("Expected IsSeed to be true")
+	}
+
+	// Test with non-existent task
+	_, err = service.ListTaskFiles(ctx, "non-existent-hash")
 	if err == nil {
 		t.Error("Expected error for non-existent task, got nil")
 	}

@@ -10,7 +10,7 @@ import logoImage from "@/assets/img/logo/logo_64x64.png";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
-  const { logout, user } = useAuth();
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isDark, setIsDark] = useState<boolean>(false);
@@ -70,22 +70,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden">
       {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      <div 
+        className={`fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity duration-300 ${
+          sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => setSidebarOpen(false)}
+      />
       
       {/* Sidebar Esquerda - Responsiva para mobile */}
       <div 
-        className={`bg-sidebar border-r border-border transition-all duration-300 flex flex-col ${
-          sidebarOpen ? 'w-64' : 'w-16'
-        } ${
-          sidebarOpen 
-            ? 'fixed inset-y-0 left-0 z-50 w-64 md:relative md:z-auto' 
-            : 'hidden md:flex'
-        }`}
+        className={`bg-sidebar border-r border-border flex-col transition-all duration-300 ease-in-out overflow-hidden
+          ${sidebarOpen 
+            ? 'flex fixed inset-y-0 left-0 z-50 w-64 translate-x-0 md:relative md:z-auto md:w-64' 
+            : 'fixed inset-y-0 left-0 z-50 w-64 -translate-x-full md:flex md:relative md:translate-x-0 md:w-16'
+          }`}
       >
         {/* Header da Sidebar */}
         <div className="border-b border-border p-4">
@@ -97,9 +95,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 className="h-full w-full object-contain"
               />
             </div>
-            {(sidebarOpen || isMobile) && (
-              <span className="font-semibold text-lg whitespace-nowrap">Gardarr</span>
-            )}
+            <span className={`font-semibold text-lg whitespace-nowrap transition-all duration-200 overflow-hidden ${
+              sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
+            }`}>
+              Gardarr
+            </span>
           </div>
         </div>
         
@@ -114,16 +114,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <Link
                     to={item.href}
                     onClick={() => isMobile && setSidebarOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
+                    className={`flex items-center px-3 py-2 rounded-md transition-all ${
                       isActive 
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground" 
-                        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                    }`}
+                        ? "bg-primary text-primary-foreground" 
+                        : "text-sidebar-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                    } ${!sidebarOpen && !isMobile ? 'justify-center' : 'gap-3'}`}
                   >
                     <IconComponent className="h-4 w-4 flex-shrink-0" />
-                    {(sidebarOpen || isMobile) && (
-                      <span className="whitespace-nowrap">{item.label}</span>
-                    )}
+                    <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${
+                      sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
+                    }`}>
+                      {item.label}
+                    </span>
                   </Link>
                 </li>
               );
@@ -134,58 +136,34 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Footer da Sidebar */}
         <div className="border-t border-border p-2 mt-auto space-y-1">
           <Link
-            to="/profile"
-            onClick={() => isMobile && setSidebarOpen(false)}
-            className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
-              location.pathname === "/profile"
-                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-            }`}
-          >
-            <Users className="h-4 w-4 flex-shrink-0" />
-            {(sidebarOpen || isMobile) && (
-              <span className="whitespace-nowrap">{t("navigation.profile")}</span>
-            )}
-          </Link>
-          <Link
-            to="/settings"
-            onClick={() => isMobile && setSidebarOpen(false)}
-            className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
-              location.pathname === "/settings"
-                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-            }`}
-          >
-            <Settings className="h-4 w-4 flex-shrink-0" />
-            {(sidebarOpen || isMobile) && (
-              <span className="whitespace-nowrap">{t("navigation.settings")}</span>
-            )}
-          </Link>
-          <Link
             to="/about"
             onClick={() => isMobile && setSidebarOpen(false)}
-            className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
+            className={`flex items-center px-3 py-2 rounded-md transition-all ${
               location.pathname === "/about"
-                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-            }`}
+                ? "bg-primary text-primary-foreground"
+                : "text-sidebar-foreground hover:bg-primary/90 hover:text-primary-foreground"
+            } ${!sidebarOpen && !isMobile ? 'justify-center' : 'gap-3'}`}
           >
             <Info className="h-4 w-4 flex-shrink-0" />
-            {(sidebarOpen || isMobile) && (
-              <span className="whitespace-nowrap">{t("navigation.about")}</span>
-            )}
+            <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${
+              sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
+            }`}>
+              {t("navigation.about")}
+            </span>
           </Link>
           <button
             onClick={() => {
               handleLogout();
               isMobile && setSidebarOpen(false);
             }}
-            className="flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground w-full"
+            className={`flex items-center px-3 py-2 rounded-md transition-all text-sidebar-foreground hover:bg-primary/90 hover:text-primary-foreground w-full ${!sidebarOpen && !isMobile ? 'justify-center' : 'gap-3'}`}
           >
             <LogOut className="h-4 w-4 flex-shrink-0" />
-            {(sidebarOpen || isMobile) && (
-              <span className="whitespace-nowrap">{t("auth.logout")}</span>
-            )}
+            <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${
+              sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
+            }`}>
+              {t("auth.logout")}
+            </span>
           </button>
         </div>
       </div>
@@ -199,7 +177,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               variant="ghost"
               size="icon"
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="h-8 w-8 md:block hidden"
+              className="h-8 w-8 md:flex hidden items-center justify-center"
             >
               <Menu className="h-4 w-4" />
             </Button>
@@ -208,7 +186,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               variant="ghost"
               size="icon"
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="h-8 w-8 md:hidden"
+              className="h-8 w-8 md:hidden flex items-center justify-center"
             >
               <Menu className="h-4 w-4" />
             </Button>
@@ -226,13 +204,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
           
           <div className="flex items-center gap-2 md:gap-4">
-            <Button variant="ghost" size="icon" aria-label={t("theme.toggle")} onClick={toggleTheme} className="h-8 w-8">
+            <Button variant="ghost" size="icon" aria-label={t("navigation.settings")} asChild className="h-8 w-8 flex items-center justify-center">
+              <Link to="/settings">
+                <Settings className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button variant="ghost" size="icon" aria-label={t("theme.toggle")} onClick={toggleTheme} className="h-8 w-8 flex items-center justify-center">
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
             <Button variant="ghost" size="sm" asChild>
               <Link to="/profile" className="hidden sm:flex">
                 <Users className="h-4 w-4 mr-2" />
-                {user?.email || t("navigation.profile")}
+                {t("navigation.profile")}
               </Link>
             </Button>
             <Button variant="ghost" size="sm" className="hidden sm:flex" onClick={handleLogout}>

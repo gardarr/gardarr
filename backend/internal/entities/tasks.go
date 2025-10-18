@@ -58,6 +58,16 @@ type TaskCreationConfig struct {
 	Directory string
 }
 
+type TaskFile struct {
+	Name         string
+	Size         int64
+	Progress     float64
+	Priority     int
+	IsSeed       bool
+	PieceRange   [2]int
+	Availability float64
+}
+
 // TaskStatuses is the map reference of status in qBittorrent API
 var TaskStatuses = map[string]string{
 	"error":              "ERROR",

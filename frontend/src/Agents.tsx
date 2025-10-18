@@ -293,9 +293,14 @@ function Agents() {
       
       {/* Header */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Agents</h1>
-          <p className="text-muted-foreground">Manage your torrent clients and connections</p>
+        <div className="flex items-center gap-3">
+          <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Server className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold">Agents</h1>
+            <p className="text-muted-foreground">Manage your torrent clients and connections</p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button onClick={loadAgents} variant="outline" size="sm">

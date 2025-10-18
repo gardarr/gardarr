@@ -6,13 +6,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Gardarr</title>
     <script>
-      // Apply dark theme immediately to prevent flash
+      // Apply dark theme and color variant immediately to prevent flash
       (function() {
         const theme = localStorage.getItem('theme');
         const isDark = theme ? theme === 'dark' : true; // Default to dark
         if (isDark) {
           document.documentElement.classList.add('dark');
         }
+        
+        // Apply color variant
+        const colorVariant = localStorage.getItem('app_color_variant') || 'default';
+        document.documentElement.setAttribute('data-color-variant', colorVariant);
       })();
     </script>
   </head>

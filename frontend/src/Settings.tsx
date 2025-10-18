@@ -1,7 +1,7 @@
 // Settings.tsx
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Globe, Save, RotateCcw, Languages } from "lucide-react";
+import { Globe, Save, RotateCcw, Languages, Settings as SettingsIcon } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -102,11 +102,16 @@ export default function SettingsPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t("settings.title")}</h1>
-          <p className="text-muted-foreground">
-            {t("settings.subtitle")}
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+            <SettingsIcon className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">{t("settings.title")}</h1>
+            <p className="text-muted-foreground">
+              {t("settings.subtitle")}
+            </p>
+          </div>
         </div>
       </div>
 

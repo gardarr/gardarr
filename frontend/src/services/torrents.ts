@@ -32,6 +32,27 @@ export class TorrentService {
     const endpoint = `${this.baseEndpoint}/${taskId}${purge ? '?purge=true' : ''}`;
     return api.delete<null>(endpoint);
   }
+
+  /**
+   * Pausa uma task/torrent
+   */
+  async pauseTask(agentId: string, taskId: string): Promise<ApiResponse<null>> {
+    return api.post<null>(`/agent/${agentId}/tasks/${taskId}/pause`);
+  }
+
+  /**
+   * Retoma uma task/torrent
+   */
+  async resumeTask(agentId: string, taskId: string): Promise<ApiResponse<null>> {
+    return api.post<null>(`/agent/${agentId}/tasks/${taskId}/resume`);
+  }
+
+  /**
+   * Força download de uma task/torrent
+   */
+  async forceDownloadTask(agentId: string, taskId: string): Promise<ApiResponse<null>> {
+    return api.post<null>(`/agent/${agentId}/tasks/${taskId}/force_download`);
+  }
 }
 
 // Instância padrão do serviço

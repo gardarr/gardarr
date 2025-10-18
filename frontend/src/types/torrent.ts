@@ -3,7 +3,6 @@ import type { Agent } from "./agent";
 
 export interface Task {
   id: string;
-  agent_id: string;
   agent?: Agent;
   name: string;
   hash: string;

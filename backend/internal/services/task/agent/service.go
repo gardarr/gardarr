@@ -57,16 +57,16 @@ func (s *service) CreateTask(ctx context.Context, schema schemas.TaskCreateSchem
 	return s.repository.Add(schema)
 }
 
-func (s *service) PauseTask(ctx context.Context, hash string) error {
-	return s.repository.Pause(hash)
+func (s *service) StopTask(ctx context.Context, hash string) error {
+	return s.repository.Stop(hash)
 }
 
 func (s *service) DeleteTask(ctx context.Context, id string, deleteFiles bool) error {
 	return s.repository.Delete(id, deleteFiles)
 }
 
-func (s *service) ResumeTask(ctx context.Context, hash string) error {
-	return s.repository.Resume(hash)
+func (s *service) StartTask(ctx context.Context, hash string) error {
+	return s.repository.Start(hash)
 }
 
 func (s *service) ForceResumeTask(ctx context.Context, hash string) error {
@@ -95,4 +95,16 @@ func (s *service) ForceRecheckTask(ctx context.Context, hash string) error {
 
 func (s *service) ForceReannounceTask(ctx context.Context, hash string) error {
 	return s.repository.ForceReannounce(hash)
+}
+
+func (s *service) SetTaskDownloadLimit(ctx context.Context, hash string, schema schemas.TaskSetDownloadLimitSchema) error {
+	return s.repository.SetDownloadLimit(hash, schema)
+}
+
+func (s *service) SetTaskUploadLimit(ctx context.Context, hash string, schema schemas.TaskSetUploadLimitSchema) error {
+	return s.repository.SetUploadLimit(hash, schema)
+}
+
+func (s *service) ListTaskFiles(ctx context.Context, hash string) ([]*entities.TaskFile, error) {
+	return s.repository.ListFiles(hash)
 }

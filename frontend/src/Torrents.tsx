@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ArrowDownCircle, ArrowUpCircle, PauseCircle, Info, Search, ChevronLeft, ChevronRight, Loader2, ChevronDown, SortAsc, SortDesc, Clock, XCircle, FileX, Play, RotateCcw, HardDrive, Plus, SlidersHorizontal } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, PauseCircle, Info, Search, ChevronLeft, ChevronRight, Loader2, ChevronDown, SortAsc, SortDesc, Clock, XCircle, FileX, Play, RotateCcw, HardDrive, Plus, SlidersHorizontal, Download } from "lucide-react";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { torrentService } from "./services/torrents";
@@ -883,49 +883,103 @@ export default function TorrentsPage() {
   // Controles de torrent
   const handlePlayTorrent = async (torrentId: string) => {
     try {
-      // TODO: Implementar API call para iniciar/retomar torrent com ID: torrentId
-      console.log('Play torrent:', torrentId);
-      showSuccess('Torrent iniciado com sucesso');
+      const task = originalTasks.find(t => t.id === torrentId);
+      if (!task || !task.agent?.uuid) {
+        showError('Agent ID não encontrado para este torrent');
+        return;
+      }
+
+      const response = await torrentService.resumeTask(task.agent.uuid, torrentId);
+      if (response.error) {
+        showError(response.error);
+        return;
+      }
+
+      showSuccess('Torrent retomado com sucesso');
       
       // Recarregar dados sem fechar o modal
-      const response = await torrentService.listTasks();
-      if (response?.data) {
-        setOriginalTasks(response.data);
-        const mappedTorrents = response.data.map(mapTaskToTorrent);
+      const refreshResponse = await torrentService.listTasks();
+      if (refreshResponse?.data) {
+        setOriginalTasks(refreshResponse.data);
+        const mappedTorrents = refreshResponse.data.map(mapTaskToTorrent);
         setTorrents(mappedTorrents);
         
         // Atualizar o torrent selecionado para refletir mudanças
-        const updatedTask = response.data.find(t => t.id === torrentId);
+        const updatedTask = refreshResponse.data.find(t => t.id === torrentId);
         if (updatedTask) {
           setSelectedTorrent(updatedTask);
         }
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Erro ao iniciar torrent');
+      showError(err instanceof Error ? err.message : 'Erro ao retomar torrent');
     }
   };
 
   const handlePauseTorrent = async (torrentId: string) => {
     try {
-      // TODO: Implementar API call para pausar torrent com ID: torrentId
-      console.log('Pause torrent:', torrentId);
+      const task = originalTasks.find(t => t.id === torrentId);
+      if (!task || !task.agent?.uuid) {
+        showError('Agent ID não encontrado para este torrent');
+        return;
+      }
+
+      const response = await torrentService.pauseTask(task.agent.uuid, torrentId);
+      if (response.error) {
+        showError(response.error);
+        return;
+      }
+
       showSuccess('Torrent pausado com sucesso');
       
       // Recarregar dados sem fechar o modal
-      const response = await torrentService.listTasks();
-      if (response?.data) {
-        setOriginalTasks(response.data);
-        const mappedTorrents = response.data.map(mapTaskToTorrent);
+      const refreshResponse = await torrentService.listTasks();
+      if (refreshResponse?.data) {
+        setOriginalTasks(refreshResponse.data);
+        const mappedTorrents = refreshResponse.data.map(mapTaskToTorrent);
         setTorrents(mappedTorrents);
         
         // Atualizar o torrent selecionado para refletir mudanças
-        const updatedTask = response.data.find(t => t.id === torrentId);
+        const updatedTask = refreshResponse.data.find(t => t.id === torrentId);
         if (updatedTask) {
           setSelectedTorrent(updatedTask);
         }
       }
     } catch (err) {
       showError(err instanceof Error ? err.message : 'Erro ao pausar torrent');
+    }
+  };
+
+  const handleForceDownloadTorrent = async (torrentId: string) => {
+    try {
+      const task = originalTasks.find(t => t.id === torrentId);
+      if (!task || !task.agent?.uuid) {
+        showError('Agent ID não encontrado para este torrent');
+        return;
+      }
+
+      const response = await torrentService.forceDownloadTask(task.agent.uuid, torrentId);
+      if (response.error) {
+        showError(response.error);
+        return;
+      }
+
+      showSuccess('Force download iniciado com sucesso');
+      
+      // Recarregar dados sem fechar o modal
+      const refreshResponse = await torrentService.listTasks();
+      if (refreshResponse?.data) {
+        setOriginalTasks(refreshResponse.data);
+        const mappedTorrents = refreshResponse.data.map(mapTaskToTorrent);
+        setTorrents(mappedTorrents);
+        
+        // Atualizar o torrent selecionado para refletir mudanças
+        const updatedTask = refreshResponse.data.find(t => t.id === torrentId);
+        if (updatedTask) {
+          setSelectedTorrent(updatedTask);
+        }
+      }
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erro ao forçar download do torrent');
     }
   };
 
@@ -1217,11 +1271,16 @@ export default function TorrentsPage() {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">{t('torrents.title')}</h1>
-            <p className="text-muted-foreground">
-              {t('torrents.subtitle')}
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Download className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">{t('torrents.title')}</h1>
+              <p className="text-muted-foreground">
+                {t('torrents.subtitle')}
+              </p>
+            </div>
           </div>
         </div>
         <div className="flex items-center justify-center py-12">
@@ -1237,11 +1296,16 @@ export default function TorrentsPage() {
   return (
     <div className="space-y-6 min-h-full">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t('torrents.title')}</h1>
-          <p className="text-muted-foreground">
-            {t('torrents.subtitle')}
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Download className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">{t('torrents.title')}</h1>
+            <p className="text-muted-foreground">
+              {t('torrents.subtitle')}
+            </p>
+          </div>
         </div>
         <Button
           onClick={() => setIsAddModalOpen(true)}
@@ -1692,6 +1756,7 @@ export default function TorrentsPage() {
         onPlay={handlePlayTorrent}
         onPause={handlePauseTorrent}
         onDelete={handleDeleteTorrent}
+        onForceDownload={handleForceDownloadTorrent}
       />
 
       {/* Modal de adicionar torrent */}

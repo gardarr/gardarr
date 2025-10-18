@@ -61,3 +61,14 @@ func ToInstance(body models.InstanceResponse) *entities.Instance {
 		},
 	}
 }
+
+func ToInstancePreferences(body models.InstancePreferencesResponse) *entities.InstancePreferences {
+	return &entities.InstancePreferences{
+		GlobalRateLimits: entities.InstancePreferencesGlobalRateLimits{
+			DownloadSpeedLimit:        body.GlobalRateLimits.DownloadSpeedLimit,
+			DownloadSpeedLimitEnabled: body.GlobalRateLimits.DownloadSpeedLimitEnabled,
+			UploadSpeedLimit:          body.GlobalRateLimits.UploadSpeedLimit,
+			UploadSpeedLimitEnabled:   body.GlobalRateLimits.UploadSpeedLimitEnabled,
+		},
+	}
+}

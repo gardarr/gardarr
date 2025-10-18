@@ -34,8 +34,12 @@ func (m Module) Register() {
 	m.agentRouter.GET("/:id", m.getAgent)
 	m.agentRouter.PUT("/:id", m.updateAgent)
 	m.agentRouter.GET("/:id/tasks", m.listAgentTasks)
+	m.agentRouter.GET("/:id/preferences", m.getAgentPreferences)
 	m.agentRouter.DELETE("/:id", m.deleteAgent)
 	m.agentRouter.POST("/:id/task", m.createAgentTask)
+	m.agentRouter.POST("/:id/tasks/:task_id/pause", m.pauseAgentTask)
+	m.agentRouter.POST("/:id/tasks/:task_id/resume", m.resumeAgentTask)
+	m.agentRouter.POST("/:id/tasks/:task_id/force-download", m.forceDownloadAgentTask)
 }
 
 func (m *Module) createAgent(c *gin.Context) {
@@ -82,6 +86,26 @@ func (m *Module) getAgent(c *gin.Context) {
 	c.JSON(http.StatusOK, mappers.ToAgentResponse(result))
 }
 
+func (m *Module) getAgentPreferences(c *gin.Context) {
+	id := c.Param("id")
+
+	// First get the agent to ensure it exists
+	agent, err := m.service.Get(c.Request.Context(), id)
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	// Then get the agent preferences
+	preferences, err := m.service.GetPreferences(c.Request.Context(), agent)
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, mappers.ToInstancePreferencesResponse(preferences))
+}
+
 func (m *Module) updateAgent(c *gin.Context) {
 	id := c.Param("id")
 
@@ -110,4 +134,91 @@ func (m *Module) deleteAgent(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusNoContent, nil)
+}
+
+func (m *Module) listAgentsTasks(c *gin.Context) {
+	result, err := m.service.ListAgentsTasks()
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	resp := make([]models.TaskResponseModel, len(result))
+	for i, item := range result {
+		resp[i] = mappers.ToTaskResponse(item)
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func (m *Module) listAgentTasks(c *gin.Context) {
+	id := c.Param("id")
+
+	result, err := m.service.ListAgentTasks(c.Request.Context(), id)
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	resp := make([]models.TaskResponseModel, len(result))
+	for i, item := range result {
+		resp[i] = mappers.ToTaskResponse(item)
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func (m *Module) createAgentTask(c *gin.Context) {
+	id := c.Param("id")
+
+	var body schemas.TaskCreateSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	result, err := m.service.CreateAgentTask(c.Request.Context(), id, body)
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, mappers.ToTaskResponse(result))
+}
+
+func (m *Module) pauseAgentTask(c *gin.Context) {
+	agentID := c.Param("id")
+	taskID := c.Param("task_id")
+
+	if err := m.service.PauseAgentTask(c.Request.Context(), agentID, taskID); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Task paused successfully"})
+}
+
+func (m *Module) resumeAgentTask(c *gin.Context) {
+	agentID := c.Param("id")
+	taskID := c.Param("task_id")
+
+	if err := m.service.ResumeAgentTask(c.Request.Context(), agentID, taskID); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Task resumed successfully"})
+}
+
+func (m *Module) forceDownloadAgentTask(c *gin.Context) {
+	agentID := c.Param("id")
+	taskID := c.Param("task_id")
+
+	if err := m.service.ForceDownloadAgentTask(c.Request.Context(), agentID, taskID); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Task force download initiated successfully"})
 }

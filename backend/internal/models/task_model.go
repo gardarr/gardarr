@@ -49,3 +49,13 @@ type TaskUploadResponseModel struct {
 	Speed  int `json:"speed"`
 	Amount int `json:"amount"`
 }
+
+type TaskFileResponse struct {
+	Name         string  `json:"name"`
+	Size         int64   `json:"size"`
+	Progress     float64 `json:"progress"`
+	Priority     int     `json:"priority"`
+	IsSeed       bool    `json:"is_seed"`
+	PieceRange   [2]int  `json:"piece_range"`
+	Availability float64 `json:"availability"`
+}
