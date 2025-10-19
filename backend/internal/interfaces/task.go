@@ -24,6 +24,7 @@ type TaskService interface {
 	SetTaskDownloadLimit(context.Context, string, schemas.TaskSetDownloadLimitSchema) error
 	SetTaskUploadLimit(context.Context, string, schemas.TaskSetUploadLimitSchema) error
 	ListTaskFiles(context.Context, string) ([]*entities.TaskFile, error)
+	GetTasksStats(context.Context) (*entities.TaskStats, error)
 }
 
 type InstanceService interface {
@@ -32,4 +33,25 @@ type InstanceService interface {
 	GetPreferences(context.Context) (*entities.InstancePreferences, error)
 	SetDownloadSpeedLimit(context.Context, schemas.InstanceSetDownloadSpeedLimitSchema) error
 	SetUploadSpeedLimit(context.Context, schemas.InstanceSetUploadSpeedLimitSchema) error
+}
+
+// TaskRepositoryInterface defines the interface for task repository operations
+type TaskRepositoryInterface interface {
+	List() ([]*entities.Task, error)
+	Get(hash string) (*entities.Task, error)
+	Add(schema schemas.TaskCreateSchema) (*entities.Task, error)
+	Stop(hash string) error
+	Start(hash string) error
+	ForceResume(hash string) error
+	Delete(id string, deleteFiles bool) error
+	SetTags(hash string, tags []string) error
+	SetShareLimit(schema schemas.TaskSetShareLimitSchema) error
+	SetLocation(hash string, schema schemas.TaskSetLocationSchema) error
+	Rename(hash string, schema schemas.TaskRenameSchema) error
+	SetSuperSeeding(hash string, schema schemas.TaskSuperSeedingSchema) error
+	ForceRecheck(hash string) error
+	ForceReannounce(hash string) error
+	SetDownloadLimit(hash string, schema schemas.TaskSetDownloadLimitSchema) error
+	SetUploadLimit(hash string, schema schemas.TaskSetUploadLimitSchema) error
+	ListFiles(hash string) ([]*entities.TaskFile, error)
 }

@@ -31,6 +31,7 @@ func (m Module) Register() {
 	m.tasksRouter.Use(middlewares.RequireAgentBearerToken())
 
 	m.tasksRouter.GET("/", m.listTasks)
+	m.tasksRouter.GET("/stats", m.getTasksStats)
 
 	m.taskRouter.POST("/", m.createTask)
 	m.taskRouter.DELETE("/:id", m.deleteTask)
@@ -336,4 +337,14 @@ func (m *Module) listTaskFiles(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, mappers.ToTaskFilesResponse(files))
+}
+
+func (m *Module) getTasksStats(c *gin.Context) {
+	stats, err := m.controller.GetTasksStats(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, mappers.ToTaskStatsResponse(stats))
 }

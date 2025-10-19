@@ -1,12 +1,26 @@
 # Nome do binário final
-BINARY_NAME=seedbox-app
+BINARY_NAME=gardarr
 
 # Flags de compilação
 BUILD_FLAGS=-ldflags="-s -w"
 
+# Scripts
+VERSION_SCRIPT=scripts/generate-version.sh
+BUILD_SCRIPT=scripts/build.sh
+
+# Version information (will be set dynamically)
+VERSION ?= 0.0.0-dev
+COMMIT ?= unknown
+DATE ?= unknown
+
 # Diretórios
 FRONTEND_DIR=frontend
 BACKEND_DIR=backend
+
+# Comando para gerar informações de versão
+generate-version:
+	@echo "Gerando informações de versão..."
+	@./$(VERSION_SCRIPT)
 
 # Comando para build do frontend
 build-frontend:
@@ -17,8 +31,53 @@ copy-frontend:
 	mkdir -p $(BACKEND_DIR)/web
 	cp -r $(FRONTEND_DIR)/dist/* $(BACKEND_DIR)/web/
 
-# Comando para build completo (frontend + backend)
-build-full: build-frontend copy-frontend build-linux
+# Comando para obter informações de versão do git
+get-version:
+	@echo "Obtendo informações de versão..."
+	@if command -v git >/dev/null 2>&1 && [ -d ".git" ]; then \
+		if git describe --tags --exact-match HEAD >/dev/null 2>&1; then \
+			VERSION=$$(git describe --tags --exact-match HEAD | sed 's/^v//'); \
+		else \
+			COMMIT_COUNT=$$(git rev-list --count HEAD 2>/dev/null || echo "0"); \
+			SHORT_HASH=$$(git rev-parse --short HEAD 2>/dev/null || echo "unknown"); \
+			VERSION="0.0.0-dev+$$COMMIT_COUNT.$$SHORT_HASH"; \
+		fi; \
+		COMMIT=$$(git rev-parse HEAD 2>/dev/null || echo "unknown"); \
+		DATE=$$(date -u +"%Y-%m-%dT%H:%M:%SZ"); \
+		echo "VERSION=$$VERSION" > .version; \
+		echo "COMMIT=$$COMMIT" >> .version; \
+		echo "DATE=$$DATE" >> .version; \
+		echo "Version: $$VERSION"; \
+		echo "Commit: $$COMMIT"; \
+		echo "Date: $$DATE"; \
+	else \
+		echo "VERSION=0.0.0-dev" > .version; \
+		echo "COMMIT=unknown" >> .version; \
+		echo "DATE=$$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> .version; \
+		echo "Using default version information"; \
+	fi
+
+# Comando para build com versão dinâmica
+build-with-version: get-version
+	@echo "Building with dynamic version..."
+	@source .version && \
+	cd $(BACKEND_DIR) && \
+	CGO_ENABLED=0 go build \
+		-ldflags "-X github.com/gardarr/gardarr/pkg/version.Version=$$VERSION \
+		          -X github.com/gardarr/gardarr/pkg/version.Commit=$$COMMIT \
+		          -X github.com/gardarr/gardarr/pkg/version.Date=$$DATE \
+		          -w -s" \
+		-o ../$(BINARY_NAME) .
+
+# Comando para build completo (frontend + backend) com versão
+build-full: get-version build-frontend copy-frontend build-with-version
+
+# Comando para build usando script
+build-script:
+	@./$(BUILD_SCRIPT)
+
+# Comando para build completo usando script
+build-full-script: build-frontend copy-frontend build-script
 
 # Comando para build com Docker
 docker-build:

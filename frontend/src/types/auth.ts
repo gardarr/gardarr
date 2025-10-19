@@ -2,6 +2,8 @@ export interface User {
   uuid: string;
   email: string;
   created_at: string;
+  role?: 'admin' | 'user';
+  founder?: boolean;
 }
 
 export interface AuthResponse {

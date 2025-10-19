@@ -10,7 +10,7 @@ import logoImage from "@/assets/img/logo/logo_64x64.png";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isDark, setIsDark] = useState<boolean>(false);
@@ -64,7 +64,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/torrents", icon: Download, label: t("navigation.torrents") },
     { href: "/agents", icon: Users, label: t("navigation.agents") },
     { href: "/categories", icon: FolderOpen, label: t("navigation.categories") },
-    { href: "/users", icon: UserCircle, label: t("navigation.users") },
+    // Only show Users menu item for admin users
+    ...(user?.role === 'admin' ? [{ href: "/users", icon: UserCircle, label: t("navigation.users") }] : []),
     { href: "/analytics", icon: BarChart3, label: t("navigation.analytics") },
   ];
 

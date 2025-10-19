@@ -172,13 +172,6 @@ export default function ProfilePage() {
           <Separator />
           <div className="space-y-2">
             <label className="text-sm font-medium text-muted-foreground">
-              {t("profile.personalInfo.uuid")}
-            </label>
-            <p className="text-sm font-mono text-muted-foreground">{user?.uuid}</p>
-          </div>
-          <Separator />
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-muted-foreground">
               {t("profile.personalInfo.memberSince")}
             </label>
             <p className="text-base">

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/gardarr/gardarr/internal/entities"
 	"github.com/gardarr/gardarr/internal/infra/database"
 	"github.com/gardarr/gardarr/internal/services/ratelimit"
 	"github.com/gardarr/gardarr/internal/services/session"
@@ -104,6 +105,39 @@ func OptionalSessionMiddleware(db *database.Database) gin.HandlerFunc {
 		// Store user and session in context
 		c.Set(UserContextKey, user)
 		c.Set(SessionContextKey, sessionEntity)
+
+		c.Next()
+	}
+}
+
+// RequireAdminRole validates that the authenticated user has admin role
+// This middleware should be used after SessionMiddleware
+func RequireAdminRole() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Get user from context (set by SessionMiddleware)
+		sessionEntity, exists := c.Get(SessionContextKey)
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+			c.Abort()
+			return
+		}
+
+		// Type assert to User entity
+		session, ok := sessionEntity.(*entities.Session)
+		if !ok {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid session data"})
+			c.Abort()
+			return
+		}
+		// Check if user has admin role
+		if session.Role != "admin" {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error":   "Admin privileges required",
+				"message": "This action requires administrator privileges",
+			})
+			c.Abort()
+			return
+		}
 
 		c.Next()
 	}

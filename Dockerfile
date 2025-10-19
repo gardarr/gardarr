@@ -3,6 +3,11 @@ ARG GO_IMAGE=golang:1.24.4-alpine
 ARG NODE_IMAGE=node:20-alpine
 ARG APP_PORT=3000
 
+# Version build arguments
+ARG VERSION=0.0.0
+ARG COMMIT=unknown
+ARG DATE=unknown
+
 # Stage 1: Build the frontend
 FROM ${NODE_IMAGE} AS frontend-build
 
@@ -53,9 +58,12 @@ COPY backend/ .
 # Copy built frontend from frontend-build stage
 COPY --from=frontend-build /app/frontend/dist ./web
 
-# Build the Go application with optimizations
+# Build the Go application with optimizations and version info
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags='-w -s -extldflags "-static"' \
+    -ldflags="-X github.com/gardarr/gardarr/pkg/version.Version=${VERSION} \
+              -X github.com/gardarr/gardarr/pkg/version.Commit=${COMMIT} \
+              -X github.com/gardarr/gardarr/pkg/version.Date=${DATE} \
+              -w -s -extldflags '-static'" \
     -a -installsuffix cgo \
     -o main .
 

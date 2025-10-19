@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
-	"fmt"
 	"io"
 
 	"github.com/gardarr/gardarr/pkg/env"
@@ -31,7 +30,6 @@ func NewCryptoService() (*CryptoService, error) {
 		return nil, err
 	}
 
-	fmt.Println(key)
 	if len(key) != 32 {
 		return nil, errors.New("encryption key must be 32 bytes (AES-256)")
 	}
@@ -56,6 +54,7 @@ func (cs *CryptoService) Encrypt(plaintext string) (string, error) {
 		return "", err
 	}
 
+	// Seal encrypts the plaintext and appends the result to the nonce
 	ciphertext := cs.gcm.Seal(nonce, nonce, []byte(plaintext), nil)
 	return base64.StdEncoding.EncodeToString(ciphertext), nil
 }

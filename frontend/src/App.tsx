@@ -13,6 +13,10 @@ import ProfilePage from './Profile'
 import UsersPage from './Users'
 import LoginPage from './Login'
 import SignupPage from './Signup'
+import InviteAcceptPage from './InviteAccept'
+import InitialSetupPage from './InitialSetup'
+import ResetPasswordPage from './ResetPassword'
+import ForgotPasswordPage from './ForgotPassword'
 
 function App() {
   return (
@@ -21,7 +25,11 @@ function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/setup" element={<InitialSetupPage />} />
+          <Route path="/signup/:token" element={<SignupPage />} />
+          <Route path="/invite/:code" element={<InviteAcceptPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route
             path="/"
             element={

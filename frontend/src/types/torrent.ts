@@ -16,6 +16,7 @@ export interface Task {
   magnet_uri: string;
   magnet_link: TaskMagnetLink;
   popularity: number;
+  super_seeding?: boolean;
   pairs: TaskPairs;
   network: TaskNetwork;
   tags?: string[];

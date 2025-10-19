@@ -29,7 +29,7 @@ func NewService(db *database.Database) *Service {
 }
 
 // CreateSession creates a new session for a user
-func (s *Service) CreateSession(ctx context.Context, userUUID uuid.UUID, userAgent, ipAddress string) (*entities.Session, error) {
+func (s *Service) CreateSession(ctx context.Context, userUUID uuid.UUID, userRole string, userAgent, ipAddress string) (*entities.Session, error) {
 	// Generate secure random token
 	token, err := generateSessionToken()
 	if err != nil {
@@ -38,7 +38,7 @@ func (s *Service) CreateSession(ctx context.Context, userUUID uuid.UUID, userAge
 
 	expiresAt := time.Now().Add(sessionDuration)
 
-	return s.repository.CreateSession(ctx, userUUID, token, userAgent, ipAddress, expiresAt)
+	return s.repository.CreateSession(ctx, userUUID, userRole, token, userAgent, ipAddress, expiresAt)
 }
 
 // ValidateSession validates a session token and returns the session if valid
@@ -59,6 +59,7 @@ func (s *Service) ValidateSession(ctx context.Context, token string) (*entities.
 	sessionEntity := &entities.Session{
 		ID:        sessionModel.ID,
 		UserUUID:  sessionModel.UserUUID,
+		Role:      sessionModel.Role,
 		Token:     sessionModel.Token,
 		UserAgent: sessionModel.UserAgent,
 		IPAddress: sessionModel.IPAddress,
@@ -71,6 +72,8 @@ func (s *Service) ValidateSession(ctx context.Context, token string) (*entities.
 		UUID:      sessionModel.User.UUID,
 		Username:  sessionModel.User.Username,
 		Email:     sessionModel.User.Email,
+		Role:      sessionModel.User.Role,
+		Founder:   sessionModel.User.Founder,
 		CreatedAt: sessionModel.User.CreatedAt,
 		UpdatedAt: sessionModel.User.UpdatedAt,
 	}

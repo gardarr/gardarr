@@ -1,11 +1,37 @@
 import { useTranslation } from "react-i18next";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { ExternalLink, Github, Leaf } from "lucide-react";
+import { ExternalLink, Github, Leaf, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { versionService } from "@/services/version";
 import logoImage from "@/assets/img/logo/logo_256x256.png";
 
 export default function AboutPage() {
   const { t } = useTranslation();
+  const [version, setVersion] = useState<string>("v0.0.2"); // fallback version
+  const [commit, setCommit] = useState<string>("unknown");
+  const [date, setDate] = useState<string>("unknown");
+  const [loadingVersion, setLoadingVersion] = useState(true);
+
+  useEffect(() => {
+    const fetchVersion = async () => {
+      try {
+        const response = await versionService.getVersion();
+        if (response.data) {
+          setVersion(`v${response.data.version}`);
+          setCommit(response.data.commit || "unknown");
+          setDate(response.data.date || "unknown");
+        }
+      } catch (error) {
+        console.error('Failed to fetch version:', error);
+        // Keep fallback values
+      } finally {
+        setLoadingVersion(false);
+      }
+    };
+
+    fetchVersion();
+  }, []);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -38,9 +64,31 @@ export default function AboutPage() {
             </p>
           </div>
           
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted">
-            <span className="text-sm font-medium">{t("about.version")}</span>
-            <span className="text-sm font-mono text-primary">v0.0.2</span>
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted">
+              <span className="text-sm font-medium">{t("about.version")}</span>
+              {loadingVersion ? (
+                <div className="flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                  <span className="text-sm font-mono text-primary">...</span>
+                </div>
+              ) : (
+                <span className="text-sm font-mono text-primary">{version}</span>
+              )}
+            </div>
+            
+            {!loadingVersion && (
+              <div className="flex flex-col sm:flex-row gap-2 text-xs text-muted-foreground">
+                <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted/50">
+                  <span className="font-medium">Commit:</span>
+                  <span className="font-mono">{commit.substring(0, 7)}</span>
+                </div>
+                <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted/50">
+                  <span className="font-medium">Date:</span>
+                  <span className="font-mono">{date}</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </Card>

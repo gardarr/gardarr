@@ -10,6 +10,7 @@ type Session struct {
 	ID        uuid.UUID
 	UserUUID  uuid.UUID
 	Token     string
+	Role      string
 	UserAgent string
 	IPAddress string
 	ExpiresAt time.Time

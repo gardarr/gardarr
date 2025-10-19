@@ -19,3 +19,9 @@ type Agent struct {
 	Color    string // Optional color for frontend display
 	Instance *Instance
 }
+
+type AgentVersion struct {
+	Version string
+	Commit  string
+	Date    string
+}

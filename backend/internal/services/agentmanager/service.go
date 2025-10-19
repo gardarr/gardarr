@@ -7,7 +7,6 @@ import (
 
 	"github.com/gardarr/gardarr/internal/entities"
 	"github.com/gardarr/gardarr/internal/infra/database"
-	"github.com/gardarr/gardarr/internal/models"
 	"github.com/gardarr/gardarr/internal/repository/agent"
 	"github.com/gardarr/gardarr/internal/schemas"
 	"github.com/gardarr/gardarr/internal/services/crypto"
@@ -34,7 +33,7 @@ func (s *Service) CreateAgent(ctx context.Context, schema *schemas.AgentCreateSc
 	}
 
 	// Validate instance connectivity BEFORE persisting to database
-	instance, err := s.repository.GetInstance(&input)
+	instance, err := s.repository.GetInstanceWithoutDecrypt(&input)
 	if err != nil {
 		return nil, fmt.Errorf("não foi possível conectar com a instância: %s", err.Error())
 	}
@@ -255,10 +254,19 @@ func (s *Service) UpdateAgent(ctx context.Context, id string, schema *schemas.Ag
 		testAgent.Color = schema.Color
 	}
 
+	var instance *entities.Instance
 	// Validate instance connectivity BEFORE updating the database
-	instance, err := s.repository.GetInstance(&testAgent)
-	if err != nil {
-		return nil, fmt.Errorf("não foi possível conectar com a instância: %s", err.Error())
+	if testAgent.Token != currentAgent.Token {
+		instance, err = s.repository.GetInstanceWithoutDecrypt(&testAgent)
+		if err != nil {
+			return nil, fmt.Errorf("não foi possível conectar com a instância: %s", err.Error())
+		}
+	} else {
+		testAgent.Token = currentAgent.Token
+		instance, err = s.repository.GetInstance(&testAgent)
+		if err != nil {
+			return nil, fmt.Errorf("não foi possível conectar com a instância: %s", err.Error())
+		}
 	}
 
 	// If connection is successful, update the agent in the database
@@ -339,7 +347,7 @@ func (s *Service) ListAgentsTasks() ([]*entities.Task, error) {
 	return s.ListTasks(agents)
 }
 
-func (s *Service) PauseAgentTask(ctx context.Context, agentID, taskID string) error {
+func (s *Service) StopAgentTask(ctx context.Context, agentID, taskID string) error {
 	uid, err := uuid.Parse(agentID)
 	if err != nil {
 		return fmt.Errorf("invalid agent UUID format: %w", err)
@@ -350,10 +358,10 @@ func (s *Service) PauseAgentTask(ctx context.Context, agentID, taskID string) er
 		return fmt.Errorf("agent not found: %w", err)
 	}
 
-	return s.repository.PauseAgentTask(agent, taskID)
+	return s.repository.StopAgentTask(agent, taskID)
 }
 
-func (s *Service) ResumeAgentTask(ctx context.Context, agentID, taskID string) error {
+func (s *Service) StartAgentTask(ctx context.Context, agentID, taskID string) error {
 	uid, err := uuid.Parse(agentID)
 	if err != nil {
 		return fmt.Errorf("invalid agent UUID format: %w", err)
@@ -364,7 +372,7 @@ func (s *Service) ResumeAgentTask(ctx context.Context, agentID, taskID string) e
 		return fmt.Errorf("agent not found: %w", err)
 	}
 
-	return s.repository.ResumeAgentTask(agent, taskID)
+	return s.repository.StartAgentTask(agent, taskID)
 }
 
 func (s *Service) ForceDownloadAgentTask(ctx context.Context, agentID, taskID string) error {
@@ -381,11 +389,218 @@ func (s *Service) ForceDownloadAgentTask(ctx context.Context, agentID, taskID st
 	return s.repository.ForceDownloadAgentTask(agent, taskID)
 }
 
-func ToResponse(item *entities.Agent) models.AgentResponse {
-	return models.AgentResponse{
-		UUID:    item.UUID.String(),
-		Name:    item.Name,
-		Address: item.Address,
-		Status:  item.Status,
+func (s *Service) GetAgentTask(ctx context.Context, agentID, taskID string) (*entities.Task, error) {
+	uid, err := uuid.Parse(agentID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid agent UUID format: %w", err)
 	}
+
+	agent, err := s.repository.GetAgentByUUID(uid)
+	if err != nil {
+		return nil, fmt.Errorf("agent not found: %w", err)
+	}
+
+	task, err := s.repository.GetAgentTask(agent, taskID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get task: %w", err)
+	}
+
+	return task, nil
+}
+
+func (s *Service) DeleteAgentTask(ctx context.Context, agentID, taskID string, purge bool) error {
+	uid, err := uuid.Parse(agentID)
+	if err != nil {
+		return fmt.Errorf("invalid agent UUID format: %w", err)
+	}
+
+	agent, err := s.repository.GetAgentByUUID(uid)
+	if err != nil {
+		return fmt.Errorf("agent not found: %w", err)
+	}
+
+	return s.repository.DeleteAgentTask(agent, taskID, purge)
+}
+
+func (s *Service) ForceResumeAgentTask(ctx context.Context, agentID, taskID string) error {
+	uid, err := uuid.Parse(agentID)
+	if err != nil {
+		return fmt.Errorf("invalid agent UUID format: %w", err)
+	}
+
+	agent, err := s.repository.GetAgentByUUID(uid)
+	if err != nil {
+		return fmt.Errorf("agent not found: %w", err)
+	}
+
+	return s.repository.ForceResumeAgentTask(agent, taskID)
+}
+
+func (s *Service) SetAgentTaskShareLimit(ctx context.Context, agentID, taskID string, schema schemas.TaskSetShareLimitSchema) error {
+	uid, err := uuid.Parse(agentID)
+	if err != nil {
+		return fmt.Errorf("invalid agent UUID format: %w", err)
+	}
+
+	agent, err := s.repository.GetAgentByUUID(uid)
+	if err != nil {
+		return fmt.Errorf("agent not found: %w", err)
+	}
+
+	return s.repository.SetAgentTaskShareLimit(agent, taskID, schema)
+}
+
+func (s *Service) SetAgentTaskLocation(ctx context.Context, agentID, taskID string, schema schemas.TaskSetLocationSchema) error {
+	uid, err := uuid.Parse(agentID)
+	if err != nil {
+		return fmt.Errorf("invalid agent UUID format: %w", err)
+	}
+
+	agent, err := s.repository.GetAgentByUUID(uid)
+	if err != nil {
+		return fmt.Errorf("agent not found: %w", err)
+	}
+
+	return s.repository.SetAgentTaskLocation(agent, taskID, schema)
+}
+
+func (s *Service) RenameAgentTask(ctx context.Context, agentID, taskID string, schema schemas.TaskRenameSchema) error {
+	uid, err := uuid.Parse(agentID)
+	if err != nil {
+		return fmt.Errorf("invalid agent UUID format: %w", err)
+	}
+
+	agent, err := s.repository.GetAgentByUUID(uid)
+	if err != nil {
+		return fmt.Errorf("agent not found: %w", err)
+	}
+
+	return s.repository.RenameAgentTask(agent, taskID, schema)
+}
+
+func (s *Service) SetAgentTaskSuperSeeding(ctx context.Context, agentID, taskID string, schema schemas.TaskSuperSeedingSchema) error {
+	uid, err := uuid.Parse(agentID)
+	if err != nil {
+		return fmt.Errorf("invalid agent UUID format: %w", err)
+	}
+
+	agent, err := s.repository.GetAgentByUUID(uid)
+	if err != nil {
+		return fmt.Errorf("agent not found: %w", err)
+	}
+
+	return s.repository.SetAgentTaskSuperSeeding(agent, taskID, schema)
+}
+
+func (s *Service) ForceRecheckAgentTask(ctx context.Context, agentID, taskID string) error {
+	uid, err := uuid.Parse(agentID)
+	if err != nil {
+		return fmt.Errorf("invalid agent UUID format: %w", err)
+	}
+
+	agent, err := s.repository.GetAgentByUUID(uid)
+	if err != nil {
+		return fmt.Errorf("agent not found: %w", err)
+	}
+
+	return s.repository.ForceRecheckAgentTask(agent, taskID)
+}
+
+func (s *Service) ForceReannounceAgentTask(ctx context.Context, agentID, taskID string) error {
+	uid, err := uuid.Parse(agentID)
+	if err != nil {
+		return fmt.Errorf("invalid agent UUID format: %w", err)
+	}
+
+	agent, err := s.repository.GetAgentByUUID(uid)
+	if err != nil {
+		return fmt.Errorf("agent not found: %w", err)
+	}
+
+	return s.repository.ForceReannounceAgentTask(agent, taskID)
+}
+
+func (s *Service) SetAgentTaskDownloadLimit(ctx context.Context, agentID, taskID string, schema schemas.TaskSetDownloadLimitSchema) error {
+	uid, err := uuid.Parse(agentID)
+	if err != nil {
+		return fmt.Errorf("invalid agent UUID format: %w", err)
+	}
+
+	agent, err := s.repository.GetAgentByUUID(uid)
+	if err != nil {
+		return fmt.Errorf("agent not found: %w", err)
+	}
+
+	return s.repository.SetAgentTaskDownloadLimit(agent, taskID, schema)
+}
+
+func (s *Service) SetAgentTaskUploadLimit(ctx context.Context, agentID, taskID string, schema schemas.TaskSetUploadLimitSchema) error {
+	uid, err := uuid.Parse(agentID)
+	if err != nil {
+		return fmt.Errorf("invalid agent UUID format: %w", err)
+	}
+
+	agent, err := s.repository.GetAgentByUUID(uid)
+	if err != nil {
+		return fmt.Errorf("agent not found: %w", err)
+	}
+
+	return s.repository.SetAgentTaskUploadLimit(agent, taskID, schema)
+}
+
+func (s *Service) ListAgentTaskFiles(ctx context.Context, agentID, taskID string) ([]*entities.TaskFile, error) {
+	uid, err := uuid.Parse(agentID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid agent UUID format: %w", err)
+	}
+
+	agent, err := s.repository.GetAgentByUUID(uid)
+	if err != nil {
+		return nil, fmt.Errorf("agent not found: %w", err)
+	}
+
+	files, err := s.repository.ListAgentTaskFiles(agent, taskID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list task files: %w", err)
+	}
+
+	return files, nil
+}
+
+func (s *Service) GetAgentTasksStats(ctx context.Context, id string) (*entities.TaskStats, error) {
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		return nil, fmt.Errorf("invalid agent UUID format: %w", err)
+	}
+
+	agent, err := s.repository.GetAgentByUUID(uid)
+	if err != nil {
+		return nil, fmt.Errorf("agent not found: %w", err)
+	}
+
+	stats, err := s.repository.GetAgentTasksStats(agent)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tasks stats: %w", err)
+	}
+
+	return stats, nil
+}
+
+func (s *Service) GetAgentVersion(ctx context.Context, id string) (*entities.AgentVersion, error) {
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		return nil, fmt.Errorf("invalid agent UUID format: %w", err)
+	}
+
+	agent, err := s.repository.GetAgentByUUID(uid)
+	if err != nil {
+		return nil, fmt.Errorf("agent not found: %w", err)
+	}
+
+	version, err := s.repository.GetAgentVersion(agent)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get agent version: %w", err)
+	}
+
+	return version, nil
 }

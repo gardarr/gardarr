@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,48 +19,68 @@ import {
   Check,
   Mail,
   Shield,
-  Calendar
+  Calendar,
+  Link2,
+  Copy,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Crown
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { userService } from "./services/users";
-import type { User, CreateUserRequest, UpdateUserRequest } from "./types/user";
+import { signupService } from "./services/signup";
+import { authService } from "./services/auth";
+import type { User as UserManagementUser, UpdateUserRequest } from "./types/user";
+import type { SignupToken, CreateSignupTokenRequest } from "./types/signup";
 import { useToast } from "./hooks/useToast";
 import { ToastContainer } from "./components/ui/toast-container";
+import { useAuth } from "./contexts/AuthContext";
 
 type SortType = "email" | "created_at" | "role";
 
 function Users() {
-  const [users, setUsers] = useState<User[]>([]);
+  const { user: currentUser, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const [users, setUsers] = useState<UserManagementUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<SortType>("email");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserManagementUser | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [userToDelete, setUserToDelete] = useState<UserManagementUser | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [userToEdit, setUserToEdit] = useState<User | null>(null);
-  const [createForm, setCreateForm] = useState<CreateUserRequest>({
-    email: "",
-    password: "",
-    role: "user"
-  });
+  const [userToEdit, setUserToEdit] = useState<UserManagementUser | null>(null);
   const [editForm, setEditForm] = useState<UpdateUserRequest>({
     email: "",
     password: "",
     role: "user"
   });
   
+  // Password reset states
+  const [passwordResetLink, setPasswordResetLink] = useState<string | null>(null);
+  const [showPasswordResetLink, setShowPasswordResetLink] = useState(false);
+  
+  // Magic link states
+  const [showMagicLinksModal, setShowMagicLinksModal] = useState(false);
+  const [magicLinks, setMagicLinks] = useState<SignupToken[]>([]);
+  const [loadingMagicLinks, setLoadingMagicLinks] = useState(false);
+  const [showCreateMagicLinkForm, setShowCreateMagicLinkForm] = useState(false);
+  const [createMagicLinkForm, setCreateMagicLinkForm] = useState<CreateSignupTokenRequest>({
+    email: "",
+    role: "user",
+    expires_in: 168 // 7 days default (in hours)
+  });
+  
   const { toasts, showSuccess, showError, removeToast } = useToast();
 
-  // Load users on component mount
-  useEffect(() => {
-    loadUsers();
-  }, []);
+  // Check if current user is admin
+  const isAdmin = currentUser?.role === 'admin';
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       setLoading(true);
       const response = await userService.listUsers();
@@ -75,9 +95,139 @@ function Users() {
     } finally {
       setLoading(false);
     }
+  }, [showError]);
+
+  // Redirect non-admin users to dashboard
+  useEffect(() => {
+    // Only redirect if authentication is complete and user is confirmed to not be admin
+    if (!authLoading && currentUser && !isAdmin) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [authLoading, currentUser, isAdmin, navigate]);
+
+  // Load users on component mount
+  useEffect(() => {
+    if (isAdmin) {
+      loadUsers();
+    }
+  }, [isAdmin, loadUsers]);
+
+  const loadMagicLinks = async () => {
+    try {
+      setLoadingMagicLinks(true);
+      const response = await signupService.listMagicLinks();
+      
+      if (response.error) {
+        showError(response.error);
+      } else if (response.data) {
+        setMagicLinks(response.data);
+      }
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to load magic links');
+    } finally {
+      setLoadingMagicLinks(false);
+    }
   };
 
-  const confirmDeleteUser = (user: User) => {
+  const handleCreateMagicLink = async () => {
+    try {
+      const data: CreateSignupTokenRequest = {
+        role: createMagicLinkForm.role,
+        expires_in: createMagicLinkForm.expires_in
+      };
+      
+      // Only include email if it's not empty
+      if (createMagicLinkForm.email && createMagicLinkForm.email.trim()) {
+        data.email = createMagicLinkForm.email.trim();
+      }
+
+      const response = await signupService.createMagicLink(data);
+      if (response.error) {
+        showError(response.error);
+      } else if (response.data) {
+        // Convert response to SignupToken format
+        const newToken: SignupToken = {
+          token: response.data.token,
+          email: response.data.email,
+          role: response.data.role,
+          expires_at: response.data.expires_at,
+          created_at: response.data.created_at,
+          used: false
+        };
+        setMagicLinks([newToken, ...magicLinks]);
+        showSuccess('Magic link created successfully');
+        setCreateMagicLinkForm({ 
+          email: "", 
+          role: "user", 
+          expires_in: 168 
+        });
+        setShowCreateMagicLinkForm(false);
+      }
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to create magic link');
+    }
+  };
+
+  const handleRevokeMagicLink = async (magicLink: SignupToken) => {
+    try {
+      const response = await signupService.revokeMagicLink(magicLink.token);
+      if (response.error) {
+        showError(response.error);
+      } else {
+        setMagicLinks(magicLinks.filter(link => link.token !== magicLink.token));
+        showSuccess('Magic link revoked successfully');
+      }
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to revoke magic link');
+    }
+  };
+
+  const copyMagicLink = async (magicLink: SignupToken) => {
+    const url = signupService.getSignupUrl(magicLink.token);
+    try {
+      await navigator.clipboard.writeText(url);
+      showSuccess('Magic link copied to clipboard');
+    } catch {
+      showError('Failed to copy link');
+    }
+  };
+
+  const openMagicLinksModal = () => {
+    setShowMagicLinksModal(true);
+    loadMagicLinks();
+  };
+
+  const handleRequestPasswordReset = async () => {
+    if (!userToEdit) return;
+
+    try {
+      const response = await authService.requestPasswordReset(userToEdit.uuid);
+      if (response.error) {
+        showError(response.error);
+      } else if (response.data) {
+        // Generate the password reset URL
+        const resetUrl = `${window.location.origin}/reset-password?token=${response.data.token}`;
+        setPasswordResetLink(resetUrl);
+        setShowPasswordResetLink(true);
+        showSuccess('Password reset link generated successfully');
+      }
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to generate password reset link');
+    }
+  };
+
+  const copyPasswordResetLink = async () => {
+    if (!passwordResetLink) return;
+    
+    try {
+      await navigator.clipboard.writeText(passwordResetLink);
+      showSuccess('Password reset link copied to clipboard');
+    } catch {
+      showError('Failed to copy link');
+    }
+  };
+
+  const confirmDeleteUser = (user: UserManagementUser) => {
     setUserToDelete(user);
     setShowDeleteModal(true);
   };
@@ -102,44 +252,21 @@ function Users() {
     }
   };
 
-  const handleCreateUser = async () => {
-    if (!createForm.email || !createForm.password) {
-      showError('Please fill in all required fields');
-      return;
-    }
-
-    try {
-      const response = await userService.createUser(createForm);
-      if (response.error) {
-        showError(response.error);
-      } else if (response.data) {
-        setUsers([...users, response.data]);
-        showSuccess('User created successfully');
-        // Reset form
-        setCreateForm({ 
-          email: "", 
-          password: "", 
-          role: "user" 
-        });
-        setShowCreateForm(false);
-      }
-    } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to create user');
-    }
-  };
-
-  const showUserDetails = (user: User) => {
+  const showUserDetails = (user: UserManagementUser) => {
     setSelectedUser(user);
     setShowDetailsModal(true);
   };
 
-  const showEditUser = (user: User) => {
+  const showEditUser = (user: UserManagementUser) => {
     setUserToEdit(user);
     setEditForm({
       email: user.email,
       password: "", // Don't pre-fill password for security
       role: user.role || "user"
     });
+    // Reset password reset states
+    setPasswordResetLink(null);
+    setShowPasswordResetLink(false);
     setShowEditModal(true);
   };
 
@@ -222,6 +349,18 @@ function Users() {
     }
   };
 
+  // Show loading while checking authentication or if user is not admin
+  if (authLoading || (currentUser && !isAdmin)) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
@@ -242,80 +381,31 @@ function Users() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button onClick={() => setShowCreateForm(!showCreateForm)} size="sm">
-            {showCreateForm ? <X className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-            {showCreateForm ? 'Cancel' : 'Add User'}
+          <Button onClick={openMagicLinksModal} size="sm">
+            <Link2 className="h-4 w-4 mr-2" />
+            Invite User
           </Button>
         </div>
       </div>
 
-      {/* Create User Form */}
-      {showCreateForm && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Create New User</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-sm">Email *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="user@example.com"
-                  value={createForm.email}
-                  onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
-                  className="h-9"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-sm">Password *</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter password"
-                  value={createForm.password}
-                  onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-                  className="h-9"
-                />
-              </div>
+      {/* Info Card */}
+      <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+              <Link2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="role" className="text-sm">Role</Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={createForm.role === "user" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setCreateForm({ ...createForm, role: "user" })}
-                >
-                  User
-                </Button>
-                <Button
-                  type="button"
-                  variant={createForm.role === "admin" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setCreateForm({ ...createForm, role: "admin" })}
-                >
-                  <Shield className="h-3 w-3 mr-1" />
-                  Admin
-                </Button>
-              </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                Invite-Only Registration
+              </h3>
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                New users can only be added through invitations. Click "Invite User" to generate a magic link that can be shared with new users.
+              </p>
             </div>
-
-            <div className="flex gap-2 justify-end pt-1">
-              <Button variant="outline" onClick={() => setShowCreateForm(false)} size="sm">
-                Cancel
-              </Button>
-              <Button onClick={handleCreateUser} size="sm">
-                <Check className="h-4 w-4 mr-1" />
-                Create User
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Search and Sort */}
       <div className="flex flex-col sm:flex-row gap-4">
@@ -388,12 +478,12 @@ function Users() {
             <UsersIcon className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No users found</h3>
             <p className="text-muted-foreground text-center mb-4">
-              {searchTerm ? 'No users match your search criteria.' : 'Get started by adding your first user.'}
+              {searchTerm ? 'No users match your search criteria.' : 'Get started by inviting your first user.'}
             </p>
             {!searchTerm && (
-              <Button onClick={() => setShowCreateForm(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add User
+              <Button onClick={openMagicLinksModal}>
+                <Link2 className="h-4 w-4 mr-2" />
+                Invite User
               </Button>
             )}
           </CardContent>
@@ -404,7 +494,7 @@ function Users() {
             {filteredUsers.map((user) => (
               <Card 
                 key={user.uuid} 
-                className="relative cursor-pointer hover:bg-accent/50 transition-colors"
+                className="relative cursor-pointer hover:container-content-background/50 transition-colors"
                 onClick={() => showUserDetails(user)}
               >
                 <CardContent className="p-4">
@@ -421,6 +511,12 @@ function Users() {
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${getRoleBadgeColor(user.role)}`}>
                           {user.role || 'user'}
                         </span>
+                        {user.founder && (
+                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 flex items-center gap-1">
+                            <Crown className="h-3 w-3" />
+                            Founder
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -444,10 +540,14 @@ function Users() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        disabled={user.founder}
                         onClick={(e) => {
                           e.stopPropagation();
-                          confirmDeleteUser(user);
+                          if (!user.founder) {
+                            confirmDeleteUser(user);
+                          }
                         }}
+                        title={user.founder ? "Founder users cannot be deleted" : "Delete user"}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
@@ -467,7 +567,7 @@ function Users() {
               
               {selectedUser && (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3 p-3 bg-accent/50 rounded-lg">
+                  <div className="flex items-center gap-3 p-3 container-content-background/50 rounded-lg">
                     <div className="w-14 h-14 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                       <Mail className="h-7 w-7 text-primary" />
                     </div>
@@ -475,12 +575,20 @@ function Users() {
                       <h3 className="font-semibold text-base">{selectedUser.email}</h3>
                       <p className="text-xs text-muted-foreground">UUID: {selectedUser.uuid}</p>
                     </div>
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${getRoleBadgeColor(selectedUser.role)}`}>
-                      {selectedUser.role || 'user'}
-                    </span>
+                    <div className="flex flex-col gap-1">
+                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${getRoleBadgeColor(selectedUser.role)}`}>
+                        {selectedUser.role || 'user'}
+                      </span>
+                      {selectedUser.founder && (
+                        <span className="text-xs font-medium px-2 py-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 flex items-center gap-1">
+                          <Crown className="h-3 w-3" />
+                          Founder
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="space-y-2 p-3 bg-accent/50 rounded-lg">
+                  <div className="space-y-2 p-3 container-content-background/50 rounded-lg">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Email:</span>
                       <span className="font-medium">{selectedUser.email}</span>
@@ -489,16 +597,43 @@ function Users() {
                       <span className="text-muted-foreground">Role:</span>
                       <span className="font-medium capitalize">{selectedUser.role || 'user'}</span>
                     </div>
+                    {selectedUser.founder && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Status:</span>
+                        <span className="font-medium text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                          <Crown className="h-3 w-3" />
+                          Founder
+                        </span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Created:</span>
                       <span className="font-medium">{formatDate(selectedUser.created_at)}</span>
                     </div>
                   </div>
 
+                  {selectedUser.founder && (
+                    <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <Crown className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                            Founder Account
+                          </p>
+                          <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                            This user is a founder and cannot be deleted from the system.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex gap-2 justify-between pt-2">
                     <Button 
                       variant="destructive" 
-                      onClick={() => confirmDeleteUser(selectedUser)}
+                      disabled={selectedUser.founder}
+                      onClick={() => !selectedUser.founder && confirmDeleteUser(selectedUser)}
+                      title={selectedUser.founder ? "Founder users cannot be deleted" : "Delete user"}
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Delete
@@ -531,40 +666,85 @@ function Users() {
               
               {userToDelete && (
                 <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Are you sure you want to delete this user? This action cannot be undone.
-                  </p>
-                  
-                  <div className="flex items-center gap-3 p-3 bg-accent/50 rounded-lg">
-                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Mail className="h-6 w-6 text-primary" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold text-sm">{userToDelete.email}</h3>
-                      <p className="text-xs text-muted-foreground">
-                        {userToDelete.role === 'admin' ? 'Administrator' : 'User'}
-                      </p>
-                    </div>
-                  </div>
+                  {userToDelete.founder ? (
+                    <>
+                      <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg">
+                        <div className="flex items-start gap-2">
+                          <Crown className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                              Cannot Delete Founder
+                            </p>
+                            <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                              Founder users cannot be deleted from the system for security reasons.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-3 p-3 container-content-background/50 rounded-lg">
+                        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <Mail className="h-6 w-6 text-primary" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-semibold text-sm">{userToDelete.email}</h3>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Crown className="h-3 w-3" />
+                            Founder
+                          </p>
+                        </div>
+                      </div>
 
-                  <div className="flex gap-2 justify-end">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => {
-                        setShowDeleteModal(false);
-                        setUserToDelete(null);
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button 
-                      variant="destructive" 
-                      onClick={handleDeleteUser}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
-                    </Button>
-                  </div>
+                      <div className="flex gap-2 justify-end">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => {
+                            setShowDeleteModal(false);
+                            setUserToDelete(null);
+                          }}
+                        >
+                          Close
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-muted-foreground">
+                        Are you sure you want to delete this user? This action cannot be undone.
+                      </p>
+                      
+                      <div className="flex items-center gap-3 p-3 container-content-background/50 rounded-lg">
+                        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <Mail className="h-6 w-6 text-primary" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-semibold text-sm">{userToDelete.email}</h3>
+                          <p className="text-xs text-muted-foreground">
+                            {userToDelete.role === 'admin' ? 'Administrator' : 'User'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 justify-end">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => {
+                            setShowDeleteModal(false);
+                            setUserToDelete(null);
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          onClick={handleDeleteUser}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </DialogContent>
@@ -588,18 +768,7 @@ function Users() {
                       value={editForm.email}
                       onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
                       className="h-9"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="edit-password" className="text-sm">Password (leave empty to keep current)</Label>
-                    <Input
-                      id="edit-password"
-                      type="password"
-                      placeholder="New password"
-                      value={editForm.password}
-                      onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
-                      className="h-9"
+                      disabled
                     />
                   </div>
 
@@ -626,6 +795,57 @@ function Users() {
                     </div>
                   </div>
 
+                  {/* Password Reset Section */}
+                  <div className="space-y-3 pt-2 border-t">
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Password Reset</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Generate a password reset link for this user
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRequestPasswordReset}
+                        className="w-full"
+                      >
+                        <Link2 className="h-4 w-4 mr-2" />
+                        Generate Password Reset Link
+                      </Button>
+                    </div>
+
+                    {/* Password Reset Link Display */}
+                    {showPasswordResetLink && passwordResetLink && (
+                      <div className="space-y-2 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg">
+                        <div className="flex items-start gap-2">
+                          <Link2 className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">
+                              Password Reset Link Generated
+                            </p>
+                            <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
+                              Share this link with the user to reset their password. The link will expire in 1 hour.
+                            </p>
+                            <div className="flex gap-2 items-start">
+                              <code className="text-xs bg-white dark:bg-gray-800 px-2 py-1 rounded border break-all min-w-0 flex-1">
+                                {passwordResetLink}
+                              </code>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={copyPasswordResetLink}
+                                className="flex-shrink-0"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex gap-2 justify-end pt-1">
                     <Button 
                       variant="outline" 
@@ -644,6 +864,209 @@ function Users() {
                   </div>
                 </div>
               )}
+            </DialogContent>
+          </Dialog>
+
+          {/* Magic Links Management Modal */}
+          <Dialog open={showMagicLinksModal} onOpenChange={setShowMagicLinksModal}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Manage Magic Links</DialogTitle>
+              </DialogHeader>
+              
+              <div className="space-y-4">
+                {/* Create Magic Link Form */}
+                {!showCreateMagicLinkForm ? (
+                  <Button onClick={() => setShowCreateMagicLinkForm(true)} size="sm" className="w-full">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create New Magic Link
+                  </Button>
+                ) : (
+                  <Card>
+                    <CardContent className="pt-4 space-y-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="magic-link-email" className="text-sm">Email (optional)</Label>
+                        <Input
+                          id="magic-link-email"
+                          type="email"
+                          placeholder="user@example.com (leave empty for generic link)"
+                          value={createMagicLinkForm.email}
+                          onChange={(e) => setCreateMagicLinkForm({ ...createMagicLinkForm, email: e.target.value })}
+                          className="h-9"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label htmlFor="magic-link-role" className="text-sm">Role</Label>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant={createMagicLinkForm.role === "user" ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setCreateMagicLinkForm({ ...createMagicLinkForm, role: "user" })}
+                          >
+                            User
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={createMagicLinkForm.role === "admin" ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setCreateMagicLinkForm({ ...createMagicLinkForm, role: "admin" })}
+                          >
+                            <Shield className="h-3 w-3 mr-1" />
+                            Admin
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label htmlFor="magic-link-expires" className="text-sm">Expires In</Label>
+                        <div className="flex gap-2">
+                          {[24, 168, 720].map((hours) => (
+                            <Button
+                              key={hours}
+                              type="button"
+                              variant={createMagicLinkForm.expires_in === hours ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setCreateMagicLinkForm({ ...createMagicLinkForm, expires_in: hours })}
+                            >
+                              {hours === 24 ? '1 day' : hours === 168 ? '7 days' : '30 days'}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 justify-end pt-1">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => {
+                            setShowCreateMagicLinkForm(false);
+                            setCreateMagicLinkForm({ email: "", role: "user", expires_in: 168 });
+                          }} 
+                          size="sm"
+                        >
+                          Cancel
+                        </Button>
+                        <Button onClick={handleCreateMagicLink} size="sm">
+                          <Check className="h-4 w-4 mr-1" />
+                          Create Magic Link
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Magic Links List */}
+                {loadingMagicLinks ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-muted-foreground">Loading magic links...</span>
+                  </div>
+                ) : magicLinks.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Link2 className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>No magic links created yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {magicLinks.map((magicLink) => {
+                      const isExpired = new Date(magicLink.expires_at) < new Date();
+                      const isUsed = magicLink.used;
+                      
+                      return (
+                        <Card key={magicLink.token} className={isUsed || isExpired ? 'opacity-60' : ''}>
+                          <CardContent className="p-4">
+                            <div className="flex gap-3 items-start">
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                isUsed ? 'bg-green-100 dark:bg-green-900/30' : 
+                                isExpired ? 'bg-red-100 dark:bg-red-900/30' : 
+                                'bg-blue-100 dark:bg-blue-900/30'
+                              }`}>
+                                {isUsed ? (
+                                  <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                                ) : isExpired ? (
+                                  <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                                ) : (
+                                  <Link2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                                )}
+                              </div>
+
+                              <div className="flex-1 min-w-0 space-y-1">
+                                <div className="flex items-center gap-2">
+                                  {magicLink.email ? (
+                                    <span className="text-sm font-medium truncate">{magicLink.email}</span>
+                                  ) : (
+                                    <span className="text-sm font-medium text-muted-foreground">Generic Link</span>
+                                  )}
+                                  <span className={`text-xs px-2 py-0.5 rounded-full ${getRoleBadgeColor(magicLink.role)}`}>
+                                    {magicLink.role}
+                                  </span>
+                                  {isUsed && (
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                                      Used
+                                    </span>
+                                  )}
+                                  {isExpired && !isUsed && (
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
+                                      Expired
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                  <div className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    <span>Expires {formatDate(magicLink.expires_at)}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    <span>Created {formatDate(magicLink.created_at)}</span>
+                                  </div>
+                                </div>
+
+                                {!isUsed && !isExpired && (
+                                  <div className="flex items-center gap-2 mt-2">
+                                    <code className="text-xs container-content-background/50 px-2 py-1 rounded flex-1 truncate">
+                                      {signupService.getSignupUrl(magicLink.token)}
+                                    </code>
+                                  </div>
+                                )}
+
+                                {isUsed && magicLink.used_at && (
+                                  <div className="text-xs text-muted-foreground">
+                                    Used on {formatDate(magicLink.used_at)}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex gap-1">
+                                {!isUsed && !isExpired && (
+                                  <>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => copyMagicLink(magicLink)}
+                                    >
+                                      <Copy className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleRevokeMagicLink(magicLink)}
+                                    >
+                                      <Trash2 className="h-4 w-4 text-destructive" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </DialogContent>
           </Dialog>
         </>

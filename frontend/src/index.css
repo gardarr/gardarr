@@ -39,6 +39,7 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-container-content-background: var(--container-content-background);
 }
 
 :root {
@@ -74,6 +75,7 @@
   --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
   --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: oklch(0.623 0.214 259.815);
+  --container-content-background: oklch(0.967 0.001 286.375)
 }
 
 .dark {
@@ -108,6 +110,7 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --container-content-background: oklch(0.269 0 0);
 }
 
 /* Color Variants - Light Mode */
@@ -117,6 +120,7 @@ html[data-color-variant="aura"]:not(.dark) {
   --secondary: oklch(0.85 0.18 320) !important;
   --accent: oklch(0.75 0.25 295) !important;
   --muted: oklch(0.92 0.08 310) !important;
+  --container-content-background: oklch(0.967 0.001 286.375) !important;
 }
 
 html[data-color-variant="sunset"]:not(.dark) {
@@ -125,6 +129,7 @@ html[data-color-variant="sunset"]:not(.dark) {
   --secondary: oklch(0.80 0.20 50) !important;
   --accent: oklch(0.72 0.23 20) !important;
   --muted: oklch(0.92 0.08 40) !important;
+  --container-content-background: oklch(0.967 0.001 286.375) !important;
 }
 
 html[data-color-variant="ocean"]:not(.dark) {
@@ -133,6 +138,7 @@ html[data-color-variant="ocean"]:not(.dark) {
   --secondary: oklch(0.78 0.15 200) !important;
   --accent: oklch(0.68 0.20 240) !important;
   --muted: oklch(0.92 0.05 215) !important;
+  --container-content-background: oklch(0.967 0.001 286.375) !important;
 }
 
 html[data-color-variant="forest"]:not(.dark) {
@@ -141,6 +147,7 @@ html[data-color-variant="forest"]:not(.dark) {
   --secondary: oklch(0.75 0.16 130) !important;
   --accent: oklch(0.65 0.18 160) !important;
   --muted: oklch(0.92 0.06 150) !important;
+  --container-content-background: oklch(0.967 0.001 286.375) !important;
 }
 
 html[data-color-variant="lavender"]:not(.dark) {
@@ -149,6 +156,7 @@ html[data-color-variant="lavender"]:not(.dark) {
   --secondary: oklch(0.82 0.15 310) !important;
   --accent: oklch(0.70 0.18 285) !important;
   --muted: oklch(0.90 0.08 305) !important;
+  --container-content-background: oklch(0.967 0.001 286.375) !important;
 }
 
 html[data-color-variant="rose"]:not(.dark) {
@@ -157,6 +165,7 @@ html[data-color-variant="rose"]:not(.dark) {
   --secondary: oklch(0.78 0.20 5) !important;
   --accent: oklch(0.68 0.24 340) !important;
   --muted: oklch(0.92 0.10 355) !important;
+  --container-content-background: oklch(0.967 0.001 286.375) !important;
 }
 
 html[data-color-variant="amber"]:not(.dark) {
@@ -165,6 +174,7 @@ html[data-color-variant="amber"]:not(.dark) {
   --secondary: oklch(0.82 0.18 75) !important;
   --accent: oklch(0.72 0.20 55) !important;
   --muted: oklch(0.92 0.08 70) !important;
+  --container-content-background: oklch(0.967 0.001 286.375) !important;
 }
 
 html[data-color-variant="mint"]:not(.dark) {
@@ -173,6 +183,7 @@ html[data-color-variant="mint"]:not(.dark) {
   --secondary: oklch(0.78 0.16 180) !important;
   --accent: oklch(0.68 0.18 160) !important;
   --muted: oklch(0.92 0.06 175) !important;
+  --container-content-background: oklch(0.967 0.001 286.375) !important;
 }
 
 html[data-color-variant="crimson"]:not(.dark) {
@@ -181,6 +192,7 @@ html[data-color-variant="crimson"]:not(.dark) {
   --secondary: oklch(0.70 0.20 25) !important;
   --accent: oklch(0.60 0.22 5) !important;
   --muted: oklch(0.92 0.08 20) !important;
+  --container-content-background: oklch(0.967 0.001 286.375) !important;
 }
 
 html[data-color-variant="cyberpunk"]:not(.dark) {
@@ -189,6 +201,7 @@ html[data-color-variant="cyberpunk"]:not(.dark) {
   --secondary: oklch(0.75 0.22 330) !important;
   --accent: oklch(0.68 0.26 310) !important;
   --muted: oklch(0.92 0.10 260) !important;
+  --container-content-background: oklch(0.967 0.001 286.375) !important;
 }
 
 html[data-color-variant="golden"]:not(.dark) {
@@ -197,6 +210,7 @@ html[data-color-variant="golden"]:not(.dark) {
   --secondary: oklch(0.85 0.16 100) !important;
   --accent: oklch(0.70 0.20 80) !important;
   --muted: oklch(0.92 0.08 95) !important;
+  --container-content-background: oklch(0.967 0.001 286.375) !important;
 }
 
 html[data-color-variant="earth"]:not(.dark) {
@@ -205,6 +219,7 @@ html[data-color-variant="earth"]:not(.dark) {
   --secondary: oklch(0.65 0.10 45) !important;
   --accent: oklch(0.55 0.14 55) !important;
   --muted: oklch(0.90 0.05 50) !important;
+  --container-content-background: oklch(0.967 0.001 286.375) !important;
 }
 
 html[data-color-variant="silver"]:not(.dark) {
@@ -213,6 +228,7 @@ html[data-color-variant="silver"]:not(.dark) {
   --secondary: oklch(0.80 0.02 260) !important;
   --accent: oklch(0.70 0.03 260) !important;
   --muted: oklch(0.92 0.01 260) !important;
+  --container-content-background: oklch(0.967 0.001 286.375) !important;
 }
 
 /* Color Variants - Dark Mode */
@@ -222,6 +238,7 @@ html.dark[data-color-variant="aura"] {
   --secondary: oklch(0.40 0.15 320) !important;
   --accent: oklch(0.55 0.25 295) !important;
   --muted: oklch(0.28 0.08 310) !important;
+  --container-content-background: oklch(0.269 0 0) !important;
 }
 
 html.dark[data-color-variant="sunset"] {
@@ -230,6 +247,7 @@ html.dark[data-color-variant="sunset"] {
   --secondary: oklch(0.45 0.18 50) !important;
   --accent: oklch(0.60 0.22 20) !important;
   --muted: oklch(0.28 0.08 40) !important;
+  --container-content-background: oklch(0.269 0 0) !important;
 }
 
 html.dark[data-color-variant="ocean"] {
@@ -238,6 +256,7 @@ html.dark[data-color-variant="ocean"] {
   --secondary: oklch(0.45 0.16 200) !important;
   --accent: oklch(0.55 0.20 240) !important;
   --muted: oklch(0.28 0.06 215) !important;
+  --container-content-background: oklch(0.269 0 0) !important;
 }
 
 html.dark[data-color-variant="forest"] {
@@ -246,6 +265,7 @@ html.dark[data-color-variant="forest"] {
   --secondary: oklch(0.45 0.18 130) !important;
   --accent: oklch(0.55 0.20 160) !important;
   --muted: oklch(0.28 0.07 150) !important;
+  --container-content-background: oklch(0.269 0 0) !important;
 }
 
 html.dark[data-color-variant="lavender"] {
@@ -254,6 +274,7 @@ html.dark[data-color-variant="lavender"] {
   --secondary: oklch(0.45 0.16 310) !important;
   --accent: oklch(0.58 0.20 285) !important;
   --muted: oklch(0.30 0.08 305) !important;
+  --container-content-background: oklch(0.269 0 0) !important;
 }
 
 html.dark[data-color-variant="rose"] {
@@ -262,6 +283,7 @@ html.dark[data-color-variant="rose"] {
   --secondary: oklch(0.48 0.20 5) !important;
   --accent: oklch(0.58 0.26 340) !important;
   --muted: oklch(0.30 0.10 355) !important;
+  --container-content-background: oklch(0.269 0 0) !important;
 }
 
 html.dark[data-color-variant="amber"] {
@@ -270,6 +292,7 @@ html.dark[data-color-variant="amber"] {
   --secondary: oklch(0.50 0.20 75) !important;
   --accent: oklch(0.62 0.22 55) !important;
   --muted: oklch(0.30 0.08 70) !important;
+  --container-content-background: oklch(0.269 0 0) !important;
 }
 
 html.dark[data-color-variant="mint"] {
@@ -278,6 +301,7 @@ html.dark[data-color-variant="mint"] {
   --secondary: oklch(0.48 0.18 180) !important;
   --accent: oklch(0.58 0.20 160) !important;
   --muted: oklch(0.28 0.06 175) !important;
+  --container-content-background: oklch(0.269 0 0) !important;
 }
 
 html.dark[data-color-variant="crimson"] {
@@ -286,6 +310,7 @@ html.dark[data-color-variant="crimson"] {
   --secondary: oklch(0.48 0.22 25) !important;
   --accent: oklch(0.54 0.24 5) !important;
   --muted: oklch(0.28 0.08 20) !important;
+  --container-content-background: oklch(0.269 0 0) !important;
 }
 
 html.dark[data-color-variant="cyberpunk"] {
@@ -294,6 +319,7 @@ html.dark[data-color-variant="cyberpunk"] {
   --secondary: oklch(0.58 0.24 330) !important;
   --accent: oklch(0.62 0.28 310) !important;
   --muted: oklch(0.30 0.12 260) !important;
+  --container-content-background: oklch(0.269 0 0) !important;
 }
 
 html.dark[data-color-variant="golden"] {
@@ -302,6 +328,7 @@ html.dark[data-color-variant="golden"] {
   --secondary: oklch(0.50 0.16 100) !important;
   --accent: oklch(0.62 0.22 80) !important;
   --muted: oklch(0.30 0.08 95) !important;
+  --container-content-background: oklch(0.269 0 0) !important;
 }
 
 html.dark[data-color-variant="earth"] {
@@ -310,6 +337,7 @@ html.dark[data-color-variant="earth"] {
   --secondary: oklch(0.45 0.12 45) !important;
   --accent: oklch(0.50 0.16 55) !important;
   --muted: oklch(0.28 0.06 50) !important;
+  --container-content-background: oklch(0.269 0 0) !important;
 }
 
 html.dark[data-color-variant="silver"] {
@@ -318,6 +346,7 @@ html.dark[data-color-variant="silver"] {
   --secondary: oklch(0.45 0.02 260) !important;
   --accent: oklch(0.58 0.04 260) !important;
   --muted: oklch(0.30 0.01 260) !important;
+  --container-content-background: oklch(0.269 0 0) !important;
 }
 
 @layer base {
@@ -332,5 +361,173 @@ html.dark[data-color-variant="silver"] {
   }
   #root {
     height: 100%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Classes personalizadas para container content background */
+.container-content-background {
+  background-color: var(--container-content-background);
+}
+
+.container-content-background\/50 {
+  background-color: color-mix(in oklab, var(--container-content-background) 50%, transparent);
+}
+
+.container-content-background\/80 {
+  background-color: color-mix(in oklab, var(--container-content-background) 80%, transparent);
+}
+
+/* Custom Scrollbar Styles */
+.scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+
+.scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border) / 0.6);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--border) / 0.8);
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border) / 0.5);
+  border-radius: 3px;
+  border: 1px solid transparent;
+  background-clip: content-box;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--border) / 0.7);
+}
+
+.scrollbar-thick {
+  scrollbar-width: auto;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+
+.scrollbar-thick::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.scrollbar-thick::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thick::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border) / 0.7);
+  border-radius: 6px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+.scrollbar-thick::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--border) / 0.9);
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Dark theme scrollbar adjustments */
+.dark .scrollbar::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border) / 0.4);
+}
+
+.dark .scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--border) / 0.6);
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border) / 0.3);
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--border) / 0.5);
+}
+
+.dark .scrollbar-thick::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border) / 0.5);
+}
+
+.dark .scrollbar-thick::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--border) / 0.7);
+}
+
+/* Mobile-specific scrollbar improvements */
+@media (max-width: 767px) {
+  /* Garantir que o scroll nativo funcione bem no mobile */
+  .overflow-auto {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  
+  /* Remover scrollbars customizados no mobile para evitar problemas de layout */
+  .scrollbar,
+  .scrollbar-thin,
+  .scrollbar-thick {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .scrollbar::-webkit-scrollbar,
+  .scrollbar-thin::-webkit-scrollbar,
+  .scrollbar-thick::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Garantir que modais sejam responsivos no mobile */
+  [data-radix-dialog-content] {
+    max-height: 90vh !important;
+    margin: 1rem !important;
+  }
+  
+  /* Melhorar o scroll em containers com altura fixa */
+  .h-screen,
+  .min-h-screen {
+    min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height para mobile */
   }
 }

@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { LogIn } from "lucide-react";
 import logoImage from "@/assets/img/logo/logo_128x128.png";
+import { signupService } from "@/services/signup";
 
 export default function LoginPage() {
   const { t } = useTranslation();
@@ -16,6 +17,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingSetup, setIsCheckingSetup] = useState(true);
   const [error, setError] = useState("");
 
   // Set dark theme as default on mount
@@ -28,6 +30,26 @@ export default function LoginPage() {
       document.documentElement.classList.remove('dark');
     }
   }, []);
+
+  // Check if system needs setup
+  useEffect(() => {
+    const checkSetup = async () => {
+      try {
+        const response = await signupService.needsSetup();
+        if (response.data?.needs_setup) {
+          // System not initialized, redirect to setup immediately
+          navigate("/setup", { replace: true });
+          return;
+        }
+      } catch (err) {
+        console.error("Failed to check setup status:", err);
+      } finally {
+        setIsCheckingSetup(false);
+      }
+    };
+
+    checkSetup();
+  }, [navigate]);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -55,6 +77,26 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  // Show loading while checking setup
+  if (isCheckingSetup) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-accent/5 p-4">
+        <div className="w-full max-w-md space-y-6">
+          <div className="flex flex-col items-center space-y-3">
+            <div className="h-16 w-16 rounded-2xl overflow-hidden flex items-center justify-center bg-primary/10 p-2.5">
+              <img 
+                src={logoImage} 
+                alt="Gardarr Logo" 
+                className="h-full w-full object-contain"
+              />
+            </div>
+            <p className="text-muted-foreground">{t("common.loading")}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-accent/5 p-4">
@@ -132,13 +174,7 @@ export default function LoginPage() {
                 )}
               </Button>
               <p className="text-sm text-center text-muted-foreground">
-                {t("auth.login.noAccount")}{" "}
-                <Link
-                  to="/signup"
-                  className="text-primary font-medium hover:underline"
-                >
-                  {t("auth.login.signupLink")}
-                </Link>
+                {t("auth.login.noAccount")}
               </p>
             </CardFooter>
           </form>

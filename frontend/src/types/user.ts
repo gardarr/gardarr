@@ -3,6 +3,7 @@ export interface User {
   email: string;
   created_at: string;
   role?: 'admin' | 'user';
+  founder?: boolean;
 }
 
 export interface CreateUserRequest {

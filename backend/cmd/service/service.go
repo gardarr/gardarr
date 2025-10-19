@@ -18,6 +18,10 @@ import (
 	"github.com/gardarr/gardarr/internal/routes/api/v1/auth"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/category"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/health"
+	"github.com/gardarr/gardarr/internal/routes/api/v1/setup"
+	"github.com/gardarr/gardarr/internal/routes/api/v1/signup"
+	"github.com/gardarr/gardarr/internal/routes/api/v1/users"
+	"github.com/gardarr/gardarr/internal/routes/api/v1/version"
 	"github.com/gardarr/gardarr/internal/schemas"
 	"github.com/gardarr/gardarr/internal/services/agentmanager"
 	"github.com/gardarr/gardarr/internal/services/crypto"
@@ -204,11 +208,16 @@ func setRoutes(db *database.Database, a *agentmanager.Service) {
 	router.StaticFile("/vite.svg", filepath.Join(webPath, "vite.svg"))
 
 	// API routes
+
 	v1 := router.Group("/v1")
 	health.NewModule(v1, db).Register()
 	auth.NewModule(v1, db).Register()
 	agents.NewModule(v1, a).Register()
 	category.NewModule(v1, db).Register()
+	users.NewModule(v1, db).Register()
+	signup.NewModule(v1, db).Register()
+	setup.NewModule(v1, db).Register()
+	version.NewModule(v1, db).Register()
 
 	// Serve the main index.html for all non-API routes (SPA fallback)
 	router.NoRoute(func(c *gin.Context) {

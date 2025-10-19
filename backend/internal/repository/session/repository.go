@@ -23,10 +23,11 @@ func NewRepository(db *database.Database) *Repository {
 }
 
 // CreateSession inserts a new session into the database
-func (r *Repository) CreateSession(ctx context.Context, userUUID uuid.UUID, token, userAgent, ipAddress string, expiresAt time.Time) (*entities.Session, error) {
+func (r *Repository) CreateSession(ctx context.Context, userUUID uuid.UUID, userRole string, token, userAgent, ipAddress string, expiresAt time.Time) (*entities.Session, error) {
 	model := &models.Session{
 		UserUUID:  userUUID,
 		Token:     token,
+		Role:      userRole,
 		UserAgent: userAgent,
 		IPAddress: ipAddress,
 		ExpiresAt: expiresAt,

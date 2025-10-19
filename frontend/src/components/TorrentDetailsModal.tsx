@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
 import { 
   Copy, 
   Check, 
@@ -35,10 +36,16 @@ import {
   Play,
   Pause,
   Trash2,
-  Zap
+  Zap,
+  Radio,
+  CheckCircle,
+  Rocket,
+  Edit,
+  Save
 } from "lucide-react";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { AgentIcon } from "@/components/ui/AgentIcon";
+import { DeleteTorrentModal } from "@/components/DeleteTorrentModal";
 import { useTranslation } from "react-i18next";
 import type { Task } from "@/types/torrent";
 
@@ -48,8 +55,13 @@ interface TorrentDetailsModalProps {
   onClose: () => void;
   onPlay?: (torrentId: string) => void;
   onPause?: (torrentId: string) => void;
-  onDelete?: (torrentId: string) => void;
+  onDelete?: (torrentId: string, purge: boolean) => void;
   onForceDownload?: (torrentId: string) => void;
+  onForceReannounce?: (torrentId: string) => void;
+  onForceRecheck?: (torrentId: string) => void;
+  onToggleSuperSeeding?: (torrentId: string, enabled: boolean) => void;
+  onRename?: (torrentId: string, newName: string) => void;
+  onSetLocation?: (torrentId: string, location: string) => void;
 }
 
 function formatBytes(bytes: number): string {
@@ -84,10 +96,32 @@ function useIsMobile(): boolean {
 }
 
 
-export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause, onDelete, onForceDownload }: TorrentDetailsModalProps) {
+export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause, onDelete, onForceDownload, onForceReannounce, onForceRecheck, onToggleSuperSeeding, onRename, onSetLocation }: TorrentDetailsModalProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [superSeedingEnabled, setSuperSeedingEnabled] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [isEditingPath, setIsEditingPath] = useState(false);
+  const [editedName, setEditedName] = useState("");
+  const [editedPath, setEditedPath] = useState("");
   const isMobile = useIsMobile();
   const { t } = useTranslation();
+
+  // Sync super seeding state with torrent data - only update when super_seeding value changes
+  useEffect(() => {
+    if (torrent?.super_seeding !== undefined) {
+      setSuperSeedingEnabled(torrent.super_seeding);
+    } else {
+      setSuperSeedingEnabled(false);
+    }
+  }, [torrent?.super_seeding]); // Depende apenas do valor específico, não de todo o objeto torrent
+
+  // Reset state when modal is opened with a new torrent
+  useEffect(() => {
+    if (isOpen && torrent) {
+      setSuperSeedingEnabled(torrent.super_seeding ?? false);
+    }
+  }, [isOpen, torrent?.id]); // Reinicializa quando o modal abre ou quando muda de torrent
 
   const copyToClipboard = async (text: string, field: string) => {
     try {
@@ -99,13 +133,78 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
     }
   };
 
+  const handleDeleteClick = () => {
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = (purge: boolean) => {
+    if (onDelete && torrent) {
+      onDelete(torrent.id, purge);
+    }
+    setIsDeleteModalOpen(false);
+  };
+
+  const handleEditName = () => {
+    if (isEditingName) {
+      // Salvar
+      if (onRename && torrent && editedName.trim() !== '') {
+        onRename(torrent.id, editedName);
+      }
+      setIsEditingName(false);
+    } else {
+      // Entrar em modo de edição
+      setEditedName(torrent?.name || '');
+      setIsEditingName(true);
+    }
+  };
+
+  const handleCancelEditName = () => {
+    setEditedName(torrent?.name || '');
+    setIsEditingName(false);
+  };
+
+  const handleNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleEditName();
+    } else if (e.key === 'Escape') {
+      handleCancelEditName();
+    }
+  };
+
+  const handleEditPath = () => {
+    if (isEditingPath) {
+      // Salvar
+      if (onSetLocation && torrent && editedPath.trim() !== '') {
+        onSetLocation(torrent.id, editedPath);
+      }
+      setIsEditingPath(false);
+    } else {
+      // Entrar em modo de edição
+      setEditedPath(torrent?.path || '');
+      setIsEditingPath(true);
+    }
+  };
+
+  const handleCancelEditPath = () => {
+    setEditedPath(torrent?.path || '');
+    setIsEditingPath(false);
+  };
+
+  const handlePathKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleEditPath();
+    } else if (e.key === 'Escape') {
+      handleCancelEditPath();
+    }
+  };
+
   if (!torrent) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[90vw] max-w-[90vw] max-h-[85vh] overflow-y-auto mx-4 sm:mx-0 sm:w-auto sm:max-w-4xl sm:max-h-[90vh]">
+      <DialogContent className="w-[95vw] max-w-[95vw] max-h-[85vh] overflow-y-auto mx-0 sm:w-auto sm:max-w-4xl sm:max-h-[90vh]">
         <DialogHeader>
-          <div className="flex items-start justify-between gap-4 pr-8">
+          <div className="flex items-start justify-between gap-4 pr-0 sm:pr-8">
             <div className="flex-1">
               <DialogTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
@@ -115,7 +214,8 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                 Informações completas sobre o torrent selecionado
               </DialogDescription>
             </div>
-            <ButtonGroup className="flex-shrink-0 mt-1">
+            {/* Botões de ação - Desktop apenas */}
+            <ButtonGroup className="hidden sm:flex flex-shrink-0 mt-1">
               {onPlay && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -170,13 +270,77 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                   </TooltipContent>
                 </Tooltip>
               )}
+              {onForceReannounce && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => onForceReannounce(torrent.id)}
+                      className="h-10 w-10 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950 dark:text-blue-400 dark:hover:text-blue-300"
+                      aria-label="Force Reannounce"
+                    >
+                      <Radio className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Force Reannounce
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              {onForceRecheck && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => onForceRecheck(torrent.id)}
+                      className="h-10 w-10 text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-950 dark:text-purple-400 dark:hover:text-purple-300"
+                      aria-label="Force Recheck"
+                    >
+                      <CheckCircle className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Force Recheck
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              {onToggleSuperSeeding && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={superSeedingEnabled ? "default" : "outline"}
+                      size="icon"
+                      onClick={() => {
+                        const newState = !superSeedingEnabled;
+                        // Atualiza imediatamente para feedback visual instantâneo
+                        setSuperSeedingEnabled(newState);
+                        // Chama a API (o useEffect sincronizará com o backend após a resposta)
+                        onToggleSuperSeeding(torrent.id, newState);
+                      }}
+                      className={`h-10 w-10 ${
+                        superSeedingEnabled
+                          ? 'bg-green-600 hover:bg-green-700 text-white'
+                          : 'text-gray-600 hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-gray-950 dark:text-gray-400 dark:hover:text-gray-300'
+                      }`}
+                      aria-label="Toggle Super Seeding"
+                    >
+                      <Rocket className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Super Seeding {superSeedingEnabled ? '(Enabled)' : '(Disabled)'}
+                  </TooltipContent>
+                </Tooltip>
+              )}
               {onDelete && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => onDelete(torrent.id)}
+                      onClick={handleDeleteClick}
                       className="h-10 w-10 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 dark:text-red-400 dark:hover:text-red-300"
                       aria-label={t('torrents.actionButtons.delete')}
                     >
@@ -192,27 +356,202 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
           </div>
         </DialogHeader>
 
+        {/* Botões de ação - Mobile apenas (abaixo do header) */}
+        <div className="flex sm:hidden overflow-x-auto pb-3 border-b scrollbar-hide"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
+          <ButtonGroup className="flex-shrink-0">
+          {onPlay && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => onPlay(torrent.id)}
+                  className="h-12 w-12 flex-shrink-0"
+                  aria-label={t('torrents.actionButtons.play')}
+                >
+                  <Play className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {t('torrents.actionButtons.play')}
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {onPause && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => onPause(torrent.id)}
+                  className="h-12 w-12 flex-shrink-0"
+                  aria-label={t('torrents.actionButtons.pause')}
+                >
+                  <Pause className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {t('torrents.actionButtons.pause')}
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {onForceDownload && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => onForceDownload(torrent.id)}
+                  className="h-12 w-12 flex-shrink-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-950 dark:text-orange-400 dark:hover:text-orange-300"
+                  aria-label="Force Download"
+                >
+                  <Zap className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                Force Download
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {onForceReannounce && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => onForceReannounce(torrent.id)}
+                  className="h-12 w-12 flex-shrink-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950 dark:text-blue-400 dark:hover:text-blue-300"
+                  aria-label="Force Reannounce"
+                >
+                  <Radio className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                Force Reannounce
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {onForceRecheck && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => onForceRecheck(torrent.id)}
+                  className="h-12 w-12 flex-shrink-0 text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-950 dark:text-purple-400 dark:hover:text-purple-300"
+                  aria-label="Force Recheck"
+                >
+                  <CheckCircle className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                Force Recheck
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {onToggleSuperSeeding && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={superSeedingEnabled ? "default" : "outline"}
+                  size="icon"
+                  onClick={() => {
+                    const newState = !superSeedingEnabled;
+                    setSuperSeedingEnabled(newState);
+                    onToggleSuperSeeding(torrent.id, newState);
+                  }}
+                  className={`h-12 w-12 flex-shrink-0 ${
+                    superSeedingEnabled
+                      ? 'bg-green-600 hover:bg-green-700 text-white'
+                      : 'text-gray-600 hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-gray-950 dark:text-gray-400 dark:hover:text-gray-300'
+                  }`}
+                  aria-label="Toggle Super Seeding"
+                >
+                  <Rocket className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                Super Seeding {superSeedingEnabled ? '(Enabled)' : '(Disabled)'}
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {onDelete && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleDeleteClick}
+                  className="h-12 w-12 flex-shrink-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 dark:text-red-400 dark:hover:text-red-300"
+                  aria-label={t('torrents.actionButtons.delete')}
+                >
+                  <Trash2 className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {t('torrents.actionButtons.delete')}
+              </TooltipContent>
+            </Tooltip>
+          )}
+          </ButtonGroup>
+        </div>
+
         <div className="space-y-3 sm:space-y-6">
           {/* Nome do Torrent */}
           <div className="space-y-2">
             <h3 className="text-sm font-medium text-muted-foreground">Nome</h3>
-            <div className="flex items-start gap-2 p-2 sm:p-3 bg-muted rounded-lg min-w-0">
-              <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-              <span className="text-xs sm:text-sm font-medium break-words flex-1 leading-relaxed">
-                {truncateText(torrent.name, isMobile ? 40 : 100)}
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => copyToClipboard(torrent.name, 'name')}
-                className="h-8 w-8 p-0 flex-shrink-0"
-              >
-                {copiedField === 'name' ? (
-                  <Check className="h-4 w-4 text-green-600" />
+            <div className="flex items-start gap-2">
+              <div className="flex items-start gap-2 p-2 sm:p-3 container-content-background/50 rounded-lg min-w-0 flex-1">
+                <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                {isEditingName ? (
+                  <Input
+                    value={editedName}
+                    onChange={(e) => setEditedName(e.target.value)}
+                    onKeyDown={handleNameKeyDown}
+                    className="text-xs sm:text-sm font-medium flex-1 h-8 px-2"
+                    autoFocus
+                  />
                 ) : (
-                  <Copy className="h-4 w-4" />
+                  <span className="text-xs sm:text-sm font-medium break-words flex-1 leading-relaxed">
+                    {truncateText(torrent.name, isMobile ? 40 : 100)}
+                  </span>
                 )}
-              </Button>
+                {!isEditingName && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => copyToClipboard(torrent.name, 'name')}
+                    className="h-8 w-8 p-0 flex-shrink-0"
+                  >
+                    {copiedField === 'name' ? (
+                      <Check className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
+              </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handleEditName}
+                    className="h-8 w-8 p-0 flex-shrink-0 mt-2 sm:mt-3"
+                  >
+                    {isEditingName ? (
+                      <Save className="h-4 w-4" />
+                    ) : (
+                      <Edit className="h-4 w-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isEditingName ? 'Salvar nome' : 'Editar nome'}
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
 
@@ -221,7 +560,7 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
           {/* Hash */}
           <div className="space-y-2">
             <h3 className="text-sm font-medium text-muted-foreground">Hash</h3>
-            <div className="flex items-center gap-2 p-2 sm:p-3 bg-muted rounded-lg">
+            <div className="flex items-center gap-2 p-2 sm:p-3 container-content-background/50 rounded-lg">
               <Hash className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               <span className="text-xs sm:text-sm font-mono break-all flex-1">
                 {truncateText(torrent.hash, isMobile ? 25 : 60)}
@@ -246,7 +585,7 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
           {/* Magnet Link */}
           <div className="space-y-2">
             <h3 className="text-sm font-medium text-muted-foreground">Magnet Link</h3>
-            <div className="flex items-center gap-2 p-2 sm:p-3 bg-muted rounded-lg min-w-0">
+            <div className="flex items-center gap-2 p-2 sm:p-3 container-content-background/50 rounded-lg min-w-0">
               <Link className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               <div className="flex-1 min-w-0 overflow-hidden">
                 <span 
@@ -356,7 +695,7 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
             <h3 className="text-sm font-medium text-muted-foreground">Rede e Pares</h3>
             
             {/* Barra de Progresso de Seeding */}
-            <div className="space-y-3 p-3 bg-muted rounded-lg">
+            <div className="space-y-3 p-3 container-content-background/50 rounded-lg">
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium">Contribuição para a Rede</span>
                 <span className="text-sm font-mono font-medium">
@@ -540,23 +879,56 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
           {/* Caminho */}
           <div className="space-y-2">
             <h3 className="text-sm font-medium text-muted-foreground">Caminho</h3>
-            <div className="flex items-center gap-2 p-2 sm:p-3 bg-muted rounded-lg">
-              <FolderOpen className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-              <span className="text-xs sm:text-sm break-all flex-1">
-                {truncateText(torrent.path, isMobile ? 35 : 80)}
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => copyToClipboard(torrent.path, 'path')}
-                className="h-8 w-8 p-0"
-              >
-                {copiedField === 'path' ? (
-                  <Check className="h-4 w-4 text-green-600" />
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 p-2 sm:p-3 container-content-background/50 rounded-lg flex-1">
+                <FolderOpen className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                {isEditingPath ? (
+                  <Input
+                    value={editedPath}
+                    onChange={(e) => setEditedPath(e.target.value)}
+                    onKeyDown={handlePathKeyDown}
+                    className="text-xs sm:text-sm flex-1 h-8 px-2"
+                    autoFocus
+                  />
                 ) : (
-                  <Copy className="h-4 w-4" />
+                  <span className="text-xs sm:text-sm break-all flex-1">
+                    {truncateText(torrent.path, isMobile ? 35 : 80)}
+                  </span>
                 )}
-              </Button>
+                {!isEditingPath && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => copyToClipboard(torrent.path, 'path')}
+                    className="h-8 w-8 p-0 flex-shrink-0"
+                  >
+                    {copiedField === 'path' ? (
+                      <Check className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
+              </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handleEditPath}
+                    className="h-8 w-8 p-0 flex-shrink-0"
+                  >
+                    {isEditingPath ? (
+                      <Save className="h-4 w-4" />
+                    ) : (
+                      <Edit className="h-4 w-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isEditingPath ? 'Salvar caminho' : 'Editar caminho'}
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
 
@@ -595,6 +967,14 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
           )}
         </div>
       </DialogContent>
+
+      {/* Modal de confirmação de deleção */}
+      <DeleteTorrentModal
+        isOpen={isDeleteModalOpen}
+        torrentName={torrent.name}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleDeleteConfirm}
+      />
     </Dialog>
   );
 }

@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Alert, AlertDescription } from "./alert";
-import { CheckCircle2, XCircle, X } from "lucide-react";
+import { CheckCircle2, XCircle, Info, X } from "lucide-react";
 import { Button } from "./button";
 
-export type ToastType = "success" | "error";
+export type ToastType = "success" | "error" | "info";
 
 export interface Toast {
   id: string;
@@ -43,6 +43,26 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
     setTimeout(() => onRemove(toast.id), 300);
   };
 
+  const getVariant = () => {
+    if (toast.type === "error") return "destructive";
+    if (toast.type === "info") return "default";
+    return "success";
+  };
+
+  const getIcon = () => {
+    if (toast.type === "success") return <CheckCircle2 className="h-4 w-4" />;
+    if (toast.type === "error") return <XCircle className="h-4 w-4" />;
+    return <Info className="h-4 w-4" />;
+  };
+
+  const getAlertClassName = () => {
+    let className = "shadow-lg";
+    if (toast.type === "info") {
+      className += " bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-100";
+    }
+    return className;
+  };
+
   return (
     <div
       className={`pointer-events-auto transition-all duration-300 ${
@@ -52,14 +72,10 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
       }`}
     >
       <Alert
-        variant={toast.type === "error" ? "destructive" : "success"}
-        className="shadow-lg"
+        variant={getVariant()}
+        className={getAlertClassName()}
       >
-        {toast.type === "success" ? (
-          <CheckCircle2 className="h-4 w-4" />
-        ) : (
-          <XCircle className="h-4 w-4" />
-        )}
+        {getIcon()}
         <AlertDescription className="flex items-center justify-between gap-2">
           <span>{toast.message}</span>
           <Button

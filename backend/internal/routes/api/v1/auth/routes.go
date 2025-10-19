@@ -3,13 +3,14 @@ package auth
 import (
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/gardarr/gardarr/internal/entities"
 	"github.com/gardarr/gardarr/internal/infra/database"
+	"github.com/gardarr/gardarr/internal/mappers"
 	"github.com/gardarr/gardarr/internal/middlewares"
 	"github.com/gardarr/gardarr/internal/models"
 	"github.com/gardarr/gardarr/internal/schemas"
+	"github.com/gardarr/gardarr/internal/services/auth"
 	"github.com/gardarr/gardarr/internal/services/ratelimit"
 	"github.com/gardarr/gardarr/internal/services/session"
 	"github.com/gardarr/gardarr/internal/services/user"
@@ -25,6 +26,7 @@ type Module struct {
 	group          *gin.RouterGroup
 	userService    *user.Service
 	sessionService *session.Service
+	authService    *auth.Service
 	rateLimiter    *ratelimit.Service
 	db             *database.Database
 }
@@ -34,6 +36,7 @@ func NewModule(router *gin.RouterGroup, db *database.Database) *Module {
 		group:          router.Group("/auth"),
 		userService:    user.NewService(db),
 		sessionService: session.NewService(db),
+		authService:    auth.NewService(db),
 		rateLimiter:    ratelimit.NewDefaultService(),
 		db:             db,
 	}
@@ -41,8 +44,10 @@ func NewModule(router *gin.RouterGroup, db *database.Database) *Module {
 
 func (m *Module) Register() {
 	// Public routes
-	m.group.POST("/register", m.register)
 	m.group.POST("/login", m.login)
+
+	// Password reset routes - public (no authentication required)
+	m.group.POST("/reset_password", m.resetPassword)
 
 	// Protected routes
 	protected := m.group.Group("")
@@ -51,55 +56,26 @@ func (m *Module) Register() {
 	protected.POST("/logout", m.logout)
 	protected.POST("/logout-all", m.logoutAll)
 	protected.GET("/sessions", m.listSessions)
-}
 
-// register handles user registration
-func (m *Module) register(c *gin.Context) {
-	var body schemas.UserRegisterRequest
-	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Validation failed",
-			"details": err.Error(),
-		})
-		return
-	}
-
-	newUser, err := m.userService.CreateUser(c.Request.Context(), body.Email, body.Password)
-	if err != nil {
-		statusCode := http.StatusInternalServerError
-		if strings.Contains(err.Error(), "already exists") {
-			statusCode = http.StatusConflict
-		} else if strings.Contains(err.Error(), "required") || strings.Contains(err.Error(), "at least") {
-			statusCode = http.StatusBadRequest
-		}
-
-		c.JSON(statusCode, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Create session
-	userAgent := c.Request.UserAgent()
-	ipAddress := c.ClientIP()
-	sessionEntity, err := m.sessionService.CreateSession(c.Request.Context(), newUser.UUID, userAgent, ipAddress)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create session"})
-		return
-	}
-
-	// Set secure cookie
-	m.setSessionCookie(c, sessionEntity.Token, sessionEntity.ExpiresAt.Unix())
-
-	c.JSON(http.StatusCreated, models.AuthResponse{
-		User: models.UserResponse{
-			UUID:      newUser.UUID.String(),
-			Email:     newUser.Email,
-			CreatedAt: newUser.CreatedAt,
-		},
-	})
+	// Admin routes - require admin role
+	admin := m.group.Group("")
+	admin.Use(middlewares.SessionMiddleware(m.db))
+	admin.Use(middlewares.RequireAdminRole())
 }
 
 // login handles user authentication with rate limiting
 func (m *Module) login(c *gin.Context) {
+	// Check if system is initialized (at least one user exists)
+	count, err := m.userService.CountUsers(c.Request.Context())
+	if err == nil && count == 0 {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error":        "System not initialized",
+			"needs_setup":  true,
+			"redirect_url": "/setup",
+		})
+		return
+	}
+
 	// Create identifier for rate limiting
 	ip := c.ClientIP()
 	userAgent := c.Request.UserAgent()
@@ -142,7 +118,7 @@ func (m *Module) login(c *gin.Context) {
 	m.rateLimiter.Reset(identifier)
 
 	// Create session
-	sessionEntity, err := m.sessionService.CreateSession(c.Request.Context(), authenticatedUser.UUID, userAgent, ip)
+	sessionEntity, err := m.sessionService.CreateSession(c.Request.Context(), authenticatedUser.UUID, authenticatedUser.Role, userAgent, ip)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create session"})
 		return
@@ -152,11 +128,7 @@ func (m *Module) login(c *gin.Context) {
 	m.setSessionCookie(c, sessionEntity.Token, sessionEntity.ExpiresAt.Unix())
 
 	c.JSON(http.StatusOK, models.AuthResponse{
-		User: models.UserResponse{
-			UUID:      authenticatedUser.UUID.String(),
-			Email:     authenticatedUser.Email,
-			CreatedAt: authenticatedUser.CreatedAt,
-		},
+		User: mappers.ToUserResponse(authenticatedUser),
 	})
 }
 
@@ -169,10 +141,8 @@ func (m *Module) getCurrentUser(c *gin.Context) {
 	}
 
 	currentUser := user.(*entities.User)
-	c.JSON(http.StatusOK, models.UserResponse{
-		UUID:      currentUser.UUID.String(),
-		Email:     currentUser.Email,
-		CreatedAt: currentUser.CreatedAt,
+	c.JSON(http.StatusOK, models.AuthResponse{
+		User: mappers.ToUserResponse(currentUser),
 	})
 }
 
@@ -252,4 +222,27 @@ func (m *Module) setSessionCookie(c *gin.Context, token string, expiresAt int64)
 		false, // secure - set to true in production with HTTPS
 		true,  // httpOnly
 	)
+}
+
+// resetPassword validates a password reset token and updates the user's password
+func (m *Module) resetPassword(c *gin.Context) {
+	var req models.ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid request body",
+		})
+		return
+	}
+
+	err := m.authService.ValidateAndResetPassword(c.Request.Context(), req.Token, req.NewPassword)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Password reset successfully",
+	})
 }

@@ -23,11 +23,16 @@ export function useToast() {
     showToast(message, "error");
   }, [showToast]);
 
+  const showInfo = useCallback((message: string) => {
+    showToast(message, "info");
+  }, [showToast]);
+
   return {
     toasts,
     showToast,
     showSuccess,
     showError,
+    showInfo,
     removeToast,
   };
 }

@@ -28,3 +28,15 @@ go.work.sum
 __debug_*
 web
 *.db
+
+# Build artifacts
+dist/
+gardarr
+gardarr.exe
+.version
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo

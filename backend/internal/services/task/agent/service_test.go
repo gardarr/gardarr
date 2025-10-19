@@ -703,3 +703,232 @@ func TestService_ListTaskFiles(t *testing.T) {
 		t.Error("Expected error for non-existent task, got nil")
 	}
 }
+
+func TestService_GetTasksStats(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := newMockRepository()
+	service := &service{repository: mockRepo}
+
+	// Test with empty tasks list
+	stats, err := service.GetTasksStats(ctx)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	if stats.TotalDiskSize != 0 {
+		t.Errorf("Expected total disk size 0, got %d", stats.TotalDiskSize)
+	}
+	if stats.CurrentUploadSpeed != 0 {
+		t.Errorf("Expected current upload speed 0, got %d", stats.CurrentUploadSpeed)
+	}
+	if stats.CurrentDownloadSpeed != 0 {
+		t.Errorf("Expected current download speed 0, got %d", stats.CurrentDownloadSpeed)
+	}
+	if stats.AverageRatio != 0 {
+		t.Errorf("Expected average ratio 0, got %f", stats.AverageRatio)
+	}
+	if stats.MedianRatio != 0 {
+		t.Errorf("Expected median ratio 0, got %f", stats.MedianRatio)
+	}
+	if stats.HighestRatio != 0 {
+		t.Errorf("Expected highest ratio 0, got %f", stats.HighestRatio)
+	}
+	if stats.LowestRatio != 0 {
+		t.Errorf("Expected lowest ratio 0, got %f", stats.LowestRatio)
+	}
+	if stats.ActiveTasksCount != 0 {
+		t.Errorf("Expected active tasks count 0, got %d", stats.ActiveTasksCount)
+	}
+	if stats.ActiveSeeds != 0 {
+		t.Errorf("Expected active seeds 0, got %d", stats.ActiveSeeds)
+	}
+	if stats.ActivePeers != 0 {
+		t.Errorf("Expected active peers 0, got %d", stats.ActivePeers)
+	}
+	if len(stats.CategoryUsage) != 0 {
+		t.Errorf("Expected empty category usage, got %v", stats.CategoryUsage)
+	}
+	if len(stats.TagsUsage) != 0 {
+		t.Errorf("Expected empty tags usage, got %v", stats.TagsUsage)
+	}
+
+	// Add test tasks with various properties
+	task1 := &entities.Task{
+		ID:       "hash1",
+		Hash:     "hash1",
+		Name:     "Task 1",
+		State:    "DOWNLOADING",
+		Category: "movies",
+		Size:     1024 * 1024 * 1024, // 1 GB
+		Ratio:    1.5,
+		Tags:     []string{"hd", "action"},
+		Network: entities.TaskNetwork{
+			Upload:   entities.TaskUpload{Speed: 1000000},   // 1 MB/s
+			Download: entities.TaskDownload{Speed: 2000000}, // 2 MB/s
+		},
+		Pairs: entities.TaskPairs{
+			Seeders:  10,
+			Leechers: 5,
+		},
+	}
+
+	task2 := &entities.Task{
+		ID:       "hash2",
+		Hash:     "hash2",
+		Name:     "Task 2",
+		State:    "SEEDING",
+		Category: "tv",
+		Size:     512 * 1024 * 1024, // 512 MB
+		Ratio:    2.5,
+		Tags:     []string{"hd", "comedy"},
+		Network: entities.TaskNetwork{
+			Upload:   entities.TaskUpload{Speed: 500000}, // 500 KB/s
+			Download: entities.TaskDownload{Speed: 0},    // 0 KB/s
+		},
+		Pairs: entities.TaskPairs{
+			Seeders:  15,
+			Leechers: 3,
+		},
+	}
+
+	task3 := &entities.Task{
+		ID:       "hash3",
+		Hash:     "hash3",
+		Name:     "Task 3",
+		State:    "error",
+		Category: "movies",
+		Size:     256 * 1024 * 1024, // 256 MB
+		Ratio:    0.5,
+		Tags:     []string{"4k", "action"},
+		Network: entities.TaskNetwork{
+			Upload:   entities.TaskUpload{Speed: 0},   // 0 KB/s
+			Download: entities.TaskDownload{Speed: 0}, // 0 KB/s
+		},
+		Pairs: entities.TaskPairs{
+			Seeders:  0,
+			Leechers: 0,
+		},
+	}
+
+	task4 := &entities.Task{
+		ID:       "hash4",
+		Hash:     "hash4",
+		Name:     "Task 4",
+		State:    "paused",
+		Category: "music",
+		Size:     128 * 1024 * 1024, // 128 MB
+		Ratio:    3.0,
+		Tags:     []string{"mp3", "rock"},
+		Network: entities.TaskNetwork{
+			Upload:   entities.TaskUpload{Speed: 250000}, // 250 KB/s
+			Download: entities.TaskDownload{Speed: 0},    // 0 KB/s
+		},
+		Pairs: entities.TaskPairs{
+			Seeders:  8,
+			Leechers: 2,
+		},
+	}
+
+	mockRepo.tasks["hash1"] = task1
+	mockRepo.tasks["hash2"] = task2
+	mockRepo.tasks["hash3"] = task3
+	mockRepo.tasks["hash4"] = task4
+
+	// Test with multiple tasks
+	stats, err = service.GetTasksStats(ctx)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	// Test total disk size (1GB + 512MB + 256MB + 128MB = 1.896GB)
+	expectedTotalSize := int64(1024*1024*1024 + 512*1024*1024 + 256*1024*1024 + 128*1024*1024)
+	if stats.TotalDiskSize != expectedTotalSize {
+		t.Errorf("Expected total disk size %d, got %d", expectedTotalSize, stats.TotalDiskSize)
+	}
+
+	// Test current speeds (1MB/s + 500KB/s + 0 + 250KB/s = 1.75MB/s upload, 2MB/s download)
+	expectedUploadSpeed := 1000000 + 500000 + 0 + 250000
+	expectedDownloadSpeed := 2000000 + 0 + 0 + 0
+	if stats.CurrentUploadSpeed != expectedUploadSpeed {
+		t.Errorf("Expected current upload speed %d, got %d", expectedUploadSpeed, stats.CurrentUploadSpeed)
+	}
+	if stats.CurrentDownloadSpeed != expectedDownloadSpeed {
+		t.Errorf("Expected current download speed %d, got %d", expectedDownloadSpeed, stats.CurrentDownloadSpeed)
+	}
+
+	// Test average ratio (1.5 + 2.5 + 0.5 + 3.0) / 4 = 1.875
+	expectedAverageRatio := (1.5 + 2.5 + 0.5 + 3.0) / 4.0
+	if stats.AverageRatio != expectedAverageRatio {
+		t.Errorf("Expected average ratio %f, got %f", expectedAverageRatio, stats.AverageRatio)
+	}
+
+	// Test median ratio (sorted: 0.5, 1.5, 2.5, 3.0) -> median = (1.5 + 2.5) / 2 = 2.0
+	expectedMedianRatio := (1.5 + 2.5) / 2.0
+	if stats.MedianRatio != expectedMedianRatio {
+		t.Errorf("Expected median ratio %f, got %f", expectedMedianRatio, stats.MedianRatio)
+	}
+
+	// Test highest ratio (sorted: 0.5, 1.5, 2.5, 3.0) -> highest = 3.0
+	expectedHighestRatio := 3.0
+	if stats.HighestRatio != expectedHighestRatio {
+		t.Errorf("Expected highest ratio %f, got %f", expectedHighestRatio, stats.HighestRatio)
+	}
+
+	// Test lowest ratio (sorted: 0.5, 1.5, 2.5, 3.0) -> lowest = 0.5
+	expectedLowestRatio := 0.5
+	if stats.LowestRatio != expectedLowestRatio {
+		t.Errorf("Expected lowest ratio %f, got %f", expectedLowestRatio, stats.LowestRatio)
+	}
+
+	// Test active tasks count (should exclude "error" and "paused" states)
+	// Active: DOWNLOADING, SEEDING = 2 tasks
+	expectedActiveCount := 2
+	if stats.ActiveTasksCount != expectedActiveCount {
+		t.Errorf("Expected active tasks count %d, got %d", expectedActiveCount, stats.ActiveTasksCount)
+	}
+
+	// Test active seeds (10 + 15 + 0 + 8 = 33)
+	expectedActiveSeeds := 10 + 15 + 0 + 8
+	if stats.ActiveSeeds != expectedActiveSeeds {
+		t.Errorf("Expected active seeds %d, got %d", expectedActiveSeeds, stats.ActiveSeeds)
+	}
+
+	// Test active peers (5 + 3 + 0 + 2 = 10)
+	expectedActivePeers := 5 + 3 + 0 + 2
+	if stats.ActivePeers != expectedActivePeers {
+		t.Errorf("Expected active peers %d, got %d", expectedActivePeers, stats.ActivePeers)
+	}
+
+	// Test category usage
+	expectedCategoryUsage := map[string]int{
+		"movies": 2, // task1 and task3
+		"tv":     1, // task2
+		"music":  1, // task4
+	}
+	if len(stats.CategoryUsage) != len(expectedCategoryUsage) {
+		t.Errorf("Expected %d categories, got %d", len(expectedCategoryUsage), len(stats.CategoryUsage))
+	}
+	for category, expectedCount := range expectedCategoryUsage {
+		if stats.CategoryUsage[category] != expectedCount {
+			t.Errorf("Expected category '%s' count %d, got %d", category, expectedCount, stats.CategoryUsage[category])
+		}
+	}
+
+	// Test tags usage
+	expectedTagsUsage := map[string]int{
+		"hd":     2, // task1 and task2
+		"action": 2, // task1 and task3
+		"comedy": 1, // task2
+		"4k":     1, // task3
+		"mp3":    1, // task4
+		"rock":   1, // task4
+	}
+	if len(stats.TagsUsage) != len(expectedTagsUsage) {
+		t.Errorf("Expected %d tags, got %d", len(expectedTagsUsage), len(stats.TagsUsage))
+	}
+	for tag, expectedCount := range expectedTagsUsage {
+		if stats.TagsUsage[tag] != expectedCount {
+			t.Errorf("Expected tag '%s' count %d, got %d", tag, expectedCount, stats.TagsUsage[tag])
+		}
+	}
+}

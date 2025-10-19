@@ -28,30 +28,65 @@ export class TorrentService {
   /**
    * Remove uma task/torrent
    */
-  async deleteTask(taskId: string, purge: boolean = false): Promise<ApiResponse<null>> {
-    const endpoint = `${this.baseEndpoint}/${taskId}${purge ? '?purge=true' : ''}`;
+  async deleteTask(agentId: string, taskId: string, purge: boolean = false): Promise<ApiResponse<null>> {
+    const endpoint = `/agent/${agentId}/task/${taskId}${purge ? '?purge=true' : ''}`;
     return api.delete<null>(endpoint);
   }
 
   /**
-   * Pausa uma task/torrent
+   * Pausa uma task/torrent (stop)
    */
   async pauseTask(agentId: string, taskId: string): Promise<ApiResponse<null>> {
-    return api.post<null>(`/agent/${agentId}/tasks/${taskId}/pause`);
+    return api.post<null>(`/agent/${agentId}/task/${taskId}/stop`);
   }
 
   /**
-   * Retoma uma task/torrent
+   * Retoma uma task/torrent (start)
    */
   async resumeTask(agentId: string, taskId: string): Promise<ApiResponse<null>> {
-    return api.post<null>(`/agent/${agentId}/tasks/${taskId}/resume`);
+    return api.post<null>(`/agent/${agentId}/task/${taskId}/start`);
   }
 
   /**
    * Força download de uma task/torrent
    */
   async forceDownloadTask(agentId: string, taskId: string): Promise<ApiResponse<null>> {
-    return api.post<null>(`/agent/${agentId}/tasks/${taskId}/force_download`);
+    return api.post<null>(`/agent/${agentId}/task/${taskId}/force_download`);
+  }
+
+  /**
+   * Força reannounce de uma task/torrent
+   */
+  async forceReannounceTask(agentId: string, taskId: string): Promise<ApiResponse<null>> {
+    return api.post<null>(`/agent/${agentId}/task/${taskId}/force_reannounce`);
+  }
+
+  /**
+   * Força recheck de uma task/torrent
+   */
+  async forceRecheckTask(agentId: string, taskId: string): Promise<ApiResponse<null>> {
+    return api.post<null>(`/agent/${agentId}/task/${taskId}/force_recheck`);
+  }
+
+  /**
+   * Ativa/desativa super seeding de uma task/torrent
+   */
+  async toggleSuperSeeding(agentId: string, taskId: string, enabled: boolean): Promise<ApiResponse<null>> {
+    return api.post<null>(`/agent/${agentId}/task/${taskId}/super_seeding`, { enabled });
+  }
+
+  /**
+   * Renomeia uma task/torrent
+   */
+  async renameTask(agentId: string, taskId: string, newName: string): Promise<ApiResponse<null>> {
+    return api.post<null>(`/agent/${agentId}/task/${taskId}/rename`, { new_name: newName });
+  }
+
+  /**
+   * Altera o caminho (location) de uma task/torrent
+   */
+  async setTaskLocation(agentId: string, taskId: string, location: string): Promise<ApiResponse<null>> {
+    return api.post<null>(`/agent/${agentId}/task/${taskId}/location`, { location });
   }
 }
 

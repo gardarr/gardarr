@@ -1,23 +1,24 @@
 package models
 
 type TaskResponseModel struct {
-	ID         string                   `json:"id"`
-	Name       string                   `json:"name"`
-	Hash       string                   `json:"hash"`
-	State      string                   `json:"state"`
-	Category   string                   `json:"category"`
-	Path       string                   `json:"path"`
-	Priority   int                      `json:"priority"`
-	Ratio      float64                  `json:"ratio"`
-	Size       int                      `json:"size"`
-	Progress   float64                  `json:"progress"`
-	Popularity float64                  `json:"popularity"`
-	MagnetURI  string                   `json:"magnet_uri"`
-	MagnetLink *TaskMagnetLinkResponse  `json:"magnet_link"`
-	Pairs      TaskPairsResponse        `json:"pairs"`
-	Network    TaskNetworkResponseModel `json:"network"`
-	Tags       []string                 `json:"tags,omitempty"`
-	Agent      *AgentResponse           `json:"agent,omitempty"`
+	ID           string                   `json:"id"`
+	Name         string                   `json:"name"`
+	Hash         string                   `json:"hash"`
+	State        string                   `json:"state"`
+	Category     string                   `json:"category"`
+	Path         string                   `json:"path"`
+	Priority     int                      `json:"priority"`
+	Ratio        float64                  `json:"ratio"`
+	SuperSeeding bool                     `json:"super_seeding"`
+	Size         int                      `json:"size"`
+	Progress     float64                  `json:"progress"`
+	Popularity   float64                  `json:"popularity"`
+	MagnetURI    string                   `json:"magnet_uri"`
+	MagnetLink   *TaskMagnetLinkResponse  `json:"magnet_link"`
+	Pairs        TaskPairsResponse        `json:"pairs"`
+	Network      TaskNetworkResponseModel `json:"network"`
+	Tags         []string                 `json:"tags,omitempty"`
+	Agent        *AgentResponse           `json:"agent,omitempty"`
 }
 
 type TaskMagnetLinkResponse struct {
@@ -58,4 +59,19 @@ type TaskFileResponse struct {
 	IsSeed       bool    `json:"is_seed"`
 	PieceRange   [2]int  `json:"piece_range"`
 	Availability float64 `json:"availability"`
+}
+
+type TaskStatsResponse struct {
+	TotalDiskSize        int64          `json:"total_disk_size"`
+	CurrentUploadSpeed   int            `json:"current_upload_speed"`
+	CurrentDownloadSpeed int            `json:"current_download_speed"`
+	AverageRatio         float64        `json:"average_ratio"`
+	MedianRatio          float64        `json:"median_ratio"`
+	HighestRatio         float64        `json:"highest_ratio"`
+	LowestRatio          float64        `json:"lowest_ratio"`
+	ActiveTasksCount     int            `json:"active_tasks_count"`
+	ActiveSeeds          int            `json:"active_seeds"`
+	ActivePeers          int            `json:"active_peers"`
+	CategoryUsage        map[string]int `json:"category_usage"`
+	TagsUsage            map[string]int `json:"tags_usage"`
 }

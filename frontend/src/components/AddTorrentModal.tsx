@@ -506,7 +506,6 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
             <Button
               type="submit"
               disabled={isSubmitting || activeAgents.length === 0}
-              className="bg-green-600 hover:bg-green-700 text-white"
             >
               {isSubmitting ? "Adicionando..." : "Adicionar"}
             </Button>

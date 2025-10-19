@@ -1,24 +1,25 @@
 package entities
 
 type Task struct {
-	ID         string
-	Agent      *Agent
-	Name       string
-	Hash       string
-	State      string
-	Category   string
-	Path       string
-	Size       int
-	Priority   int
-	Ratio      float64
-	Progress   float64
-	Popularity float64
-	MagnetLink TaskMagnetLink
-	Tags       []string
-	MagnetURI  string
-	Pairs      TaskPairs
-	NumSeeds   int
-	Network    TaskNetwork
+	ID           string
+	Agent        *Agent
+	Name         string
+	Hash         string
+	State        string
+	Category     string
+	Path         string
+	Size         int
+	Priority     int
+	Ratio        float64
+	Progress     float64
+	Popularity   float64
+	MagnetLink   TaskMagnetLink
+	Tags         []string
+	MagnetURI    string
+	Pairs        TaskPairs
+	NumSeeds     int
+	SuperSeeding bool
+	Network      TaskNetwork
 }
 
 type TaskMagnetLink struct {
@@ -92,4 +93,19 @@ var TaskStatuses = map[string]string{
 	"checkingResumeData": "CHECKING_RESUME_DATA",
 	"moving":             "MOVING",
 	"unknown":            "UNKNOWN",
+}
+
+type TaskStats struct {
+	TotalDiskSize        int64
+	CurrentUploadSpeed   int
+	CurrentDownloadSpeed int
+	AverageRatio         float64
+	MedianRatio          float64
+	HighestRatio         float64
+	LowestRatio          float64
+	ActiveTasksCount     int
+	ActiveSeeds          int
+	ActivePeers          int
+	CategoryUsage        map[string]int
+	TagsUsage            map[string]int
 }

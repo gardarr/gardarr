@@ -275,8 +275,9 @@ func toTask(item *qbt.TorrentResponse) *entities.Task {
 			Seeders:       item.NumSeeds,
 			Leechers:      item.NumLeechs,
 		},
-		NumSeeds: item.NumSeeds,
-		Tags:     strings.Split(item.Tags, ","),
+		SuperSeeding: item.SuperSeeding,
+		NumSeeds:     item.NumSeeds,
+		Tags:         strings.Split(item.Tags, ","),
 		Network: entities.TaskNetwork{
 			Download: entities.TaskDownload{
 				Speed:  item.Dlspeed,

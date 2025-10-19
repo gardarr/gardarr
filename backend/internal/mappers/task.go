@@ -37,8 +37,9 @@ func ToTask(e models.TaskResponseModel) *entities.Task {
 			Seeders:       e.Pairs.Seeders,
 			Leechers:      e.Pairs.Leechers,
 		},
-		NumSeeds: e.Pairs.Seeders,
-		Tags:     e.Tags,
+		NumSeeds:     e.Pairs.Seeders,
+		SuperSeeding: e.SuperSeeding,
+		Tags:         e.Tags,
 		Network: entities.TaskNetwork{
 			Download: entities.TaskDownload{
 				Speed:  e.Network.Download.Speed,
@@ -72,12 +73,13 @@ func ToTaskResponse(e *entities.Task) models.TaskResponseModel {
 			ExactLength: e.MagnetLink.ExactLength,
 			ExactSource: e.MagnetLink.ExactSource,
 		},
-		MagnetURI: e.MagnetURI,
-		Category:  e.Category,
-		Path:      e.Path,
-		Ratio:     e.Ratio,
-		Size:      e.Size,
-		Progress:  e.Progress,
+		MagnetURI:    e.MagnetURI,
+		SuperSeeding: e.SuperSeeding,
+		Category:     e.Category,
+		Path:         e.Path,
+		Ratio:        e.Ratio,
+		Size:         e.Size,
+		Progress:     e.Progress,
 		Pairs: models.TaskPairsResponse{
 			SwarmSeeders:  e.Pairs.SwarmSeeders,
 			SwarmLeechers: e.Pairs.SwarmLeechers,
@@ -121,4 +123,38 @@ func ToTaskFilesResponse(files []*entities.TaskFile) []models.TaskFileResponse {
 		response[i] = ToTaskFileResponse(file)
 	}
 	return response
+}
+
+func ToTaskStatsResponse(e *entities.TaskStats) models.TaskStatsResponse {
+	return models.TaskStatsResponse{
+		TotalDiskSize:        e.TotalDiskSize,
+		CurrentUploadSpeed:   e.CurrentUploadSpeed,
+		CurrentDownloadSpeed: e.CurrentDownloadSpeed,
+		AverageRatio:         e.AverageRatio,
+		MedianRatio:          e.MedianRatio,
+		HighestRatio:         e.HighestRatio,
+		LowestRatio:          e.LowestRatio,
+		ActiveTasksCount:     e.ActiveTasksCount,
+		ActiveSeeds:          e.ActiveSeeds,
+		ActivePeers:          e.ActivePeers,
+		CategoryUsage:        e.CategoryUsage,
+		TagsUsage:            e.TagsUsage,
+	}
+}
+
+func ToTaskStats(m models.TaskStatsResponse) *entities.TaskStats {
+	return &entities.TaskStats{
+		TotalDiskSize:        m.TotalDiskSize,
+		CurrentUploadSpeed:   m.CurrentUploadSpeed,
+		CurrentDownloadSpeed: m.CurrentDownloadSpeed,
+		AverageRatio:         m.AverageRatio,
+		MedianRatio:          m.MedianRatio,
+		HighestRatio:         m.HighestRatio,
+		LowestRatio:          m.LowestRatio,
+		ActiveTasksCount:     m.ActiveTasksCount,
+		ActiveSeeds:          m.ActiveSeeds,
+		ActivePeers:          m.ActivePeers,
+		CategoryUsage:        m.CategoryUsage,
+		TagsUsage:            m.TagsUsage,
+	}
 }

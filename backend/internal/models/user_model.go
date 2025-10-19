@@ -9,10 +9,12 @@ import (
 
 type User struct {
 	UUID         uuid.UUID `gorm:"type:uuid;primaryKey;uniqueIndex"`
-	Username     string    `gorm:"size:100;uniqueIndex"`
+	Username     string    `gorm:"size:100;uniqueIndex:idx_username,where:username != ''"`
 	Email        string    `gorm:"size:255;uniqueIndex;not null"`
 	PasswordHash string    `gorm:"size:255;not null"`
 	Salt         string    `gorm:"size:255;not null"`
+	Role         string    `gorm:"size:50;default:'user'"`
+	Founder      bool
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
@@ -36,12 +38,20 @@ func (u *User) BeforeUpdate(tx *gorm.DB) (err error) {
 type UserResponse struct {
 	UUID      string    `json:"uuid"`
 	Email     string    `json:"email"`
+	Role      string    `json:"role"`
+	Founder   bool      `json:"founder"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+// ListUsersResponse represents the response body for listing users
+type ListUsersResponse struct {
+	Users []*UserResponse `json:"users"`
+	Total int             `json:"total"`
 }
 
 // AuthResponse represents the response body for authentication operations
 type AuthResponse struct {
-	User UserResponse `json:"user"`
+	User *UserResponse `json:"user"`
 }
 
 // SessionResponse represents the response body for session information

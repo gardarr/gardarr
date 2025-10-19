@@ -12,6 +12,7 @@ type Session struct {
 	UserUUID  uuid.UUID `gorm:"type:uuid;not null;index"`
 	Token     string    `gorm:"size:255;uniqueIndex;not null"`
 	UserAgent string    `gorm:"size:500"`
+	Role      string    `gorm:"size:50;not null"`
 	IPAddress string    `gorm:"size:45"`
 	ExpiresAt time.Time `gorm:"not null;index"`
 	CreatedAt time.Time

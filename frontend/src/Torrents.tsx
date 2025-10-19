@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ArrowDownCircle, ArrowUpCircle, PauseCircle, Info, Search, ChevronLeft, ChevronRight, Loader2, ChevronDown, SortAsc, SortDesc, Clock, XCircle, FileX, Play, RotateCcw, HardDrive, Plus, SlidersHorizontal, Download } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, ArrowDown, ArrowUp, PauseCircle, Info, Search, ChevronLeft, ChevronRight, Loader2, ChevronDown, SortAsc, SortDesc, Clock, XCircle, FileX, Play, RotateCcw, HardDrive, Plus, SlidersHorizontal, Download } from "lucide-react";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { torrentService } from "./services/torrents";
@@ -532,6 +532,18 @@ function TorrentRow({ torrent, onShowDetails }: {
         <RatioBadge ratio={torrent.ratio} />
       </td>
       <td className="px-4 py-3 text-sm">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1">
+            <ArrowUp className="h-3.5 w-3.5 text-green-600 dark:text-green-400 flex-shrink-0" />
+            <span className="text-xs">{torrent.numSeeds}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <ArrowDown className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+            <span className="text-xs">{torrent.numLeechs}</span>
+          </div>
+        </div>
+      </td>
+      <td className="px-4 py-3 text-sm">
         {torrent.agentName ? (
           <div className="flex items-center gap-2">
             <AgentIcon 
@@ -762,6 +774,11 @@ export default function TorrentsPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false);
   const { toasts, showSuccess, showError, removeToast } = useToast();
+  
+  // Refs para rastrear valores anteriores de status/categorias/tags disponíveis
+  const prevAvailableStatusesRef = useRef<TorrentStatus[]>([]);
+  const prevAvailableCategoriesRef = useRef<string[]>([]);
+  const prevAvailableTagsRef = useRef<string[]>([]);
 
   // Extrair status únicos disponíveis
   const availableStatuses = useMemo(() => {
@@ -791,25 +808,97 @@ export default function TorrentsPage() {
   }, [torrents]);
 
   // Inicializar todos os status como selecionados quando houver torrents
+  // e manter todos selecionados quando novos status aparecerem
   useEffect(() => {
-    if (availableStatuses.length > 0 && selectedStatuses.size === 0) {
+    if (availableStatuses.length === 0) return;
+    
+    const prevStatuses = prevAvailableStatusesRef.current;
+    
+    // Se não há status selecionados ainda, selecionar todos
+    if (selectedStatuses.size === 0) {
       setSelectedStatuses(new Set(availableStatuses));
+      prevAvailableStatusesRef.current = availableStatuses;
+      return;
     }
-  }, [availableStatuses]);
+    
+    // Detectar novos status que apareceram
+    const newStatuses = availableStatuses.filter(s => !prevStatuses.includes(s));
+    
+    // Se há novos status E todos os status anteriores estão selecionados,
+    // adicionar os novos automaticamente
+    if (newStatuses.length > 0) {
+      const allPreviousSelected = prevStatuses.every(s => selectedStatuses.has(s));
+      
+      if (allPreviousSelected) {
+        setSelectedStatuses(new Set(availableStatuses));
+      }
+    }
+    
+    // Atualizar ref para próxima comparação
+    prevAvailableStatusesRef.current = availableStatuses;
+  }, [availableStatuses, selectedStatuses]);
 
   // Inicializar todas as categorias como selecionadas quando houver torrents
+  // e manter todas selecionadas quando novas categorias aparecerem
   useEffect(() => {
-    if (availableCategories.length > 0 && selectedCategories.size === 0) {
+    if (availableCategories.length === 0) return;
+    
+    const prevCategories = prevAvailableCategoriesRef.current;
+    
+    // Se não há categorias selecionadas ainda, selecionar todas
+    if (selectedCategories.size === 0) {
       setSelectedCategories(new Set(availableCategories));
+      prevAvailableCategoriesRef.current = availableCategories;
+      return;
     }
-  }, [availableCategories]);
+    
+    // Detectar novas categorias que apareceram
+    const newCategories = availableCategories.filter(c => !prevCategories.includes(c));
+    
+    // Se há novas categorias E todas as categorias anteriores estão selecionadas,
+    // adicionar as novas automaticamente
+    if (newCategories.length > 0) {
+      const allPreviousSelected = prevCategories.every(c => selectedCategories.has(c));
+      
+      if (allPreviousSelected) {
+        setSelectedCategories(new Set(availableCategories));
+      }
+    }
+    
+    // Atualizar ref para próxima comparação
+    prevAvailableCategoriesRef.current = availableCategories;
+  }, [availableCategories, selectedCategories]);
 
   // Inicializar todas as tags como selecionadas quando houver torrents
+  // e manter todas selecionadas quando novas tags aparecerem
   useEffect(() => {
-    if (availableTags.length > 0 && selectedTags.size === 0) {
+    if (availableTags.length === 0) return;
+    
+    const prevTags = prevAvailableTagsRef.current;
+    
+    // Se não há tags selecionadas ainda, selecionar todas
+    if (selectedTags.size === 0) {
       setSelectedTags(new Set(availableTags));
+      prevAvailableTagsRef.current = availableTags;
+      return;
     }
-  }, [availableTags]);
+    
+    // Detectar novas tags que apareceram
+    const newTags = availableTags.filter(t => !prevTags.includes(t));
+    
+    // Se há novas tags E todas as tags anteriores estão selecionadas,
+    // adicionar as novas automaticamente
+    if (newTags.length > 0) {
+      const allPreviousSelected = prevTags.every(t => selectedTags.has(t));
+      
+      if (allPreviousSelected) {
+        setSelectedTags(new Set(availableTags));
+      }
+    }
+    
+    // Atualizar ref para próxima comparação
+    prevAvailableTagsRef.current = availableTags;
+  }, [availableTags, selectedTags]);
 
   // Carregar torrents da API
   const loadTorrents = async () => {
@@ -983,9 +1072,185 @@ export default function TorrentsPage() {
     }
   };
 
-  const handleDeleteTorrent = async (torrentId: string) => {
+  const handleForceReannounceTorrent = async (torrentId: string) => {
     try {
-      const response = await torrentService.deleteTask(torrentId, false);
+      const task = originalTasks.find(t => t.id === torrentId);
+      if (!task || !task.agent?.uuid) {
+        showError('Agent ID não encontrado para este torrent');
+        return;
+      }
+
+      const response = await torrentService.forceReannounceTask(task.agent.uuid, torrentId);
+      if (response.error) {
+        showError(response.error);
+        return;
+      }
+
+      showSuccess('Force reannounce iniciado com sucesso');
+      
+      // Recarregar dados sem fechar o modal
+      const refreshResponse = await torrentService.listTasks();
+      if (refreshResponse?.data) {
+        setOriginalTasks(refreshResponse.data);
+        const mappedTorrents = refreshResponse.data.map(mapTaskToTorrent);
+        setTorrents(mappedTorrents);
+        
+        // Atualizar o torrent selecionado para refletir mudanças
+        const updatedTask = refreshResponse.data.find(t => t.id === torrentId);
+        if (updatedTask) {
+          setSelectedTorrent(updatedTask);
+        }
+      }
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erro ao forçar reannounce do torrent');
+    }
+  };
+
+  const handleForceRecheckTorrent = async (torrentId: string) => {
+    try {
+      const task = originalTasks.find(t => t.id === torrentId);
+      if (!task || !task.agent?.uuid) {
+        showError('Agent ID não encontrado para este torrent');
+        return;
+      }
+
+      const response = await torrentService.forceRecheckTask(task.agent.uuid, torrentId);
+      if (response.error) {
+        showError(response.error);
+        return;
+      }
+
+      showSuccess('Force recheck iniciado com sucesso');
+      
+      // Recarregar dados sem fechar o modal
+      const refreshResponse = await torrentService.listTasks();
+      if (refreshResponse?.data) {
+        setOriginalTasks(refreshResponse.data);
+        const mappedTorrents = refreshResponse.data.map(mapTaskToTorrent);
+        setTorrents(mappedTorrents);
+        
+        // Atualizar o torrent selecionado para refletir mudanças
+        const updatedTask = refreshResponse.data.find(t => t.id === torrentId);
+        if (updatedTask) {
+          setSelectedTorrent(updatedTask);
+        }
+      }
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erro ao forçar recheck do torrent');
+    }
+  };
+
+  const handleToggleSuperSeeding = async (torrentId: string, enabled: boolean) => {
+    try {
+      const task = originalTasks.find(t => t.id === torrentId);
+      if (!task || !task.agent?.uuid) {
+        showError('Agent ID não encontrado para este torrent');
+        return;
+      }
+
+      const response = await torrentService.toggleSuperSeeding(task.agent.uuid, torrentId, enabled);
+      if (response.error) {
+        showError(response.error);
+        return;
+      }
+
+      showSuccess(`Super seeding ${enabled ? 'ativado' : 'desativado'} com sucesso`);
+      
+      // Recarregar dados sem fechar o modal
+      const refreshResponse = await torrentService.listTasks();
+      if (refreshResponse?.data) {
+        setOriginalTasks(refreshResponse.data);
+        const mappedTorrents = refreshResponse.data.map(mapTaskToTorrent);
+        setTorrents(mappedTorrents);
+        
+        // Atualizar o torrent selecionado para refletir mudanças
+        const updatedTask = refreshResponse.data.find(t => t.id === torrentId);
+        if (updatedTask) {
+          setSelectedTorrent(updatedTask);
+        }
+      }
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erro ao alterar super seeding do torrent');
+    }
+  };
+
+  const handleRenameTorrent = async (torrentId: string, newName: string) => {
+    try {
+      const task = originalTasks.find(t => t.id === torrentId);
+      if (!task || !task.agent?.uuid) {
+        showError('Agent ID não encontrado para este torrent');
+        return;
+      }
+
+      const response = await torrentService.renameTask(task.agent.uuid, torrentId, newName);
+      if (response.error) {
+        showError(response.error);
+        return;
+      }
+
+      showSuccess('Torrent renomeado com sucesso');
+      
+      // Recarregar dados sem fechar o modal
+      const refreshResponse = await torrentService.listTasks();
+      if (refreshResponse?.data) {
+        setOriginalTasks(refreshResponse.data);
+        const mappedTorrents = refreshResponse.data.map(mapTaskToTorrent);
+        setTorrents(mappedTorrents);
+        
+        // Atualizar o torrent selecionado para refletir mudanças
+        const updatedTask = refreshResponse.data.find(t => t.id === torrentId);
+        if (updatedTask) {
+          setSelectedTorrent(updatedTask);
+        }
+      }
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erro ao renomear torrent');
+    }
+  };
+
+  const handleSetLocationTorrent = async (torrentId: string, location: string) => {
+    try {
+      const task = originalTasks.find(t => t.id === torrentId);
+      if (!task || !task.agent?.uuid) {
+        showError('Agent ID não encontrado para este torrent');
+        return;
+      }
+
+      const response = await torrentService.setTaskLocation(task.agent.uuid, torrentId, location);
+      if (response.error) {
+        showError(response.error);
+        return;
+      }
+
+      showSuccess('Caminho alterado com sucesso');
+      
+      // Recarregar dados sem fechar o modal
+      const refreshResponse = await torrentService.listTasks();
+      if (refreshResponse?.data) {
+        setOriginalTasks(refreshResponse.data);
+        const mappedTorrents = refreshResponse.data.map(mapTaskToTorrent);
+        setTorrents(mappedTorrents);
+        
+        // Atualizar o torrent selecionado para refletir mudanças
+        const updatedTask = refreshResponse.data.find(t => t.id === torrentId);
+        if (updatedTask) {
+          setSelectedTorrent(updatedTask);
+        }
+      }
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erro ao alterar caminho do torrent');
+    }
+  };
+
+  const handleDeleteTorrent = async (torrentId: string, purge: boolean = false) => {
+    try {
+      const task = originalTasks.find(t => t.id === torrentId);
+      if (!task || !task.agent?.uuid) {
+        showError('Agent ID não encontrado para este torrent');
+        return;
+      }
+
+      const response = await torrentService.deleteTask(task.agent.uuid, torrentId, purge);
       
       if (response.error) {
         showError(response.error);
@@ -995,7 +1260,10 @@ export default function TorrentsPage() {
       // Fechar modal e recarregar lista
       handleCloseModal();
       await loadTorrents();
-      showSuccess(t('torrents.notifications.deleteSuccess'));
+      showSuccess(purge 
+        ? t('torrents.notifications.deleteWithFilesSuccess') 
+        : t('torrents.notifications.deleteSuccess')
+      );
     } catch (err) {
       showError(err instanceof Error ? err.message : t('torrents.notifications.deleteError'));
     }
@@ -1070,26 +1338,39 @@ export default function TorrentsPage() {
     }
 
     // Filtrar por categorias selecionadas (se houver categorias disponíveis)
-    if (availableCategories.length > 0 && selectedCategories.size === 0) {
-      // Nenhuma categoria selecionada -> não exibe torrents
-      return [] as Torrent[];
-    }
     if (availableCategories.length > 0 && selectedCategories.size > 0) {
       filtered = filtered.filter((t) => {
-        // Exibe torrents que pertencem às categorias selecionadas OU que não têm categoria
-        return !t.category || selectedCategories.has(t.category);
+        // Verifica se o torrent não tem categoria (sempre exibe)
+        const hasNoCategory = !t.category || t.category.trim() === '';
+        if (hasNoCategory) return true;
+        
+        // Se tem categoria, verifica se está selecionada
+        return selectedCategories.has(t.category);
       });
+    } else if (availableCategories.length > 0 && selectedCategories.size === 0) {
+      // Nenhuma categoria selecionada -> exibe apenas torrents sem categoria
+      filtered = filtered.filter((t) => !t.category || t.category.trim() === '');
     }
 
     // Filtrar por tags selecionadas (se houver tags disponíveis)
-    if (availableTags.length > 0 && selectedTags.size === 0) {
-      // Nenhuma tag selecionada -> não exibe torrents
-      return [] as Torrent[];
-    }
     if (availableTags.length > 0 && selectedTags.size > 0) {
       filtered = filtered.filter((t) => {
-        // Exibe torrents que têm pelo menos uma tag selecionada OU que não têm tags
-        return !t.tags || t.tags.length === 0 || t.tags.some(tag => selectedTags.has(tag));
+        // Filtrar tags válidas (não vazias)
+        const validTags = t.tags.filter(tag => tag && tag.trim() !== '');
+        
+        // Torrents sem tags válidas são sempre exibidos
+        if (validTags.length === 0) {
+          return true;
+        }
+        
+        // Se tem tags válidas, verifica se pelo menos uma está selecionada
+        return validTags.some(tag => selectedTags.has(tag));
+      });
+    } else if (availableTags.length > 0 && selectedTags.size === 0) {
+      // Nenhuma tag selecionada -> exibe apenas torrents sem tags
+      filtered = filtered.filter((t) => {
+        const validTags = t.tags.filter(tag => tag && tag.trim() !== '');
+        return validTags.length === 0;
       });
     }
     
@@ -1309,7 +1590,6 @@ export default function TorrentsPage() {
         </div>
         <Button
           onClick={() => setIsAddModalOpen(true)}
-          className="bg-green-600 hover:bg-green-700 text-white"
           disabled={agents.length === 0}
         >
           <Plus className="h-4 w-4 mr-2" />
@@ -1521,9 +1801,14 @@ export default function TorrentsPage() {
                   <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
                     {t('torrents.ratio')}
                   </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                {t('torrents.agent')}
-              </th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <span>Seeds/Peers</span>
+                    </div>
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                    {t('torrents.agent')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1757,6 +2042,11 @@ export default function TorrentsPage() {
         onPause={handlePauseTorrent}
         onDelete={handleDeleteTorrent}
         onForceDownload={handleForceDownloadTorrent}
+        onForceReannounce={handleForceReannounceTorrent}
+        onForceRecheck={handleForceRecheckTorrent}
+        onToggleSuperSeeding={handleToggleSuperSeeding}
+        onRename={handleRenameTorrent}
+        onSetLocation={handleSetLocationTorrent}
       />
 
       {/* Modal de adicionar torrent */}

@@ -21,9 +21,10 @@ import {
   Shield, 
   type LucideIcon 
 } from "lucide-react";
+import { QBittorrentIcon } from "./QBittorrentIcon";
 
 // Available icons for agents
-const availableIcons: { name: string; icon: LucideIcon }[] = [
+const availableIcons: { name: string; icon: LucideIcon | React.ComponentType<any> }[] = [
   { name: "Server", icon: Server },
   { name: "Database", icon: Database },
   { name: "Cloud", icon: Cloud },
@@ -43,7 +44,8 @@ const availableIcons: { name: string; icon: LucideIcon }[] = [
   { name: "Archive", icon: Archive },
   { name: "Folder", icon: Folder },
   { name: "Zap", icon: Zap },
-  { name: "Shield", icon: Shield }
+  { name: "Shield", icon: Shield },
+  { name: "QBittorrent", icon: QBittorrentIcon }
 ];
 
 interface AgentIconProps {
@@ -53,7 +55,7 @@ interface AgentIconProps {
   className?: string;
 }
 
-function getAgentIcon(iconName?: string): LucideIcon {
+function getAgentIcon(iconName?: string): LucideIcon | React.ComponentType<any> {
   if (!iconName) return Server;
   const iconItem = availableIcons.find(i => i.name === iconName);
   return iconItem ? iconItem.icon : Server;
@@ -90,7 +92,11 @@ export function AgentIcon({
       className={`${config.container} rounded-sm flex items-center justify-center flex-shrink-0 ${className}`}
       style={{ backgroundColor: color }}
     >
-      <IconComponent className={`${config.icon} text-white`} />
+      {iconName === "QBittorrent" ? (
+        <IconComponent className={`${config.icon} text-white`} size={size} />
+      ) : (
+        <IconComponent className={`${config.icon} text-white`} />
+      )}
     </div>
   );
 }

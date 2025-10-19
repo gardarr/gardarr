@@ -1,0 +1,113 @@
+import { render, screen, waitFor } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+import Users from '../Users';
+import { AuthProvider } from '../contexts/AuthContext';
+
+// Mock the auth service
+vi.mock('../services/auth', () => ({
+  authService: {
+    getCurrentUser: vi.fn(),
+  },
+}));
+
+// Mock the user service
+vi.mock('../services/users', () => ({
+  userService: {
+    listUsers: vi.fn(),
+  },
+}));
+
+// Mock the signup service
+vi.mock('../services/signup', () => ({
+  signupService: {
+    listMagicLinks: vi.fn(),
+    createMagicLink: vi.fn(),
+    revokeMagicLink: vi.fn(),
+    getSignupUrl: vi.fn(),
+  },
+}));
+
+// Mock the toast hook
+vi.mock('../hooks/useToast', () => ({
+  useToast: () => ({
+    toasts: [],
+    showSuccess: vi.fn(),
+    showError: vi.fn(),
+    removeToast: vi.fn(),
+  }),
+}));
+
+// Mock the auth context
+const mockAuthContext = {
+  user: null,
+  loading: true,
+  login: vi.fn(),
+  logout: vi.fn(),
+  checkAuth: vi.fn(),
+};
+
+vi.mock('../contexts/AuthContext', () => ({
+  useAuth: () => mockAuthContext,
+  AuthProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
+const renderWithRouter = (component: React.ReactElement) => {
+  return render(
+    <BrowserRouter>
+      <AuthProvider>
+        {component}
+      </AuthProvider>
+    </BrowserRouter>
+  );
+};
+
+describe('Users Component', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('shows loading state when authentication is loading', () => {
+    mockAuthContext.loading = true;
+    mockAuthContext.user = null;
+
+    renderWithRouter(<Users />);
+
+    expect(screen.getByText('Loading...')).toBeInTheDocument();
+  });
+
+  it('shows loading state when user is not admin', async () => {
+    mockAuthContext.loading = false;
+    mockAuthContext.user = { 
+      id: '1', 
+      email: 'user@example.com', 
+      role: 'user',
+      uuid: 'uuid-1',
+      created_at: '2023-01-01T00:00:00Z'
+    };
+
+    renderWithRouter(<Users />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Loading...')).toBeInTheDocument();
+    });
+  });
+
+  it('renders users page when user is admin', async () => {
+    mockAuthContext.loading = false;
+    mockAuthContext.user = { 
+      id: '1', 
+      email: 'admin@example.com', 
+      role: 'admin',
+      uuid: 'uuid-1',
+      created_at: '2023-01-01T00:00:00Z'
+    };
+
+    renderWithRouter(<Users />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Users')).toBeInTheDocument();
+      expect(screen.getByText('Manage user accounts and permissions')).toBeInTheDocument();
+    });
+  });
+});

@@ -3,7 +3,9 @@ import type { ApiResponse } from '../lib/api';
 import type {
   Agent,
   CreateAgentRequest,
-  UpdateAgentRequest
+  UpdateAgentRequest,
+  Version,
+  TaskStats
 } from '../types/agent';
 
 /**
@@ -30,7 +32,7 @@ export class AgentService {
    * Creates a new agent
    */
   async createAgent(agentData: CreateAgentRequest): Promise<ApiResponse<Agent>> {
-    return api.post<Agent>(this.baseEndpoint, agentData);
+    return api.post<Agent>('/agent', agentData);
   }
 
   /**
@@ -66,6 +68,20 @@ export class AgentService {
    */
   async createAgentTask(agentId: string, taskData: any): Promise<ApiResponse<null>> {
     return api.post<null>(`/agent/${agentId}/task`, taskData);
+  }
+
+  /**
+   * Gets the version information for a specific agent
+   */
+  async getAgentVersion(agentId: string): Promise<ApiResponse<Version>> {
+    return api.get<Version>(`/agent/${agentId}/version`);
+  }
+
+  /**
+   * Gets the task statistics for a specific agent
+   */
+  async getAgentTaskStats(agentId: string): Promise<ApiResponse<TaskStats>> {
+    return api.get<TaskStats>(`/agent/${agentId}/tasks/stats`);
   }
 }
 

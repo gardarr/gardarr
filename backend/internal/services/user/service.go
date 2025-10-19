@@ -35,8 +35,13 @@ func NewService(db *database.Database) *Service {
 	}
 }
 
-// CreateUser creates a new user with email and password
+// CreateUser creates a new user with email and password (default role: user)
 func (s *Service) CreateUser(ctx context.Context, email, password string) (*entities.User, error) {
+	return s.CreateUserWithRole(ctx, email, password, "user", false)
+}
+
+// CreateUserWithRole creates a new user with email, password, and specific role
+func (s *Service) CreateUserWithRole(ctx context.Context, email, password, role string, founder bool) (*entities.User, error) {
 	// Validate input
 	email = strings.TrimSpace(strings.ToLower(email))
 	if email == "" {
@@ -49,6 +54,19 @@ func (s *Service) CreateUser(ctx context.Context, email, password string) (*enti
 		return nil, errors.New("password must be at least 8 characters")
 	}
 
+	// Validate role
+	validRoles := map[string]bool{
+		"admin": true,
+		"user":  true,
+	}
+	if !validRoles[role] {
+		return nil, errors.New("invalid role: must be 'admin' or 'user'")
+	}
+
+	if founder && role != "admin" {
+		return nil, errors.New("founder role can only be assigned to admin users")
+	}
+
 	// Generate salt
 	salt, err := generateSalt()
 	if err != nil {
@@ -59,7 +77,12 @@ func (s *Service) CreateUser(ctx context.Context, email, password string) (*enti
 	passwordHash := hashPassword(password, salt)
 
 	// Create user in repository
-	return s.repository.CreateUser(ctx, email, passwordHash, salt)
+	return s.repository.CreateUserWithRole(ctx, email, passwordHash, salt, role, founder)
+}
+
+// CountUsers returns the total number of users in the system
+func (s *Service) CountUsers(ctx context.Context) (int64, error) {
+	return s.repository.CountUsers(ctx)
 }
 
 // VerifyPassword verifies if the provided password matches the user's password
@@ -85,6 +108,7 @@ func (s *Service) VerifyPassword(ctx context.Context, email, password string) (*
 		UUID:      userModel.UUID,
 		Username:  userModel.Username,
 		Email:     userModel.Email,
+		Role:      userModel.Role,
 		CreatedAt: userModel.CreatedAt,
 		UpdatedAt: userModel.UpdatedAt,
 	}, nil
@@ -93,6 +117,95 @@ func (s *Service) VerifyPassword(ctx context.Context, email, password string) (*
 // GetUserByUUID retrieves a user by UUID
 func (s *Service) GetUserByUUID(ctx context.Context, uuid string) (*entities.User, error) {
 	return s.repository.GetUserByUUID(ctx, uuid)
+}
+
+// GetUserByEmail retrieves a user by email
+func (s *Service) GetUserByEmail(ctx context.Context, email string) (*entities.User, error) {
+	email = strings.TrimSpace(strings.ToLower(email))
+	userModel, err := s.repository.GetUserByEmail(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+
+	return &entities.User{
+		UUID:      userModel.UUID,
+		Username:  userModel.Username,
+		Email:     userModel.Email,
+		Role:      userModel.Role,
+		CreatedAt: userModel.CreatedAt,
+		UpdatedAt: userModel.UpdatedAt,
+	}, nil
+}
+
+// ListUsers retrieves all users
+func (s *Service) ListUsers(ctx context.Context) ([]*entities.User, error) {
+	return s.repository.ListUsers(ctx)
+}
+
+// UpdateUserRole updates the role of a user
+func (s *Service) UpdateUserRole(ctx context.Context, uuid, role string) error {
+	// Validate role
+	validRoles := map[string]bool{
+		"admin": true,
+		"user":  true,
+	}
+	if !validRoles[role] {
+		return errors.New("invalid role: must be 'admin' or 'user'")
+	}
+
+	return s.repository.UpdateUserRole(ctx, uuid, role)
+}
+
+// UpdatePassword updates the password for a user
+func (s *Service) UpdatePassword(ctx context.Context, email, newPassword string) error {
+	email = strings.TrimSpace(strings.ToLower(email))
+
+	if email == "" {
+		return errors.New("email is required")
+	}
+	if newPassword == "" {
+		return errors.New("password is required")
+	}
+	if len(newPassword) < 8 {
+		return errors.New("password must be at least 8 characters")
+	}
+
+	// Check if user exists
+	_, err := s.repository.GetUserByEmail(ctx, email)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	// Generate new salt
+	salt, err := generateSalt()
+	if err != nil {
+		return errors.New("failed to generate salt")
+	}
+
+	// Hash new password with new salt
+	passwordHash := hashPassword(newPassword, salt)
+
+	// Update password in repository
+	return s.repository.UpdatePassword(ctx, email, passwordHash, salt)
+}
+
+// DeleteUser deletes a user by UUID
+func (s *Service) DeleteUser(ctx context.Context, uuid string) error {
+	if uuid == "" {
+		return errors.New("uuid is required")
+	}
+
+	// Check if user is a founder
+	user, err := s.repository.GetUserByUUID(ctx, uuid)
+	if err != nil {
+		return err
+	}
+
+	if user.Founder {
+		return errors.New("founder users cannot be deleted")
+	}
+
+	return s.repository.DeleteUser(ctx, uuid)
 }
 
 // generateSalt generates a random salt for password hashing

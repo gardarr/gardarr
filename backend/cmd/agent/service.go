@@ -15,6 +15,7 @@ import (
 	"github.com/gardarr/gardarr/internal/routes/agent/v1/health"
 	"github.com/gardarr/gardarr/internal/routes/agent/v1/instance"
 	"github.com/gardarr/gardarr/internal/routes/agent/v1/tasks"
+	"github.com/gardarr/gardarr/internal/routes/agent/v1/version"
 	"github.com/gardarr/gardarr/internal/schemas"
 	instanceService "github.com/gardarr/gardarr/internal/services/instance/agent"
 	taskService "github.com/gardarr/gardarr/internal/services/task/agent"
@@ -125,8 +126,10 @@ func setRouter() error {
 
 func setRoutes(t interfaces.TaskService, i interfaces.InstanceService) {
 	// API routes
+
 	v1 := router.Group("/v1")
 	health.NewModule(v1, i).Register()
 	tasks.NewModule(v1, t).Register()
 	instance.NewModule(v1, i).Register()
+	version.NewModule(v1).Register()
 }

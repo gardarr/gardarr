@@ -221,3 +221,85 @@ func TestGetUserByUUID(t *testing.T) {
 		t.Errorf("expected error for non-existent user but got none")
 	}
 }
+
+func TestDeleteUser(t *testing.T) {
+	db := setupTestDB(t)
+	service := NewService(db)
+	ctx := context.Background()
+
+	// Create regular user
+	regularUser, err := service.CreateUser(ctx, "regular@example.com", "SecurePass123")
+	if err != nil {
+		t.Fatalf("failed to create regular user: %v", err)
+	}
+
+	// Create founder user
+	founderUser, err := service.CreateUserWithRole(ctx, "founder@example.com", "SecurePass123", "admin", true)
+	if err != nil {
+		t.Fatalf("failed to create founder user: %v", err)
+	}
+
+	tests := []struct {
+		name        string
+		uuid        string
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:        "Delete founder user - should fail",
+			uuid:        founderUser.UUID.String(),
+			expectError: true,
+			errorMsg:    "founder users cannot be deleted",
+		},
+		{
+			name:        "Delete regular user - should succeed",
+			uuid:        regularUser.UUID.String(),
+			expectError: false,
+		},
+		{
+			name:        "Delete with empty UUID",
+			uuid:        "",
+			expectError: true,
+			errorMsg:    "uuid is required",
+		},
+		{
+			name:        "Delete non-existent user",
+			uuid:        "00000000-0000-0000-0000-000000000000",
+			expectError: true,
+			errorMsg:    "user not found",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := service.DeleteUser(ctx, tt.uuid)
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("expected error but got none")
+				} else if tt.errorMsg != "" && err.Error() != tt.errorMsg {
+					t.Errorf("expected error message '%s' but got '%s'", tt.errorMsg, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+
+				// Verify user was actually deleted
+				_, err := service.GetUserByUUID(ctx, tt.uuid)
+				if err == nil {
+					t.Errorf("user should have been deleted but still exists")
+				}
+			}
+		})
+	}
+
+	// Verify founder user still exists after attempted deletion
+	founderCheck, err := service.GetUserByUUID(ctx, founderUser.UUID.String())
+	if err != nil {
+		t.Errorf("founder user should still exist: %v", err)
+	}
+	if founderCheck == nil || !founderCheck.Founder {
+		t.Errorf("founder user should still exist and have Founder=true")
+	}
+}

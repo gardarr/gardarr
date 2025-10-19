@@ -2,6 +2,7 @@ package task
 
 import (
 	"context"
+	"sort"
 	"strings"
 
 	"github.com/gardarr/gardarr/internal/entities"
@@ -11,7 +12,7 @@ import (
 )
 
 type service struct {
-	repository repository.RepositoryInterface
+	repository interfaces.TaskRepositoryInterface
 }
 
 func New() (interfaces.TaskService, error) {
@@ -34,10 +35,6 @@ func (s *service) GetTask(ctx context.Context, id string) (*entities.Task, error
 }
 
 func (s *service) CreateTask(ctx context.Context, schema schemas.TaskCreateSchema) (*entities.Task, error) {
-	if schema.Directory != "" {
-		schema.Directory = "/data/downloads"
-	}
-
 	uri, err := repository.ParseMagnetLink(schema.MagnetURI)
 	if err != nil {
 		return nil, err
@@ -107,4 +104,91 @@ func (s *service) SetTaskUploadLimit(ctx context.Context, hash string, schema sc
 
 func (s *service) ListTaskFiles(ctx context.Context, hash string) ([]*entities.TaskFile, error) {
 	return s.repository.ListFiles(hash)
+}
+
+func (s *service) GetTasksStats(ctx context.Context) (*entities.TaskStats, error) {
+	tasks, err := s.repository.List()
+	if err != nil {
+		return nil, err
+	}
+
+	stats := &entities.TaskStats{
+		TotalDiskSize:        0,
+		CurrentUploadSpeed:   0,
+		CurrentDownloadSpeed: 0,
+		AverageRatio:         0,
+		MedianRatio:          0,
+		HighestRatio:         0,
+		LowestRatio:          0,
+		ActiveTasksCount:     0,
+		ActiveSeeds:          0,
+		ActivePeers:          0,
+		CategoryUsage:        make(map[string]int),
+		TagsUsage:            make(map[string]int),
+	}
+
+	if len(tasks) == 0 {
+		return stats, nil
+	}
+
+	var totalRatio float64
+	var ratios []float64
+	var totalUploadSpeed, totalDownloadSpeed int
+
+	for _, task := range tasks {
+		// Calculate total disk size
+		stats.TotalDiskSize += int64(task.Size)
+
+		// Calculate current speeds
+		totalUploadSpeed += task.Network.Upload.Speed
+		totalDownloadSpeed += task.Network.Download.Speed
+
+		// Count active tasks (assuming active means not in error state)
+		if task.State != "error" && task.State != "paused" {
+			stats.ActiveTasksCount++
+		}
+
+		// Count active seeds and peers
+		stats.ActiveSeeds += task.Pairs.Seeders
+		stats.ActivePeers += task.Pairs.Leechers
+
+		// Calculate ratios for average and median
+		totalRatio += task.Ratio
+		ratios = append(ratios, task.Ratio)
+
+		// Count category usage
+		if task.Category != "" {
+			stats.CategoryUsage[task.Category]++
+		}
+
+		// Count tags usage
+		for _, tag := range task.Tags {
+			if tag != "" {
+				stats.TagsUsage[tag]++
+			}
+		}
+	}
+
+	// Calculate average ratio
+	stats.AverageRatio = totalRatio / float64(len(tasks))
+
+	// Calculate median ratio
+	sort.Float64s(ratios)
+	if len(ratios) > 0 {
+		if len(ratios)%2 == 0 {
+			stats.MedianRatio = (ratios[len(ratios)/2-1] + ratios[len(ratios)/2]) / 2
+		} else {
+			stats.MedianRatio = ratios[len(ratios)/2]
+		}
+
+		// Calculate highest and lowest ratios
+		stats.HighestRatio = ratios[len(ratios)-1]
+		stats.LowestRatio = ratios[0]
+	}
+
+	// Set current speeds
+	stats.CurrentUploadSpeed = totalUploadSpeed
+	stats.CurrentDownloadSpeed = totalDownloadSpeed
+
+	return stats, nil
 }

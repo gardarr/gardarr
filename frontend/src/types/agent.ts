@@ -9,6 +9,13 @@ export interface Agent {
   instance: Instance;
   icon?: string;
   color?: string;
+  version?: Version;
+}
+
+export interface Version {
+  version: string;
+  commit: string;
+  date: string;
 }
 
 export type AgentStatus = 'ACTIVE' | 'ERRORED' | 'INACTIVE';
@@ -63,4 +70,19 @@ export interface AgentCreateResponse {
 
 export interface AgentDeleteResponse {
   data: null;
+}
+
+export interface TaskStats {
+  total_disk_size: number;
+  current_upload_speed: number;
+  current_download_speed: number;
+  average_ratio: number;
+  median_ratio: number;
+  highest_ratio: number;
+  lowest_ratio: number;
+  active_tasks_count: number;
+  active_seeds: number;
+  active_peers: number;
+  category_usage: Record<string, number>;
+  tags_usage: Record<string, number>;
 }

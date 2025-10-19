@@ -33,13 +33,27 @@ func (m Module) Register() {
 	m.agentRouter.POST("/", m.createAgent)
 	m.agentRouter.GET("/:id", m.getAgent)
 	m.agentRouter.PUT("/:id", m.updateAgent)
+	m.agentRouter.GET("/:id/version", m.getAgentVersion)
 	m.agentRouter.GET("/:id/tasks", m.listAgentTasks)
+	m.agentRouter.GET("/:id/tasks/stats", m.getAgentTasksStats)
 	m.agentRouter.GET("/:id/preferences", m.getAgentPreferences)
 	m.agentRouter.DELETE("/:id", m.deleteAgent)
 	m.agentRouter.POST("/:id/task", m.createAgentTask)
-	m.agentRouter.POST("/:id/tasks/:task_id/pause", m.pauseAgentTask)
-	m.agentRouter.POST("/:id/tasks/:task_id/resume", m.resumeAgentTask)
-	m.agentRouter.POST("/:id/tasks/:task_id/force-download", m.forceDownloadAgentTask)
+	m.agentRouter.GET("/:id/task/:task_id", m.getAgentTask)
+	m.agentRouter.DELETE("/:id/task/:task_id", m.deleteAgentTask)
+	m.agentRouter.POST("/:id/task/:task_id/stop", m.stopAgentTask)
+	m.agentRouter.POST("/:id/task/:task_id/start", m.startAgentTask)
+	m.agentRouter.POST("/:id/task/:task_id/force_download", m.forceDownloadAgentTask)
+	m.agentRouter.POST("/:id/task/:task_id/force_resume", m.forceResumeAgentTask)
+	m.agentRouter.POST("/:id/task/:task_id/share_limit", m.setAgentTaskShareLimit)
+	m.agentRouter.POST("/:id/task/:task_id/location", m.setAgentTaskLocation)
+	m.agentRouter.POST("/:id/task/:task_id/rename", m.renameAgentTask)
+	m.agentRouter.POST("/:id/task/:task_id/super_seeding", m.setAgentTaskSuperSeeding)
+	m.agentRouter.POST("/:id/task/:task_id/force_recheck", m.forceRecheckAgentTask)
+	m.agentRouter.POST("/:id/task/:task_id/force_reannounce", m.forceReannounceAgentTask)
+	m.agentRouter.POST("/:id/task/:task_id/limit_download_rate", m.setAgentTaskDownloadLimit)
+	m.agentRouter.POST("/:id/task/:task_id/limit_upload_rate", m.setAgentTaskUploadLimit)
+	m.agentRouter.GET("/:id/task/:task_id/files", m.listAgentTaskFiles)
 }
 
 func (m *Module) createAgent(c *gin.Context) {
@@ -187,28 +201,28 @@ func (m *Module) createAgentTask(c *gin.Context) {
 	c.JSON(http.StatusOK, mappers.ToTaskResponse(result))
 }
 
-func (m *Module) pauseAgentTask(c *gin.Context) {
+func (m *Module) stopAgentTask(c *gin.Context) {
 	agentID := c.Param("id")
 	taskID := c.Param("task_id")
 
-	if err := m.service.PauseAgentTask(c.Request.Context(), agentID, taskID); err != nil {
+	if err := m.service.StopAgentTask(c.Request.Context(), agentID, taskID); err != nil {
 		errors.HandleError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Task paused successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Task stopped successfully"})
 }
 
-func (m *Module) resumeAgentTask(c *gin.Context) {
+func (m *Module) startAgentTask(c *gin.Context) {
 	agentID := c.Param("id")
 	taskID := c.Param("task_id")
 
-	if err := m.service.ResumeAgentTask(c.Request.Context(), agentID, taskID); err != nil {
+	if err := m.service.StartAgentTask(c.Request.Context(), agentID, taskID); err != nil {
 		errors.HandleError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Task resumed successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Task started successfully"})
 }
 
 func (m *Module) forceDownloadAgentTask(c *gin.Context) {
@@ -221,4 +235,221 @@ func (m *Module) forceDownloadAgentTask(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Task force download initiated successfully"})
+}
+
+func (m *Module) getAgentTask(c *gin.Context) {
+	agentID := c.Param("id")
+	taskID := c.Param("task_id")
+
+	result, err := m.service.GetAgentTask(c.Request.Context(), agentID, taskID)
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, mappers.ToTaskResponse(result))
+}
+
+func (m *Module) deleteAgentTask(c *gin.Context) {
+	agentID := c.Param("id")
+	taskID := c.Param("task_id")
+
+	// Get purge parameter from query string
+	purge := c.DefaultQuery("purge", "false") == "true"
+
+	if err := m.service.DeleteAgentTask(c.Request.Context(), agentID, taskID, purge); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusNoContent, nil)
+}
+
+func (m *Module) forceResumeAgentTask(c *gin.Context) {
+	agentID := c.Param("id")
+	taskID := c.Param("task_id")
+
+	if err := m.service.ForceResumeAgentTask(c.Request.Context(), agentID, taskID); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Task force resumed successfully"})
+}
+
+func (m *Module) setAgentTaskShareLimit(c *gin.Context) {
+	agentID := c.Param("id")
+	taskID := c.Param("task_id")
+
+	var body schemas.TaskSetShareLimitSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	body.Hash = taskID
+
+	if err := m.service.SetAgentTaskShareLimit(c.Request.Context(), agentID, taskID, body); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Task share limit set successfully"})
+}
+
+func (m *Module) setAgentTaskLocation(c *gin.Context) {
+	agentID := c.Param("id")
+	taskID := c.Param("task_id")
+
+	var body schemas.TaskSetLocationSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	if err := m.service.SetAgentTaskLocation(c.Request.Context(), agentID, taskID, body); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Task location set successfully"})
+}
+
+func (m *Module) renameAgentTask(c *gin.Context) {
+	agentID := c.Param("id")
+	taskID := c.Param("task_id")
+
+	var body schemas.TaskRenameSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	if err := m.service.RenameAgentTask(c.Request.Context(), agentID, taskID, body); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Task renamed successfully"})
+}
+
+func (m *Module) setAgentTaskSuperSeeding(c *gin.Context) {
+	agentID := c.Param("id")
+	taskID := c.Param("task_id")
+
+	var body schemas.TaskSuperSeedingSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	if err := m.service.SetAgentTaskSuperSeeding(c.Request.Context(), agentID, taskID, body); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Task super seeding mode set successfully"})
+}
+
+func (m *Module) forceRecheckAgentTask(c *gin.Context) {
+	agentID := c.Param("id")
+	taskID := c.Param("task_id")
+
+	if err := m.service.ForceRecheckAgentTask(c.Request.Context(), agentID, taskID); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Task force recheck initiated successfully"})
+}
+
+func (m *Module) forceReannounceAgentTask(c *gin.Context) {
+	agentID := c.Param("id")
+	taskID := c.Param("task_id")
+
+	if err := m.service.ForceReannounceAgentTask(c.Request.Context(), agentID, taskID); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Task force reannounce initiated successfully"})
+}
+
+func (m *Module) setAgentTaskDownloadLimit(c *gin.Context) {
+	agentID := c.Param("id")
+	taskID := c.Param("task_id")
+
+	var body schemas.TaskSetDownloadLimitSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	if err := m.service.SetAgentTaskDownloadLimit(c.Request.Context(), agentID, taskID, body); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Task download limit set successfully"})
+}
+
+func (m *Module) setAgentTaskUploadLimit(c *gin.Context) {
+	agentID := c.Param("id")
+	taskID := c.Param("task_id")
+
+	var body schemas.TaskSetUploadLimitSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	if err := m.service.SetAgentTaskUploadLimit(c.Request.Context(), agentID, taskID, body); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Task upload limit set successfully"})
+}
+
+func (m *Module) listAgentTaskFiles(c *gin.Context) {
+	agentID := c.Param("id")
+	taskID := c.Param("task_id")
+
+	files, err := m.service.ListAgentTaskFiles(c.Request.Context(), agentID, taskID)
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, mappers.ToTaskFilesResponse(files))
+}
+
+func (m *Module) getAgentTasksStats(c *gin.Context) {
+	agentID := c.Param("id")
+
+	stats, err := m.service.GetAgentTasksStats(c.Request.Context(), agentID)
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, mappers.ToTaskStatsResponse(stats))
+}
+
+func (m *Module) getAgentVersion(c *gin.Context) {
+	agentID := c.Param("id")
+
+	version, err := m.service.GetAgentVersion(c.Request.Context(), agentID)
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, mappers.ToAgentVersionResponse(version))
 }
