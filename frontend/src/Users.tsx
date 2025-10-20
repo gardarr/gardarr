@@ -8,6 +8,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { 
   Users as UsersIcon, 
   Plus, 
@@ -25,7 +31,8 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  Crown
+  Crown,
+  User
 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
@@ -262,7 +269,7 @@ function Users() {
     setEditForm({
       email: user.email,
       password: "", // Don't pre-fill password for security
-      role: user.role || "user"
+      role: user.founder ? "admin" : (user.role || "user") // Founders are always admin
     });
     // Reset password reset states
     setPasswordResetLink(null);
@@ -281,7 +288,8 @@ function Users() {
     if (editForm.password) {
       updateData.password = editForm.password;
     }
-    if (editForm.role && editForm.role !== userToEdit.role) {
+    // Don't allow role changes for founders
+    if (!userToEdit.founder && editForm.role && editForm.role !== userToEdit.role) {
       updateData.role = editForm.role;
     }
 
@@ -490,7 +498,121 @@ function Users() {
         </Card>
       ) : (
         <>
-          <div className="grid gap-3">
+          {/* Desktop Table View */}
+          <div className="hidden md:block">
+            <Card>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-4 font-medium text-muted-foreground">User</th>
+                      <th 
+                        className="text-left p-4 font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+                        onClick={() => {
+                          if (sortBy === "role") {
+                            setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                          } else {
+                            setSortBy("role");
+                            setSortOrder("asc");
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-2">
+                          Role
+                          {sortBy === "role" && (
+                            <span className="text-xs">
+                              {sortOrder === "asc" ? "↑" : "↓"}
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                      <th className="text-left p-4 font-medium text-muted-foreground">Status</th>
+                      <th 
+                        className="text-left p-4 font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+                        onClick={() => {
+                          if (sortBy === "created_at") {
+                            setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                          } else {
+                            setSortBy("created_at");
+                            setSortOrder("asc");
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-2">
+                          Created
+                          {sortBy === "created_at" && (
+                            <span className="text-xs">
+                              {sortOrder === "asc" ? "↑" : "↓"}
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.map((user) => (
+                      <tr 
+                        key={user.uuid} 
+                        className="cursor-pointer hover:bg-muted/50 transition-colors border-b last:border-b-0"
+                        onClick={() => showUserDetails(user)}
+                      >
+                        <td className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                              <Mail className="h-5 w-5 text-primary" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="font-medium truncate flex items-center gap-2">
+                                {user.email}
+                                {user.founder && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Crown className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Founder</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                              </div>
+                              <div className="text-sm text-muted-foreground">UUID: {user.uuid}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className={`text-xs font-medium px-2 py-1 rounded-full ${getRoleBadgeColor(user.role)} flex items-center gap-1 w-fit`}>
+                                  {user.role === 'admin' ? <Shield className="h-4 w-4" /> : <User className="h-4 w-4" />}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{user.role === 'admin' ? 'Administrator' : 'User'}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </td>
+                        <td className="p-4">
+                          {/* Status column - can be used for other status indicators in the future */}
+                        </td>
+                        <td className="p-4">
+                          <div className="text-sm text-muted-foreground">
+                            {formatDate(user.created_at)}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden grid gap-3">
             {filteredUsers.map((user) => (
               <Card 
                 key={user.uuid} 
@@ -507,16 +629,33 @@ function Users() {
                     {/* Content */}
                     <div className="flex-1 min-w-0 space-y-1.5">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-base truncate">{user.email}</h3>
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${getRoleBadgeColor(user.role)}`}>
-                          {user.role || 'user'}
-                        </span>
-                        {user.founder && (
-                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 flex items-center gap-1">
-                            <Crown className="h-3 w-3" />
-                            Founder
-                          </span>
-                        )}
+                        <h3 className="font-semibold text-base truncate flex items-center gap-2">
+                          {user.email}
+                          {user.founder && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Crown className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Founder</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </h3>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${getRoleBadgeColor(user.role)} flex items-center gap-1`}>
+                                {user.role === 'admin' ? <Shield className="h-4 w-4" /> : <User className="h-4 w-4" />}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{user.role === 'admin' ? 'Administrator' : 'User'}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
 
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -525,33 +664,6 @@ function Users() {
                       </div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          showEditUser(user);
-                        }}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={user.founder}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (!user.founder) {
-                            confirmDeleteUser(user);
-                          }
-                        }}
-                        title={user.founder ? "Founder users cannot be deleted" : "Delete user"}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -572,19 +684,36 @@ function Users() {
                       <Mail className="h-7 w-7 text-primary" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold text-base">{selectedUser.email}</h3>
+                      <h3 className="font-semibold text-base flex items-center gap-2">
+                        {selectedUser.email}
+                        {selectedUser.founder && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Crown className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Founder</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </h3>
                       <p className="text-xs text-muted-foreground">UUID: {selectedUser.uuid}</p>
                     </div>
                     <div className="flex flex-col gap-1">
-                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${getRoleBadgeColor(selectedUser.role)}`}>
-                        {selectedUser.role || 'user'}
-                      </span>
-                      {selectedUser.founder && (
-                        <span className="text-xs font-medium px-2 py-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 flex items-center gap-1">
-                          <Crown className="h-3 w-3" />
-                          Founder
-                        </span>
-                      )}
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className={`text-xs font-medium px-2 py-1 rounded-full ${getRoleBadgeColor(selectedUser.role)} flex items-center gap-1`}>
+                              {selectedUser.role === 'admin' ? <Shield className="h-4 w-4" /> : <User className="h-4 w-4" />}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{selectedUser.role === 'admin' ? 'Administrator' : 'User'}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                   </div>
 
@@ -687,11 +816,21 @@ function Users() {
                           <Mail className="h-6 w-6 text-primary" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h3 className="font-semibold text-sm">{userToDelete.email}</h3>
-                          <p className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Crown className="h-3 w-3" />
-                            Founder
-                          </p>
+                          <h3 className="font-semibold text-sm flex items-center gap-2">
+                            {userToDelete.email}
+                            {userToDelete.founder && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Crown className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Founder</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </h3>
                         </div>
                       </div>
 
@@ -718,10 +857,35 @@ function Users() {
                           <Mail className="h-6 w-6 text-primary" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h3 className="font-semibold text-sm">{userToDelete.email}</h3>
-                          <p className="text-xs text-muted-foreground">
-                            {userToDelete.role === 'admin' ? 'Administrator' : 'User'}
-                          </p>
+                          <h3 className="font-semibold text-sm flex items-center gap-2">
+                            {userToDelete.email}
+                            {userToDelete.founder && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Crown className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Founder</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </h3>
+                          <div className="flex items-center gap-1">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                    {userToDelete.role === 'admin' ? <Shield className="h-4 w-4" /> : <User className="h-4 w-4" />}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{userToDelete.role === 'admin' ? 'Administrator' : 'User'}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
                         </div>
                       </div>
 
@@ -759,6 +923,19 @@ function Users() {
               
               {userToEdit && (
                 <div className="space-y-4">
+                  {userToEdit.founder && (
+                    <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg">
+                      <Crown className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                      <div>
+                        <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                          Founder Account
+                        </p>
+                        <p className="text-xs text-amber-700 dark:text-amber-300">
+                          This is a founder account and cannot be modified.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   <div className="space-y-1.5">
                     <Label htmlFor="edit-email" className="text-sm">Email</Label>
                     <Input
@@ -780,6 +957,7 @@ function Users() {
                         variant={editForm.role === "user" ? "default" : "outline"}
                         size="sm"
                         onClick={() => setEditForm({ ...editForm, role: "user" })}
+                        disabled={userToEdit.founder}
                       >
                         User
                       </Button>
@@ -788,6 +966,7 @@ function Users() {
                         variant={editForm.role === "admin" ? "default" : "outline"}
                         size="sm"
                         onClick={() => setEditForm({ ...editForm, role: "admin" })}
+                        disabled={userToEdit.founder}
                       >
                         <Shield className="h-3 w-3 mr-1" />
                         Admin
@@ -808,6 +987,7 @@ function Users() {
                         size="sm"
                         onClick={handleRequestPasswordReset}
                         className="w-full"
+                        disabled={userToEdit.founder}
                       >
                         <Link2 className="h-4 w-4 mr-2" />
                         Generate Password Reset Link
@@ -857,7 +1037,12 @@ function Users() {
                     >
                       Cancel
                     </Button>
-                    <Button onClick={handleUpdateUser} size="sm">
+                    <Button 
+                      onClick={handleUpdateUser} 
+                      size="sm"
+                      disabled={userToEdit.founder}
+                      title={userToEdit.founder ? "Founder accounts cannot be modified" : "Update user information"}
+                    >
                       <Check className="h-4 w-4 mr-1" />
                       Update User
                     </Button>
@@ -998,9 +1183,18 @@ function Users() {
                                   ) : (
                                     <span className="text-sm font-medium text-muted-foreground">Generic Link</span>
                                   )}
-                                  <span className={`text-xs px-2 py-0.5 rounded-full ${getRoleBadgeColor(magicLink.role)}`}>
-                                    {magicLink.role}
-                                  </span>
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className={`text-xs px-2 py-0.5 rounded-full ${getRoleBadgeColor(magicLink.role)} flex items-center gap-1`}>
+                                          {magicLink.role === 'admin' ? <Shield className="h-4 w-4" /> : <User className="h-4 w-4" />}
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>{magicLink.role === 'admin' ? 'Administrator' : 'User'}</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
                                   {isUsed && (
                                     <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
                                       Used

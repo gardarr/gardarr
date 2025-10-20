@@ -62,13 +62,13 @@
       "onlineUsers": "Online Users",
       "onlineUsersDesc": "12 active users now",
       "usedSpace": "Used Space",
-      "usedSpaceDesc": "78% of total capacity",
+      "usedSpaceDesc": "of total capacity",
       "averageSpeed": "Average Speed",
       "averageSpeedDesc": "Current transfer rate",
-      "averageTime": "Average Time",
-      "averageTimeDesc": "Average download time",
-      "successRate": "Success Rate",
-      "successRateDesc": "Successfully completed downloads",
+      "connectedPeers": "Connected Peers",
+      "connectedSeeders": "Connected Seeders",
+      "peersInSwarm": "{{count}} peers in swarm",
+      "seedersInSwarm": "{{count}} seeders in swarm",
       "recentDownloads": "Recent Downloads",
       "systemActivity": "System Activity",
       "complete": "complete",
@@ -120,6 +120,7 @@
         "saveSuccess": "Color variant saved successfully",
         "saveChanges": "Save Changes",
         "variants": {
+          "title": "Variants",
           "default": "Default",
           "aura": "Aura",
           "sunset": "Sunset",
@@ -134,6 +135,9 @@
           "golden": "Golden",
           "earth": "Earth",
           "silver": "Silver"
+        },
+        "palette": {
+          "title": "Palette"
         }
       },
       "other": {
@@ -164,7 +168,7 @@
     "about": {
       "title": "About",
       "subtitle": "Information about the Gardarr project",
-      "tagline": "Lightweight qBittorrent management and analytics tool, optimized for mobile",
+      "tagline": "Lightweight open-source tool for qBittorrent management and analytics",
       "version": "Version",
       "description": {
         "title": "About the Project",

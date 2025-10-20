@@ -70,5 +70,27 @@ func Register(m *migration.Migrator) {
 				return db.Migrator().DropTable(&models.PasswordResetToken{})
 			},
 		},
+		{
+			Version:     "007_create_statistics_indexes",
+			Description: "Cria tabelas de índice para arquivos JSONL de estatísticas",
+			Up: func(db *gorm.DB) error {
+				if err := db.AutoMigrate(&models.StatsFileIndex{}); err != nil {
+					return err
+				}
+				if err := db.AutoMigrate(&models.StatsFileHourSummary{}); err != nil {
+					return err
+				}
+				return nil
+			},
+			Down: func(db *gorm.DB) error {
+				if err := db.Migrator().DropTable(&models.StatsFileHourSummary{}); err != nil {
+					return err
+				}
+				if err := db.Migrator().DropTable(&models.StatsFileIndex{}); err != nil {
+					return err
+				}
+				return nil
+			},
+		},
 	})
 }

@@ -20,11 +20,13 @@ import (
 	"github.com/gardarr/gardarr/internal/routes/api/v1/health"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/setup"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/signup"
+	statsroutes "github.com/gardarr/gardarr/internal/routes/api/v1/statistics"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/users"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/version"
 	"github.com/gardarr/gardarr/internal/schemas"
 	"github.com/gardarr/gardarr/internal/services/agentmanager"
 	"github.com/gardarr/gardarr/internal/services/crypto"
+	"github.com/gardarr/gardarr/internal/services/statistics"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -61,6 +63,12 @@ func Run(cmd *cobra.Command, args []string) error {
 	agentSvc := agentmanager.NewService(db, cryptoSvc)
 
 	setRoutes(db, agentSvc)
+
+	// Statistics (feature-flagged)
+	statsSvc := statistics.NewService(db, agentSvc)
+	ctx, cancelStats := context.WithCancel(context.Background())
+	defer cancelStats()
+	statsSvc.Start(ctx)
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%s", env.Get(constants.AppPortEnv).Default("3000").Value()),
@@ -218,6 +226,7 @@ func setRoutes(db *database.Database, a *agentmanager.Service) {
 	signup.NewModule(v1, db).Register()
 	setup.NewModule(v1, db).Register()
 	version.NewModule(v1, db).Register()
+	statsroutes.NewModule(v1, db).Register()
 
 	// Serve the main index.html for all non-API routes (SPA fallback)
 	router.NoRoute(func(c *gin.Context) {

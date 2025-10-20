@@ -6,6 +6,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import PageTransition from "@/components/PageTransition";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
+import VariantColorSelectButton from "@/components/VariantColorSelectButton";
 import logoImage from "@/assets/img/logo/logo_64x64.png";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -138,6 +139,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Footer da Sidebar */}
         <div className="border-t border-border p-2 mt-auto space-y-1">
           <Link
+            to="/settings"
+            onClick={() => isMobile && setSidebarOpen(false)}
+            className={`flex items-center px-3 py-2 rounded-md transition-all ${
+              location.pathname === "/settings"
+                ? "bg-primary text-primary-foreground"
+                : "text-sidebar-foreground hover:bg-primary/90 hover:text-primary-foreground"
+            } ${!sidebarOpen && !isMobile ? 'justify-center' : 'gap-3'}`}
+          >
+            <Settings className="h-4 w-4 flex-shrink-0" />
+            <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${
+              sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
+            }`}>
+              {t("navigation.settings")}
+            </span>
+          </Link>
+          <Link
             to="/about"
             onClick={() => isMobile && setSidebarOpen(false)}
             className={`flex items-center px-3 py-2 rounded-md transition-all ${
@@ -207,18 +224,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
           
           <div className="flex items-center gap-2 md:gap-4">
-            <Button variant="ghost" size="icon" aria-label={t("navigation.settings")} asChild className="h-8 w-8 flex items-center justify-center">
-              <Link to="/settings">
-                <Settings className="h-4 w-4" />
-              </Link>
-            </Button>
             <Button variant="ghost" size="icon" aria-label={t("theme.toggle")} onClick={toggleTheme} className="h-8 w-8 flex items-center justify-center">
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
-            <Button variant="ghost" size="sm" asChild>
+            <VariantColorSelectButton />
+            <Button variant="ghost" size="icon" aria-label={t("navigation.profile")} asChild className="h-8 w-8 flex items-center justify-center">
               <Link to="/profile" className="hidden sm:flex">
-                <Users className="h-4 w-4 mr-2" />
-                {t("navigation.profile")}
+                <Users className="h-4 w-4" />
               </Link>
             </Button>
             <Button variant="ghost" size="sm" className="hidden sm:flex" onClick={handleLogout}>
@@ -229,8 +241,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </header>
         
         {/* Conteúdo da Rota */}
-        <main className="flex-1 overflow-auto p-4 md:p-6 min-h-0">
-          <div className="w-full max-w-7xl mx-auto h-full">
+        <main className="flex-1 overflow-auto p-4 md:p-6">
+          <div className="w-full max-w-7xl mx-auto">
             <PageTransition>
               {children}
             </PageTransition>

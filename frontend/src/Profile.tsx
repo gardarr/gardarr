@@ -1,10 +1,10 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { User, Monitor, Globe, Moon, Sun, LogOut, Check, ChevronsUpDown } from "lucide-react";
+import { User, Monitor, Globe, Moon, Sun, LogOut } from "lucide-react";
 import { api } from "@/lib/api";
 
 interface Session {
@@ -15,22 +15,6 @@ interface Session {
   expires_at: string;
 }
 
-const COLOR_VARIANTS = [
-  { value: "default", label: "settings.colorVariant.variants.default", color: "oklch(0.623 0.214 259.815)" },
-  { value: "aura", label: "settings.colorVariant.variants.aura", color: "oklch(0.58 0.28 280)" },
-  { value: "sunset", label: "settings.colorVariant.variants.sunset", color: "oklch(0.65 0.24 35)" },
-  { value: "ocean", label: "settings.colorVariant.variants.ocean", color: "oklch(0.55 0.22 220)" },
-  { value: "forest", label: "settings.colorVariant.variants.forest", color: "oklch(0.52 0.20 145)" },
-  { value: "lavender", label: "settings.colorVariant.variants.lavender", color: "oklch(0.65 0.20 300)" },
-  { value: "rose", label: "settings.colorVariant.variants.rose", color: "oklch(0.62 0.26 350)" },
-  { value: "amber", label: "settings.colorVariant.variants.amber", color: "oklch(0.68 0.22 65)" },
-  { value: "mint", label: "settings.colorVariant.variants.mint", color: "oklch(0.58 0.20 170)" },
-  { value: "crimson", label: "settings.colorVariant.variants.crimson", color: "oklch(0.52 0.24 15)" },
-  { value: "cyberpunk", label: "settings.colorVariant.variants.cyberpunk", color: "oklch(0.60 0.24 195)" },
-  { value: "golden", label: "settings.colorVariant.variants.golden", color: "oklch(0.75 0.18 90)" },
-  { value: "earth", label: "settings.colorVariant.variants.earth", color: "oklch(0.48 0.12 50)" },
-  { value: "silver", label: "settings.colorVariant.variants.silver", color: "oklch(0.60 0.02 260)" },
-];
 
 export default function ProfilePage() {
   const { t, i18n } = useTranslation();
@@ -40,37 +24,11 @@ export default function ProfilePage() {
   const [isDark, setIsDark] = useState(() => {
     return document.documentElement.classList.contains('dark');
   });
-  const [colorVariant, setColorVariant] = useState<string>("default");
-  const [colorVariantDropdownOpen, setColorVariantDropdownOpen] = useState(false);
-  const colorVariantDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadSessions();
-    
-    // Load saved color variant from localStorage
-    const storedVariant = localStorage.getItem("app_color_variant") || "default";
-    setColorVariant(storedVariant);
-    document.documentElement.setAttribute("data-color-variant", storedVariant);
   }, []);
 
-  // Apply color variant in real-time
-  useEffect(() => {
-    document.documentElement.setAttribute("data-color-variant", colorVariant);
-  }, [colorVariant]);
-
-  // Close color variant dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (colorVariantDropdownRef.current && !colorVariantDropdownRef.current.contains(event.target as Node)) {
-        setColorVariantDropdownOpen(false);
-      }
-    };
-
-    if (colorVariantDropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [colorVariantDropdownOpen]);
 
   const loadSessions = async () => {
     setIsLoading(true);
@@ -106,11 +64,6 @@ export default function ProfilePage() {
     localStorage.setItem("app_language", lng);
   };
 
-  const handleColorVariantChange = (variantValue: string) => {
-    setColorVariant(variantValue);
-    localStorage.setItem("app_color_variant", variantValue);
-    setColorVariantDropdownOpen(false);
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString(i18n.language, {
@@ -250,85 +203,6 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <Separator />
-
-          {/* Color Variant Preference */}
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <label className="text-sm font-medium">
-                {t("settings.colorVariant.title")}
-              </label>
-              <p className="text-sm text-muted-foreground">
-                {t(COLOR_VARIANTS.find(v => v.value === colorVariant)?.label || "")}
-              </p>
-            </div>
-            
-            <div className="flex flex-col sm:flex-row gap-4 items-start">
-              {/* Dropdown */}
-              <div className="relative flex-1 w-full sm:w-auto min-w-[200px]" ref={colorVariantDropdownRef}>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setColorVariantDropdownOpen(!colorVariantDropdownOpen)}
-                  className="w-full justify-between"
-                >
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-4 h-4 rounded-full border border-border/50 flex-shrink-0"
-                      style={{ backgroundColor: COLOR_VARIANTS.find(v => v.value === colorVariant)?.color }}
-                    />
-                    <span className="truncate">
-                      {t(COLOR_VARIANTS.find(v => v.value === colorVariant)?.label || "")}
-                    </span>
-                  </div>
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-                
-                {colorVariantDropdownOpen && (
-                  <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-auto">
-                    {COLOR_VARIANTS.map((variant) => (
-                      <button
-                        key={variant.value}
-                        type="button"
-                        onClick={() => handleColorVariantChange(variant.value)}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground text-left"
-                      >
-                        <div
-                          className="w-4 h-4 rounded-full border border-border/50 flex-shrink-0"
-                          style={{ backgroundColor: variant.color }}
-                        />
-                        <span className="flex-1 truncate">{t(variant.label)}</span>
-                        {colorVariant === variant.value && (
-                          <Check className="h-4 w-4 text-primary" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Color Preview */}
-              <div className="flex gap-2 items-center">
-                <div className="flex flex-col items-center gap-1">
-                  <div className="w-10 h-10 rounded-md bg-primary shadow-sm border border-border transition-colors" />
-                  <span className="text-[10px] text-muted-foreground">Primary</span>
-                </div>
-                <div className="flex flex-col items-center gap-1">
-                  <div className="w-10 h-10 rounded-md bg-secondary shadow-sm border border-border transition-colors" />
-                  <span className="text-[10px] text-muted-foreground">Secondary</span>
-                </div>
-                <div className="flex flex-col items-center gap-1">
-                  <div className="w-10 h-10 rounded-md bg-accent shadow-sm border border-border transition-colors" />
-                  <span className="text-[10px] text-muted-foreground">Accent</span>
-                </div>
-                <div className="flex flex-col items-center gap-1">
-                  <div className="w-10 h-10 rounded-md bg-muted shadow-sm border border-border transition-colors" />
-                  <span className="text-[10px] text-muted-foreground">Muted</span>
-                </div>
-              </div>
-            </div>
-          </div>
         </CardContent>
       </Card>
 
