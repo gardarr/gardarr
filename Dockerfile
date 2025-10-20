@@ -36,36 +36,33 @@ RUN npm run build && \
     rm -f tailwind.config.js && \
     rm -f postcss.config.js
 
-# Stage 2: Build the Go application
-FROM ${GO_IMAGE} AS build
+# Stage 2: Copy pre-compiled Go binary
+FROM alpine:3.20 AS build
 
-# Install necessary dependencies and clean up in one layer
-RUN apk add --no-cache git && \
+# Install necessary dependencies
+RUN apk add --no-cache ca-certificates && \
     rm -rf /var/cache/apk/*
 
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy Go modules manifests
-COPY backend/go.mod backend/go.sum ./
+# Copy all pre-compiled Go binaries
+COPY dist/ ./binaries/
 
-# Download Go modules
-RUN go mod download
-
-# Copy the application source code
-COPY backend/ .
+# Select the correct binary based on architecture
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then \
+        cp binaries/gardarr-amd64 ./main; \
+    elif [ "$ARCH" = "aarch64" ]; then \
+        cp binaries/gardarr-arm64 ./main; \
+    else \
+        echo "Unsupported architecture: $ARCH" && exit 1; \
+    fi && \
+    chmod +x ./main && \
+    rm -rf ./binaries
 
 # Copy built frontend from frontend-build stage
 COPY --from=frontend-build /app/frontend/dist ./web
-
-# Build the Go application with optimizations and version info
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags="-X github.com/gardarr/gardarr/pkg/version.Version=${VERSION} \
-              -X github.com/gardarr/gardarr/pkg/version.Commit=${COMMIT} \
-              -X github.com/gardarr/gardarr/pkg/version.Date=${DATE} \
-              -w -s -extldflags '-static'" \
-    -a -installsuffix cgo \
-    -o main .
 
 # Stage 3: Create a minimal runtime image with curl for healthchecks
 FROM alpine:3.20

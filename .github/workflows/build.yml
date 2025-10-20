@@ -5,8 +5,6 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
-  release:
-    types: [ published ]
 
 env:
   GO_VERSION: '1.25.3'
@@ -89,8 +87,10 @@ jobs:
     
     strategy:
       matrix:
-        os: [linux, windows, darwin]
-        arch: [amd64, arm64]
+        #os: [linux, windows, darwin]
+        #arch: [amd64, arm64]
+        os: [linux]
+        arch: [amd64]
 
     steps:
     - name: Checkout code

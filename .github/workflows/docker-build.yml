@@ -57,6 +57,51 @@ jobs:
         echo "Commit: $COMMIT"
         echo "Date: $DATE"
 
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.25.3'
+
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Download Go dependencies
+      working-directory: ./backend
+      run: go mod download
+
+    - name: Build Go binaries for multi-arch
+      working-directory: ./backend
+      run: |
+        # Create dist directory
+        mkdir -p ../dist
+        
+        # Build for amd64
+        echo "Building for linux/amd64..."
+        CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+          -ldflags="-X github.com/gardarr/gardarr/pkg/version.Version=${{ steps.version.outputs.version }} \
+                    -X github.com/gardarr/gardarr/pkg/version.Commit=${{ steps.version.outputs.commit }} \
+                    -X github.com/gardarr/gardarr/pkg/version.Date=${{ steps.version.outputs.date }} \
+                    -w -s -extldflags '-static'" \
+          -a -installsuffix cgo \
+          -o ../dist/gardarr-amd64 .
+        
+        # Build for arm64
+        echo "Building for linux/arm64..."
+        CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build \
+          -ldflags="-X github.com/gardarr/gardarr/pkg/version.Version=${{ steps.version.outputs.version }} \
+                    -X github.com/gardarr/gardarr/pkg/version.Commit=${{ steps.version.outputs.commit }} \
+                    -X github.com/gardarr/gardarr/pkg/version.Date=${{ steps.version.outputs.date }} \
+                    -w -s -extldflags '-static'" \
+          -a -installsuffix cgo \
+          -o ../dist/gardarr-arm64 .
+
     - name: Log in to Container Registry
       uses: docker/login-action@v3
       with:
@@ -91,9 +136,6 @@ jobs:
           GO_IMAGE=golang:1.25.3-alpine
           NODE_IMAGE=node:24.10.0-alpine
           APP_PORT=3000
-          VERSION=${{ steps.version.outputs.version }}
-          COMMIT=${{ steps.version.outputs.commit }}
-          DATE=${{ steps.version.outputs.date }}
         provenance: true
 
     - name: Make package public
