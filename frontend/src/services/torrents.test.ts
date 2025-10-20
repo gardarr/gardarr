@@ -23,7 +23,7 @@ describe('TorrentService', () => {
   describe('listTasks', () => {
     it('should call api.get with correct endpoint', async () => {
       const mockTasks: Task[] = [];
-      vi.mocked(api.get).mockResolvedValue({ data: mockTasks, error: null });
+      vi.mocked(api.get).mockResolvedValue({ data: mockTasks, error: undefined });
 
       await torrentService.listTasks();
 
@@ -45,6 +45,13 @@ describe('TorrentService', () => {
           priority: 1,
           popularity: 10,
           magnet_uri: 'magnet:?xt=urn:btih:abc123',
+          magnet_link: {
+            hash: 'abc123',
+            display_name: 'Test Torrent',
+            trackers: ['http://tracker.example.com'],
+            exact_length: '1000',
+            exact_source: 'magnet:?xt=urn:btih:abc123'
+          },
           path: '/downloads/test',
           network: {
             download: { speed: 1000, amount: 500 },
@@ -58,12 +65,12 @@ describe('TorrentService', () => {
           },
         },
       ];
-      vi.mocked(api.get).mockResolvedValue({ data: mockTasks, error: null });
+      vi.mocked(api.get).mockResolvedValue({ data: mockTasks, error: undefined });
 
       const result = await torrentService.listTasks();
 
       expect(result.data).toEqual(mockTasks);
-      expect(result.error).toBeNull();
+      expect(result.error).toBeUndefined();
     });
   });
 
@@ -71,11 +78,11 @@ describe('TorrentService', () => {
     it('should call api.post with correct endpoint and data', async () => {
       const agentId = 'agent-123';
       const taskData: CreateTaskRequest = {
-        urls: 'magnet:?xt=urn:btih:abc123',
+        magnet_uri: 'magnet:?xt=urn:btih:abc123',
         category: 'movies',
-        tags: 'test',
+        tags: ['test'],
       };
-      vi.mocked(api.post).mockResolvedValue({ data: null, error: null });
+      vi.mocked(api.post).mockResolvedValue({ data: null, error: undefined });
 
       await torrentService.createTask(agentId, taskData);
 
@@ -85,14 +92,16 @@ describe('TorrentService', () => {
     it('should return response from API', async () => {
       const agentId = 'agent-123';
       const taskData: CreateTaskRequest = {
-        urls: 'magnet:?xt=urn:btih:abc123',
+        magnet_uri: 'magnet:?xt=urn:btih:abc123',
+        category: 'movies',
+        tags: [],
       };
-      vi.mocked(api.post).mockResolvedValue({ data: null, error: null });
+      vi.mocked(api.post).mockResolvedValue({ data: null, error: undefined });
 
       const result = await torrentService.createTask(agentId, taskData);
 
       expect(result.data).toBeNull();
-      expect(result.error).toBeNull();
+      expect(result.error).toBeUndefined();
     });
   });
 
@@ -100,7 +109,7 @@ describe('TorrentService', () => {
     it('should call api.delete with correct endpoint without purge', async () => {
       const agentId = 'agent-123';
       const taskId = 'task-456';
-      vi.mocked(api.delete).mockResolvedValue({ data: null, error: null });
+      vi.mocked(api.delete).mockResolvedValue({ data: null, error: undefined });
 
       await torrentService.deleteTask(agentId, taskId);
 
@@ -110,7 +119,7 @@ describe('TorrentService', () => {
     it('should call api.delete with correct endpoint with purge', async () => {
       const agentId = 'agent-123';
       const taskId = 'task-456';
-      vi.mocked(api.delete).mockResolvedValue({ data: null, error: null });
+      vi.mocked(api.delete).mockResolvedValue({ data: null, error: undefined });
 
       await torrentService.deleteTask(agentId, taskId, true);
 
@@ -120,12 +129,12 @@ describe('TorrentService', () => {
     it('should return response from API', async () => {
       const agentId = 'agent-123';
       const taskId = 'task-456';
-      vi.mocked(api.delete).mockResolvedValue({ data: null, error: null });
+      vi.mocked(api.delete).mockResolvedValue({ data: null, error: undefined });
 
       const result = await torrentService.deleteTask(agentId, taskId);
 
       expect(result.data).toBeNull();
-      expect(result.error).toBeNull();
+      expect(result.error).toBeUndefined();
     });
   });
 
@@ -133,7 +142,7 @@ describe('TorrentService', () => {
     it('should call api.post with correct stop endpoint', async () => {
       const agentId = 'agent-123';
       const taskId = 'task-456';
-      vi.mocked(api.post).mockResolvedValue({ data: null, error: null });
+      vi.mocked(api.post).mockResolvedValue({ data: null, error: undefined });
 
       await torrentService.pauseTask(agentId, taskId);
 
@@ -143,12 +152,12 @@ describe('TorrentService', () => {
     it('should return response from API', async () => {
       const agentId = 'agent-123';
       const taskId = 'task-456';
-      vi.mocked(api.post).mockResolvedValue({ data: null, error: null });
+      vi.mocked(api.post).mockResolvedValue({ data: null, error: undefined });
 
       const result = await torrentService.pauseTask(agentId, taskId);
 
       expect(result.data).toBeNull();
-      expect(result.error).toBeNull();
+      expect(result.error).toBeUndefined();
     });
   });
 
@@ -156,7 +165,7 @@ describe('TorrentService', () => {
     it('should call api.post with correct start endpoint', async () => {
       const agentId = 'agent-123';
       const taskId = 'task-456';
-      vi.mocked(api.post).mockResolvedValue({ data: null, error: null });
+      vi.mocked(api.post).mockResolvedValue({ data: null, error: undefined });
 
       await torrentService.resumeTask(agentId, taskId);
 
@@ -166,12 +175,12 @@ describe('TorrentService', () => {
     it('should return response from API', async () => {
       const agentId = 'agent-123';
       const taskId = 'task-456';
-      vi.mocked(api.post).mockResolvedValue({ data: null, error: null });
+      vi.mocked(api.post).mockResolvedValue({ data: null, error: undefined });
 
       const result = await torrentService.resumeTask(agentId, taskId);
 
       expect(result.data).toBeNull();
-      expect(result.error).toBeNull();
+      expect(result.error).toBeUndefined();
     });
   });
 
@@ -179,7 +188,7 @@ describe('TorrentService', () => {
     it('should call api.post with correct force_download endpoint', async () => {
       const agentId = 'agent-123';
       const taskId = 'task-456';
-      vi.mocked(api.post).mockResolvedValue({ data: null, error: null });
+      vi.mocked(api.post).mockResolvedValue({ data: null, error: undefined });
 
       await torrentService.forceDownloadTask(agentId, taskId);
 
@@ -189,12 +198,12 @@ describe('TorrentService', () => {
     it('should return response from API', async () => {
       const agentId = 'agent-123';
       const taskId = 'task-456';
-      vi.mocked(api.post).mockResolvedValue({ data: null, error: null });
+      vi.mocked(api.post).mockResolvedValue({ data: null, error: undefined });
 
       const result = await torrentService.forceDownloadTask(agentId, taskId);
 
       expect(result.data).toBeNull();
-      expect(result.error).toBeNull();
+      expect(result.error).toBeUndefined();
     });
   });
 
@@ -213,7 +222,9 @@ describe('TorrentService', () => {
       const errorMessage = 'Invalid request';
       const agentId = 'agent-123';
       const taskData: CreateTaskRequest = {
-        urls: 'invalid-url',
+        magnet_uri: 'invalid-url',
+        category: 'movies',
+        tags: [],
       };
       vi.mocked(api.post).mockResolvedValue({ data: null, error: errorMessage });
 

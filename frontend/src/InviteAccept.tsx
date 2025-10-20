@@ -23,7 +23,7 @@ function InviteAccept() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [setupChecked, setSetupChecked] = useState(false);
-  const { toasts, showSuccess, showError, showInfo, removeToast } = useToast();
+  const { toasts, showSuccess, showError, removeToast } = useToast();
 
   // Check if system needs setup (only once)
   useEffect(() => {

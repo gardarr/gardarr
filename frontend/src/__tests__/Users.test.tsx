@@ -40,7 +40,7 @@ vi.mock('../hooks/useToast', () => ({
 
 // Mock the auth context
 const mockAuthContext = {
-  user: null,
+  user: null as any,
   loading: true,
   login: vi.fn(),
   logout: vi.fn(),

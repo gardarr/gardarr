@@ -1,6 +1,5 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Plus } from "lucide-react";
-import { useTranslation } from "react-i18next";
 
 interface RecentTorrent {
   id: string;
@@ -9,7 +8,7 @@ interface RecentTorrent {
 }
 
 export default function RecentCreatedTorrents() {
-  const { t } = useTranslation();
+  // const { t } = useTranslation(); // Removed unused variable
 
   // Mock data for recently created torrents
   const mockTorrents: RecentTorrent[] = [
