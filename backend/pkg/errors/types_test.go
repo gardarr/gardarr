@@ -102,8 +102,8 @@ func TestToResponseError_TaskNotFound(t *testing.T) {
 		t.Errorf("Expected status code %d, got %d", http.StatusNotFound, respErr.StatusCode)
 	}
 
-	if respErr.Message != "Resource not found" {
-		t.Errorf("Expected message 'Resource not found', got '%s'", respErr.Message)
+	if respErr.Message != "Task not found" {
+		t.Errorf("Expected message 'Task not found', got '%s'", respErr.Message)
 	}
 }
 
@@ -114,8 +114,8 @@ func TestToResponseError_AgentNotFound(t *testing.T) {
 		t.Errorf("Expected status code %d, got %d", http.StatusNotFound, respErr.StatusCode)
 	}
 
-	if respErr.Message != "Resource not found" {
-		t.Errorf("Expected message 'Resource not found', got '%s'", respErr.Message)
+	if respErr.Message != "Agent not found" {
+		t.Errorf("Expected message 'Agent not found', got '%s'", respErr.Message)
 	}
 }
 
@@ -126,8 +126,8 @@ func TestToResponseError_InvalidUUID(t *testing.T) {
 		t.Errorf("Expected status code %d, got %d", http.StatusBadRequest, respErr.StatusCode)
 	}
 
-	if respErr.Message != "Invalid request" {
-		t.Errorf("Expected message 'Invalid request', got '%s'", respErr.Message)
+	if respErr.Message != "Invalid ID format" {
+		t.Errorf("Expected message 'Invalid ID format', got '%s'", respErr.Message)
 	}
 }
 

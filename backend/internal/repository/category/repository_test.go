@@ -214,6 +214,8 @@ func TestRepository_UpdateCategory(t *testing.T) {
 		Name:        "Software",
 		DefaultTags: []string{"linux"},
 		Directories: []string{"/software"},
+		Color:       "#FF0000",
+		Icon:        "code",
 	}
 
 	created, err := repo.CreateCategory(ctx, category)
@@ -221,26 +223,37 @@ func TestRepository_UpdateCategory(t *testing.T) {
 		t.Fatalf("Failed to create category: %v", err)
 	}
 
-	// Update the category
-	created.Name = "Software Updated"
+	// Update the category (only mutable fields)
 	created.DefaultTags = []string{"linux", "windows"}
 	created.Directories = []string{"/software", "/apps"}
+	created.Color = "#00FF00"
+	created.Icon = "terminal"
 
 	updated, err := repo.UpdateCategory(ctx, *created)
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
 
-	if updated.Name != "Software Updated" {
-		t.Errorf("Expected updated name, got %s", updated.Name)
+	// Name should remain unchanged (immutable)
+	if updated.Name != "Software" {
+		t.Errorf("Expected unchanged name 'Software', got %s", updated.Name)
 	}
 
+	// Test updated mutable fields
 	if len(updated.DefaultTags) != 2 {
 		t.Errorf("Expected 2 tags, got %d", len(updated.DefaultTags))
 	}
 
 	if len(updated.Directories) != 2 {
 		t.Errorf("Expected 2 directories, got %d", len(updated.Directories))
+	}
+
+	if updated.Color != "#00FF00" {
+		t.Errorf("Expected color '#00FF00', got %s", updated.Color)
+	}
+
+	if updated.Icon != "terminal" {
+		t.Errorf("Expected icon 'terminal', got %s", updated.Icon)
 	}
 
 	// Test update non-existent category

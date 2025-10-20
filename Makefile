@@ -114,6 +114,10 @@ install-frontend:
 install-backend:
 	cd $(BACKEND_DIR) && go mod download
 
+# Comando para testar o backend
+test-backend:
+	cd $(BACKEND_DIR) && go test ./...
+
 # Comando para instalar todas as dependências
 install: install-frontend install-backend
 
@@ -174,6 +178,7 @@ help:
 	@echo "  make run-local        - Executar aplicação local (frontend + backend)"
 	@echo "  make run-backend      - Executar apenas o backend"
 	@echo "  make run-frontend     - Executar apenas o frontend em modo dev"
+	@echo "  make test-backend     - Testar o backend"
 	@echo "  make dev              - Desenvolvimento com hot-reload (paralelo)"
 	@echo "  make dev-separate     - Instruções para desenvolvimento separado"
 	@echo "  make build-full       - Build completo para produção"
@@ -188,4 +193,4 @@ help:
 	@echo "  Terminal 1: make run-backend   (Backend na porta 3000)"
 	@echo "  Terminal 2: make run-frontend  (Frontend na porta 5173)"
 
-.PHONY: build-frontend copy-frontend build-full docker-build run-local run-backend run-frontend build-linux build-darwin build-all install-frontend install-backend install test-integration clean clean-deps clean-all dev dev-separate docker-prod docker-stop docker-clean help
+.PHONY: build-frontend copy-frontend build-full docker-build run-local run-backend run-frontend test-backend build-linux build-darwin build-all install-frontend install-backend install test-integration clean clean-deps clean-all dev dev-separate docker-prod docker-stop docker-clean help

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gardarr/gardarr/internal/entities"
 	"github.com/gin-gonic/gin"
@@ -16,24 +17,36 @@ func TestRequireAdminRole(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		user          *entities.User
+		session       *entities.Session
 		expectStatus  int
 		expectError   string
 		expectMessage string
 	}{
 		{
 			name: "Admin user should pass",
-			user: &entities.User{
-				UUID: uuid.New(),
-				Role: "admin",
+			session: &entities.Session{
+				ID:        uuid.New(),
+				UserUUID:  uuid.New(),
+				Token:     "test-token",
+				Role:      "admin",
+				UserAgent: "test-agent",
+				IPAddress: "127.0.0.1",
+				ExpiresAt: time.Now().Add(24 * time.Hour),
+				CreatedAt: time.Now(),
 			},
 			expectStatus: http.StatusOK,
 		},
 		{
 			name: "Regular user should be forbidden",
-			user: &entities.User{
-				UUID: uuid.New(),
-				Role: "user",
+			session: &entities.Session{
+				ID:        uuid.New(),
+				UserUUID:  uuid.New(),
+				Token:     "test-token",
+				Role:      "user",
+				UserAgent: "test-agent",
+				IPAddress: "127.0.0.1",
+				ExpiresAt: time.Now().Add(24 * time.Hour),
+				CreatedAt: time.Now(),
 			},
 			expectStatus:  http.StatusForbidden,
 			expectError:   "Admin privileges required",
@@ -41,9 +54,15 @@ func TestRequireAdminRole(t *testing.T) {
 		},
 		{
 			name: "Empty role should be forbidden",
-			user: &entities.User{
-				UUID: uuid.New(),
-				Role: "",
+			session: &entities.Session{
+				ID:        uuid.New(),
+				UserUUID:  uuid.New(),
+				Token:     "test-token",
+				Role:      "",
+				UserAgent: "test-agent",
+				IPAddress: "127.0.0.1",
+				ExpiresAt: time.Now().Add(24 * time.Hour),
+				CreatedAt: time.Now(),
 			},
 			expectStatus:  http.StatusForbidden,
 			expectError:   "Admin privileges required",
@@ -51,9 +70,15 @@ func TestRequireAdminRole(t *testing.T) {
 		},
 		{
 			name: "Invalid role should be forbidden",
-			user: &entities.User{
-				UUID: uuid.New(),
-				Role: "superuser",
+			session: &entities.Session{
+				ID:        uuid.New(),
+				UserUUID:  uuid.New(),
+				Token:     "test-token",
+				Role:      "superuser",
+				UserAgent: "test-agent",
+				IPAddress: "127.0.0.1",
+				ExpiresAt: time.Now().Add(24 * time.Hour),
+				CreatedAt: time.Now(),
 			},
 			expectStatus:  http.StatusForbidden,
 			expectError:   "Admin privileges required",
@@ -66,10 +91,10 @@ func TestRequireAdminRole(t *testing.T) {
 			// Create a test router
 			router := gin.New()
 
-			// Set user in context (simulating SessionMiddleware) - must be before RequireAdminRole
+			// Set session in context (simulating SessionMiddleware) - must be before RequireAdminRole
 			router.Use(func(c *gin.Context) {
-				if tt.user != nil {
-					c.Set(UserContextKey, tt.user)
+				if tt.session != nil {
+					c.Set(SessionContextKey, tt.session)
 				}
 				c.Next()
 			})
@@ -144,15 +169,15 @@ func TestRequireAdminRole_NoUserInContext(t *testing.T) {
 	}
 }
 
-func TestRequireAdminRole_InvalidUserType(t *testing.T) {
+func TestRequireAdminRole_InvalidSessionType(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	// Create a test router
 	router := gin.New()
 
-	// Set invalid user type in context - must be before RequireAdminRole
+	// Set invalid session type in context - must be before RequireAdminRole
 	router.Use(func(c *gin.Context) {
-		c.Set(UserContextKey, "invalid-user-type")
+		c.Set(SessionContextKey, "invalid-session-type")
 		c.Next()
 	})
 
@@ -179,8 +204,8 @@ func TestRequireAdminRole_InvalidUserType(t *testing.T) {
 		t.Fatalf("Failed to unmarshal response: %v", err)
 	}
 
-	if response["error"] != "Invalid user data" {
-		t.Errorf("Expected error 'Invalid user data', got '%s'", response["error"])
+	if response["error"] != "Invalid session data" {
+		t.Errorf("Expected error 'Invalid session data', got '%s'", response["error"])
 	}
 }
 
@@ -193,14 +218,20 @@ func TestRequireAdminRole_IntegrationWithSessionMiddleware(t *testing.T) {
 	// Create a test router
 	router := gin.New()
 
-	// Simulate SessionMiddleware setting user in context
+	// Simulate SessionMiddleware setting session in context
 	router.Use(func(c *gin.Context) {
-		// Simulate admin user
-		adminUser := &entities.User{
-			UUID: uuid.New(),
-			Role: "admin",
+		// Simulate admin session
+		adminSession := &entities.Session{
+			ID:        uuid.New(),
+			UserUUID:  uuid.New(),
+			Token:     "test-token",
+			Role:      "admin",
+			UserAgent: "test-agent",
+			IPAddress: "127.0.0.1",
+			ExpiresAt: time.Now().Add(24 * time.Hour),
+			CreatedAt: time.Now(),
 		}
-		c.Set(UserContextKey, adminUser)
+		c.Set(SessionContextKey, adminSession)
 		c.Next()
 	})
 
