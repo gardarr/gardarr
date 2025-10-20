@@ -80,10 +80,9 @@ describe('Users Component', () => {
   it('shows loading state when user is not admin', async () => {
     mockAuthContext.loading = false;
     mockAuthContext.user = { 
-      id: '1', 
+      uuid: 'uuid-1',
       email: 'user@example.com', 
       role: 'user',
-      uuid: 'uuid-1',
       created_at: '2023-01-01T00:00:00Z'
     };
 
@@ -97,10 +96,9 @@ describe('Users Component', () => {
   it('renders users page when user is admin', async () => {
     mockAuthContext.loading = false;
     mockAuthContext.user = { 
-      id: '1', 
+      uuid: 'uuid-1',
       email: 'admin@example.com', 
       role: 'admin',
-      uuid: 'uuid-1',
       created_at: '2023-01-01T00:00:00Z'
     };
 

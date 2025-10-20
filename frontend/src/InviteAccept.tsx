@@ -46,12 +46,6 @@ function InviteAccept() {
     checkSetup();
   }, [setupChecked, navigate]);
 
-  useEffect(() => {
-    if (code) {
-      validateInvite();
-    }
-  }, [code, validateInvite]);
-
   const validateInvite = useCallback(async () => {
     if (!code) return;
 
@@ -80,6 +74,12 @@ function InviteAccept() {
       setLoading(false);
     }
   }, [code, showError]);
+
+  useEffect(() => {
+    if (code) {
+      validateInvite();
+    }
+  }, [code, validateInvite]);
 
   const handleAcceptInvite = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -13,10 +13,12 @@ export interface ResponseError {
  */
 export function isResponseError(obj: unknown): obj is ResponseError {
   return (
-    obj &&
+    obj !== null &&
     typeof obj === 'object' &&
-    typeof obj.status_code === 'number' &&
-    typeof obj.message === 'string'
+    'status_code' in obj &&
+    'message' in obj &&
+    typeof (obj as Record<string, unknown>).status_code === 'number' &&
+    typeof (obj as Record<string, unknown>).message === 'string'
   );
 }
 
@@ -46,7 +48,8 @@ export function getErrorMessage(error: unknown): string {
   
   // If it has an error or message property
   if (error && typeof error === 'object') {
-    return error.error || error.message || 'An error occurred';
+    const errorObj = error as Record<string, unknown>;
+    return (errorObj.error as string) || (errorObj.message as string) || 'An error occurred';
   }
   
   return 'An unknown error occurred';

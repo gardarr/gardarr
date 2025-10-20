@@ -17,6 +17,7 @@ func init() {
 	// Load .env file if it exists, ignore error if file doesn't exist
 	if err := godotenv.Load(".env"); err != nil {
 		// .env file is optional, so we ignore the error
+		_ = err // explicitly ignore the error to satisfy staticcheck
 	}
 
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))

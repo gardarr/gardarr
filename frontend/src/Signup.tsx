@@ -8,7 +8,7 @@ import { Loader2, CheckCircle, XCircle, Mail, Lock, UserPlus, Sparkles } from "l
 import { signupService } from "./services/signup";
 import { useToast } from "./hooks/useToast";
 import { ToastContainer } from "./components/ui/toast-container";
-import { useAuth } from "./contexts/AuthContext";
+import { useAuth } from "./contexts/auth-hooks";
 import logoImage from "@/assets/img/logo/logo_64x64.png";
 
 export default function SignupPage() {

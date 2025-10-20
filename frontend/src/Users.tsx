@@ -43,7 +43,7 @@ import type { User as UserManagementUser, UpdateUserRequest } from "./types/user
 import type { SignupToken, CreateSignupTokenRequest } from "./types/signup";
 import { useToast } from "./hooks/useToast";
 import { ToastContainer } from "./components/ui/toast-container";
-import { useAuth } from "./contexts/AuthContext";
+import { useAuth } from "./contexts/auth-hooks";
 
 type SortType = "email" | "created_at" | "role";
 
