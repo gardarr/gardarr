@@ -88,8 +88,8 @@ jobs:
         cache-to: type=gha,mode=max
         platforms: linux/amd64,linux/arm64
         build-args: |
-          GO_IMAGE=golang:1.24.4-alpine
-          NODE_IMAGE=node:20-alpine
+          GO_IMAGE=golang:1.25.3-alpine
+          NODE_IMAGE=node:24.10.0-alpine
           APP_PORT=3000
           VERSION=${{ steps.version.outputs.version }}
           COMMIT=${{ steps.version.outputs.commit }}

@@ -103,8 +103,20 @@ build-linux:
 build-darwin:
 	cd $(BACKEND_DIR) && GOOS=darwin GOARCH=amd64 go build $(BUILD_FLAGS) -o ../$(BINARY_NAME)_darwin_amd64 main.go
 
-# Comando para compilar para ambos (Linux e macOS)
-build-all: build-linux build-darwin
+# Comando para compilar para macOS ARM64 (Darwin ARM64)
+build-darwin-arm64:
+	cd $(BACKEND_DIR) && GOOS=darwin GOARCH=arm64 go build $(BUILD_FLAGS) -o ../$(BINARY_NAME)_darwin_arm64 main.go
+
+# Comando para compilar para Windows
+build-windows:
+	cd $(BACKEND_DIR) && GOOS=windows GOARCH=amd64 go build $(BUILD_FLAGS) -o ../$(BINARY_NAME)_windows_amd64.exe main.go
+
+# Comando para compilar para Windows ARM64
+build-windows-arm64:
+	cd $(BACKEND_DIR) && GOOS=windows GOARCH=arm64 go build $(BUILD_FLAGS) -o ../$(BINARY_NAME)_windows_arm64.exe main.go
+
+# Comando para compilar para todos os sistemas
+build-all: build-linux build-darwin build-darwin-arm64 build-windows build-windows-arm64
 
 # Comando para instalar dependências do frontend
 install-frontend:
@@ -127,7 +139,7 @@ test-integration:
 
 # Comando para limpar builds
 clean:
-	rm -f $(BINARY_NAME)_linux_amd64 $(BINARY_NAME)_darwin_amd64
+	rm -f $(BINARY_NAME)_linux_amd64 $(BINARY_NAME)_darwin_amd64 $(BINARY_NAME)_darwin_arm64 $(BINARY_NAME)_windows_amd64.exe $(BINARY_NAME)_windows_arm64.exe
 	rm -rf $(FRONTEND_DIR)/dist
 	rm -rf $(BACKEND_DIR)/web
 
@@ -193,4 +205,4 @@ help:
 	@echo "  Terminal 1: make run-backend   (Backend na porta 3000)"
 	@echo "  Terminal 2: make run-frontend  (Frontend na porta 5173)"
 
-.PHONY: build-frontend copy-frontend build-full docker-build run-local run-backend run-frontend test-backend build-linux build-darwin build-all install-frontend install-backend install test-integration clean clean-deps clean-all dev dev-separate docker-prod docker-stop docker-clean help
+.PHONY: build-frontend copy-frontend build-full docker-build run-local run-backend run-frontend test-backend build-linux build-darwin build-darwin-arm64 build-windows build-windows-arm64 build-all install-frontend install-backend install test-integration clean clean-deps clean-all dev dev-separate docker-prod docker-stop docker-clean help

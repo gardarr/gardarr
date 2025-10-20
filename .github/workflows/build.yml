@@ -91,11 +91,6 @@ jobs:
       matrix:
         os: [linux, windows, darwin]
         arch: [amd64, arm64]
-        exclude:
-          - os: windows
-            arch: arm64
-          - os: darwin
-            arch: arm64
 
     steps:
     - name: Checkout code

@@ -1,6 +1,6 @@
 # Define build arguments for image tags and port
 ARG GO_IMAGE=golang:1.25.3-alpine
-ARG NODE_IMAGE=node:20-alpine
+ARG NODE_IMAGE=node:24.10.0-alpine
 ARG APP_PORT=3000
 
 # Version build arguments
