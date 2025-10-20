@@ -143,6 +143,7 @@ func (s *Service) ValidateAndUseSignupToken(ctx context.Context, tokenValue, ema
 	if err := s.signupTokenRepo.MarkTokenAsUsed(ctx, signupToken.UUID.String()); err != nil {
 		// Log error but don't fail the operation since user was created
 		// In production, you might want to handle this differently
+		_ = err // Explicitly ignore the error to satisfy linter
 	}
 
 	return user, nil
@@ -261,6 +262,7 @@ func (s *Service) ValidateAndResetPassword(ctx context.Context, tokenValue, newP
 	if err := s.passwordResetRepo.MarkTokenAsUsed(ctx, resetToken.UUID.String()); err != nil {
 		// Log error but don't fail the operation since password was updated
 		// In production, you might want to log this
+		_ = err // Explicitly ignore the error to satisfy linter
 	}
 
 	return nil

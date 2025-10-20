@@ -167,7 +167,9 @@ func TestRoutes_GetCategoryByID_Success(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	var created models.CategoryResponse
-	json.Unmarshal(w.Body.Bytes(), &created)
+	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
+		t.Fatalf("Failed to unmarshal response: %v", err)
+	}
 
 	// Get by ID
 	req, _ = http.NewRequest("GET", "/api/v1/categories/"+created.ID, nil)
@@ -217,7 +219,9 @@ func TestRoutes_UpdateCategory_Success(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	var created models.CategoryResponse
-	json.Unmarshal(w.Body.Bytes(), &created)
+	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
+		t.Fatalf("Failed to unmarshal response: %v", err)
+	}
 
 	// Update the category (only mutable fields)
 	updateBody := map[string]interface{}{
@@ -276,7 +280,9 @@ func TestRoutes_UpdateCategory_NameIsImmutable(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	var created models.CategoryResponse
-	json.Unmarshal(w.Body.Bytes(), &created)
+	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
+		t.Fatalf("Failed to unmarshal response: %v", err)
+	}
 
 	// Try to update the name (should be ignored)
 	updateBody := map[string]interface{}{
@@ -339,7 +345,9 @@ func TestRoutes_DeleteCategory_Success(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	var created models.CategoryResponse
-	json.Unmarshal(w.Body.Bytes(), &created)
+	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
+		t.Fatalf("Failed to unmarshal response: %v", err)
+	}
 
 	// Delete the category
 	req, _ = http.NewRequest("DELETE", "/api/v1/categories/"+created.ID, nil)

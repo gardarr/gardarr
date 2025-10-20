@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,9 +50,9 @@ function InviteAccept() {
     if (code) {
       validateInvite();
     }
-  }, [code]);
+  }, [code, validateInvite]);
 
-  const validateInvite = async () => {
+  const validateInvite = useCallback(async () => {
     if (!code) return;
 
     try {
@@ -79,7 +79,7 @@ function InviteAccept() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [code, showError]);
 
   const handleAcceptInvite = async (e: React.FormEvent) => {
     e.preventDefault();

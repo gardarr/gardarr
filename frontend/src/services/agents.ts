@@ -52,21 +52,21 @@ export class AgentService {
   /**
    * Lists all tasks from all agents
    */
-  async listAgentsTasks(): Promise<ApiResponse<any[]>> {
-    return api.get<any[]>(`${this.baseEndpoint}/tasks`);
+  async listAgentsTasks(): Promise<ApiResponse<unknown[]>> {
+    return api.get<unknown[]>(`${this.baseEndpoint}/tasks`);
   }
 
   /**
    * Lists tasks for a specific agent
    */
-  async listAgentTasks(agentId: string): Promise<ApiResponse<any[]>> {
-    return api.get<any[]>(`/agent/${agentId}/tasks`);
+  async listAgentTasks(agentId: string): Promise<ApiResponse<unknown[]>> {
+    return api.get<unknown[]>(`/agent/${agentId}/tasks`);
   }
 
   /**
    * Creates a task for a specific agent
    */
-  async createAgentTask(agentId: string, taskData: any): Promise<ApiResponse<null>> {
+  async createAgentTask(agentId: string, taskData: unknown): Promise<ApiResponse<null>> {
     return api.post<null>(`/agent/${agentId}/task`, taskData);
   }
 

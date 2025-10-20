@@ -173,7 +173,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <button
             onClick={() => {
               handleLogout();
-              isMobile && setSidebarOpen(false);
+              if (isMobile) {
+                setSidebarOpen(false);
+              }
             }}
             className={`flex items-center px-3 py-2 rounded-md transition-all text-sidebar-foreground hover:bg-primary/90 hover:text-primary-foreground w-full ${!sidebarOpen && !isMobile ? 'justify-center' : 'gap-3'}`}
           >

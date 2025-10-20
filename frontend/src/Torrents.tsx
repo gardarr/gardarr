@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ArrowDownCircle, ArrowUpCircle, ArrowDown, ArrowUp, Search, ChevronLeft, ChevronRight, Loader2, ChevronDown, SortAsc, SortDesc, Plus, SlidersHorizontal, Download, Info, Clock } from "lucide-react";
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { torrentService } from "./services/torrents";
 import { agentService } from "./services/agents";
@@ -723,7 +723,7 @@ export default function TorrentsPage() {
   }, [availableTags, selectedTags]);
 
   // Carregar torrents da API
-  const loadTorrents = async () => {
+  const loadTorrents = useCallback(async () => {
     try {
       setLoading(true);
       const response = await torrentService.listTasks();
@@ -743,7 +743,7 @@ export default function TorrentsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showError, t]);
 
   // Atualização silenciosa para não afetar UI (sem spinner)
   const refreshTorrentsSilently = async () => {
@@ -760,7 +760,7 @@ export default function TorrentsPage() {
   };
 
   // Carregar agents da API
-  const loadAgents = async () => {
+  const loadAgents = useCallback(async () => {
     try {
       const response = await agentService.listAgents();
       if (response.error) return;
@@ -774,7 +774,7 @@ export default function TorrentsPage() {
     } catch {
       // silencioso; filtro de agentes é opcional
     }
-  };
+  }, [selectedAgentIds]);
 
   // Abrir modal de detalhes
   const handleShowDetails = (torrentId: string) => {
@@ -1120,7 +1120,7 @@ export default function TorrentsPage() {
   useEffect(() => {
     loadTorrents();
     loadAgents();
-  }, []);
+  }, [loadTorrents, loadAgents]);
 
   // Intervalo de atualização automática
   useEffect(() => {
@@ -1209,7 +1209,7 @@ export default function TorrentsPage() {
       let comparison = 0;
       
       switch (sortType) {
-        case "priority":
+        case "priority": {
           // Ordenar por prioridade de status (downloading e error primeiro)
           const priorityA = getStatusPriority(a.status);
           const priorityB = getStatusPriority(b.status);
@@ -1219,6 +1219,7 @@ export default function TorrentsPage() {
             comparison = a.name.localeCompare(b.name);
           }
           break;
+        }
           
         case "alphabetical":
           // Ordenar alfabeticamente por status, depois por nome

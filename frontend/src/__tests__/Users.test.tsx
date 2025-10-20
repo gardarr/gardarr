@@ -3,6 +3,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import Users from '../Users';
 import { AuthProvider } from '../contexts/AuthContext';
+import type { User } from '../types/user';
 
 // Mock the auth service
 vi.mock('../services/auth', () => ({
@@ -40,7 +41,7 @@ vi.mock('../hooks/useToast', () => ({
 
 // Mock the auth context
 const mockAuthContext = {
-  user: null as any,
+  user: null as User | null,
   loading: true,
   login: vi.fn(),
   logout: vi.fn(),

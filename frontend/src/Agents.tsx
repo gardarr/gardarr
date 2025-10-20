@@ -31,7 +31,7 @@ import {
   Tag,
   Folder
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { agentService } from "./services/agents";
 import type { Agent, AgentStatus, CreateAgentRequest, UpdateAgentRequest, Version, TaskStats } from "./types/agent";
@@ -99,12 +99,7 @@ function Agents() {
   
   const { toasts, showSuccess, showError, removeToast } = useToast();
 
-  // Load agents on component mount
-  useEffect(() => {
-    loadAgents();
-  }, []);
-
-  const loadAgents = async () => {
+  const loadAgents = useCallback(async () => {
     try {
       setLoading(true);
       const response = await agentService.listAgents();
@@ -119,7 +114,12 @@ function Agents() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showError, t]);
+
+  // Load agents on component mount
+  useEffect(() => {
+    loadAgents();
+  }, [loadAgents]);
 
   const loadAgentVersion = async (agentId: string) => {
     try {

@@ -71,7 +71,7 @@ export default function LoginPage() {
       } else {
         navigate("/dashboard");
       }
-    } catch (err) {
+    } catch {
       setError(t("common.error"));
     } finally {
       setIsLoading(false);

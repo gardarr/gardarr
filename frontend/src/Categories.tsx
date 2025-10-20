@@ -35,7 +35,7 @@ import {
   Disc,
   type LucideIcon
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { categoryService } from "./services/categories";
 import type { Category, CreateCategoryRequest, UpdateCategoryRequest } from "./types/category";
 import { useToast } from "./hooks/useToast";
@@ -110,12 +110,7 @@ function Categories() {
   
   const { toasts, showSuccess, showError, removeToast } = useToast();
 
-  // Load categories on component mount
-  useEffect(() => {
-    loadCategories();
-  }, []);
-
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     try {
       setLoading(true);
       const response = await categoryService.listCategories();
@@ -130,7 +125,12 @@ function Categories() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showError, t]);
+
+  // Load categories on component mount
+  useEffect(() => {
+    loadCategories();
+  }, [loadCategories]);
 
   const confirmDeleteCategory = (category: Category) => {
     setCategoryToDelete(category);

@@ -1,52 +1,5 @@
-import { 
-  Server, 
-  Database, 
-  Cloud, 
-  Monitor, 
-  Cpu, 
-  MemoryStick, 
-  HardDriveIcon, 
-  Globe, 
-  Router, 
-  Network, 
-  Download, 
-  Upload, 
-  FileText, 
-  Music, 
-  Video, 
-  Image, 
-  Archive, 
-  Folder, 
-  Zap, 
-  Shield, 
-  type LucideIcon 
-} from "lucide-react";
-import { QBittorrentIcon } from "./QBittorrentIcon";
-
-// Available icons for agents
-const availableIcons: { name: string; icon: LucideIcon | React.ComponentType<any> }[] = [
-  { name: "Server", icon: Server },
-  { name: "Database", icon: Database },
-  { name: "Cloud", icon: Cloud },
-  { name: "Monitor", icon: Monitor },
-  { name: "Cpu", icon: Cpu },
-  { name: "MemoryStick", icon: MemoryStick },
-  { name: "HardDrive", icon: HardDriveIcon },
-  { name: "Globe", icon: Globe },
-  { name: "Router", icon: Router },
-  { name: "Network", icon: Network },
-  { name: "Download", icon: Download },
-  { name: "Upload", icon: Upload },
-  { name: "FileText", icon: FileText },
-  { name: "Music", icon: Music },
-  { name: "Video", icon: Video },
-  { name: "Image", icon: Image },
-  { name: "Archive", icon: Archive },
-  { name: "Folder", icon: Folder },
-  { name: "Zap", icon: Zap },
-  { name: "Shield", icon: Shield },
-  { name: "QBittorrent", icon: QBittorrentIcon }
-];
+import { Server, type LucideIcon } from "lucide-react";
+import { availableIcons } from "./agent-icons";
 
 interface AgentIconProps {
   iconName?: string;
@@ -55,7 +8,7 @@ interface AgentIconProps {
   className?: string;
 }
 
-function getAgentIcon(iconName?: string): LucideIcon | React.ComponentType<any> {
+function getAgentIcon(iconName?: string): LucideIcon | React.ComponentType<React.SVGProps<SVGSVGElement>> {
   if (!iconName) return Server;
   const iconItem = availableIcons.find(i => i.name === iconName);
   return iconItem ? iconItem.icon : Server;
@@ -101,5 +54,3 @@ export function AgentIcon({
   );
 }
 
-// Export the available icons for other components that might need them
-export { availableIcons };

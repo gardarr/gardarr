@@ -14,7 +14,10 @@ import (
 const maxSecretFileSize = 64 * 1024 // 64KB limit
 
 func init() {
-	godotenv.Load(".env")
+	// Load .env file if it exists, ignore error if file doesn't exist
+	if err := godotenv.Load(".env"); err != nil {
+		// .env file is optional, so we ignore the error
+	}
 
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 

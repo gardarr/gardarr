@@ -74,7 +74,9 @@ func (m *Migrator) RegisterMultiple(migrations []MigrationItem) *Migrator {
 func (m *Migrator) createMigrationsTable() error {
 	// Set custom table name if specified
 	if m.tableName != "migrations" {
-		m.db.Table(m.tableName).AutoMigrate(&Migration{})
+		if err := m.db.Table(m.tableName).AutoMigrate(&Migration{}); err != nil {
+			return fmt.Errorf("failed to create migrations table with custom name: %w", err)
+		}
 	} else {
 		if err := m.db.AutoMigrate(&Migration{}); err != nil {
 			return fmt.Errorf("failed to create migrations table: %w", err)

@@ -121,7 +121,7 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
     if (isOpen && torrent) {
       setSuperSeedingEnabled(torrent.super_seeding ?? false);
     }
-  }, [isOpen, torrent?.id]); // Reinicializa quando o modal abre ou quando muda de torrent
+  }, [isOpen, torrent]); // Reinicializa quando o modal abre ou quando muda de torrent
 
   const copyToClipboard = async (text: string, field: string) => {
     try {

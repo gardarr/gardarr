@@ -11,7 +11,7 @@ export interface ResponseError {
 /**
  * Type guard to check if an object is a ResponseError
  */
-export function isResponseError(obj: any): obj is ResponseError {
+export function isResponseError(obj: unknown): obj is ResponseError {
   return (
     obj &&
     typeof obj === 'object' &&
@@ -23,7 +23,7 @@ export function isResponseError(obj: any): obj is ResponseError {
 /**
  * Extracts a user-friendly error message from various error formats
  */
-export function getErrorMessage(error: any): string {
+export function getErrorMessage(error: unknown): string {
   // If it's a structured ResponseError from backend
   if (isResponseError(error)) {
     // Prioritize the 'error' field if it contains more specific information

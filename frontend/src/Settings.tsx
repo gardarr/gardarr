@@ -60,7 +60,7 @@ export default function SettingsPage() {
             timeStyle: "long",
           });
           setCurrentTime(formatter.format(now));
-        } catch (error) {
+        } catch {
           setCurrentTime("Invalid timezone");
         }
       }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,12 +31,7 @@ export default function InitialSetupPage() {
     }
   }, []);
 
-  // Check if system needs setup
-  useEffect(() => {
-    checkSetupStatus();
-  }, []);
-
-  const checkSetupStatus = async () => {
+  const checkSetupStatus = useCallback(async () => {
     try {
       setLoading(true);
       const response = await signupService.needsSetup();
@@ -56,7 +51,12 @@ export default function InitialSetupPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showError, showInfo, navigate]);
+
+  // Check if system needs setup
+  useEffect(() => {
+    checkSetupStatus();
+  }, [checkSetupStatus]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
