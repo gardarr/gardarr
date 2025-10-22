@@ -8,6 +8,7 @@ import (
 	"github.com/gardarr/gardarr/internal/schemas"
 	"github.com/gardarr/gardarr/internal/services/agentmanager"
 	"github.com/gardarr/gardarr/pkg/errors"
+	"github.com/gardarr/gardarr/pkg/version"
 	"github.com/gin-gonic/gin"
 )
 
@@ -444,6 +445,17 @@ func (m *Module) getAgentTasksStats(c *gin.Context) {
 
 func (m *Module) getAgentVersion(c *gin.Context) {
 	agentID := c.Param("id")
+
+	// Check if mode=standalone querystring is present
+	if c.Query("mode") == "standalone" {
+		// Return current instance version for standalone mode
+		c.JSON(http.StatusOK, gin.H{
+			"version": version.Version,
+			"commit":  version.Commit,
+			"date":    version.Date,
+		})
+		return
+	}
 
 	version, err := m.service.GetAgentVersion(c.Request.Context(), agentID)
 	if err != nil {

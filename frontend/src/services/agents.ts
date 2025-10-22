@@ -12,20 +12,20 @@ import type {
  * Service for communication with the API v1/agents from the backend
  */
 export class AgentService {
-  private readonly baseEndpoint = '/agents';
+  private readonly baseEndpoint = '/agents/';
 
   /**
    * Lists all agents
    */
   async listAgents(): Promise<ApiResponse<Agent[]>> {
-    return api.get<Agent[]>(this.baseEndpoint);
+    return api.get<Agent[]>(`/agents/`);
   }
 
   /**
    * Gets a specific agent by ID
    */
   async getAgent(agentId: string): Promise<ApiResponse<Agent>> {
-    return api.get<Agent>(`/agent/${agentId}`);
+    return api.get<Agent>(`/]agent/${agentId}/`);
   }
 
   /**
@@ -53,14 +53,14 @@ export class AgentService {
    * Lists all tasks from all agents
    */
   async listAgentsTasks(): Promise<ApiResponse<unknown[]>> {
-    return api.get<unknown[]>(`${this.baseEndpoint}/tasks`);
+    return api.get<unknown[]>(`${this.baseEndpoint}/tasks/`);
   }
 
   /**
    * Lists tasks for a specific agent
    */
   async listAgentTasks(agentId: string): Promise<ApiResponse<unknown[]>> {
-    return api.get<unknown[]>(`/agent/${agentId}/tasks`);
+    return api.get<unknown[]>(`/agent/${agentId}/tasks/`);
   }
 
   /**
@@ -74,14 +74,14 @@ export class AgentService {
    * Gets the version information for a specific agent
    */
   async getAgentVersion(agentId: string): Promise<ApiResponse<Version>> {
-    return api.get<Version>(`/agent/${agentId}/version`);
+    return api.get<Version>(`/agent/${agentId}/version/`);
   }
 
   /**
    * Gets the task statistics for a specific agent
    */
   async getAgentTaskStats(agentId: string): Promise<ApiResponse<TaskStats>> {
-    return api.get<TaskStats>(`/agent/${agentId}/tasks/stats`);
+    return api.get<TaskStats>(`/agent/${agentId}/tasks/stats/`);
   }
 }
 

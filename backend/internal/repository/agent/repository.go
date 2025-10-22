@@ -12,28 +12,53 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/gardarr/gardarr/internal/constants"
 	"github.com/gardarr/gardarr/internal/entities"
 	"github.com/gardarr/gardarr/internal/infra/database"
 	"github.com/gardarr/gardarr/internal/mappers"
 	"github.com/gardarr/gardarr/internal/models"
 	"github.com/gardarr/gardarr/internal/schemas"
 	"github.com/gardarr/gardarr/internal/services/crypto"
+	"github.com/gardarr/gardarr/pkg/env"
+	"github.com/gardarr/gardarr/pkg/version"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type Repository struct {
-	db     *database.Database
-	crypto *crypto.CryptoService
-	http   *http.Client
+	db              *database.Database
+	crypto          *crypto.CryptoService
+	http            *http.Client
+	standaloneAgent *entities.Agent
 }
 
-func NewRepository(db *database.Database, crypto *crypto.CryptoService) *Repository {
-	return &Repository{
-		db:     db,
-		crypto: crypto,
-		http:   http.DefaultClient,
+func NewRepository(db *database.Database, crypto *crypto.CryptoService) (*Repository, error) {
+	var standaloneAgent *entities.Agent
+
+	if env.Get(constants.AppModeEnv).Value() == constants.StandaloneMode {
+		token, err := crypto.Encrypt(env.Get(constants.AgentSecretEnv).Value())
+		if err != nil {
+			return nil, err
+		}
+
+		standaloneAgent = &entities.Agent{
+			UUID:       constants.StandaloneAgentUUID,
+			Name:       "Standalone",
+			Address:    constants.StandaloneAgentAddress,
+			Token:      token,
+			Icon:       "MemoryStick",
+			Standalone: true,
+			Status:     entities.AgentStatusActive,
+		}
 	}
+
+	return &Repository{
+		db:              db,
+		crypto:          crypto,
+		http:            http.DefaultClient,
+		standaloneAgent: standaloneAgent,
+	}, nil
+
 }
 
 // Create inserts a new instance into the database
@@ -74,11 +99,21 @@ func (r *Repository) ListAgents() ([]*entities.Agent, error) {
 		result[i] = toAgent(item)
 	}
 
+	// Check if APP_MODE is set to standalone and add mock agent
+	if env.Get(constants.AppModeEnv).Value() == constants.StandaloneMode {
+		result = append(result, r.standaloneAgent)
+	}
+
 	return result, nil
 }
 
 // GetByUUID retrieves a single instance by its UUID
 func (r *Repository) GetAgentByUUID(uid uuid.UUID) (*entities.Agent, error) {
+	// Check if APP_MODE is set to standalone and add mock agent
+	if env.Get(constants.AppModeEnv).Value() == constants.StandaloneMode {
+		return r.standaloneAgent, nil
+	}
+
 	var handler models.Agent
 	if err := r.db.DB.Where("uuid = ?", uid).First(&handler).Error; err != nil {
 		return nil, err
@@ -96,9 +131,14 @@ func (r *Repository) GetInstance(agent *entities.Agent) (*entities.Instance, err
 		return nil, err
 	}
 
-	decryptedToken, err := r.crypto.Decrypt(agent.Token)
-	if err != nil {
-		return nil, err
+	var decryptedToken string
+	if agent.Standalone {
+		decryptedToken = env.Get(constants.AgentSecretEnv).Value()
+	} else {
+		decryptedToken, err = r.crypto.Decrypt(agent.Token)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", decryptedToken))
@@ -160,6 +200,14 @@ func (r *Repository) GetInstanceWithoutDecrypt(agent *entities.Agent) (*entities
 }
 
 func (r *Repository) GetAgentVersion(agent *entities.Agent) (*entities.AgentVersion, error) {
+	if agent.Standalone {
+		return &entities.AgentVersion{
+			Version: version.Version,
+			Commit:  version.Commit,
+			Date:    version.Date,
+		}, nil
+	}
+
 	url := fmt.Sprintf("%s/v1/version", agent.Address)
 
 	req, err := http.NewRequest("GET", url, nil)

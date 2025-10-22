@@ -11,14 +11,15 @@ func ToAgentResponse(e *entities.Agent) *models.AgentResponse {
 	}
 
 	return &models.AgentResponse{
-		UUID:     e.UUID.String(),
-		Name:     e.Name,
-		Address:  e.Address,
-		Status:   e.Status,
-		Error:    e.Error,
-		Icon:     e.Icon,
-		Color:    e.Color,
-		Instance: ToInstanceResponse(e.Instance),
+		UUID:       e.UUID.String(),
+		Name:       e.Name,
+		Address:    e.Address,
+		Status:     e.Status,
+		Error:      e.Error,
+		Icon:       e.Icon,
+		Color:      e.Color,
+		Standalone: e.Standalone,
+		Instance:   ToInstanceResponse(e.Instance),
 	}
 }
 

@@ -34,14 +34,15 @@ func (a *Agent) BeforeUpdate(tx *gorm.DB) (err error) {
 }
 
 type AgentResponse struct {
-	UUID     string           `json:"uuid"`
-	Name     string           `json:"name"`
-	Address  string           `json:"address"`
-	Status   string           `json:"status"`
-	Error    string           `json:"error,omitempty"`
-	Icon     string           `json:"icon,omitempty"`
-	Color    string           `json:"color,omitempty"`
-	Instance InstanceResponse `json:"instance"`
+	UUID       string           `json:"uuid"`
+	Name       string           `json:"name"`
+	Address    string           `json:"address"`
+	Status     string           `json:"status"`
+	Error      string           `json:"error,omitempty"`
+	Icon       string           `json:"icon,omitempty"`
+	Color      string           `json:"color,omitempty"`
+	Standalone bool             `json:"standalone,omitempty"`
+	Instance   InstanceResponse `json:"instance"`
 }
 
 type AgentVersionResponse struct {

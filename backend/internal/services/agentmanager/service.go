@@ -14,13 +14,18 @@ import (
 )
 
 type Service struct {
-	repository *agent.Repository
+	repository agent.RepositoryInterface
 }
 
-func NewService(db *database.Database, c *crypto.CryptoService) *Service {
-	return &Service{
-		repository: agent.NewRepository(db, c),
+func NewService(db *database.Database, c *crypto.CryptoService) (*Service, error) {
+	repository, err := agent.NewRepository(db, c)
+	if err != nil {
+		return nil, err
 	}
+
+	return &Service{
+		repository: repository,
+	}, nil
 }
 
 func (s *Service) CreateAgent(ctx context.Context, schema *schemas.AgentCreateSchema) (*entities.Agent, error) {

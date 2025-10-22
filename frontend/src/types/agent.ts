@@ -10,6 +10,7 @@ export interface Agent {
   icon?: string;
   color?: string;
   version?: Version;
+  standalone?: boolean;
 }
 
 export interface Version {

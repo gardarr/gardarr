@@ -767,14 +767,17 @@ export default function TorrentsPage() {
       if (response.data) {
         setAgents(response.data);
         // Selecionar todos por padrão somente na primeira carga
-        if (selectedAgentIds.size === 0) {
-          setSelectedAgentIds(new Set(response.data.map((a) => a.uuid)));
-        }
+        setSelectedAgentIds(prev => {
+          if (prev.size === 0 && response.data) {
+            return new Set(response.data.map((a) => a.uuid));
+          }
+          return prev;
+        });
       }
     } catch {
       // silencioso; filtro de agentes é opcional
     }
-  }, [selectedAgentIds]);
+  }, []);
 
   // Abrir modal de detalhes
   const handleShowDetails = (torrentId: string) => {
@@ -1120,7 +1123,7 @@ export default function TorrentsPage() {
   useEffect(() => {
     loadTorrents();
     loadAgents();
-  }, [loadTorrents, loadAgents]);
+  }, [loadTorrents]);
 
   // Intervalo de atualização automática
   useEffect(() => {

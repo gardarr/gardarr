@@ -6,6 +6,7 @@ interface AgentIconProps {
   color?: string;
   size?: "sm" | "md" | "lg";
   className?: string;
+  standalone?: boolean;
 }
 
 function getAgentIcon(iconName?: string): LucideIcon | React.ComponentType<React.SVGProps<SVGSVGElement>> {
@@ -18,7 +19,8 @@ export function AgentIcon({
   iconName, 
   color = "#3b82f6", 
   size = "md", 
-  className = "" 
+  className = "",
+  standalone = false
 }: AgentIconProps) {
   const IconComponent = getAgentIcon(iconName);
   
@@ -26,29 +28,34 @@ export function AgentIcon({
   const sizeConfig = {
     sm: {
       container: "w-4 h-4",
-      icon: "h-2.5 w-2.5"
+      icon: "h-3.5 w-3.5"
     },
     md: {
       container: "w-5 h-5", 
-      icon: "h-3 w-3"
+      icon: "h-4.5 w-4.5"
     },
     lg: {
       container: "w-6 h-6",
-      icon: "h-4 w-4"
+      icon: "h-5.5 w-5.5"
     }
   };
   
   const config = sizeConfig[size];
   
+  // For standalone agents, use appropriate text color based on theme
+  const textColorClass = standalone ? 'text-primary-foreground' : 'text-white';
+  
   return (
     <div
-      className={`${config.container} rounded-sm flex items-center justify-center flex-shrink-0 ${className}`}
-      style={{ backgroundColor: color }}
+      className={`${config.container} rounded-sm flex items-center justify-center flex-shrink-0 ${className} ${
+        standalone ? 'bg-primary' : ''
+      }`}
+      style={!standalone ? { backgroundColor: color } : {}}
     >
       {iconName === "QBittorrent" ? (
-        <IconComponent className={`${config.icon} text-white`} size={size} />
+        <IconComponent className={`${config.icon} ${textColorClass}`} size={size} />
       ) : (
-        <IconComponent className={`${config.icon} text-white`} />
+        <IconComponent className={`${config.icon} ${textColorClass}`} />
       )}
     </div>
   );

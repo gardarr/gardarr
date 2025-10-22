@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gardarr/gardarr/cmd/agent"
 	"github.com/gardarr/gardarr/internal/constants"
 	"github.com/gardarr/gardarr/internal/infra/database"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/agents"
@@ -34,12 +35,31 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/gardarr/gardarr/pkg/env"
+	"github.com/gardarr/gardarr/pkg/gen"
 	"github.com/pkg/errors"
 )
 
-var router *gin.Engine
+var (
+	router      *gin.Engine
+	agentSecret string
+)
 
 func Run(cmd *cobra.Command, args []string) error {
+	// Check if APP_MODE is set to standalone
+	appMode := env.Get(constants.AppModeEnv).Value()
+	isStandalone := appMode == constants.StandaloneMode
+
+	if isStandalone {
+		if env.Get(constants.AgentSecretEnv).Value() == "" {
+			secret, err := gen.GeneratePassword(32)
+			if err != nil {
+				return err
+			}
+			os.Setenv(constants.AgentSecretEnv, secret)
+		}
+		log.Println("🚀 Starting in STANDALONE mode - Service and Agent will run together")
+	}
+
 	cryptoSvc, err := crypto.NewCryptoService()
 	if err != nil {
 		return err
@@ -60,7 +80,10 @@ func Run(cmd *cobra.Command, args []string) error {
 
 	setRouter()
 
-	agentSvc := agentmanager.NewService(db, cryptoSvc)
+	agentSvc, err := agentmanager.NewService(db, cryptoSvc)
+	if err != nil {
+		return err
+	}
 
 	setRoutes(db, agentSvc)
 
@@ -69,6 +92,21 @@ func Run(cmd *cobra.Command, args []string) error {
 	ctx, cancelStats := context.WithCancel(context.Background())
 	defer cancelStats()
 	statsSvc.Start(ctx)
+
+	// Initialize agent service if in standalone mode
+	if isStandalone {
+		log.Println("🤖 Initializing agent service...")
+		// Start agent service in a goroutine
+		go func() {
+			if err := agent.Run(cmd, args); err != nil {
+				log.Printf("Error running agent service: %v", err)
+			}
+		}()
+
+		// Give the agent service a moment to start up
+		time.Sleep(2 * time.Second)
+		log.Println("✅ Agent service started successfully on port 3100")
+	}
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%s", env.Get(constants.AppPortEnv).Default("3000").Value()),

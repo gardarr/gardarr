@@ -8,7 +8,7 @@ import (
 )
 
 var cmd = &cobra.Command{
-	Use:          "seedbox",
+	Use:          "gardarr",
 	SilenceUsage: true,
 	RunE:         service.Run,
 }

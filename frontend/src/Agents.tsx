@@ -718,6 +718,7 @@ function Agents() {
                           color={agent.color}
                           size="lg"
                           className="w-16 h-16 rounded-lg"
+                          standalone={agent.standalone}
                         />
 
                         {/* Content */}
@@ -819,6 +820,7 @@ function Agents() {
                           color={selectedAgent?.color}
                           size="lg"
                           className="w-14 h-14 rounded-lg"
+                          standalone={selectedAgent?.standalone}
                         />
                         <div className="min-w-0 flex-1">
                           <h3 className="font-semibold text-base">{selectedAgent?.name}</h3>
@@ -1182,6 +1184,7 @@ function Agents() {
                       color={agentToDelete.color}
                       size="md"
                       className="w-12 h-12 rounded-lg"
+                      standalone={agentToDelete.standalone}
                     />
                     <div className="min-w-0 flex-1">
                       <h3 className="font-semibold text-sm">{agentToDelete.name}</h3>

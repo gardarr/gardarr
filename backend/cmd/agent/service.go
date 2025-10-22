@@ -31,7 +31,7 @@ var (
 	cmd = &cobra.Command{
 		Use:          "agent",
 		SilenceUsage: true,
-		RunE:         run,
+		RunE:         Run,
 	}
 	router *gin.Engine
 )
@@ -40,7 +40,7 @@ func Command() *cobra.Command {
 	return cmd
 }
 
-func run(cmd *cobra.Command, args []string) error {
+func Run(cmd *cobra.Command, args []string) error {
 	if err := setRouter(); err != nil {
 		return err
 	}
