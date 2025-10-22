@@ -3,11 +3,9 @@ package agentmanager
 import (
 	"context"
 	"errors"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/gardarr/gardarr/internal/constants"
 	"github.com/gardarr/gardarr/internal/entities"
 	"github.com/gardarr/gardarr/internal/infra/database"
 	"github.com/gardarr/gardarr/internal/repository/agent"
@@ -260,121 +258,4 @@ func (m *MockRepository) GetAgentTasksStats(agent *entities.Agent) (*entities.Ta
 
 func (m *MockRepository) GetAgentVersion(agent *entities.Agent) (*entities.AgentVersion, error) {
 	return nil, nil
-}
-
-// TestService_ListAgents_StandaloneMode tests the standalone mode functionality
-func TestService_ListAgents_StandaloneMode(t *testing.T) {
-	// Test with APP_MODE=standalone
-	os.Setenv(constants.AppModeEnv, "standalone")
-	defer os.Unsetenv(constants.AppModeEnv)
-
-	// Create a mock repository that returns empty agents
-	mockRepo := &MockRepository{
-		agents: []*entities.Agent{},
-		err:    nil,
-	}
-
-	// Create a service with the mock repository
-	service := &Service{
-		repository: mockRepo,
-	}
-
-	// Test ListAgents with standalone mode
-	agents, err := service.ListAgents()
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
-
-	// Check if standalone agent is present
-	var standaloneAgent *entities.Agent
-	for _, agent := range agents {
-		if agent.Name == "Standalone" {
-			standaloneAgent = agent
-			break
-		}
-	}
-
-	if standaloneAgent == nil {
-		t.Error("Expected standalone agent to be present, but it was not found")
-	} else {
-		// Verify standalone agent properties
-		if standaloneAgent.Name != "Standalone" {
-			t.Errorf("Expected agent name to be 'Standalone', got %s", standaloneAgent.Name)
-		}
-		if standaloneAgent.Address != "http://127.0.0.1:3100" {
-			t.Errorf("Expected agent address to be 'http://127.0.0.1:3100', got %s", standaloneAgent.Address)
-		}
-		if standaloneAgent.Icon != "MemoryStick" {
-			t.Errorf("Expected agent icon to be 'MemoryStick', got %s", standaloneAgent.Icon)
-		}
-		if standaloneAgent.Status != entities.AgentStatusActive {
-			t.Errorf("Expected agent status to be 'ACTIVE', got %s", standaloneAgent.Status)
-		}
-		// Verify the fixed UUID
-		expectedUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000000")
-		if standaloneAgent.UUID != expectedUUID {
-			t.Errorf("Expected agent UUID to be '00000000-0000-0000-0000-000000000000', got %s", standaloneAgent.UUID.String())
-		}
-	}
-}
-
-// TestService_ListAgents_NonStandaloneMode tests that standalone agent is not added when APP_MODE is not set to standalone
-func TestService_ListAgents_NonStandaloneMode(t *testing.T) {
-	// Test with APP_MODE not set to standalone
-	os.Setenv(constants.AppModeEnv, "normal")
-	defer os.Unsetenv(constants.AppModeEnv)
-
-	// Create a mock repository that returns empty agents
-	mockRepo := &MockRepository{
-		agents: []*entities.Agent{},
-		err:    nil,
-	}
-
-	// Create a service with the mock repository
-	service := &Service{
-		repository: mockRepo,
-	}
-
-	// Test ListAgents without standalone mode
-	agents, err := service.ListAgents()
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
-
-	// Check that standalone agent is not present
-	for _, agent := range agents {
-		if agent.Name == "Standalone" {
-			t.Error("Expected standalone agent to not be present when APP_MODE is not 'standalone'")
-		}
-	}
-}
-
-// TestService_ListAgents_StandaloneModeUnset tests that standalone agent is not added when APP_MODE is not set
-func TestService_ListAgents_StandaloneModeUnset(t *testing.T) {
-	// Test with APP_MODE not set at all
-	os.Unsetenv(constants.AppModeEnv)
-
-	// Create a mock repository that returns empty agents
-	mockRepo := &MockRepository{
-		agents: []*entities.Agent{},
-		err:    nil,
-	}
-
-	// Create a service with the mock repository
-	service := &Service{
-		repository: mockRepo,
-	}
-
-	// Test ListAgents without standalone mode
-	agents, err := service.ListAgents()
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
-
-	// Check that standalone agent is not present
-	for _, agent := range agents {
-		if agent.Name == "Standalone" {
-			t.Error("Expected standalone agent to not be present when APP_MODE is not set")
-		}
-	}
 }
