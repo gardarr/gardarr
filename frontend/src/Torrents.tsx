@@ -1,8 +1,18 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ArrowDownCircle, ArrowUpCircle, ArrowDown, ArrowUp, Search, ChevronLeft, ChevronRight, Loader2, ChevronDown, SortAsc, SortDesc, Plus, SlidersHorizontal, Download, Info, Clock } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, ArrowDown, ArrowUp, Search, Loader2, ChevronDown, SortAsc, SortDesc, Plus, SlidersHorizontal, Download, Info, Clock, Server, Activity, Folder, Tag } from "lucide-react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { torrentService } from "./services/torrents";
@@ -225,17 +235,20 @@ function TorrentCard({ torrent, onShowDetails }: {
         </div>
         {torrent.agentName && (
           <div className="flex-shrink-0 ml-2">
-            <span
-              className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium text-foreground"
-              title={`Agent: ${torrent.agentName}${torrent.agentStatus ? ` (${torrent.agentStatus})` : ""}`}
-            >
-              <AgentIcon 
-                iconName={torrent.agentIcon}
-                color={torrent.agentColor}
-                size="sm"
-              />
-              {torrent.agentName}
-            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="inline-flex items-center justify-center rounded-full border p-1">
+                  <AgentIcon 
+                    iconName={torrent.agentIcon}
+                    color={torrent.agentColor}
+                    size="sm"
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{torrent.agentName}</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
         )}
       </CardHeader>
@@ -367,14 +380,20 @@ function TorrentRow({ torrent, onShowDetails }: {
       </td>
       <td className="px-4 py-3 text-sm">
         {torrent.agentName ? (
-          <div className="flex items-center gap-2">
-            <AgentIcon 
-              iconName={torrent.agentIcon}
-              color={torrent.agentColor}
-              size="md"
-            />
-            <span className="truncate max-w-[160px]" title={torrent.agentName}>{torrent.agentName}</span>
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center justify-center">
+                <AgentIcon 
+                  iconName={torrent.agentIcon}
+                  color={torrent.agentColor}
+                  size="md"
+                />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{torrent.agentName}</p>
+            </TooltipContent>
+          </Tooltip>
         ) : (
           <span className="text-muted-foreground">—</span>
         )}
@@ -539,7 +558,7 @@ function UpdateIntervalDropdown({
         variant="outline"
         size="sm"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 min-w-[100px] justify-between"
+        className="flex items-center gap-2 min-w-[60px] justify-between"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-label={`Atualizar a cada ${value}s`}
@@ -572,6 +591,113 @@ function UpdateIntervalDropdown({
         </div>
       )}
     </div>
+  );
+}
+
+// Componente de paginação usando shadcn/ui
+function TorrentPagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+  className
+}: {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  className?: string;
+}) {
+  // Função para gerar os números das páginas
+  const generatePageNumbers = () => {
+    const pages: (number | 'ellipsis')[] = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      // Se temos poucas páginas, mostrar todas
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Lógica para mostrar páginas com ellipsis
+      if (currentPage <= 3) {
+        // Mostrar primeiras páginas
+        for (let i = 1; i <= 4; i++) {
+          pages.push(i);
+        }
+        pages.push('ellipsis');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        // Mostrar últimas páginas
+        pages.push(1);
+        pages.push('ellipsis');
+        for (let i = totalPages - 3; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        // Mostrar páginas do meio
+        pages.push(1);
+        pages.push('ellipsis');
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+          pages.push(i);
+        }
+        pages.push('ellipsis');
+        pages.push(totalPages);
+      }
+    }
+    
+    return pages;
+  };
+
+  if (totalPages <= 1) return null;
+
+  return (
+    <Pagination className={className}>
+      <PaginationContent>
+        <PaginationItem>
+          <PaginationPrevious 
+            href="#"
+            size="default"
+            onClick={(e) => {
+              e.preventDefault();
+              if (currentPage > 1) onPageChange(currentPage - 1);
+            }}
+            className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+          />
+        </PaginationItem>
+        
+        {generatePageNumbers().map((page, index) => (
+          <PaginationItem key={index}>
+            {page === 'ellipsis' ? (
+              <PaginationEllipsis />
+            ) : (
+              <PaginationLink
+                href="#"
+                size="icon"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onPageChange(page);
+                }}
+                isActive={page === currentPage}
+                className="cursor-pointer"
+              >
+                {page}
+              </PaginationLink>
+            )}
+          </PaginationItem>
+        ))}
+        
+        <PaginationItem>
+          <PaginationNext 
+            href="#"
+            size="default"
+            onClick={(e) => {
+              e.preventDefault();
+              if (currentPage < totalPages) onPageChange(currentPage + 1);
+            }}
+            className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+          />
+        </PaginationItem>
+      </PaginationContent>
+    </Pagination>
   );
 }
 
@@ -965,39 +1091,6 @@ export default function TorrentsPage() {
     }
   };
 
-  const handleToggleSuperSeeding = async (torrentId: string, enabled: boolean) => {
-    try {
-      const task = originalTasks.find(t => t.id === torrentId);
-      if (!task || !task.agent?.uuid) {
-        showError('Agent ID não encontrado para este torrent');
-        return;
-      }
-
-      const response = await torrentService.toggleSuperSeeding(task.agent.uuid, torrentId, enabled);
-      if (response.error) {
-        showError(response.error);
-        return;
-      }
-
-      showSuccess(`Super seeding ${enabled ? 'ativado' : 'desativado'} com sucesso`);
-      
-      // Recarregar dados sem fechar o modal
-      const refreshResponse = await torrentService.listTasks();
-      if (refreshResponse?.data) {
-        setOriginalTasks(refreshResponse.data);
-        const mappedTorrents = refreshResponse.data.map(mapTaskToTorrent);
-        setTorrents(mappedTorrents);
-        
-        // Atualizar o torrent selecionado para refletir mudanças
-        const updatedTask = refreshResponse.data.find(t => t.id === torrentId);
-        if (updatedTask) {
-          setSelectedTorrent(updatedTask);
-        }
-      }
-    } catch (err) {
-      showError(err instanceof Error ? err.message : 'Erro ao alterar super seeding do torrent');
-    }
-  };
 
   const handleRenameTorrent = async (torrentId: string, newName: string) => {
     try {
@@ -1365,12 +1458,9 @@ export default function TorrentsPage() {
     }
   };
 
-  const handlePreviousPage = () => {
-    setCurrentPage(prev => Math.max(prev - 1, 1));
-  };
-
-  const handleNextPage = () => {
-    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  // Função para mudar de página
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
   };
 
   // Mostrar estado de carregamento
@@ -1401,7 +1491,7 @@ export default function TorrentsPage() {
   }
 
   return (
-    <div className="space-y-6 min-h-full">
+    <div className="space-y-4 min-h-full">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -1424,9 +1514,11 @@ export default function TorrentsPage() {
       </div>
 
       {/* Filtro de busca e controles */}
-      <div className="flex flex-col gap-4 w-full">
+      <div className="flex flex-col gap-4 w-full sm:gap-4 gap-0">
+        {/* Busca e controles - desktop na mesma linha */}
+        <div className="hidden sm:flex items-center gap-4 w-full">
         {/* Busca */}
-        <div className="relative w-full">
+          <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
             placeholder={t('torrents.search')}
@@ -1436,77 +1528,41 @@ export default function TorrentsPage() {
           />
         </div>
         
-        {/* Controles agrupados - desktop */}
-        <div className="hidden sm:flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-sm text-muted-foreground">{t('torrents.itemsPerPage')}:</span>
-            <ItemsPerPageDropdown 
-              value={itemsPerPage} 
-              onChange={handleItemsPerPageChange} 
-            />
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Controles */}
+          <div className="flex items-center gap-4 flex-shrink-0">
+            <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">{t('torrents.update')}:</span>
             <UpdateIntervalDropdown
               value={refreshIntervalSec}
               onChange={setRefreshIntervalSec}
             />
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <AgentFilter 
-              agents={agents}
-              selectedAgentIds={selectedAgentIds}
-              onToggleAgent={toggleAgent}
-              onSetAll={setAllAgents}
-            />
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <StatusFilter
-              availableStatuses={availableStatuses}
-              selectedStatuses={selectedStatuses}
-              onToggleStatus={toggleStatus}
-              onSetAll={setAllStatuses}
-              getStatusIcon={getStatusIcon}
-              getStatusColor={getStatusColor}
-            />
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <ListFilter
-              label="categorias"
-              availableItems={availableCategories}
-              selectedItems={selectedCategories}
-              onToggleItem={toggleCategory}
-              onSetAll={setAllCategories}
-            />
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <ListFilter
-              label="tags"
-              availableItems={availableTags}
-              selectedItems={selectedTags}
-              onToggleItem={toggleTag}
-              onSetAll={setAllTags}
-            />
-          </div>
+            <Button
+              variant="outline"
+              onClick={() => setIsFilterSidebarOpen(true)}
+              className="flex items-center gap-2 min-w-[120px]"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              <span className="text-sm">{t('torrents.filters.title')}</span>
+              {(selectedAgentIds.size < agents.length || 
+                selectedStatuses.size < availableStatuses.length ||
+                selectedCategories.size < availableCategories.length ||
+                selectedTags.size < availableTags.length) && (
+                <span className="ml-auto h-2 w-2 rounded-full bg-primary flex-shrink-0" />
+              )}
+            </Button>
           <div className="text-sm text-muted-foreground">
             {filteredTorrents.length} {t('torrents.of')} {torrents.length} {t('torrents.torrents')}
             <span className="ml-2 text-xs">
               ({t('torrents.sortedBy')} {t(`torrents.sortBy.${getSortTypeKey(sortType)}`)} {sortDirection === "asc" ? "↑" : "↓"})
             </span>
+            </div>
           </div>
         </div>
 
         {/* Controles mobile */}
-        <div className="sm:hidden mb-2">
+        <div className="sm:hidden mb-1">
           <div className="flex items-stretch gap-1.5">
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <span className="text-xs text-muted-foreground whitespace-nowrap">{t('torrents.itemsPerPage').split(' ')[0]}:</span>
-              <ItemsPerPageDropdown 
-                value={itemsPerPage} 
-                onChange={handleItemsPerPageChange} 
-              />
-            </div>
-            <div className="w-px bg-border self-stretch flex-shrink-0" />
             <div className="flex items-center gap-1 flex-shrink-0">
               <Clock className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
               <UpdateIntervalDropdown
@@ -1521,7 +1577,7 @@ export default function TorrentsPage() {
               className="flex items-center gap-2 flex-1 min-w-0"
             >
               <SlidersHorizontal className="h-4 w-4 flex-shrink-0" />
-              <span className="text-sm">Filtros</span>
+              <span className="text-sm">{t('torrents.filters.title')}</span>
               {(selectedAgentIds.size < agents.length || 
                 selectedStatuses.size < availableStatuses.length ||
                 selectedCategories.size < availableCategories.length ||
@@ -1656,25 +1712,19 @@ export default function TorrentsPage() {
             <div className="text-sm text-muted-foreground">
               {t('torrents.page')} {currentPage} {t('torrents.of')} {totalPages} ({filteredTorrents.length} {t('torrents.torrents')})
             </div>
+            <div className="flex items-center gap-4">
+              <TorrentPagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePreviousPage}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-                {t('torrents.previous')}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleNextPage}
-                disabled={currentPage === totalPages}
-              >
-                {t('torrents.next')}
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+                <span className="text-sm text-muted-foreground">{t('torrents.itemsPerPage')}:</span>
+                <ItemsPerPageDropdown 
+                  value={itemsPerPage} 
+                  onChange={handleItemsPerPageChange} 
+                />
+              </div>
             </div>
           </div>
         )}
@@ -1683,7 +1733,7 @@ export default function TorrentsPage() {
       {/* Layout para mobile - Cards em coluna única */}
       <div className="md:hidden w-full">
         {/* Mobile sorting controls */}
-        <div className="mb-4">
+        <div className="mb-1">
           <div className="flex items-center justify-between gap-2 mb-3">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-muted-foreground">{t('torrents.sortedBy')}:</span>
@@ -1694,128 +1744,6 @@ export default function TorrentsPage() {
             <span className="text-xs text-muted-foreground whitespace-nowrap">
               {filteredTorrents.length} {t('torrents.of')} {torrents.length}
             </span>
-          </div>
-          <div className="flex gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            <Button
-              variant={sortType === "priority" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleSortChange("priority")}
-              className="flex-shrink-0 text-xs flex items-center gap-1"
-            >
-              {t('torrents.sortButtons.priority')}
-              {sortType === "priority" && (
-                sortDirection === "asc" ? (
-                  <SortAsc className="h-3 w-3" />
-                ) : (
-                  <SortDesc className="h-3 w-3" />
-                )
-              )}
-            </Button>
-            <Button
-              variant={sortType === "alphabetical" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleSortChange("alphabetical")}
-              className="flex-shrink-0 text-xs flex items-center gap-1"
-            >
-              {t('torrents.sortButtons.name')}
-              {sortType === "alphabetical" && (
-                sortDirection === "asc" ? (
-                  <SortAsc className="h-3 w-3" />
-                ) : (
-                  <SortDesc className="h-3 w-3" />
-                )
-              )}
-            </Button>
-            <Button
-              variant={sortType === "size" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleSortChange("size")}
-              className="flex-shrink-0 text-xs flex items-center gap-1"
-            >
-              {t('torrents.sortButtons.size')}
-              {sortType === "size" && (
-                sortDirection === "asc" ? (
-                  <SortAsc className="h-3 w-3" />
-                ) : (
-                  <SortDesc className="h-3 w-3" />
-                )
-              )}
-            </Button>
-            <Button
-              variant={sortType === "progress" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleSortChange("progress")}
-              className="flex-shrink-0 text-xs flex items-center gap-1"
-            >
-              {t('torrents.sortButtons.progress')}
-              {sortType === "progress" && (
-                sortDirection === "asc" ? (
-                  <SortAsc className="h-3 w-3" />
-                ) : (
-                  <SortDesc className="h-3 w-3" />
-                )
-              )}
-            </Button>
-            <Button
-              variant={sortType === "download_speed" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleSortChange("download_speed")}
-              className="flex-shrink-0 text-xs flex items-center gap-1"
-            >
-              {t('torrents.sortButtons.download')}
-              {sortType === "download_speed" && (
-                sortDirection === "asc" ? (
-                  <SortAsc className="h-3 w-3" />
-                ) : (
-                  <SortDesc className="h-3 w-3" />
-                )
-              )}
-            </Button>
-            <Button
-              variant={sortType === "upload_speed" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleSortChange("upload_speed")}
-              className="flex-shrink-0 text-xs flex items-center gap-1"
-            >
-              {t('torrents.sortButtons.upload')}
-              {sortType === "upload_speed" && (
-                sortDirection === "asc" ? (
-                  <SortAsc className="h-3 w-3" />
-                ) : (
-                  <SortDesc className="h-3 w-3" />
-                )
-              )}
-            </Button>
-            <Button
-              variant={sortType === "downloaded" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleSortChange("downloaded")}
-              className="flex-shrink-0 text-xs flex items-center gap-1"
-            >
-              {t('torrents.sortButtons.downloaded')}
-              {sortType === "downloaded" && (
-                sortDirection === "asc" ? (
-                  <SortAsc className="h-3 w-3" />
-                ) : (
-                  <SortDesc className="h-3 w-3" />
-                )
-              )}
-            </Button>
-            <Button
-              variant={sortType === "uploaded" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleSortChange("uploaded")}
-              className="flex-shrink-0 text-xs flex items-center gap-1"
-            >
-              {t('torrents.sortButtons.uploaded')}
-              {sortType === "uploaded" && (
-                sortDirection === "asc" ? (
-                  <SortAsc className="h-3 w-3" />
-                ) : (
-                  <SortDesc className="h-3 w-3" />
-                )
-              )}
-            </Button>
           </div>
         </div>
         
@@ -1835,23 +1763,19 @@ export default function TorrentsPage() {
             <div className="text-sm text-muted-foreground">
               {currentPage} {t('torrents.of')} {totalPages}
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePreviousPage}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleNextPage}
-                disabled={currentPage === totalPages}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+            <div className="flex items-center gap-3">
+              <TorrentPagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">{t('torrents.itemsPerPage').split(' ')[0]}:</span>
+                <ItemsPerPageDropdown 
+                  value={itemsPerPage} 
+                  onChange={handleItemsPerPageChange} 
+                />
+              </div>
             </div>
           </div>
         )}
@@ -1870,7 +1794,6 @@ export default function TorrentsPage() {
         onForceDownload={handleForceDownloadTorrent}
         onForceReannounce={handleForceReannounceTorrent}
         onForceRecheck={handleForceRecheckTorrent}
-        onToggleSuperSeeding={handleToggleSuperSeeding}
         onRename={handleRenameTorrent}
         onSetLocation={handleSetLocationTorrent}
       />
@@ -1886,15 +1809,40 @@ export default function TorrentsPage() {
       {/* Toast notifications */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
-      {/* Filter Sidebar - Mobile only */}
-      <div className="sm:hidden">
-        <FilterSidebar isOpen={isFilterSidebarOpen} onClose={() => setIsFilterSidebarOpen(false)}>
+      {/* Filter Sidebar */}
+      <FilterSidebar 
+        isOpen={isFilterSidebarOpen} 
+        onClose={() => setIsFilterSidebarOpen(false)}
+        title={t('torrents.filters.title')}
+      >
           <div className="space-y-6">
+            {/* Busca - apenas mobile */}
+            <div className="sm:hidden">
+              <div className="relative w-full bg-primary/10 rounded-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  placeholder={t('torrents.search')}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && filteredTorrents.length > 0) {
+                      setIsFilterSidebarOpen(false);
+                    }
+                  }}
+                  className="pl-10 bg-transparent border-0 focus:ring-0 focus:ring-offset-0"
+                />
+              </div>
+            </div>
+
+
             {/* Filtro de agentes */}
             <div className="space-y-2">
               <label className="text-sm font-medium flex items-center gap-2">
-                <AgentIcon size="md" className="w-4 h-4" />
-                Agentes
+                <Server className="w-4 h-4 text-muted-foreground" />
+                {t('torrents.filters.agents')}
+                {selectedAgentIds.size > 0 && selectedAgentIds.size < agents.length && (
+                  <div className="w-2 h-2 rounded-full bg-primary" />
+                )}
               </label>
               <AgentFilter 
                 agents={agents}
@@ -1906,7 +1854,13 @@ export default function TorrentsPage() {
 
             {/* Filtro de status */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Status</label>
+              <label className="text-sm font-medium flex items-center gap-2">
+                <Activity className="w-4 h-4 text-muted-foreground" />
+                {t('torrents.filters.status')}
+                {selectedStatuses.size > 0 && selectedStatuses.size < availableStatuses.length && (
+                  <div className="w-2 h-2 rounded-full bg-primary" />
+                )}
+              </label>
               <StatusFilter
                 availableStatuses={availableStatuses}
                 selectedStatuses={selectedStatuses}
@@ -1919,7 +1873,13 @@ export default function TorrentsPage() {
 
             {/* Filtro de categorias */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Categorias</label>
+              <label className="text-sm font-medium flex items-center gap-2">
+                <Folder className="w-4 h-4 text-muted-foreground" />
+                {t('torrents.filters.categories')}
+                {selectedCategories.size > 0 && selectedCategories.size < availableCategories.length && (
+                  <div className="w-2 h-2 rounded-full bg-primary" />
+                )}
+              </label>
               <ListFilter
                 label="categorias"
                 availableItems={availableCategories}
@@ -1931,7 +1891,13 @@ export default function TorrentsPage() {
 
             {/* Filtro de tags */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Tags</label>
+              <label className="text-sm font-medium flex items-center gap-2">
+                <Tag className="w-4 h-4 text-muted-foreground" />
+                {t('torrents.filters.tags')}
+                {selectedTags.size > 0 && selectedTags.size < availableTags.length && (
+                  <div className="w-2 h-2 rounded-full bg-primary" />
+                )}
+              </label>
               <ListFilter
                 label="tags"
                 availableItems={availableTags}
@@ -1939,6 +1905,139 @@ export default function TorrentsPage() {
                 onToggleItem={toggleTag}
                 onSetAll={setAllTags}
               />
+            </div>
+
+            {/* Separador */}
+            <Separator />
+
+            {/* Controles de ordenação */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium flex items-center gap-2">
+                <SortAsc className="w-4 h-4 text-muted-foreground" />
+                {t('torrents.filters.sorting')}
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant={sortType === "priority" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleSortChange("priority")}
+                  className="text-xs flex items-center gap-1"
+            >
+              {t('torrents.sortButtons.priority')}
+              {sortType === "priority" && (
+                sortDirection === "asc" ? (
+                  <SortAsc className="h-3 w-3" />
+                ) : (
+                  <SortDesc className="h-3 w-3" />
+                )
+              )}
+            </Button>
+            <Button
+              variant={sortType === "alphabetical" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleSortChange("alphabetical")}
+                  className="text-xs flex items-center gap-1"
+            >
+              {t('torrents.sortButtons.name')}
+              {sortType === "alphabetical" && (
+                sortDirection === "asc" ? (
+                  <SortAsc className="h-3 w-3" />
+                ) : (
+                  <SortDesc className="h-3 w-3" />
+                )
+              )}
+            </Button>
+            <Button
+              variant={sortType === "size" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleSortChange("size")}
+                  className="text-xs flex items-center gap-1"
+            >
+              {t('torrents.sortButtons.size')}
+              {sortType === "size" && (
+                sortDirection === "asc" ? (
+                  <SortAsc className="h-3 w-3" />
+                ) : (
+                  <SortDesc className="h-3 w-3" />
+                )
+              )}
+            </Button>
+            <Button
+              variant={sortType === "progress" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleSortChange("progress")}
+                  className="text-xs flex items-center gap-1"
+            >
+              {t('torrents.sortButtons.progress')}
+              {sortType === "progress" && (
+                sortDirection === "asc" ? (
+                  <SortAsc className="h-3 w-3" />
+                ) : (
+                  <SortDesc className="h-3 w-3" />
+                )
+              )}
+            </Button>
+            <Button
+              variant={sortType === "download_speed" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleSortChange("download_speed")}
+                  className="text-xs flex items-center gap-1"
+            >
+              {t('torrents.sortButtons.download')}
+              {sortType === "download_speed" && (
+                sortDirection === "asc" ? (
+                  <SortAsc className="h-3 w-3" />
+                ) : (
+                  <SortDesc className="h-3 w-3" />
+                )
+              )}
+            </Button>
+            <Button
+              variant={sortType === "upload_speed" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleSortChange("upload_speed")}
+                  className="text-xs flex items-center gap-1"
+            >
+              {t('torrents.sortButtons.upload')}
+              {sortType === "upload_speed" && (
+                sortDirection === "asc" ? (
+                  <SortAsc className="h-3 w-3" />
+                ) : (
+                  <SortDesc className="h-3 w-3" />
+                )
+              )}
+            </Button>
+            <Button
+              variant={sortType === "downloaded" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleSortChange("downloaded")}
+                  className="text-xs flex items-center gap-1"
+            >
+              {t('torrents.sortButtons.downloaded')}
+              {sortType === "downloaded" && (
+                sortDirection === "asc" ? (
+                  <SortAsc className="h-3 w-3" />
+                ) : (
+                  <SortDesc className="h-3 w-3" />
+                )
+              )}
+            </Button>
+            <Button
+              variant={sortType === "uploaded" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleSortChange("uploaded")}
+                  className="text-xs flex items-center gap-1"
+            >
+              {t('torrents.sortButtons.uploaded')}
+              {sortType === "uploaded" && (
+                sortDirection === "asc" ? (
+                  <SortAsc className="h-3 w-3" />
+                ) : (
+                  <SortDesc className="h-3 w-3" />
+                )
+              )}
+            </Button>
+          </div>
             </div>
 
             {/* Informação de resultados */}
@@ -1952,7 +2051,6 @@ export default function TorrentsPage() {
             </div>
           </div>
         </FilterSidebar>
-      </div>
     </div>
   );
 }

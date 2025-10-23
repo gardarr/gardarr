@@ -346,6 +346,14 @@
         "title": "Tem certeza de que deseja excluir este agente?",
         "description": "Esta ação não pode ser desfeita."
       },
+      "standalone": {
+        "title": "Agente Standalone",
+        "description": "Este agente é inicializado com a instância padrão do Gardarr e não pode ser modificado ou excluído.",
+        "cannotDelete": "Não é possível excluir agente standalone",
+        "cannotDeleteDescription": "Agentes standalone são inicializados com a instância padrão do Gardarr e não podem ser excluídos para integridade do sistema.",
+        "cannotModify": "Este é um agente standalone e não pode ser modificado.",
+        "tooltip": "Agentes standalone não podem ser editados"
+      },
       "status": {
         "active": "Ativo",
         "errored": "Com Erro", 
@@ -435,6 +443,21 @@
       "progress": "Progresso",
       "name": "Nome",
       "actions": "Ações",
+      "filters": {
+        "allAgents": "Todos os Agentes",
+        "allStatuses": "Todos os Status",
+        "allCategories": "Todas as Categorias",
+        "allTags": "Todas as Tags",
+        "title": "Filtros",
+        "sorting": "Ordenação",
+        "close": "Fechar filtros",
+        "all": "Todos",
+        "none": "Nenhum",
+        "agents": "Agentes",
+        "status": "Status",
+        "categories": "Categorias",
+        "tags": "Tags"
+      },
       "sortBy": {
         "priority": "prioridade",
         "alphabetical": "alfabético",

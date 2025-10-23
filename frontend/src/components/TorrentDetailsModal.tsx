@@ -39,7 +39,6 @@ import {
   Zap,
   Radio,
   CheckCircle,
-  Rocket,
   Edit,
   Save
 } from "lucide-react";
@@ -59,7 +58,6 @@ interface TorrentDetailsModalProps {
   onForceDownload?: (torrentId: string) => void;
   onForceReannounce?: (torrentId: string) => void;
   onForceRecheck?: (torrentId: string) => void;
-  onToggleSuperSeeding?: (torrentId: string, enabled: boolean) => void;
   onRename?: (torrentId: string, newName: string) => void;
   onSetLocation?: (torrentId: string, location: string) => void;
 }
@@ -96,10 +94,9 @@ function useIsMobile(): boolean {
 }
 
 
-export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause, onDelete, onForceDownload, onForceReannounce, onForceRecheck, onToggleSuperSeeding, onRename, onSetLocation }: TorrentDetailsModalProps) {
+export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause, onDelete, onForceDownload, onForceReannounce, onForceRecheck, onRename, onSetLocation }: TorrentDetailsModalProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [superSeedingEnabled, setSuperSeedingEnabled] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [isEditingPath, setIsEditingPath] = useState(false);
   const [editedName, setEditedName] = useState("");
@@ -107,21 +104,6 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
   const isMobile = useIsMobile();
   const { t } = useTranslation();
 
-  // Sync super seeding state with torrent data - only update when super_seeding value changes
-  useEffect(() => {
-    if (torrent?.super_seeding !== undefined) {
-      setSuperSeedingEnabled(torrent.super_seeding);
-    } else {
-      setSuperSeedingEnabled(false);
-    }
-  }, [torrent?.super_seeding]); // Depende apenas do valor específico, não de todo o objeto torrent
-
-  // Reset state when modal is opened with a new torrent
-  useEffect(() => {
-    if (isOpen && torrent) {
-      setSuperSeedingEnabled(torrent.super_seeding ?? false);
-    }
-  }, [isOpen, torrent]); // Reinicializa quando o modal abre ou quando muda de torrent
 
   const copyToClipboard = async (text: string, field: string) => {
     try {
@@ -306,34 +288,6 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                   </TooltipContent>
                 </Tooltip>
               )}
-              {onToggleSuperSeeding && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={superSeedingEnabled ? "default" : "outline"}
-                      size="icon"
-                      onClick={() => {
-                        const newState = !superSeedingEnabled;
-                        // Atualiza imediatamente para feedback visual instantâneo
-                        setSuperSeedingEnabled(newState);
-                        // Chama a API (o useEffect sincronizará com o backend após a resposta)
-                        onToggleSuperSeeding(torrent.id, newState);
-                      }}
-                      className={`h-10 w-10 ${
-                        superSeedingEnabled
-                          ? 'bg-green-600 hover:bg-green-700 text-white'
-                          : 'text-gray-600 hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-gray-950 dark:text-gray-400 dark:hover:text-gray-300'
-                      }`}
-                      aria-label="Toggle Super Seeding"
-                    >
-                      <Rocket className="h-5 w-5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Super Seeding {superSeedingEnabled ? '(Enabled)' : '(Disabled)'}
-                  </TooltipContent>
-                </Tooltip>
-              )}
               {onDelete && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -448,32 +402,6 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
               </TooltipTrigger>
               <TooltipContent>
                 Force Recheck
-              </TooltipContent>
-            </Tooltip>
-          )}
-          {onToggleSuperSeeding && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={superSeedingEnabled ? "default" : "outline"}
-                  size="icon"
-                  onClick={() => {
-                    const newState = !superSeedingEnabled;
-                    setSuperSeedingEnabled(newState);
-                    onToggleSuperSeeding(torrent.id, newState);
-                  }}
-                  className={`h-12 w-12 flex-shrink-0 ${
-                    superSeedingEnabled
-                      ? 'bg-green-600 hover:bg-green-700 text-white'
-                      : 'text-gray-600 hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-gray-950 dark:text-gray-400 dark:hover:text-gray-300'
-                  }`}
-                  aria-label="Toggle Super Seeding"
-                >
-                  <Rocket className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                Super Seeding {superSeedingEnabled ? '(Enabled)' : '(Disabled)'}
               </TooltipContent>
             </Tooltip>
           )}
@@ -782,9 +710,10 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                 </div>
               )}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              {/* Card Download */}
+              <div className="p-3 container-content-background/50 rounded-lg border">
+                <div className="flex items-center gap-2 mb-3">
                   <ArrowDown className="h-4 w-4 text-blue-500" />
                   <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Download</h4>
                 </div>
@@ -805,8 +734,10 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                   </div>
                 </div>
               </div>
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
+
+              {/* Card Upload */}
+              <div className="p-3 container-content-background/50 rounded-lg border">
+                <div className="flex items-center gap-2 mb-3">
                   <ArrowUp className="h-4 w-4 text-green-500" />
                   <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Upload</h4>
                 </div>
@@ -827,10 +758,10 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                   </div>
                 </div>
               </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-2">
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
+
+              {/* Card Swarm */}
+              <div className="p-3 container-content-background/50 rounded-lg border">
+                <div className="flex items-center gap-2 mb-3">
                   <Globe className="h-4 w-4 text-muted-foreground" />
                   <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Swarm</h4>
                 </div>
@@ -851,8 +782,10 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                   </div>
                 </div>
               </div>
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
+
+              {/* Card Conectados */}
+              <div className="p-3 container-content-background/50 rounded-lg border">
+                <div className="flex items-center gap-2 mb-3">
                   <Users className="h-4 w-4 text-muted-foreground" />
                   <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Conectados</h4>
                 </div>

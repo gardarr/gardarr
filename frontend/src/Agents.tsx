@@ -29,7 +29,8 @@ import {
   Users,
   BarChart3,
   Tag,
-  Folder
+  Folder,
+  Lock
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -782,8 +783,22 @@ function Agents() {
                           )}
                         </div>
 
-                        {/* qBittorrent Icon - Always displayed on the right */}
-                        <div className="flex-shrink-0">
+                        {/* Icons - Always displayed on the right */}
+                        <div className="flex-shrink-0 flex items-center gap-2">
+                          {agent.standalone && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="cursor-help">
+                                    <Lock className="h-4 w-4 text-primary/70" />
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{t('agents.standalone.tooltip')}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
                           <QBittorrentIcon 
                             size="lg"
                             className="w-8 h-8 text-muted-foreground/60"
@@ -1135,11 +1150,29 @@ function Agents() {
                     </TabsContent>
                   </Tabs>
 
+                  {selectedAgent?.standalone && (
+                    <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg mt-3">
+                      <div className="flex items-start gap-2">
+                        <Server className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                            {t('agents.standalone.title')}
+                          </p>
+                          <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                            {t('agents.standalone.description')}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex gap-2 justify-between pt-2">
                     <div className="flex gap-2">
                       <Button 
                         variant="destructive" 
-                        onClick={() => selectedAgent && confirmDeleteAgent(selectedAgent)}
+                        disabled={selectedAgent?.standalone}
+                        onClick={() => selectedAgent && !selectedAgent.standalone && confirmDeleteAgent(selectedAgent)}
+                        title={selectedAgent?.standalone ? t('agents.standalone.tooltip') : "Delete agent"}
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
                         {t('agents.delete')}
@@ -1148,7 +1181,9 @@ function Agents() {
                     <div className="flex gap-2">
                       <Button 
                         variant="outline" 
-                        onClick={() => selectedAgent && showEditAgent(selectedAgent)}
+                        disabled={selectedAgent?.standalone}
+                        onClick={() => selectedAgent && !selectedAgent.standalone && showEditAgent(selectedAgent)}
+                        title={selectedAgent?.standalone ? t('agents.standalone.tooltip') : "Edit agent"}
                       >
                         <Check className="h-4 w-4 mr-2" />
                         {t('agents.edit')}
@@ -1174,42 +1209,88 @@ function Agents() {
               
               {agentToDelete && (
                 <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    {t('agents.confirmDelete.title')} {t('agents.confirmDelete.description')}
-                  </p>
-                  
-                  <div className="flex items-center gap-3 p-3 container-content-background/50 rounded-lg">
-                    <AgentIcon 
-                      iconName={agentToDelete.icon}
-                      color={agentToDelete.color}
-                      size="md"
-                      className="w-12 h-12 rounded-lg"
-                      standalone={agentToDelete.standalone}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold text-sm">{agentToDelete.name}</h3>
-                      <p className="text-xs text-muted-foreground truncate">{agentToDelete.address}</p>
-                    </div>
-                  </div>
+                  {agentToDelete.standalone ? (
+                    <>
+                      <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg">
+                        <div className="flex items-start gap-2">
+                          <Server className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                              {t('agents.standalone.cannotDelete')}
+                            </p>
+                            <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                              {t('agents.standalone.cannotDeleteDescription')}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-3 p-3 container-content-background/50 rounded-lg">
+                        <AgentIcon 
+                          iconName={agentToDelete.icon}
+                          color={agentToDelete.color}
+                          size="md"
+                          className="w-12 h-12 rounded-lg"
+                          standalone={agentToDelete.standalone}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-semibold text-sm">{agentToDelete.name}</h3>
+                          <p className="text-xs text-muted-foreground truncate">{agentToDelete.address}</p>
+                        </div>
+                      </div>
 
-                  <div className="flex gap-2 justify-end">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => {
-                        setShowDeleteModal(false);
-                        setAgentToDelete(null);
-                      }}
-                    >
-                      {t('agents.cancel')}
-                    </Button>
-                    <Button 
-                      variant="destructive" 
-                      onClick={handleDeleteAgent}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      {t('agents.delete')}
-                    </Button>
-                  </div>
+                      <div className="flex gap-2 justify-end">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => {
+                            setShowDeleteModal(false);
+                            setAgentToDelete(null);
+                          }}
+                        >
+                          Close
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-muted-foreground">
+                        {t('agents.confirmDelete.title')} {t('agents.confirmDelete.description')}
+                      </p>
+                      
+                      <div className="flex items-center gap-3 p-3 container-content-background/50 rounded-lg">
+                        <AgentIcon 
+                          iconName={agentToDelete.icon}
+                          color={agentToDelete.color}
+                          size="md"
+                          className="w-12 h-12 rounded-lg"
+                          standalone={agentToDelete.standalone}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-semibold text-sm">{agentToDelete.name}</h3>
+                          <p className="text-xs text-muted-foreground truncate">{agentToDelete.address}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 justify-end">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => {
+                            setShowDeleteModal(false);
+                            setAgentToDelete(null);
+                          }}
+                        >
+                          {t('agents.cancel')}
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          onClick={handleDeleteAgent}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          {t('agents.delete')}
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </DialogContent>
@@ -1225,6 +1306,19 @@ function Agents() {
               {agentToEdit && (
                 <CustomScrollArea className="max-h-[calc(90vh-120px)]" variant="thin" mobileFallback>
                   <div className="space-y-4">
+                  {agentToEdit.standalone && (
+                    <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg">
+                      <Server className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <div>
+                        <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                          {t('agents.standalone.title')}
+                        </p>
+                        <p className="text-xs text-blue-700 dark:text-blue-300">
+                          {t('agents.standalone.cannotModify')}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <Label htmlFor="edit-name" className="text-sm">{t('agents.name')}</Label>
@@ -1234,6 +1328,7 @@ function Agents() {
                         value={editForm.name}
                         onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                         className="h-9"
+                        disabled={agentToEdit.standalone}
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -1244,6 +1339,7 @@ function Agents() {
                         value={editForm.address}
                         onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
                         className="h-9"
+                        disabled={agentToEdit.standalone}
                       />
                     </div>
                   </div>
@@ -1258,11 +1354,13 @@ function Agents() {
                         value={editForm.token}
                         onChange={(e) => setEditForm({ ...editForm, token: e.target.value })}
                         className="h-9 pr-10"
+                        disabled={agentToEdit.standalone}
                       />
                       <button
                         type="button"
                         onClick={() => setShowEditToken(!showEditToken)}
                         className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        disabled={agentToEdit.standalone}
                       >
                         {showEditToken ? (
                           <EyeOff className="h-4 w-4" />
@@ -1282,10 +1380,11 @@ function Agents() {
                           type="button"
                           className={`w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 ${
                             editForm.color === color.value ? 'border-foreground scale-110' : 'border-transparent'
-                          }`}
+                          } ${agentToEdit.standalone ? 'opacity-50 cursor-not-allowed' : ''}`}
                           style={{ backgroundColor: color.value }}
-                          onClick={() => setEditForm({ ...editForm, color: color.value })}
+                          onClick={() => !agentToEdit.standalone && setEditForm({ ...editForm, color: color.value })}
                           title={color.name}
+                          disabled={agentToEdit.standalone}
                         />
                       ))}
                     </div>
@@ -1302,9 +1401,10 @@ function Agents() {
                             type="button"
                             className={`w-8 h-8 rounded-md border-2 flex items-center justify-center transition-all hover:scale-110 ${
                               editForm.icon === iconItem.name ? 'border-foreground bg-accent scale-110' : 'border-border hover:container-content-background/50'
-                            }`}
-                            onClick={() => setEditForm({ ...editForm, icon: iconItem.name })}
+                            } ${agentToEdit.standalone ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            onClick={() => !agentToEdit.standalone && setEditForm({ ...editForm, icon: iconItem.name })}
                             title={iconItem.name}
+                            disabled={agentToEdit.standalone}
                           >
                             <IconComponent className="h-4 w-4" />
                           </button>
@@ -1346,7 +1446,12 @@ function Agents() {
                     >
                       {t('agents.cancel')}
                     </Button>
-                    <Button onClick={handleUpdateAgent} size="sm">
+                    <Button 
+                      onClick={handleUpdateAgent} 
+                      size="sm"
+                      disabled={agentToEdit.standalone}
+                      title={agentToEdit.standalone ? t('agents.standalone.tooltip') : "Update agent information"}
+                    >
                       <Check className="h-4 w-4 mr-1" />
                       {t('agents.updateAgent')}
                     </Button>

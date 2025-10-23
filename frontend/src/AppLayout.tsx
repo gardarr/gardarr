@@ -231,8 +231,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </Button>
             <VariantColorSelectButton />
             <Button variant="ghost" size="icon" aria-label={t("navigation.profile")} asChild className="h-8 w-8 flex items-center justify-center">
-              <Link to="/profile" className="hidden sm:flex">
-                <Users className="h-4 w-4" />
+              <Link to="/profile">
+                <UserCircle className="h-4 w-4" />
               </Link>
             </Button>
             <Button variant="ghost" size="sm" className="hidden sm:flex" onClick={handleLogout}>

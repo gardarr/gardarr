@@ -346,6 +346,14 @@
         "title": "Are you sure you want to delete this agent?",
         "description": "This action cannot be undone."
       },
+      "standalone": {
+        "title": "Standalone Agent",
+        "description": "This agent is initialized with the default Gardarr instance and cannot be modified or deleted.",
+        "cannotDelete": "Cannot Delete Standalone Agent",
+        "cannotDeleteDescription": "Standalone agents are initialized with the default Gardarr instance and cannot be deleted for system integrity.",
+        "cannotModify": "This is a standalone agent and cannot be modified.",
+        "tooltip": "Standalone agents cannot be edited"
+      },
       "status": {
         "active": "Active",
         "errored": "Errored", 
@@ -435,6 +443,21 @@
       "progress": "Progress",
       "name": "Name",
       "actions": "Actions",
+      "filters": {
+        "allAgents": "All Agents",
+        "allStatuses": "All Statuses",
+        "allCategories": "All Categories",
+        "allTags": "All Tags",
+        "title": "Filters",
+        "sorting": "Sorting",
+        "close": "Close filters",
+        "all": "All",
+        "none": "None",
+        "agents": "Agents",
+        "status": "Status",
+        "categories": "Categories",
+        "tags": "Tags"
+      },
       "sortBy": {
         "priority": "priority",
         "alphabetical": "alphabetical",

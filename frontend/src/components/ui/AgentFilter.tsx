@@ -1,17 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, Check, HardDrive } from "lucide-react";
+import { ChevronDown, Check } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { Agent } from "@/types/agent";
 import { AgentIcon } from "@/components/ui/AgentIcon";
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  const value = bytes / Math.pow(k, i);
-  return `${value.toFixed(value >= 100 ? 0 : value >= 10 ? 1 : 2)} ${sizes[i]}`;
-}
 
 export function AgentFilter({
   agents,
@@ -24,6 +16,7 @@ export function AgentFilter({
   onToggleAgent: (id: string) => void;
   onSetAll: (checked: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
@@ -61,7 +54,7 @@ export function AgentFilter({
         aria-label="Filtrar por agent"
       >
         <span className="truncate">
-          {allSelected ? "Todos" : someSelected ? `${selectedAgentIds.size} agent${selectedAgentIds.size > 1 ? 's' : ''}` : "Nenhum"}
+          {allSelected ? t('torrents.filters.all') : someSelected ? `${selectedAgentIds.size} agent${selectedAgentIds.size > 1 ? 's' : ''}` : t('torrents.filters.none')}
         </span>
         <ChevronDown className={`h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
       </Button>
@@ -78,15 +71,13 @@ export function AgentFilter({
             aria-selected={allSelected}
           >
             <span className="flex items-center gap-2">
-              <AgentIcon size="md" className="w-4 h-4" />
-              Todos
+              {t("torrents.filters.allAgents")}
             </span>
             {allSelected && <Check className="h-4 w-4" />}
           </button>
           <div className="my-1 h-px bg-border" />
           {agents.map((a) => {
             const selected = selectedAgentIds.has(a.uuid);
-            const freeSpace = a.instance?.server?.free_space_on_disk || 0;
             return (
               <button
                 key={a.uuid}
@@ -94,7 +85,7 @@ export function AgentFilter({
                 onClick={() => onToggleAgent(a.uuid)}
                 role="option"
                 aria-selected={selected}
-                title={`${a.name} - Espaço livre: ${formatBytes(freeSpace)}`}
+                title={a.name}
               >
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <AgentIcon 
@@ -103,13 +94,7 @@ export function AgentFilter({
                     size="md"
                     className="w-4 h-4 flex-shrink-0"
                   />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate max-w-[140px]">{a.name}</div>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <HardDrive className="h-3 w-3" />
-                      <span>{formatBytes(freeSpace)}</span>
-                    </div>
-                  </div>
+                  <span className="truncate max-w-[140px]">{a.name}</span>
                 </div>
                 {selected && <span className="text-xs flex-shrink-0">✓</span>}
               </button>

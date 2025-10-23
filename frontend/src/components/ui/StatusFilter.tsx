@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, Check, Filter } from "lucide-react";
+import { ChevronDown, Check } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { LucideIcon } from "lucide-react";
 
 type TorrentStatus = 
@@ -44,6 +45,7 @@ export function StatusFilter({
   getStatusIcon,
   getStatusColor,
 }: StatusFilterProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
@@ -81,8 +83,7 @@ export function StatusFilter({
         aria-label="Filtrar por status"
       >
         <span className="flex items-center gap-1.5 truncate">
-          <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-          <span className="truncate">{allSelected ? "Todos" : someSelected ? `${selectedStatuses.size} status` : "Nenhum"}</span>
+          <span className="truncate">{allSelected ? t('torrents.filters.all') : someSelected ? `${selectedStatuses.size} status` : t('torrents.filters.none')}</span>
         </span>
         <ChevronDown className={`h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
       </Button>
@@ -99,8 +100,7 @@ export function StatusFilter({
             aria-selected={allSelected}
           >
             <span className="flex items-center gap-2">
-              <Filter className="h-4 w-4" />
-              Todos os status
+              {t("torrents.filters.allStatuses")}
             </span>
             {allSelected && <Check className="h-4 w-4" />}
           </button>

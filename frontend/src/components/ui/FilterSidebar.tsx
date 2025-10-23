@@ -1,14 +1,17 @@
 import { useEffect, useRef } from "react";
 import { X, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "react-i18next";
 
 interface FilterSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   children: React.ReactNode;
+  title: string;
 }
 
-export function FilterSidebar({ isOpen, onClose, children }: FilterSidebarProps) {
+export function FilterSidebar({ isOpen, onClose, children, title }: FilterSidebarProps) {
+  const { t } = useTranslation();
   const sidebarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,20 +57,20 @@ export function FilterSidebar({ isOpen, onClose, children }: FilterSidebarProps)
         }`}
         role="dialog"
         aria-modal="true"
-        aria-label="Filtros"
+        aria-label={title}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           <div className="flex items-center gap-2">
             <SlidersHorizontal className="h-5 w-5" />
-            <h2 className="text-lg font-semibold">Filtros</h2>
+            <h2 className="text-lg font-semibold">{title}</h2>
           </div>
           <Button
             variant="ghost"
             size="icon"
             onClick={onClose}
             className="h-8 w-8"
-            aria-label="Fechar filtros"
+            aria-label={t('torrents.filters.close')}
           >
             <X className="h-5 w-5" />
           </Button>

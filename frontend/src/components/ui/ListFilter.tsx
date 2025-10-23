@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, Check, Filter } from "lucide-react";
+import { ChevronDown, Check } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface ListFilterProps {
   label: string;
@@ -17,6 +18,7 @@ export function ListFilter({
   onToggleItem,
   onSetAll,
 }: ListFilterProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
@@ -54,9 +56,8 @@ export function ListFilter({
         aria-label={`Filtrar por ${label}`}
       >
         <span className="flex items-center gap-1.5 truncate">
-          <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
           <span className="truncate">
-            {allSelected ? "Todos" : noneSelected ? "Nenhum" : `${selectedItems.size} ${label}`}
+            {allSelected ? t('torrents.filters.all') : noneSelected ? t('torrents.filters.none') : `${selectedItems.size} ${label}`}
           </span>
         </span>
         <ChevronDown className={`h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
@@ -74,8 +75,7 @@ export function ListFilter({
             aria-selected={allSelected}
           >
             <span className="flex items-center gap-2">
-              <Filter className="h-4 w-4" />
-              Todos
+              {label === "categorias" ? t("torrents.filters.allCategories") : t("torrents.filters.allTags")}
             </span>
             {allSelected && <Check className="h-4 w-4" />}
           </button>
