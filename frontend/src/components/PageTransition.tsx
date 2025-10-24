@@ -23,9 +23,10 @@ export default function PageTransition({ children }: PageTransitionProps) {
 
   return (
     <div
-      className={`transition-opacity duration-200 ease-in-out ${
+      className={`transition-opacity duration-200 ease-in-out w-full ${
         isVisible ? 'opacity-100' : 'opacity-0'
       }`}
+      style={{ minHeight: 0 }}
     >
       {children}
     </div>

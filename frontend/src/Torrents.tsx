@@ -1539,7 +1539,7 @@ export default function TorrentsPage() {
   }
 
   return (
-    <div className="space-y-4 min-h-0 flex flex-col">
+    <div className="space-y-4 w-full pb-0">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -1688,7 +1688,7 @@ export default function TorrentsPage() {
 
       {/* Conteúdo principal - apenas quando há torrents */}
       {torrents.length > 0 && (
-        <div className="space-y-4">
+        <>
       {/* Layout para desktop - Tabela */}
       <div className="hidden md:block">
         <div className="rounded-md border">
@@ -1861,7 +1861,7 @@ export default function TorrentsPage() {
             </div>
           )}
         </div>
-        </div>
+        </>
       )}
 
       {/* Modal de detalhes do torrent - só renderiza quando aberto */}
