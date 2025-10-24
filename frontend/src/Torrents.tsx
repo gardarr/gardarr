@@ -452,7 +452,7 @@ function ItemsPerPageDropdown({
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   
-  const options = [10, 20, 50, 100];
+  const options = [5, 10, 20, 50, 100];
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

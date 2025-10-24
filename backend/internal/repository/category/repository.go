@@ -27,7 +27,7 @@ func (r *Repository) CreateCategory(ctx context.Context, category entities.Categ
 		ID:          category.ID,
 		Name:        category.Name,
 		DefaultTags: models.StringArray(category.DefaultTags),
-		Directories: models.StringArray(category.Directories),
+		Directory:   category.Directory,
 		Color:       category.Color,
 		Icon:        category.Icon,
 	}
@@ -90,7 +90,7 @@ func (r *Repository) UpdateCategory(ctx context.Context, category entities.Categ
 	// Only update mutable fields
 	updates := map[string]interface{}{
 		"default_tags": models.StringArray(category.DefaultTags),
-		"directories":  models.StringArray(category.Directories),
+		"directory":    category.Directory,
 		"color":        category.Color,
 		"icon":         category.Icon,
 	}
@@ -125,7 +125,7 @@ func toCategory(model models.Category) *entities.Category {
 		ID:          model.ID,
 		Name:        model.Name,
 		DefaultTags: []string(model.DefaultTags),
-		Directories: []string(model.Directories),
+		Directory:   model.Directory,
 		Color:       model.Color,
 		Icon:        model.Icon,
 		CreatedAt:   model.CreatedAt,

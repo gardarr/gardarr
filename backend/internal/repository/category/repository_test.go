@@ -34,7 +34,7 @@ func TestRepository_CreateCategory(t *testing.T) {
 	category := entities.Category{
 		Name:        "Movies",
 		DefaultTags: []string{"hd", "english"},
-		Directories: []string{"/movies", "/cinema"},
+		Directory:   "/movies",
 	}
 
 	created, err := repo.CreateCategory(ctx, category)
@@ -59,8 +59,8 @@ func TestRepository_CreateCategory(t *testing.T) {
 		t.Errorf("Expected %d tags, got %d", len(category.DefaultTags), len(created.DefaultTags))
 	}
 
-	if len(created.Directories) != len(category.Directories) {
-		t.Errorf("Expected %d directories, got %d", len(category.Directories), len(created.Directories))
+	if created.Directory != category.Directory {
+		t.Errorf("Expected directory %s, got %s", category.Directory, created.Directory)
 	}
 }
 
@@ -72,7 +72,7 @@ func TestRepository_CreateCategory_Duplicate(t *testing.T) {
 	category := entities.Category{
 		Name:        "Series",
 		DefaultTags: []string{"hd"},
-		Directories: []string{"/series"},
+		Directory:   "/series",
 	}
 
 	// Create first category
@@ -105,9 +105,9 @@ func TestRepository_ListCategories(t *testing.T) {
 
 	// Create test categories
 	testCategories := []entities.Category{
-		{Name: "Movies", DefaultTags: []string{"hd"}, Directories: []string{"/movies"}},
-		{Name: "Series", DefaultTags: []string{"hd"}, Directories: []string{"/series"}},
-		{Name: "Music", DefaultTags: []string{"flac"}, Directories: []string{"/music"}},
+		{Name: "Movies", DefaultTags: []string{"hd"}, Directory: "/movies"},
+		{Name: "Series", DefaultTags: []string{"hd"}, Directory: "/series"},
+		{Name: "Music", DefaultTags: []string{"flac"}, Directory: "/music"},
 	}
 
 	for _, cat := range testCategories {
@@ -137,7 +137,7 @@ func TestRepository_GetCategoryByID(t *testing.T) {
 	category := entities.Category{
 		Name:        "Books",
 		DefaultTags: []string{"epub", "pdf"},
-		Directories: []string{"/books"},
+		Directory:   "/books",
 	}
 
 	created, err := repo.CreateCategory(ctx, category)
@@ -175,7 +175,7 @@ func TestRepository_GetCategoryByName(t *testing.T) {
 	category := entities.Category{
 		Name:        "Games",
 		DefaultTags: []string{"pc", "console"},
-		Directories: []string{"/games"},
+		Directory:   "/games",
 	}
 
 	created, err := repo.CreateCategory(ctx, category)
@@ -213,7 +213,7 @@ func TestRepository_UpdateCategory(t *testing.T) {
 	category := entities.Category{
 		Name:        "Software",
 		DefaultTags: []string{"linux"},
-		Directories: []string{"/software"},
+		Directory:   "/software",
 		Color:       "#FF0000",
 		Icon:        "code",
 	}
@@ -225,7 +225,7 @@ func TestRepository_UpdateCategory(t *testing.T) {
 
 	// Update the category (only mutable fields)
 	created.DefaultTags = []string{"linux", "windows"}
-	created.Directories = []string{"/software", "/apps"}
+	created.Directory = "/apps"
 	created.Color = "#00FF00"
 	created.Icon = "terminal"
 
@@ -244,8 +244,8 @@ func TestRepository_UpdateCategory(t *testing.T) {
 		t.Errorf("Expected 2 tags, got %d", len(updated.DefaultTags))
 	}
 
-	if len(updated.Directories) != 2 {
-		t.Errorf("Expected 2 directories, got %d", len(updated.Directories))
+	if updated.Directory != "/apps" {
+		t.Errorf("Expected directory '/apps', got %s", updated.Directory)
 	}
 
 	if updated.Color != "#00FF00" {
@@ -276,7 +276,7 @@ func TestRepository_DeleteCategory(t *testing.T) {
 	category := entities.Category{
 		Name:        "Documents",
 		DefaultTags: []string{"pdf"},
-		Directories: []string{"/docs"},
+		Directory:   "/docs",
 	}
 
 	created, err := repo.CreateCategory(ctx, category)
@@ -308,7 +308,7 @@ func TestRepository_ToCategoryConversion(t *testing.T) {
 		ID:          "test-id",
 		Name:        "Test Category",
 		DefaultTags: models.StringArray{"tag1", "tag2"},
-		Directories: models.StringArray{"/path1", "/path2"},
+		Directory:   "/test/path",
 	}
 
 	entity := toCategory(model)
@@ -325,7 +325,7 @@ func TestRepository_ToCategoryConversion(t *testing.T) {
 		t.Errorf("Expected %d tags, got %d", len(model.DefaultTags), len(entity.DefaultTags))
 	}
 
-	if len(entity.Directories) != len(model.Directories) {
-		t.Errorf("Expected %d directories, got %d", len(model.Directories), len(entity.Directories))
+	if entity.Directory != model.Directory {
+		t.Errorf("Expected directory %s, got %s", model.Directory, entity.Directory)
 	}
 }

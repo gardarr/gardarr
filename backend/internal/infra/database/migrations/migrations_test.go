@@ -47,7 +47,7 @@ func TestMigration_007_AddColorIconToCategories(t *testing.T) {
 		Color:       "#FF5733",
 		Icon:        "Folder",
 		DefaultTags: models.StringArray{"tag1", "tag2"},
-		Directories: models.StringArray{"/path1"},
+		Directory:   "/path1",
 	}
 
 	if err := db.Create(&category).Error; err != nil {

@@ -4,7 +4,7 @@ package schemas
 type CategoryCreateRequest struct {
 	Name        string   `json:"name" binding:"required,min=1,max=100"`
 	DefaultTags []string `json:"default_tags"`
-	Directories []string `json:"directories"`
+	Directory   string   `json:"directory" binding:"required,min=1,max=255"`
 	Color       string   `json:"color" binding:"omitempty,max=50"`
 	Icon        string   `json:"icon" binding:"omitempty,max=100"`
 }
@@ -13,7 +13,7 @@ type CategoryCreateRequest struct {
 // Note: Name and ID are immutable and cannot be updated
 type CategoryUpdateRequest struct {
 	DefaultTags []string `json:"default_tags"`
-	Directories []string `json:"directories"`
+	Directory   string   `json:"directory" binding:"required,min=1,max=255"`
 	Color       string   `json:"color" binding:"omitempty,max=50"`
 	Icon        string   `json:"icon" binding:"omitempty,max=100"`
 }

@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { X, Tag, Server, Folder, Check, ChevronsUpDown, HardDrive, Download, Plus } from "lucide-react";
+import { X, Tag, Server, Folder, Check, ChevronsUpDown, HardDrive, Download, Plus, Link, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AgentIcon } from "@/components/ui/AgentIcon";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
+import { AddCategoryModal } from "@/components/AddCategoryModal";
 import { categoryService } from "@/services/categories";
 import type { Agent } from "@/types/agent";
 import type { CreateTaskRequest } from "@/types/torrent";
@@ -39,6 +40,7 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [agentDropdownOpen, setAgentDropdownOpen] = useState(false);
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const agentDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -100,7 +102,7 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
       if (selectedCategory) {
         setCategory(selectedCategory.name);
         setTags([...(selectedCategory.default_tags || [])]);
-        setDirectory(selectedCategory.directories?.[0] || "");
+        setDirectory(selectedCategory.directory || "");
       }
     } else {
       setCategory("");
@@ -168,6 +170,28 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
 
   const handleRemoveTag = (tagToRemove: string) => {
     setTags(tags.filter(tag => tag !== tagToRemove));
+  };
+
+  const handleAddCategoryClick = () => {
+    setCategoryModalOpen(true);
+  };
+
+  const handleCategoryCreated = async (categoryData: any) => {
+    try {
+      const response = await categoryService.createCategory(categoryData);
+      if (response.data) {
+        // Reload categories list
+        await loadCategories();
+        // Select the newly created category
+        setSelectedCategoryId(response.data.id);
+        setCategory(response.data.name);
+        setTags([...(response.data.default_tags || [])]);
+        setDirectory(response.data.directory || "");
+        setErrors({ ...errors, category: "" });
+      }
+    } catch (err) {
+      console.error('Failed to create category:', err);
+    }
   };
 
 
@@ -255,7 +279,8 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Magnet URI */}
           <div className="space-y-2">
-            <Label htmlFor="magnetUri">
+            <Label htmlFor="magnetUri" className="flex items-center gap-2">
+              <Link className="h-4 w-4" />
               Magnet URI <span className="text-destructive">*</span>
             </Label>
             <Input
@@ -274,9 +299,171 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
             )}
           </div>
 
+          {/* Category Selection */}
+          <div className="space-y-2">
+            <Label htmlFor="category" className="flex items-center gap-2">
+              <Folder className="h-4 w-4" />
+              Categoria <span className="text-destructive">*</span>
+            </Label>
+            <div className="flex gap-2">
+              <div className="relative flex-1" ref={categoryDropdownRef}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
+                  className={`w-full justify-between ${errors.category ? "border-destructive" : ""}`}
+                >
+                  <div className="flex items-center gap-2">
+                    {selectedCategoryId ? (
+                      (() => {
+                        const selectedCategory = categories.find(cat => cat.id === selectedCategoryId);
+                        return selectedCategory ? (
+                          <CategoryIcon 
+                            iconName={selectedCategory.icon}
+                            color={selectedCategory.color}
+                            size="sm"
+                          />
+                        ) : (
+                          <Folder className="h-4 w-4 text-muted-foreground" />
+                        );
+                      })()
+                    ) : (
+                      <Folder className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    <span className="truncate">
+                      {selectedCategoryId 
+                        ? categories.find(cat => cat.id === selectedCategoryId)?.name 
+                        : "Selecione uma categoria"
+                      }
+                    </span>
+                  </div>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+                
+                {categoryDropdownOpen && (
+                  <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-auto">
+                    {categories.length === 0 ? (
+                      <div className="px-3 py-2 text-sm text-muted-foreground">
+                        Nenhuma categoria disponível
+                      </div>
+                    ) : (
+                      categories.map((cat) => (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => handleCategoryChange(cat.id)}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground text-left"
+                        >
+                          <CategoryIcon 
+                            iconName={cat.icon}
+                            color={cat.color}
+                            size="sm"
+                          />
+                          <span className="flex-1 truncate">{cat.name}</span>
+                          {selectedCategoryId === cat.id && (
+                            <Check className="h-4 w-4 text-primary" />
+                          )}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                className="h-10 px-3"
+                title="Adicionar Categoria"
+                onClick={handleAddCategoryClick}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            {errors.category && (
+              <p className="text-sm text-destructive">{errors.category}</p>
+            )}
+          </div>
+
+          {/* Directory (Optional) */}
+          <div className="space-y-2">
+            <Label htmlFor="directory" className="flex items-center gap-2">
+              <Folder className="h-4 w-4" />
+              Diretório <span className="text-muted-foreground text-xs">(opcional)</span>
+              {selectedCategoryId && (
+                <span className="text-xs text-blue-600 ml-2">(preenchido automaticamente)</span>
+              )}
+            </Label>
+            <Input
+              id="directory"
+              type="text"
+              placeholder="Ex: /downloads/movies"
+              value={directory}
+              onChange={(e) => setDirectory(e.target.value)}
+            />
+          </div>
+
+          {/* Tags */}
+          <div className="space-y-2">
+            <Label htmlFor="tagInput" className="flex items-center gap-2">
+              <Hash className="h-4 w-4" />
+              Tags <span className="text-destructive">*</span>
+              {selectedCategoryId && tags.length > 0 && (
+                <span className="text-xs text-blue-600 ml-2">(preenchidas automaticamente)</span>
+              )}
+            </Label>
+            <div 
+              className={`min-h-[40px] w-full px-3 py-2 border rounded-md bg-background text-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-primary flex flex-wrap gap-1 items-center ${
+                errors.tags && tags.length === 0 ? "border-destructive" : ""
+              }`}
+              onClick={() => document.getElementById('tagInput')?.focus()}
+            >
+              {tags.map((tag) => (
+                <div
+                  key={tag}
+                  className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary border border-primary/20 rounded-md text-sm"
+                >
+                  <Tag className="h-3 w-3" />
+                  <span>{tag}</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveTag(tag);
+                    }}
+                    className="ml-1 hover:text-destructive"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+              <input
+                id="tagInput"
+                type="text"
+                placeholder={tags.length === 0 ? "Digite uma tag e pressione Enter" : ""}
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddTag();
+                  } else if (e.key === "Backspace" && tagInput === "" && tags.length > 0) {
+                    e.preventDefault();
+                    handleRemoveTag(tags[tags.length - 1]);
+                  }
+                }}
+                className="flex-1 min-w-[120px] bg-transparent border-none outline-none text-sm"
+              />
+            </div>
+            {errors.tags && (
+              <p className="text-sm text-destructive">{errors.tags}</p>
+            )}
+          </div>
+
           {/* Agent Selection */}
           <div className="space-y-2">
-            <Label htmlFor="agent">
+            <Label htmlFor="agent" className="flex items-center gap-2">
+              <Server className="h-4 w-4" />
               Agente <span className="text-destructive">*</span>
             </Label>
             <div className="relative" ref={agentDropdownRef}>
@@ -350,163 +537,6 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
             )}
           </div>
 
-          {/* Category Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="category">
-              Categoria <span className="text-destructive">*</span>
-            </Label>
-            <div className="flex gap-2">
-              <div className="relative flex-1" ref={categoryDropdownRef}>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
-                  className={`w-full justify-between ${errors.category ? "border-destructive" : ""}`}
-                >
-                  <div className="flex items-center gap-2">
-                    {selectedCategoryId ? (
-                      (() => {
-                        const selectedCategory = categories.find(cat => cat.id === selectedCategoryId);
-                        return selectedCategory ? (
-                          <CategoryIcon 
-                            iconName={selectedCategory.icon}
-                            color={selectedCategory.color}
-                            size="sm"
-                          />
-                        ) : (
-                          <Folder className="h-4 w-4 text-muted-foreground" />
-                        );
-                      })()
-                    ) : (
-                      <Folder className="h-4 w-4 text-muted-foreground" />
-                    )}
-                    <span className="truncate">
-                      {selectedCategoryId 
-                        ? categories.find(cat => cat.id === selectedCategoryId)?.name 
-                        : "Selecione uma categoria"
-                      }
-                    </span>
-                  </div>
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-                
-                {categoryDropdownOpen && (
-                  <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-auto">
-                    {categories.length === 0 ? (
-                      <div className="px-3 py-2 text-sm text-muted-foreground">
-                        Nenhuma categoria disponível
-                      </div>
-                    ) : (
-                      categories.map((cat) => (
-                        <button
-                          key={cat.id}
-                          type="button"
-                          onClick={() => handleCategoryChange(cat.id)}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground text-left"
-                        >
-                          <CategoryIcon 
-                            iconName={cat.icon}
-                            color={cat.color}
-                            size="sm"
-                          />
-                          <span className="flex-1 truncate">{cat.name}</span>
-                          {selectedCategoryId === cat.id && (
-                            <Check className="h-4 w-4 text-primary" />
-                          )}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-10 px-3"
-                title="Adicionar nova categoria"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-            {errors.category && (
-              <p className="text-sm text-destructive">{errors.category}</p>
-            )}
-          </div>
-
-          {/* Directory (Optional) */}
-          <div className="space-y-2">
-            <Label htmlFor="directory">
-              Diretório <span className="text-muted-foreground text-xs">(opcional)</span>
-              {selectedCategoryId && (
-                <span className="text-xs text-blue-600 ml-2">(preenchido automaticamente)</span>
-              )}
-            </Label>
-            <Input
-              id="directory"
-              type="text"
-              placeholder="Ex: /downloads/movies"
-              value={directory}
-              onChange={(e) => setDirectory(e.target.value)}
-            />
-          </div>
-
-          {/* Tags */}
-          <div className="space-y-2">
-            <Label htmlFor="tagInput">
-              Tags <span className="text-destructive">*</span>
-              {selectedCategoryId && tags.length > 0 && (
-                <span className="text-xs text-blue-600 ml-2">(preenchidas automaticamente)</span>
-              )}
-            </Label>
-            <div 
-              className={`min-h-[40px] w-full px-3 py-2 border rounded-md bg-background text-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-primary flex flex-wrap gap-1 items-center ${
-                errors.tags && tags.length === 0 ? "border-destructive" : ""
-              }`}
-              onClick={() => document.getElementById('tagInput')?.focus()}
-            >
-              {tags.map((tag) => (
-                <div
-                  key={tag}
-                  className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary border border-primary/20 rounded-md text-sm"
-                >
-                  <Tag className="h-3 w-3" />
-                  <span>{tag}</span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRemoveTag(tag);
-                    }}
-                    className="ml-1 hover:text-destructive"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
-              <input
-                id="tagInput"
-                type="text"
-                placeholder={tags.length === 0 ? "Digite uma tag e pressione Enter" : ""}
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleAddTag();
-                  } else if (e.key === "Backspace" && tagInput === "" && tags.length > 0) {
-                    e.preventDefault();
-                    handleRemoveTag(tags[tags.length - 1]);
-                  }
-                }}
-                className="flex-1 min-w-[120px] bg-transparent border-none outline-none text-sm"
-              />
-            </div>
-            {errors.tags && (
-              <p className="text-sm text-destructive">{errors.tags}</p>
-            )}
-          </div>
-
           {/* Footer */}
           <div className="flex gap-3 justify-end pt-4 border-t">
             <Button
@@ -526,6 +556,13 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
           </div>
         </form>
       </div>
+
+      {/* Category Creation Modal */}
+      <AddCategoryModal
+        open={categoryModalOpen}
+        onOpenChange={setCategoryModalOpen}
+        onCategoryCreated={handleCategoryCreated}
+      />
     </div>
   );
 }

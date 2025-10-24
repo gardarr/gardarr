@@ -292,7 +292,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             >
               <Menu className="h-4 w-4" />
             </Button>
-            <h1 className="text-xl font-semibold">
+            {/* Desktop: Show page title */}
+            <h1 className="text-xl font-semibold hidden md:block">
               {location.pathname === "/dashboard" && t("navigation.dashboard")}
               {location.pathname === "/torrents" && t("navigation.torrents")}
               {location.pathname === "/instances" && "Instances"}
@@ -304,6 +305,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {location.pathname === "/profile" && t("navigation.profile")}
               {location.pathname === "/about" && t("navigation.about")}
             </h1>
+            
+            {/* Mobile: Show site icon and name */}
+            <div className="flex items-center gap-2 md:hidden">
+              <div className="h-6 w-6 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
+                <img 
+                  src={logoImage} 
+                  alt="Gardarr Logo" 
+                  className="h-full w-full object-contain"
+                />
+              </div>
+              <span className="text-xl font-semibold">
+                Gardarr
+              </span>
+            </div>
           </div>
           
           <div className="flex items-center gap-2 md:gap-4">

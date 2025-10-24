@@ -54,7 +54,7 @@ func (m *Module) createCategory(c *gin.Context) {
 	category := entities.Category{
 		Name:        body.Name,
 		DefaultTags: body.DefaultTags,
-		Directories: body.Directories,
+		Directory:   body.Directory,
 		Color:       body.Color,
 		Icon:        body.Icon,
 	}
@@ -142,7 +142,7 @@ func (m *Module) updateCategory(c *gin.Context) {
 		ID:          id,
 		Name:        existing.Name, // Name is immutable
 		DefaultTags: existing.DefaultTags,
-		Directories: existing.Directories,
+		Directory:   existing.Directory,
 		Color:       existing.Color,
 		Icon:        existing.Icon,
 	}
@@ -151,8 +151,8 @@ func (m *Module) updateCategory(c *gin.Context) {
 	if body.DefaultTags != nil {
 		updated.DefaultTags = body.DefaultTags
 	}
-	if body.Directories != nil {
-		updated.Directories = body.Directories
+	if body.Directory != "" {
+		updated.Directory = body.Directory
 	}
 	if body.Color != "" {
 		updated.Color = body.Color
@@ -200,7 +200,7 @@ func (m *Module) toResponse(cat *entities.Category) models.CategoryResponse {
 		ID:          cat.ID,
 		Name:        cat.Name,
 		DefaultTags: cat.DefaultTags,
-		Directories: cat.Directories,
+		Directory:   cat.Directory,
 		Color:       cat.Color,
 		Icon:        cat.Icon,
 		CreatedAt:   cat.CreatedAt,

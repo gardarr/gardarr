@@ -3,7 +3,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { 
   Folder, 
-  Plus, 
   X,
   Check,
   Tag,
@@ -76,12 +75,11 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
   const [createForm, setCreateForm] = useState<CreateCategoryRequest>({
     name: "",
     default_tags: [],
-    directories: [],
+    directory: "",
     color: "#3b82f6",
     icon: "Folder"
   });
   const [tagInput, setTagInput] = useState("");
-  const [directoryInput, setDirectoryInput] = useState("");
   
   const { showError } = useToast();
 
@@ -93,7 +91,7 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
         setCreateForm({
           name: editingCategory.name,
           default_tags: [...(editingCategory.default_tags || [])],
-          directories: [...(editingCategory.directories || [])],
+          directory: editingCategory.directory || "",
           color: editingCategory.color || "#3b82f6",
           icon: editingCategory.icon || "Folder"
         });
@@ -102,13 +100,12 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
         setCreateForm({
           name: "",
           default_tags: [],
-          directories: [],
+          directory: "",
           color: "#3b82f6",
           icon: "Folder"
         });
       }
       setTagInput("");
-      setDirectoryInput("");
     }
   }, [open, editingCategory]);
 
@@ -123,7 +120,7 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
         // Update existing category
         const updateData: UpdateCategoryRequest = {
           default_tags: createForm.default_tags,
-          directories: createForm.directories,
+          directory: createForm.directory,
           color: createForm.color,
           icon: createForm.icon
         };
@@ -137,12 +134,11 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
       setCreateForm({
         name: "",
         default_tags: [],
-        directories: [],
+        directory: "",
         color: "#3b82f6",
         icon: "Folder"
       });
       setTagInput("");
-      setDirectoryInput("");
       onOpenChange(false);
     } catch (err) {
       showError(err instanceof Error ? err.message : (editingCategory ? t('categories.errors.updateFailed') : t('categories.errors.createFailed')));
@@ -166,20 +162,10 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
     });
   };
 
-  const addDirectory = () => {
-    if (directoryInput.trim()) {
-      setCreateForm({
-        ...createForm,
-        directories: [...(createForm.directories || []), directoryInput.trim()]
-      });
-      setDirectoryInput("");
-    }
-  };
-
-  const removeDirectory = (index: number) => {
+  const handleDirectoryChange = (value: string) => {
     setCreateForm({
       ...createForm,
-      directories: createForm.directories?.filter((_, i) => i !== index) || []
+      directory: value
     });
   };
 
@@ -188,12 +174,11 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
     setCreateForm({
       name: "",
       default_tags: [],
-      directories: [],
+      directory: "",
       color: "#3b82f6",
       icon: "Folder"
     });
     setTagInput("");
-    setDirectoryInput("");
     onOpenChange(false);
   };
 
@@ -299,33 +284,14 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="directories" className="text-sm">{t('categories.fields.directories')}</Label>
-            <div className="flex gap-1.5">
-              <Input
-                id="directories"
-                placeholder={t('categories.placeholders.directory')}
-                value={directoryInput}
-                onChange={(e) => setDirectoryInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addDirectory())}
-                className="h-9"
-              />
-              <Button onClick={addDirectory} size="sm" variant="outline" className="h-9 px-2">
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-            {createForm.directories && createForm.directories.length > 0 && (
-              <div className="flex gap-1 flex-wrap">
-                {createForm.directories.map((dir, index) => (
-                  <div key={index} className="flex items-center gap-1 bg-accent px-2 py-0.5 rounded text-xs font-mono">
-                    <Folder className="h-3 w-3" />
-                    <span className="max-w-[150px] truncate">{dir}</span>
-                    <button onClick={() => removeDirectory(index)} className="ml-0.5 hover:text-destructive">
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+            <Label htmlFor="directory" className="text-sm">{t('categories.fields.directory')}</Label>
+            <Input
+              id="directory"
+              placeholder={t('categories.placeholders.directory')}
+              value={createForm.directory}
+              onChange={(e) => handleDirectoryChange(e.target.value)}
+              className="h-9"
+            />
           </div>
 
           <div className="grid gap-6 sm:grid-cols-2">

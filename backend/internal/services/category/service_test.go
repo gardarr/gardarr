@@ -34,7 +34,7 @@ func TestService_CreateCategory(t *testing.T) {
 	category := entities.Category{
 		Name:        "Test Category",
 		DefaultTags: []string{"tag1", "tag2"},
-		Directories: []string{"/path1", "/path2"},
+		Directory:   "/path1",
 		Color:       "#FF5733",
 		Icon:        "folder-icon",
 	}
@@ -83,8 +83,8 @@ func TestService_ListCategories(t *testing.T) {
 
 	// Create test categories
 	testCategories := []entities.Category{
-		{Name: "Category 1", DefaultTags: []string{"tag1"}, Directories: []string{"/path1"}},
-		{Name: "Category 2", DefaultTags: []string{"tag2"}, Directories: []string{"/path2"}},
+		{Name: "Category 1", DefaultTags: []string{"tag1"}, Directory: "/path1"},
+		{Name: "Category 2", DefaultTags: []string{"tag2"}, Directory: "/path2"},
 	}
 
 	for _, cat := range testCategories {
@@ -114,7 +114,7 @@ func TestService_GetCategoryByID(t *testing.T) {
 	category := entities.Category{
 		Name:        "Test Category",
 		DefaultTags: []string{"tag1"},
-		Directories: []string{"/path1"},
+		Directory:   "/path1",
 	}
 
 	created, err := service.CreateCategory(ctx, category)
@@ -148,7 +148,7 @@ func TestService_GetCategoryByName(t *testing.T) {
 	category := entities.Category{
 		Name:        "Unique Name",
 		DefaultTags: []string{"tag1"},
-		Directories: []string{"/path1"},
+		Directory:   "/path1",
 	}
 
 	created, err := service.CreateCategory(ctx, category)
@@ -182,7 +182,7 @@ func TestService_UpdateCategory(t *testing.T) {
 	category := entities.Category{
 		Name:        "Immutable Name",
 		DefaultTags: []string{"tag1"},
-		Directories: []string{"/path1"},
+		Directory:   "/path1",
 		Color:       "#FF0000",
 	}
 
@@ -193,7 +193,7 @@ func TestService_UpdateCategory(t *testing.T) {
 
 	// Update only mutable fields (name and ID are immutable)
 	created.DefaultTags = []string{"tag1", "tag2"}
-	created.Directories = []string{"/path1", "/path2"}
+	created.Directory = "/path1"
 	created.Color = "#00FF00"
 	created.Icon = "new-icon"
 
@@ -229,7 +229,7 @@ func TestService_DeleteCategory(t *testing.T) {
 	category := entities.Category{
 		Name:        "To Be Deleted",
 		DefaultTags: []string{"tag1"},
-		Directories: []string{"/path1"},
+		Directory:   "/path1",
 	}
 
 	created, err := service.CreateCategory(ctx, category)
@@ -259,7 +259,7 @@ func TestService_Integration_FullCRUD(t *testing.T) {
 	category := entities.Category{
 		Name:        "Integration Test",
 		DefaultTags: []string{"test"},
-		Directories: []string{"/test"},
+		Directory:   "/test",
 		Color:       "#123456",
 		Icon:        "test-icon",
 	}

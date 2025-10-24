@@ -57,7 +57,7 @@ func TestRoutes_CreateCategory_Success(t *testing.T) {
 	body := map[string]interface{}{
 		"name":         "Test Category",
 		"default_tags": []string{"tag1", "tag2"},
-		"directories":  []string{"/path1", "/path2"},
+		"directory":    "/path1",
 		"color":        "#FF5733",
 		"icon":         "folder-icon",
 	}

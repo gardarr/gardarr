@@ -280,19 +280,12 @@ function Categories() {
                         </div>
                       )}
 
-                      {category.directories && category.directories.length > 0 && (
+                      {category.directory && (
                         <div className="flex gap-1 flex-wrap items-center">
                           <Folder className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                          {category.directories.slice(0, 2).map((dir, index) => (
-                            <span key={index} className="bg-accent px-1.5 py-0.5 rounded text-xs font-mono truncate max-w-[200px]">
-                              {dir}
-                            </span>
-                          ))}
-                          {category.directories.length > 2 && (
-                            <span className="text-xs text-muted-foreground">
-                              +{category.directories.length - 2}
-                            </span>
-                          )}
+                          <span className="bg-accent px-1.5 py-0.5 rounded text-xs font-mono truncate max-w-[200px]">
+                            {category.directory}
+                          </span>
                         </div>
                       )}
                     </div>
