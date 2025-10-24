@@ -30,7 +30,9 @@ import {
   BarChart3,
   Tag,
   Folder,
-  Lock
+  Lock,
+  Edit,
+  Pin
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -46,10 +48,7 @@ import type { ChartConfig } from "./components/ui/chart";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./components/ui/tooltip";
 
-type SortType = "name" | "status";
-
-
-// Available colors for agents
+// Available colors for agents - will be internationalized in the component
 const availableColors = [
   { name: "Blue", value: "#3b82f6" },
   { name: "Green", value: "#10b981" },
@@ -68,8 +67,6 @@ function Agents() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState<SortType>("name");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -280,21 +277,11 @@ function Agents() {
     }
   };
 
-  // Filter and sort agents
-  const filteredAgents = agents
-    .filter(agent => 
-      agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      agent.address.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .sort((a, b) => {
-      let comparison = 0;
-      if (sortBy === "name") {
-        comparison = a.name.localeCompare(b.name);
-      } else if (sortBy === "status") {
-        comparison = a.status.localeCompare(b.status);
-      }
-      return sortOrder === "asc" ? comparison : -comparison;
-    });
+  // Filter agents
+  const filteredAgents = agents.filter(agent => 
+    agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    agent.address.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const getStatusIndicator = (status: AgentStatus) => {
     switch (status) {
@@ -372,7 +359,7 @@ function Agents() {
   const generateCategoryChartConfig = (categoryUsage: Record<string, number>): ChartConfig => {
     const config: ChartConfig = {
       value: {
-        label: "Count",
+        label: t('agents.count'),
       }
     };
     
@@ -419,7 +406,7 @@ function Agents() {
   const generateTagsChartConfig = (tagsUsage: Record<string, number>): ChartConfig => {
     const config: ChartConfig = {
       value: {
-        label: "Count",
+        label: t('agents.count'),
       }
     };
     
@@ -551,7 +538,7 @@ function Agents() {
                     }`}
                     style={{ backgroundColor: color.value }}
                     onClick={() => setCreateForm({ ...createForm, color: color.value })}
-                    title={color.name}
+                    title={t(`agents.colors.${color.name.toLowerCase()}`)}
                   />
                 ))}
               </div>
@@ -616,7 +603,7 @@ function Agents() {
         </Card>
       )}
 
-      {/* Search and Sort */}
+      {/* Search */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -626,36 +613,6 @@ function Agents() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              if (sortBy === "name") {
-                setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-              } else {
-                setSortBy("name");
-                setSortOrder("asc");
-              }
-            }}
-          >
-            {t('agents.name')}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              if (sortBy === "status") {
-                setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-              } else {
-                setSortBy("status");
-                setSortOrder("asc");
-              }
-            }}
-          >
-            Status
-          </Button>
         </div>
       </div>
 
@@ -685,31 +642,22 @@ function Agents() {
         </Card>
       ) : (
         <>
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {filteredAgents.map((agent) => (
               <Card 
                 key={agent.uuid} 
-                className="relative cursor-pointer hover:container-content-background/50 transition-colors"
+                className={`relative cursor-pointer hover:container-content-background/50 transition-colors ${
+                  agent.status === 'ERRORED' ? 'border border-red-500/30' : ''
+                }`}
                 onClick={() => showAgentDetails(agent)}
               >
+                {agent.standalone && (
+                  <div className="absolute top-2 right-2 z-10">
+                    <Pin className="h-4 w-4 text-muted-foreground/70" />
+                  </div>
+                )}
                 <CardContent className="p-0">
                   <div className="flex">
-                    {/* Status Indicator - Left Side */}
-                    <div className="flex flex-col items-center justify-center p-4 border-r border-border">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="cursor-help">
-                              {getStatusIndicator(agent.status)}
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="capitalize">{agent.status.toLowerCase()}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-
                     {/* Main Content */}
                     <div className="flex-1 p-4">
                       <div className="flex gap-3 items-center">
@@ -725,7 +673,15 @@ function Agents() {
                         {/* Content */}
                         <div className="flex-1 min-w-0 space-y-1.5">
                           <div>
-                            <h3 className="font-semibold text-base truncate">{agent.name}</h3>
+                            <div className="flex items-center gap-2 mb-1">
+                              {agent.status === 'ACTIVE' && (
+                                <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] ml-0.5"></div>
+                              )}
+                              {agent.status === 'ERRORED' && (
+                                <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)] ml-0.5"></div>
+                              )}
+                              <h3 className="font-semibold text-base truncate">{agent.name}</h3>
+                            </div>
                             <p className="text-xs text-muted-foreground flex items-center gap-2">
                               <Wifi className="h-3 w-3" />
                               <span className="truncate">{agent.address}</span>
@@ -733,26 +689,13 @@ function Agents() {
                           </div>
 
                           {agent.error && (
-                            <div className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
+                            <div className="text-xs text-red-600 bg-red-50 dark:bg-red-950/20 px-2 py-1 rounded">
                               {agent.error}
                             </div>
                           )}
 
                           {agent.instance && agent.status === 'ACTIVE' && (
-                            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 text-xs text-muted-foreground">
-                              <div className="flex items-center gap-1">
-                                <Activity className="h-3 w-3" />
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span className="cursor-help">{agent.instance.application.version}</span>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Version</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              </div>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
                               <div className="flex items-center gap-1">
                                 <HardDrive className="h-3 w-3" />
                                 <TooltipProvider>
@@ -761,11 +704,12 @@ function Agents() {
                                       <span className="cursor-help">{formatBytes(agent.instance.server.free_space_on_disk)}</span>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                      <p>Free Space on Disk</p>
+                                      <p>{t('agents.freeSpaceOnDisk', 'Free Space on Disk')}</p>
                                     </TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
                               </div>
+                              <div className="h-3 w-px bg-border"></div>
                               <div className="flex items-center gap-1">
                                 <Activity className="h-3 w-3" />
                                 <TooltipProvider>
@@ -774,7 +718,7 @@ function Agents() {
                                       <span className="cursor-help">{agent.instance.transfer.global_ratio.toFixed(2)}</span>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                      <p>Global Ratio</p>
+                                      <p>{t('agents.globalRatio', 'Global Ratio')}</p>
                                     </TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
@@ -790,7 +734,7 @@ function Agents() {
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <div className="cursor-help">
-                                    <Lock className="h-4 w-4 text-primary/70" />
+                                    <Lock className="h-4 w-4 text-muted-foreground" />
                                   </div>
                                 </TooltipTrigger>
                                 <TooltipContent>
@@ -825,47 +769,155 @@ function Agents() {
                   <Tabs defaultValue="info" className="w-full">
                     <TabsList className="grid w-full grid-cols-2 mb-4">
                       <TabsTrigger value="info">{t('agents.info')}</TabsTrigger>
-                      <TabsTrigger value="stats">{t('agents.stats')}</TabsTrigger>
+                      <TabsTrigger 
+                        value="stats" 
+                        disabled={selectedAgent?.status === 'ERRORED'}
+                        className={selectedAgent?.status === 'ERRORED' ? 'opacity-50 cursor-not-allowed' : ''}
+                      >
+                        {t('agents.stats')}
+                      </TabsTrigger>
                     </TabsList>
                     
                     <TabsContent value="info" className="space-y-4">
-                      <div className="flex items-center gap-3 p-3 container-content-background/50 rounded-lg">
-                        <AgentIcon 
-                          iconName={selectedAgent?.icon}
-                          color={selectedAgent?.color}
-                          size="lg"
-                          className="w-14 h-14 rounded-lg"
-                          standalone={selectedAgent?.standalone}
-                        />
-                        <div className="min-w-0 flex-1">
-                          <h3 className="font-semibold text-base">{selectedAgent?.name}</h3>
-                          <p className="text-xs text-muted-foreground">{selectedAgent?.address}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {selectedAgent && getStatusIndicator(selectedAgent.status)}
-                          <span className={`text-sm font-medium ${selectedAgent && getStatusTextColor(selectedAgent.status)}`}>
-                            {selectedAgent?.status}
-                          </span>
+                      <div className="flex items-center p-3 container-content-background/50 rounded-lg">
+                        {/* Agent Icon and Content */}
+                        <div className="flex items-center gap-3 flex-1 p-4">
+                          <AgentIcon 
+                            iconName={selectedAgent?.icon}
+                            color={selectedAgent?.color}
+                            size="lg"
+                            className="w-14 h-14 rounded-lg"
+                            standalone={selectedAgent?.standalone}
+                          />
+
+                          {/* Content */}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              {selectedAgent?.status === 'ACTIVE' && (
+                                <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] ml-0.5"></div>
+                              )}
+                              {selectedAgent?.status === 'ERRORED' && (
+                                <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)] ml-0.5"></div>
+                              )}
+                              <h3 className="font-semibold text-base">{selectedAgent?.name}</h3>
+                            </div>
+                            <p className="text-xs text-muted-foreground">{selectedAgent?.address}</p>
+                          </div>
+
+                          {/* Lock Icon for Standalone Agents */}
+                          {selectedAgent?.standalone && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="flex-shrink-0 cursor-help">
+                                    <Lock className="h-4 w-4 text-muted-foreground" />
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{t('agents.standalone.tooltip', 'Standalone agent')}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+
+                          {/* Edit Button */}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={selectedAgent?.standalone}
+                            onClick={() => selectedAgent && !selectedAgent.standalone && showEditAgent(selectedAgent)}
+                            title={selectedAgent?.standalone ? t('agents.standalone.tooltip', 'Standalone agent') : t('agents.editAgent', 'Edit agent')}
+                            className="flex-shrink-0"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+
+                          {/* Delete Button */}
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={selectedAgent?.standalone}
+                            onClick={() => selectedAgent && !selectedAgent.standalone && confirmDeleteAgent(selectedAgent)}
+                            title={selectedAgent?.standalone ? t('agents.standalone.tooltip', 'Standalone agent') : t('agents.deleteAgent', 'Delete agent')}
+                            className="flex-shrink-0"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
 
                       {selectedAgent?.error && (
-                        <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-lg">
                           <div className="flex items-start gap-2">
                             <XCircle className="h-4 w-4 text-red-500 mt-0.5" />
                             <div>
-                              <h4 className="text-sm font-medium text-red-900">Error</h4>
-                              <p className="text-sm text-red-700">{selectedAgent.error}</p>
+                              <h4 className="text-sm font-medium text-red-900 dark:text-red-100">{t('agents.error', 'Error')}</h4>
+                              <p className="text-sm text-red-700 dark:text-red-300">{selectedAgent.error}</p>
                             </div>
                           </div>
                         </div>
                       )}
 
-                      {selectedAgent?.instance && (
+                      {selectedAgent?.status === 'ERRORED' && (
                         <div className="space-y-3">
                           <h4 className="font-semibold text-sm">{t('agents.instanceInformation')}</h4>
                           
-                          <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="grid gap-3 grid-cols-2">
+                            <div className="p-3 container-content-background/50 rounded-lg">
+                              <div className="space-y-2">
+                                <div className="h-3 bg-muted rounded animate-pulse"></div>
+                                <div className="h-4 bg-muted rounded animate-pulse w-3/4"></div>
+                                <div className="h-3 bg-muted rounded animate-pulse w-1/2"></div>
+                              </div>
+                            </div>
+                            
+                            <div className="p-3 container-content-background/50 rounded-lg">
+                              <div className="space-y-2">
+                                <div className="h-3 bg-muted rounded animate-pulse"></div>
+                                <div className="h-4 bg-muted rounded animate-pulse w-3/4"></div>
+                                <div className="h-3 bg-muted rounded animate-pulse w-1/2"></div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="p-3 container-content-background/50 rounded-lg">
+                            <div className="space-y-2">
+                              <div className="h-3 bg-muted rounded animate-pulse w-1/4"></div>
+                              <div className="h-4 bg-muted rounded animate-pulse w-1/2"></div>
+                              <div className="h-2 bg-muted rounded animate-pulse w-full"></div>
+                            </div>
+                          </div>
+
+                          <div className="grid gap-3 grid-cols-2">
+                            <div className="p-3 container-content-background/50 rounded-lg">
+                              <div className="space-y-2">
+                                <div className="h-3 bg-muted rounded animate-pulse w-1/3"></div>
+                                <div className="space-y-1">
+                                  <div className="h-3 bg-muted rounded animate-pulse w-2/3"></div>
+                                  <div className="h-3 bg-muted rounded animate-pulse w-1/2"></div>
+                                  <div className="h-3 bg-muted rounded animate-pulse w-3/4"></div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="p-3 container-content-background/50 rounded-lg">
+                              <div className="space-y-2">
+                                <div className="h-3 bg-muted rounded animate-pulse w-1/3"></div>
+                                <div className="space-y-1">
+                                  <div className="h-3 bg-muted rounded animate-pulse w-2/3"></div>
+                                  <div className="h-3 bg-muted rounded animate-pulse w-1/2"></div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedAgent?.instance && selectedAgent?.status !== 'ERRORED' && (
+                        <div className="space-y-3">
+                          <h4 className="font-semibold text-sm">{t('agents.instanceInformation')}</h4>
+                          
+                          <div className="grid gap-3 grid-cols-2">
                             <div className="flex p-3 container-content-background/50 rounded-lg">
                               <div className="flex-1 space-y-1">
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -891,7 +943,7 @@ function Agents() {
                                       </div>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                      <p>qBittorrent</p>
+                                      <p>{t('agents.qbittorrent', 'qBittorrent')}</p>
                                     </TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
@@ -978,36 +1030,54 @@ function Agents() {
                             </div>
                           </div>
 
-                          <div className="space-y-2 p-3 container-content-background/50 rounded-lg">
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                              <Activity className="h-3 w-3" />
-                              <span>{t('agents.transferStatistics')}</span>
+                          <div className="grid gap-3 grid-cols-2">
+                            {/* Transfer Data Card */}
+                            <div className="space-y-2 p-3 container-content-background/50 rounded-lg">
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                                <Activity className="h-3 w-3" />
+                                <span>{t('agents.transferData', 'Transfer Data')}</span>
+                              </div>
+                              <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">{t('agents.downloaded')}:</span>
+                                  <span className="font-medium">{selectedAgent?.instance?.transfer?.all_time_downloaded && formatBytes(selectedAgent.instance.transfer.all_time_downloaded)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">{t('agents.uploaded')}:</span>
+                                  <span className="font-medium">{selectedAgent?.instance?.transfer?.all_time_uploaded && formatBytes(selectedAgent.instance.transfer.all_time_uploaded)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">{t('agents.globalRatio')}:</span>
+                                  <span className="font-medium">{selectedAgent?.instance?.transfer?.global_ratio?.toFixed(2)}</span>
+                                </div>
+                              </div>
                             </div>
-                            <div className="grid gap-2 text-sm">
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">{t('agents.downloaded')}:</span>
-                                <span className="font-medium">{selectedAgent?.instance?.transfer?.all_time_downloaded && formatBytes(selectedAgent.instance.transfer.all_time_downloaded)}</span>
+
+                            {/* Network Information Card */}
+                            <div className="space-y-2 p-3 container-content-background/50 rounded-lg">
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                                <Wifi className="h-3 w-3" />
+                                <span>{t('agents.networkInfo', 'Network Info')}</span>
                               </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">{t('agents.uploaded')}:</span>
-                                <span className="font-medium">{selectedAgent?.instance?.transfer?.all_time_uploaded && formatBytes(selectedAgent.instance.transfer.all_time_uploaded)}</span>
+                              <div className="space-y-2 text-sm">
+                                {selectedAgent?.instance?.transfer?.last_external_address_v4 && (
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">{t('agents.ipv4', 'IPv4')}:</span>
+                                    <span className="font-mono text-xs">{selectedAgent.instance.transfer.last_external_address_v4}</span>
+                                  </div>
+                                )}
+                                {selectedAgent?.instance?.transfer?.last_external_address_v6 && (
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">{t('agents.ipv6', 'IPv6')}:</span>
+                                    <span className="font-mono text-xs">{selectedAgent.instance.transfer.last_external_address_v6}</span>
+                                  </div>
+                                )}
+                                {!selectedAgent?.instance?.transfer?.last_external_address_v4 && !selectedAgent?.instance?.transfer?.last_external_address_v6 && (
+                                  <div className="text-xs text-muted-foreground text-center py-2">
+                                    {t('agents.noNetworkInfo', 'No network information available')}
+                                  </div>
+                                )}
                               </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">{t('agents.globalRatio')}:</span>
-                                <span className="font-medium">{selectedAgent?.instance?.transfer?.global_ratio?.toFixed(2)}</span>
-                              </div>
-                              {selectedAgent?.instance?.transfer?.last_external_address_v4 && (
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">IPv4:</span>
-                                  <span className="font-mono text-xs">{selectedAgent.instance.transfer.last_external_address_v4}</span>
-                                </div>
-                              )}
-                              {selectedAgent?.instance?.transfer?.last_external_address_v6 && (
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">IPv6:</span>
-                                  <span className="font-mono text-xs">{selectedAgent.instance.transfer.last_external_address_v6}</span>
-                                </div>
-                              )}
                             </div>
                           </div>
                         </div>
@@ -1150,50 +1220,7 @@ function Agents() {
                     </TabsContent>
                   </Tabs>
 
-                  {selectedAgent?.standalone && (
-                    <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg mt-3">
-                      <div className="flex items-start gap-2">
-                        <Server className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                            {t('agents.standalone.title')}
-                          </p>
-                          <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                            {t('agents.standalone.description')}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
 
-                  <div className="flex gap-2 justify-between pt-2">
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="destructive" 
-                        disabled={selectedAgent?.standalone}
-                        onClick={() => selectedAgent && !selectedAgent.standalone && confirmDeleteAgent(selectedAgent)}
-                        title={selectedAgent?.standalone ? t('agents.standalone.tooltip') : "Delete agent"}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        {t('agents.delete')}
-                      </Button>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        disabled={selectedAgent?.standalone}
-                        onClick={() => selectedAgent && !selectedAgent.standalone && showEditAgent(selectedAgent)}
-                        title={selectedAgent?.standalone ? t('agents.standalone.tooltip') : "Edit agent"}
-                      >
-                        <Check className="h-4 w-4 mr-2" />
-                        {t('agents.edit')}
-                      </Button>
-                      <Button variant="outline" onClick={() => setShowDetailsModal(false)}>
-                        <X className="h-4 w-4 mr-2" />
-                        {t('agents.close')}
-                      </Button>
-                    </div>
-                  </div>
                   </div>
                 </CustomScrollArea>
               )}
@@ -1247,7 +1274,7 @@ function Agents() {
                             setAgentToDelete(null);
                           }}
                         >
-                          Close
+                          {t('agents.close', 'Close')}
                         </Button>
                       </div>
                     </>
@@ -1383,7 +1410,7 @@ function Agents() {
                           } ${agentToEdit.standalone ? 'opacity-50 cursor-not-allowed' : ''}`}
                           style={{ backgroundColor: color.value }}
                           onClick={() => !agentToEdit.standalone && setEditForm({ ...editForm, color: color.value })}
-                          title={color.name}
+                          title={t(`agents.colors.${color.name.toLowerCase()}`)}
                           disabled={agentToEdit.standalone}
                         />
                       ))}
@@ -1450,7 +1477,7 @@ function Agents() {
                       onClick={handleUpdateAgent} 
                       size="sm"
                       disabled={agentToEdit.standalone}
-                      title={agentToEdit.standalone ? t('agents.standalone.tooltip') : "Update agent information"}
+                      title={agentToEdit.standalone ? t('agents.standalone.tooltip', 'Standalone agent') : t('agents.updateAgentInfo', 'Update agent information')}
                     >
                       <Check className="h-4 w-4 mr-1" />
                       {t('agents.updateAgent')}

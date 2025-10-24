@@ -1,12 +1,13 @@
 // AppLayout.tsx
 import { Button } from "@/components/ui/button";
-import { Home, Settings, Users, BarChart3, Download, Menu, Sun, Moon, Info, LogOut, FolderOpen, UserCircle } from "lucide-react";
+import { Home, Settings, Users, BarChart3, ArrowDownUp, Menu, Sun, Moon, Info, LogOut, FolderOpen, UserCircle, Server } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import PageTransition from "@/components/PageTransition";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/auth-hooks";
 import VariantColorSelectButton from "@/components/VariantColorSelectButton";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import logoImage from "@/assets/img/logo/logo_64x64.png";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -62,11 +63,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const menuItems = [
     { href: "/dashboard", icon: Home, label: t("navigation.dashboard") },
-    { href: "/torrents", icon: Download, label: t("navigation.torrents") },
-    { href: "/agents", icon: Users, label: t("navigation.agents") },
+    { href: "/torrents", icon: ArrowDownUp, label: t("navigation.torrents") },
+    { href: "/agents", icon: Server, label: t("navigation.agents") },
     { href: "/categories", icon: FolderOpen, label: t("navigation.categories") },
     // Only show Users menu item for admin users
-    ...(user?.role === 'admin' ? [{ href: "/users", icon: UserCircle, label: t("navigation.users") }] : []),
+    ...(user?.role === 'admin' ? [{ href: "/users", icon: Users, label: t("navigation.users") }] : []),
     { href: "/analytics", icon: BarChart3, label: t("navigation.analytics") },
   ];
 
@@ -112,24 +113,43 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {menuItems.map((item) => {
               const IconComponent = item.icon;
               const isActive = location.pathname === item.href;
+              const isCollapsed = !sidebarOpen && !isMobile;
+              
+              const menuItem = (
+                <Link
+                  to={item.href}
+                  onClick={() => isMobile && setSidebarOpen(false)}
+                  className={`flex items-center px-3 py-2 rounded-md transition-all ${
+                    isActive 
+                      ? "bg-primary text-primary-foreground" 
+                      : "text-sidebar-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                  } ${isCollapsed ? 'justify-center' : 'gap-3'}`}
+                >
+                  <IconComponent className="h-4 w-4 flex-shrink-0" />
+                  <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${
+                    sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
+                  }`}>
+                    {item.label}
+                  </span>
+                </Link>
+              );
+
               return (
                 <li key={item.href}>
-                  <Link
-                    to={item.href}
-                    onClick={() => isMobile && setSidebarOpen(false)}
-                    className={`flex items-center px-3 py-2 rounded-md transition-all ${
-                      isActive 
-                        ? "bg-primary text-primary-foreground" 
-                        : "text-sidebar-foreground hover:bg-primary/90 hover:text-primary-foreground"
-                    } ${!sidebarOpen && !isMobile ? 'justify-center' : 'gap-3'}`}
-                  >
-                    <IconComponent className="h-4 w-4 flex-shrink-0" />
-                    <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${
-                      sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
-                    }`}>
-                      {item.label}
-                    </span>
-                  </Link>
+                  {isCollapsed ? (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          {menuItem}
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          <p>{item.label}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ) : (
+                    menuItem
+                  )}
                 </li>
               );
             })}
@@ -138,54 +158,115 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         
         {/* Footer da Sidebar */}
         <div className="border-t border-border p-2 mt-auto space-y-1">
-          <Link
-            to="/settings"
-            onClick={() => isMobile && setSidebarOpen(false)}
-            className={`flex items-center px-3 py-2 rounded-md transition-all ${
-              location.pathname === "/settings"
-                ? "bg-primary text-primary-foreground"
-                : "text-sidebar-foreground hover:bg-primary/90 hover:text-primary-foreground"
-            } ${!sidebarOpen && !isMobile ? 'justify-center' : 'gap-3'}`}
-          >
-            <Settings className="h-4 w-4 flex-shrink-0" />
-            <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${
-              sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
-            }`}>
-              {t("navigation.settings")}
-            </span>
-          </Link>
-          <Link
-            to="/about"
-            onClick={() => isMobile && setSidebarOpen(false)}
-            className={`flex items-center px-3 py-2 rounded-md transition-all ${
-              location.pathname === "/about"
-                ? "bg-primary text-primary-foreground"
-                : "text-sidebar-foreground hover:bg-primary/90 hover:text-primary-foreground"
-            } ${!sidebarOpen && !isMobile ? 'justify-center' : 'gap-3'}`}
-          >
-            <Info className="h-4 w-4 flex-shrink-0" />
-            <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${
-              sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
-            }`}>
-              {t("navigation.about")}
-            </span>
-          </Link>
-          <button
-            onClick={() => {
-              handleLogout();
-              if (isMobile) {
-                setSidebarOpen(false);
-              }
-            }}
-            className={`flex items-center px-3 py-2 rounded-md transition-all text-sidebar-foreground hover:bg-primary/90 hover:text-primary-foreground w-full ${!sidebarOpen && !isMobile ? 'justify-center' : 'gap-3'}`}
-          >
-            <LogOut className="h-4 w-4 flex-shrink-0" />
-            <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${
-              sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
-            }`}>
-              {t("auth.logout")}
-            </span>
-          </button>
+          {(() => {
+            const isCollapsed = !sidebarOpen && !isMobile;
+            
+            const settingsItem = (
+              <Link
+                to="/settings"
+                onClick={() => isMobile && setSidebarOpen(false)}
+                className={`flex items-center px-3 py-2 rounded-md transition-all ${
+                  location.pathname === "/settings"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-sidebar-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                } ${isCollapsed ? 'justify-center' : 'gap-3'}`}
+              >
+                <Settings className="h-4 w-4 flex-shrink-0" />
+                <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${
+                  sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
+                }`}>
+                  {t("navigation.settings")}
+                </span>
+              </Link>
+            );
+
+            const aboutItem = (
+              <Link
+                to="/about"
+                onClick={() => isMobile && setSidebarOpen(false)}
+                className={`flex items-center px-3 py-2 rounded-md transition-all ${
+                  location.pathname === "/about"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-sidebar-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                } ${isCollapsed ? 'justify-center' : 'gap-3'}`}
+              >
+                <Info className="h-4 w-4 flex-shrink-0" />
+                <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${
+                  sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
+                }`}>
+                  {t("navigation.about")}
+                </span>
+              </Link>
+            );
+
+            const logoutItem = (
+              <button
+                onClick={() => {
+                  handleLogout();
+                  if (isMobile) {
+                    setSidebarOpen(false);
+                  }
+                }}
+                className={`flex items-center px-3 py-2 rounded-md transition-all text-sidebar-foreground hover:bg-primary/90 hover:text-primary-foreground w-full ${isCollapsed ? 'justify-center' : 'gap-3'}`}
+              >
+                <LogOut className="h-4 w-4 flex-shrink-0" />
+                <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${
+                  sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
+                }`}>
+                  {t("auth.logout")}
+                </span>
+              </button>
+            );
+
+            return (
+              <>
+                {isCollapsed ? (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        {settingsItem}
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        <p>{t("navigation.settings")}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : (
+                  settingsItem
+                )}
+                
+                {isCollapsed ? (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        {aboutItem}
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        <p>{t("navigation.about")}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : (
+                  aboutItem
+                )}
+                
+                {isCollapsed ? (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        {logoutItem}
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        <p>{t("auth.logout")}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : (
+                  logoutItem
+                )}
+              </>
+            );
+          })()}
         </div>
       </div>
 

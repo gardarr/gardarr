@@ -31,12 +31,12 @@ func ToAgentVersion(m models.AgentVersionResponse) *entities.AgentVersion {
 	}
 }
 
-func ToAgentVersionResponse(e *entities.AgentVersion) *models.AgentVersionResponse {
+func ToAgentVersionResponse(e *entities.AgentVersion) models.AgentVersionResponse {
 	if e == nil {
-		return &models.AgentVersionResponse{}
+		return models.AgentVersionResponse{}
 	}
 
-	return &models.AgentVersionResponse{
+	return models.AgentVersionResponse{
 		Version: e.Version,
 		Commit:  e.Commit,
 		Date:    e.Date,

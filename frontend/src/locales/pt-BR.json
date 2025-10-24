@@ -354,7 +354,30 @@
         "cannotModify": "Este é um agente standalone e não pode ser modificado.",
         "tooltip": "Agentes standalone não podem ser editados"
       },
-      "status": {
+      "status": "Status",
+      "transferData": "Dados de Transferência",
+      "networkInfo": "Informações de Rede",
+      "ipv4": "IPv4",
+      "ipv6": "IPv6",
+      "noNetworkInfo": "Nenhuma informação de rede disponível",
+      "freeSpaceOnDisk": "Espaço Livre no Disco",
+      "qbittorrent": "qBittorrent",
+      "error": "Erro",
+      "count": "Contagem",
+      "updateAgentInfo": "Atualizar informações do agente",
+      "colors": {
+        "blue": "Azul",
+        "green": "Verde",
+        "purple": "Roxo",
+        "red": "Vermelho",
+        "orange": "Laranja",
+        "pink": "Rosa",
+        "indigo": "Anil",
+        "teal": "Verde-azulado",
+        "yellow": "Amarelo",
+        "gray": "Cinza"
+      },
+      "statusValues": {
         "active": "Ativo",
         "errored": "Com Erro", 
         "inactive": "Inativo",

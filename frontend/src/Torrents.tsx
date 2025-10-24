@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ArrowDownCircle, ArrowUpCircle, ArrowDown, ArrowUp, Search, Loader2, ChevronDown, SortAsc, SortDesc, Plus, SlidersHorizontal, Download, Info, Clock, Server, Activity, Folder, Tag } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, ArrowDown, ArrowUp, Search, Loader2, ChevronDown, SortAsc, SortDesc, Plus, SlidersHorizontal, Download, Info, Clock, Server, Activity, Folder, Tag, FileUp } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -721,12 +721,14 @@ export default function TorrentsPage() {
   const [originalTasks, setOriginalTasks] = useState<Task[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false);
+  const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
   const { toasts, showSuccess, showError, removeToast } = useToast();
   
   // Refs para rastrear valores anteriores de status/categorias/tags disponíveis
   const prevAvailableStatusesRef = useRef<TorrentStatus[]>([]);
   const prevAvailableCategoriesRef = useRef<string[]>([]);
   const prevAvailableTagsRef = useRef<string[]>([]);
+  const addDropdownRef = useRef<HTMLDivElement | null>(null);
 
   // Extrair status únicos disponíveis
   const availableStatuses = useMemo(() => {
@@ -1218,16 +1220,62 @@ export default function TorrentsPage() {
     loadAgents();
   }, [loadTorrents]);
 
-  // Intervalo de atualização automática
+  // Intervalo de atualização automática com debounce e otimização de visibilidade
   useEffect(() => {
     if (refreshIntervalSec <= 0) return;
+    
+    let timeoutId: NodeJS.Timeout;
+    let isPageVisible = true;
+    
+    // Pausar auto refresh quando a página não está visível
+    const handleVisibilityChange = () => {
+      isPageVisible = !document.hidden;
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
     const id = setInterval(() => {
-      refreshTorrentsSilently();
+      // Só atualiza se a página estiver visível
+      if (!isPageVisible) return;
+      
+      // Debounce para evitar atualizações excessivas
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        refreshTorrentsSilently();
+      }, 100); // 100ms de debounce
     }, refreshIntervalSec * 1000);
-    return () => clearInterval(id);
+    
+    return () => {
+      clearInterval(id);
+      clearTimeout(timeoutId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [refreshIntervalSec]);
 
-  // Filtrar e ordenar torrents
+  // Handle clicking outside the add dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (addDropdownRef.current && !addDropdownRef.current.contains(event.target as Node)) {
+        setIsAddDropdownOpen(false);
+      }
+    }
+    
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setIsAddDropdownOpen(false);
+    }
+    
+    if (isAddDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isAddDropdownOpen]);
+
+  // Filtrar e ordenar torrents com otimização para evitar re-renderizações
   const filteredTorrents = useMemo(() => {
     let filtered = torrents;
 
@@ -1491,7 +1539,7 @@ export default function TorrentsPage() {
   }
 
   return (
-    <div className="space-y-4 min-h-full">
+    <div className="space-y-4 min-h-0 flex flex-col">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -1504,13 +1552,46 @@ export default function TorrentsPage() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={() => setIsAddModalOpen(true)}
-          disabled={agents.length === 0}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          {t('torrents.addTorrent')}
-        </Button>
+        <div className="relative" ref={addDropdownRef}>
+          <div className="flex">
+            <Button
+              onClick={() => setIsAddModalOpen(true)}
+              disabled={agents.length === 0}
+              className="rounded-r-none border-r-0"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              {t('torrents.addTorrent')}
+            </Button>
+            <Button
+              onClick={() => setIsAddDropdownOpen(!isAddDropdownOpen)}
+              disabled={agents.length === 0}
+              className="rounded-l-none px-2 border-l-0"
+              aria-haspopup="listbox"
+              aria-expanded={isAddDropdownOpen}
+            >
+              <ChevronDown className={`h-4 w-4 transition-transform ${isAddDropdownOpen ? 'rotate-180' : ''}`} />
+            </Button>
+          </div>
+          
+          {isAddDropdownOpen && (
+            <div 
+              className="absolute right-0 mt-1 w-48 rounded-md border bg-card text-card-foreground shadow-md z-[100] py-1"
+              role="listbox"
+              aria-label="Add torrent options"
+            >
+              <button
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground cursor-not-allowed opacity-50"
+                onClick={(e) => e.preventDefault()}
+                role="option"
+                disabled
+                aria-disabled="true"
+              >
+                <FileUp className="h-4 w-4" />
+                Adicionar arquivo
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Filtro de busca e controles */}
@@ -1607,7 +1688,7 @@ export default function TorrentsPage() {
 
       {/* Conteúdo principal - apenas quando há torrents */}
       {torrents.length > 0 && (
-        <>
+        <div className="space-y-4">
       {/* Layout para desktop - Tabela */}
       <div className="hidden md:block">
         <div className="rounded-md border">
@@ -1708,7 +1789,7 @@ export default function TorrentsPage() {
         
         {/* Controles de paginação para desktop */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t">
+          <div className="flex items-center justify-between px-4 py-3 border-t bg-background">
             <div className="text-sm text-muted-foreground">
               {t('torrents.page')} {currentPage} {t('torrents.of')} {totalPages} ({filteredTorrents.length} {t('torrents.torrents')})
             </div>
@@ -1732,325 +1813,331 @@ export default function TorrentsPage() {
 
       {/* Layout para mobile - Cards em coluna única */}
       <div className="md:hidden w-full">
-        {/* Mobile sorting controls */}
-        <div className="mb-1">
-          <div className="flex items-center justify-between gap-2 mb-3">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-muted-foreground">{t('torrents.sortedBy')}:</span>
-              <span className="text-xs text-muted-foreground">
-                {t(`torrents.sortBy.${getSortTypeKey(sortType)}`)} {sortDirection === "asc" ? "↑" : "↓"}
+          {/* Mobile sorting controls */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-muted-foreground">{t('torrents.sortedBy')}:</span>
+                <span className="text-xs text-muted-foreground">
+                  {t(`torrents.sortBy.${getSortTypeKey(sortType)}`)} {sortDirection === "asc" ? "↑" : "↓"}
+                </span>
+              </div>
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                {filteredTorrents.length} {t('torrents.of')} {torrents.length}
               </span>
             </div>
-            <span className="text-xs text-muted-foreground whitespace-nowrap">
-              {filteredTorrents.length} {t('torrents.of')} {torrents.length}
-            </span>
           </div>
-        </div>
-        
-        <div className="space-y-4 w-full">
-          {paginatedTorrents.map((t) => (
-            <TorrentCard 
-              key={t.id} 
-              torrent={t} 
-              onShowDetails={handleShowDetails}
-            />
-          ))}
-        </div>
-        
-        {/* Controles de paginação para mobile */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t">
-            <div className="text-sm text-muted-foreground">
-              {currentPage} {t('torrents.of')} {totalPages}
-            </div>
-            <div className="flex items-center gap-3">
-              <TorrentPagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={handlePageChange}
+          
+          <div className="space-y-4 w-full">
+            {paginatedTorrents.map((t) => (
+              <TorrentCard 
+                key={t.id} 
+                torrent={t} 
+                onShowDetails={handleShowDetails}
               />
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">{t('torrents.itemsPerPage').split(' ')[0]}:</span>
-                <ItemsPerPageDropdown 
-                  value={itemsPerPage} 
-                  onChange={handleItemsPerPageChange} 
+            ))}
+          </div>
+          
+          {/* Controles de paginação para mobile */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t bg-background mt-4">
+              <div className="text-sm text-muted-foreground">
+                {currentPage} {t('torrents.of')} {totalPages}
+              </div>
+              <div className="flex items-center gap-3">
+                <TorrentPagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
                 />
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">{t('torrents.itemsPerPage').split(' ')[0]}:</span>
+                  <ItemsPerPageDropdown 
+                    value={itemsPerPage} 
+                    onChange={handleItemsPerPageChange} 
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </div>
-        </>
+          )}
+        </div>
+        </div>
       )}
 
-      {/* Modal de detalhes do torrent */}
-      <TorrentDetailsModal
-        torrent={selectedTorrent}
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        onPlay={handlePlayTorrent}
-        onPause={handlePauseTorrent}
-        onDelete={handleDeleteTorrent}
-        onForceDownload={handleForceDownloadTorrent}
-        onForceReannounce={handleForceReannounceTorrent}
-        onForceRecheck={handleForceRecheckTorrent}
-        onRename={handleRenameTorrent}
-        onSetLocation={handleSetLocationTorrent}
-      />
+      {/* Modal de detalhes do torrent - só renderiza quando aberto */}
+      {isModalOpen && selectedTorrent && (
+        <TorrentDetailsModal
+          torrent={selectedTorrent}
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          onPlay={handlePlayTorrent}
+          onPause={handlePauseTorrent}
+          onDelete={handleDeleteTorrent}
+          onForceDownload={handleForceDownloadTorrent}
+          onForceReannounce={handleForceReannounceTorrent}
+          onForceRecheck={handleForceRecheckTorrent}
+          onRename={handleRenameTorrent}
+          onSetLocation={handleSetLocationTorrent}
+        />
+      )}
 
-      {/* Modal de adicionar torrent */}
-      <AddTorrentModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onSubmit={handleCreateTorrent}
-        agents={agents}
-      />
+      {/* Modal de adicionar torrent - só renderiza quando aberto */}
+      {isAddModalOpen && (
+        <AddTorrentModal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          onSubmit={handleCreateTorrent}
+          agents={agents}
+        />
+      )}
 
       {/* Toast notifications */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
-      {/* Filter Sidebar */}
-      <FilterSidebar 
-        isOpen={isFilterSidebarOpen} 
-        onClose={() => setIsFilterSidebarOpen(false)}
-        title={t('torrents.filters.title')}
-      >
-          <div className="space-y-6">
-            {/* Busca - apenas mobile */}
-            <div className="sm:hidden">
-              <div className="relative w-full bg-primary/10 rounded-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder={t('torrents.search')}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && filteredTorrents.length > 0) {
-                      setIsFilterSidebarOpen(false);
-                    }
-                  }}
-                  className="pl-10 bg-transparent border-0 focus:ring-0 focus:ring-offset-0"
-                />
-              </div>
-            </div>
-
-
-            {/* Filtro de agentes */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <Server className="w-4 h-4 text-muted-foreground" />
-                {t('torrents.filters.agents')}
-                {selectedAgentIds.size > 0 && selectedAgentIds.size < agents.length && (
-                  <div className="w-2 h-2 rounded-full bg-primary" />
-                )}
-              </label>
-              <AgentFilter 
-                agents={agents}
-                selectedAgentIds={selectedAgentIds}
-                onToggleAgent={toggleAgent}
-                onSetAll={setAllAgents}
+      {/* Filter Sidebar - só renderiza quando aberto */}
+      {isFilterSidebarOpen && (
+        <FilterSidebar 
+          isOpen={isFilterSidebarOpen} 
+          onClose={() => setIsFilterSidebarOpen(false)}
+          title={t('torrents.filters.title')}
+        >
+        <div className="space-y-6">
+          {/* Busca - apenas mobile */}
+          <div className="sm:hidden">
+            <div className="relative w-full bg-primary/10 rounded-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                placeholder={t('torrents.search')}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && filteredTorrents.length > 0) {
+                    setIsFilterSidebarOpen(false);
+                  }
+                }}
+                className="pl-10 bg-transparent border-0 focus:ring-0 focus:ring-offset-0"
               />
-            </div>
-
-            {/* Filtro de status */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <Activity className="w-4 h-4 text-muted-foreground" />
-                {t('torrents.filters.status')}
-                {selectedStatuses.size > 0 && selectedStatuses.size < availableStatuses.length && (
-                  <div className="w-2 h-2 rounded-full bg-primary" />
-                )}
-              </label>
-              <StatusFilter
-                availableStatuses={availableStatuses}
-                selectedStatuses={selectedStatuses}
-                onToggleStatus={toggleStatus}
-                onSetAll={setAllStatuses}
-                getStatusIcon={getStatusIcon}
-                getStatusColor={getStatusColor}
-              />
-            </div>
-
-            {/* Filtro de categorias */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <Folder className="w-4 h-4 text-muted-foreground" />
-                {t('torrents.filters.categories')}
-                {selectedCategories.size > 0 && selectedCategories.size < availableCategories.length && (
-                  <div className="w-2 h-2 rounded-full bg-primary" />
-                )}
-              </label>
-              <ListFilter
-                label="categorias"
-                availableItems={availableCategories}
-                selectedItems={selectedCategories}
-                onToggleItem={toggleCategory}
-                onSetAll={setAllCategories}
-              />
-            </div>
-
-            {/* Filtro de tags */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <Tag className="w-4 h-4 text-muted-foreground" />
-                {t('torrents.filters.tags')}
-                {selectedTags.size > 0 && selectedTags.size < availableTags.length && (
-                  <div className="w-2 h-2 rounded-full bg-primary" />
-                )}
-              </label>
-              <ListFilter
-                label="tags"
-                availableItems={availableTags}
-                selectedItems={selectedTags}
-                onToggleItem={toggleTag}
-                onSetAll={setAllTags}
-              />
-            </div>
-
-            {/* Separador */}
-            <Separator />
-
-            {/* Controles de ordenação */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <SortAsc className="w-4 h-4 text-muted-foreground" />
-                {t('torrents.filters.sorting')}
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-            <Button
-              variant={sortType === "priority" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleSortChange("priority")}
-                  className="text-xs flex items-center gap-1"
-            >
-              {t('torrents.sortButtons.priority')}
-              {sortType === "priority" && (
-                sortDirection === "asc" ? (
-                  <SortAsc className="h-3 w-3" />
-                ) : (
-                  <SortDesc className="h-3 w-3" />
-                )
-              )}
-            </Button>
-            <Button
-              variant={sortType === "alphabetical" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleSortChange("alphabetical")}
-                  className="text-xs flex items-center gap-1"
-            >
-              {t('torrents.sortButtons.name')}
-              {sortType === "alphabetical" && (
-                sortDirection === "asc" ? (
-                  <SortAsc className="h-3 w-3" />
-                ) : (
-                  <SortDesc className="h-3 w-3" />
-                )
-              )}
-            </Button>
-            <Button
-              variant={sortType === "size" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleSortChange("size")}
-                  className="text-xs flex items-center gap-1"
-            >
-              {t('torrents.sortButtons.size')}
-              {sortType === "size" && (
-                sortDirection === "asc" ? (
-                  <SortAsc className="h-3 w-3" />
-                ) : (
-                  <SortDesc className="h-3 w-3" />
-                )
-              )}
-            </Button>
-            <Button
-              variant={sortType === "progress" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleSortChange("progress")}
-                  className="text-xs flex items-center gap-1"
-            >
-              {t('torrents.sortButtons.progress')}
-              {sortType === "progress" && (
-                sortDirection === "asc" ? (
-                  <SortAsc className="h-3 w-3" />
-                ) : (
-                  <SortDesc className="h-3 w-3" />
-                )
-              )}
-            </Button>
-            <Button
-              variant={sortType === "download_speed" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleSortChange("download_speed")}
-                  className="text-xs flex items-center gap-1"
-            >
-              {t('torrents.sortButtons.download')}
-              {sortType === "download_speed" && (
-                sortDirection === "asc" ? (
-                  <SortAsc className="h-3 w-3" />
-                ) : (
-                  <SortDesc className="h-3 w-3" />
-                )
-              )}
-            </Button>
-            <Button
-              variant={sortType === "upload_speed" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleSortChange("upload_speed")}
-                  className="text-xs flex items-center gap-1"
-            >
-              {t('torrents.sortButtons.upload')}
-              {sortType === "upload_speed" && (
-                sortDirection === "asc" ? (
-                  <SortAsc className="h-3 w-3" />
-                ) : (
-                  <SortDesc className="h-3 w-3" />
-                )
-              )}
-            </Button>
-            <Button
-              variant={sortType === "downloaded" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleSortChange("downloaded")}
-                  className="text-xs flex items-center gap-1"
-            >
-              {t('torrents.sortButtons.downloaded')}
-              {sortType === "downloaded" && (
-                sortDirection === "asc" ? (
-                  <SortAsc className="h-3 w-3" />
-                ) : (
-                  <SortDesc className="h-3 w-3" />
-                )
-              )}
-            </Button>
-            <Button
-              variant={sortType === "uploaded" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleSortChange("uploaded")}
-                  className="text-xs flex items-center gap-1"
-            >
-              {t('torrents.sortButtons.uploaded')}
-              {sortType === "uploaded" && (
-                sortDirection === "asc" ? (
-                  <SortAsc className="h-3 w-3" />
-                ) : (
-                  <SortDesc className="h-3 w-3" />
-                )
-              )}
-            </Button>
-          </div>
-            </div>
-
-            {/* Informação de resultados */}
-            <div className="pt-4 border-t">
-              <div className="text-sm text-muted-foreground">
-                {filteredTorrents.length} {t('torrents.of')} {torrents.length} {t('torrents.torrents')}
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">
-                {t('torrents.sortedBy')} {t(`torrents.sortBy.${getSortTypeKey(sortType)}`)} {sortDirection === "asc" ? "↑" : "↓"}
-              </div>
             </div>
           </div>
+
+
+          {/* Filtro de agentes */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium flex items-center gap-2">
+              <Server className="w-4 h-4 text-muted-foreground" />
+              {t('torrents.filters.agents')}
+              {selectedAgentIds.size > 0 && selectedAgentIds.size < agents.length && (
+                <div className="w-2 h-2 rounded-full bg-primary" />
+              )}
+            </label>
+            <AgentFilter 
+              agents={agents}
+              selectedAgentIds={selectedAgentIds}
+              onToggleAgent={toggleAgent}
+              onSetAll={setAllAgents}
+            />
+          </div>
+
+          {/* Filtro de status */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium flex items-center gap-2">
+              <Activity className="w-4 h-4 text-muted-foreground" />
+              {t('torrents.filters.status')}
+              {selectedStatuses.size > 0 && selectedStatuses.size < availableStatuses.length && (
+                <div className="w-2 h-2 rounded-full bg-primary" />
+              )}
+            </label>
+            <StatusFilter
+              availableStatuses={availableStatuses}
+              selectedStatuses={selectedStatuses}
+              onToggleStatus={toggleStatus}
+              onSetAll={setAllStatuses}
+              getStatusIcon={getStatusIcon}
+              getStatusColor={getStatusColor}
+            />
+          </div>
+
+          {/* Filtro de categorias */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium flex items-center gap-2">
+              <Folder className="w-4 h-4 text-muted-foreground" />
+              {t('torrents.filters.categories')}
+              {selectedCategories.size > 0 && selectedCategories.size < availableCategories.length && (
+                <div className="w-2 h-2 rounded-full bg-primary" />
+              )}
+            </label>
+            <ListFilter
+              label="categorias"
+              availableItems={availableCategories}
+              selectedItems={selectedCategories}
+              onToggleItem={toggleCategory}
+              onSetAll={setAllCategories}
+            />
+          </div>
+
+          {/* Filtro de tags */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium flex items-center gap-2">
+              <Tag className="w-4 h-4 text-muted-foreground" />
+              {t('torrents.filters.tags')}
+              {selectedTags.size > 0 && selectedTags.size < availableTags.length && (
+                <div className="w-2 h-2 rounded-full bg-primary" />
+              )}
+            </label>
+            <ListFilter
+              label="tags"
+              availableItems={availableTags}
+              selectedItems={selectedTags}
+              onToggleItem={toggleTag}
+              onSetAll={setAllTags}
+            />
+          </div>
+
+          {/* Separador */}
+          <Separator />
+
+          {/* Controles de ordenação */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium flex items-center gap-2">
+              <SortAsc className="w-4 h-4 text-muted-foreground" />
+              {t('torrents.filters.sorting')}
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+          <Button
+            variant={sortType === "priority" ? "default" : "outline"}
+            size="sm"
+            onClick={() => handleSortChange("priority")}
+                className="text-xs flex items-center gap-1"
+          >
+            {t('torrents.sortButtons.priority')}
+            {sortType === "priority" && (
+              sortDirection === "asc" ? (
+                <SortAsc className="h-3 w-3" />
+              ) : (
+                <SortDesc className="h-3 w-3" />
+              )
+            )}
+          </Button>
+          <Button
+            variant={sortType === "alphabetical" ? "default" : "outline"}
+            size="sm"
+            onClick={() => handleSortChange("alphabetical")}
+                className="text-xs flex items-center gap-1"
+          >
+            {t('torrents.sortButtons.name')}
+            {sortType === "alphabetical" && (
+              sortDirection === "asc" ? (
+                <SortAsc className="h-3 w-3" />
+              ) : (
+                <SortDesc className="h-3 w-3" />
+              )
+            )}
+          </Button>
+          <Button
+            variant={sortType === "size" ? "default" : "outline"}
+            size="sm"
+            onClick={() => handleSortChange("size")}
+                className="text-xs flex items-center gap-1"
+          >
+            {t('torrents.sortButtons.size')}
+            {sortType === "size" && (
+              sortDirection === "asc" ? (
+                <SortAsc className="h-3 w-3" />
+              ) : (
+                <SortDesc className="h-3 w-3" />
+              )
+            )}
+          </Button>
+          <Button
+            variant={sortType === "progress" ? "default" : "outline"}
+            size="sm"
+            onClick={() => handleSortChange("progress")}
+                className="text-xs flex items-center gap-1"
+          >
+            {t('torrents.sortButtons.progress')}
+            {sortType === "progress" && (
+              sortDirection === "asc" ? (
+                <SortAsc className="h-3 w-3" />
+              ) : (
+                <SortDesc className="h-3 w-3" />
+              )
+            )}
+          </Button>
+          <Button
+            variant={sortType === "download_speed" ? "default" : "outline"}
+            size="sm"
+            onClick={() => handleSortChange("download_speed")}
+                className="text-xs flex items-center gap-1"
+          >
+            {t('torrents.sortButtons.download')}
+            {sortType === "download_speed" && (
+              sortDirection === "asc" ? (
+                <SortAsc className="h-3 w-3" />
+              ) : (
+                <SortDesc className="h-3 w-3" />
+              )
+            )}
+          </Button>
+          <Button
+            variant={sortType === "upload_speed" ? "default" : "outline"}
+            size="sm"
+            onClick={() => handleSortChange("upload_speed")}
+                className="text-xs flex items-center gap-1"
+          >
+            {t('torrents.sortButtons.upload')}
+            {sortType === "upload_speed" && (
+              sortDirection === "asc" ? (
+                <SortAsc className="h-3 w-3" />
+              ) : (
+                <SortDesc className="h-3 w-3" />
+              )
+            )}
+          </Button>
+          <Button
+            variant={sortType === "downloaded" ? "default" : "outline"}
+            size="sm"
+            onClick={() => handleSortChange("downloaded")}
+                className="text-xs flex items-center gap-1"
+          >
+            {t('torrents.sortButtons.downloaded')}
+            {sortType === "downloaded" && (
+              sortDirection === "asc" ? (
+                <SortAsc className="h-3 w-3" />
+              ) : (
+                <SortDesc className="h-3 w-3" />
+              )
+            )}
+          </Button>
+          <Button
+            variant={sortType === "uploaded" ? "default" : "outline"}
+            size="sm"
+            onClick={() => handleSortChange("uploaded")}
+                className="text-xs flex items-center gap-1"
+          >
+            {t('torrents.sortButtons.uploaded')}
+            {sortType === "uploaded" && (
+              sortDirection === "asc" ? (
+                <SortAsc className="h-3 w-3" />
+              ) : (
+                <SortDesc className="h-3 w-3" />
+              )
+            )}
+          </Button>
+        </div>
+          </div>
+
+          {/* Informação de resultados */}
+          <div className="pt-4 border-t">
+            <div className="text-sm text-muted-foreground">
+              {filteredTorrents.length} {t('torrents.of')} {torrents.length} {t('torrents.torrents')}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {t('torrents.sortedBy')} {t(`torrents.sortBy.${getSortTypeKey(sortType)}`)} {sortDirection === "asc" ? "↑" : "↓"}
+            </div>
+          </div>
+        </div>
         </FilterSidebar>
+      )}
     </div>
   );
 }

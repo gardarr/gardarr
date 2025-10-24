@@ -110,7 +110,7 @@ func (r *Repository) ListAgents() ([]*entities.Agent, error) {
 // GetByUUID retrieves a single instance by its UUID
 func (r *Repository) GetAgentByUUID(uid uuid.UUID) (*entities.Agent, error) {
 	// Check if APP_MODE is set to standalone and add mock agent
-	if env.Get(constants.AppModeEnv).Value() == constants.StandaloneMode {
+	if uid == constants.StandaloneAgentUUID {
 		return r.standaloneAgent, nil
 	}
 
