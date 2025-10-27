@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ArrowDownCircle, ArrowUpCircle, ArrowDown, ArrowUp, Search, Loader2, ChevronDown, SortAsc, SortDesc, Plus, SlidersHorizontal, Download, Info, Clock, Server, Activity, Folder, Tag, FileUp } from "lucide-react";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { ArrowDownCircle, ArrowUpCircle, ArrowDown, ArrowUp, Search, Loader2, ChevronDown, SortAsc, SortDesc, Plus, SlidersHorizontal, Download, Clock, Server, Activity, Folder, Tag, FileUp, AlertTriangle } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -15,6 +16,7 @@ import {
 } from "@/components/ui/pagination";
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import { torrentService } from "./services/torrents";
 import { agentService } from "./services/agents";
 import type { Task, CreateTaskRequest } from "./types/torrent";
@@ -30,6 +32,7 @@ import { RatioBadge } from "@/components/ui/RatioBadge";
 import { ToastContainer } from "@/components/ui/toast-container";
 import { useToast } from "@/hooks/useToast";
 import { AgentIcon } from "@/components/ui/AgentIcon";
+import { TagBadge } from "@/components/ui/TagBadge";
 import { getStatusIcon, getStatusColor, getStatusBackgroundColor, type TorrentStatus } from "@/components/TorrentStatusIcon";
 
 type SortType = "priority" | "alphabetical" | "size" | "progress" | "download_speed" | "upload_speed" | "downloaded" | "uploaded";
@@ -703,6 +706,7 @@ function TorrentPagination({
 
 export default function TorrentsPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [torrents, setTorrents] = useState<Torrent[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -711,6 +715,7 @@ export default function TorrentsPage() {
   const [sortType, setSortType] = useState<SortType>("priority");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [agentsLoading, setAgentsLoading] = useState(true);
   const [selectedAgentIds, setSelectedAgentIds] = useState<Set<string>>(new Set());
   const [selectedStatuses, setSelectedStatuses] = useState<Set<TorrentStatus>>(new Set());
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
@@ -854,44 +859,103 @@ export default function TorrentsPage() {
   const loadTorrents = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await torrentService.listTasks();
       
-      if (response.error) {
-        showError(response.error);
+      // Verificar se há pelo menos um agente funcional (não erro) antes de tentar carregar tasks
+      const functionalAgents = agents.filter(agent => agent.status !== 'ERRORED');
+      if (functionalAgents.length === 0) {
+        // Se não há agentes funcionais, limpar tasks e não tentar carregar
+        setOriginalTasks([]);
+        setTorrents([]);
         return;
       }
-      
-      if (response.data) {
-        setOriginalTasks(response.data);
-        const mappedTorrents = response.data.map(mapTaskToTorrent);
-        setTorrents(mappedTorrents);
+
+      // Buscar tasks de cada agente funcional individualmente
+      const allTasks: Task[] = [];
+      const errors: string[] = [];
+
+      for (const agent of functionalAgents) {
+        try {
+          const response = await torrentService.listAgentTasks(agent.uuid);
+          if (response.error) {
+            errors.push(`Agent ${agent.name}: ${response.error}`);
+          } else if (response.data) {
+            // Adicionar informações do agente a cada task
+            const tasksWithAgent = response.data.map(task => ({
+              ...task,
+              agent: agent
+            }));
+            allTasks.push(...tasksWithAgent);
+          }
+        } catch (err) {
+          errors.push(`Agent ${agent.name}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        }
       }
+
+      // Mostrar erros se houver, mas continuar com as tasks que foram carregadas
+      if (errors.length > 0) {
+        console.warn('Some agents failed to load tasks:', errors);
+        // Opcional: mostrar um toast de aviso sobre agentes com erro
+        // showError(`Some agents failed to load tasks: ${errors.join(', ')}`);
+      }
+
+      setOriginalTasks(allTasks);
+      const mappedTorrents = allTasks.map(mapTaskToTorrent);
+      setTorrents(mappedTorrents);
     } catch (err) {
       showError(err instanceof Error ? err.message : t('torrents.error'));
     } finally {
       setLoading(false);
     }
-  }, [showError, t]);
+  }, [showError, t, agents]);
 
   // Atualização silenciosa para não afetar UI (sem spinner)
-  const refreshTorrentsSilently = async () => {
+  const refreshTorrentsSilently = useCallback(async () => {
     try {
-      const response = await torrentService.listTasks();
-      if (response?.data) {
-        setOriginalTasks(response.data);
-        const mappedTorrents = response.data.map(mapTaskToTorrent);
-        setTorrents(mappedTorrents);
+      // Verificar se há pelo menos um agente funcional (não erro) antes de tentar carregar tasks
+      const functionalAgents = agents.filter(agent => agent.status !== 'ERRORED');
+      if (functionalAgents.length === 0) {
+        // Se não há agentes funcionais, limpar tasks e retornar
+        setOriginalTasks([]);
+        setTorrents([]);
+        return;
       }
+      
+      // Buscar tasks de cada agente funcional individualmente
+      const allTasks: Task[] = [];
+
+      for (const agent of functionalAgents) {
+        try {
+          const response = await torrentService.listAgentTasks(agent.uuid);
+          if (response?.data) {
+            // Adicionar informações do agente a cada task
+            const tasksWithAgent = response.data.map(task => ({
+              ...task,
+              agent: agent
+            }));
+            allTasks.push(...tasksWithAgent);
+          }
+        } catch {
+          // silencioso - ignorar erros individuais de agentes
+        }
+      }
+
+      setOriginalTasks(allTasks);
+      const mappedTorrents = allTasks.map(mapTaskToTorrent);
+      setTorrents(mappedTorrents);
     } catch {
       // silencioso
     }
-  };
+  }, [agents]);
 
   // Carregar agents da API
   const loadAgents = useCallback(async () => {
     try {
+      setAgentsLoading(true);
       const response = await agentService.listAgents();
-      if (response.error) return;
+      if (response.error) {
+        setAgents([]);
+        return;
+      }
       if (response.data) {
         setAgents(response.data);
         // Selecionar todos por padrão somente na primeira carga
@@ -901,9 +965,14 @@ export default function TorrentsPage() {
           }
           return prev;
         });
+      } else {
+        setAgents([]);
       }
     } catch {
       // silencioso; filtro de agentes é opcional
+      setAgents([]);
+    } finally {
+      setAgentsLoading(false);
     }
   }, []);
 
@@ -1216,13 +1285,26 @@ export default function TorrentsPage() {
 
   // Carregar dados na inicialização
   useEffect(() => {
-    loadTorrents();
     loadAgents();
-  }, [loadTorrents]);
+  }, [loadAgents]);
+
+  // Carregar torrents quando agents mudarem (para detectar mudanças de status)
+  useEffect(() => {
+    if (!agentsLoading) {
+      loadTorrents();
+    }
+  }, [agents, loadTorrents, agentsLoading]);
 
   // Intervalo de atualização automática com debounce e otimização de visibilidade
   useEffect(() => {
     if (refreshIntervalSec <= 0) return;
+    
+    // Não iniciar atualização automática até que os agentes tenham sido carregados
+    if (agentsLoading) return;
+    
+    // Pausar atualização se não há agentes funcionais
+    const hasFunctionalAgents = agents.some(agent => agent.status !== 'ERRORED');
+    if (!hasFunctionalAgents) return;
     
     let timeoutId: NodeJS.Timeout;
     let isPageVisible = true;
@@ -1250,7 +1332,7 @@ export default function TorrentsPage() {
       clearTimeout(timeoutId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [refreshIntervalSec]);
+  }, [refreshIntervalSec, refreshTorrentsSilently, agentsLoading, agents]);
 
   // Handle clicking outside the add dropdown
   useEffect(() => {
@@ -1512,7 +1594,7 @@ export default function TorrentsPage() {
   };
 
   // Mostrar estado de carregamento
-  if (loading) {
+  if (loading || agentsLoading) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -1540,6 +1622,7 @@ export default function TorrentsPage() {
 
   return (
     <div className="space-y-4 w-full pb-0">
+      {/* Header - sempre mostrado */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -1552,50 +1635,80 @@ export default function TorrentsPage() {
             </p>
           </div>
         </div>
-        <div className="relative" ref={addDropdownRef}>
-          <div className="flex">
-            <Button
-              onClick={() => setIsAddModalOpen(true)}
-              disabled={agents.length === 0}
-              className="rounded-r-none border-r-0"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              {t('torrents.addTorrent')}
-            </Button>
-            <Button
-              onClick={() => setIsAddDropdownOpen(!isAddDropdownOpen)}
-              disabled={agents.length === 0}
-              className="rounded-l-none px-2 border-l-0"
-              aria-haspopup="listbox"
-              aria-expanded={isAddDropdownOpen}
-            >
-              <ChevronDown className={`h-4 w-4 transition-transform ${isAddDropdownOpen ? 'rotate-180' : ''}`} />
-            </Button>
-          </div>
-          
-          {isAddDropdownOpen && (
-            <div 
-              className="absolute right-0 mt-1 w-48 rounded-md border bg-card text-card-foreground shadow-md z-[100] py-1"
-              role="listbox"
-              aria-label="Add torrent options"
-            >
-              <button
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground cursor-not-allowed opacity-50"
-                onClick={(e) => e.preventDefault()}
-                role="option"
-                disabled
-                aria-disabled="true"
+        {/* Controles de adicionar - apenas quando há agentes funcionais */}
+        {!agentsLoading && agents.length > 0 && agents.some(agent => agent.status !== 'ERRORED') && (
+          <div className="relative" ref={addDropdownRef}>
+            <div className="flex">
+              <Button
+                onClick={() => setIsAddModalOpen(true)}
+                disabled={agents.length === 0}
+                className="rounded-r-none border-r-0"
               >
-                <FileUp className="h-4 w-4" />
-                Adicionar arquivo
-              </button>
+                <Plus className="h-4 w-4 mr-2" />
+                {t('torrents.addTorrent')}
+              </Button>
+              <Button
+                onClick={() => setIsAddDropdownOpen(!isAddDropdownOpen)}
+                disabled={agents.length === 0}
+                className="rounded-l-none px-2 border-l-0"
+                aria-haspopup="listbox"
+                aria-expanded={isAddDropdownOpen}
+              >
+                <ChevronDown className={`h-4 w-4 transition-transform ${isAddDropdownOpen ? 'rotate-180' : ''}`} />
+              </Button>
             </div>
-          )}
-        </div>
+            
+            {isAddDropdownOpen && (
+              <div 
+                className="absolute right-0 mt-1 w-48 rounded-md border bg-card text-card-foreground shadow-md z-[100] py-1"
+                role="listbox"
+                aria-label="Add torrent options"
+              >
+                <button
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground cursor-not-allowed opacity-50"
+                  onClick={(e) => e.preventDefault()}
+                  role="option"
+                  disabled
+                  aria-disabled="true"
+                >
+                  <FileUp className="h-4 w-4" />
+                  Adicionar arquivo
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Filtro de busca e controles */}
-      <div className="flex flex-col gap-4 w-full sm:gap-4 gap-0">
+      {/* Aviso de erro nos agentes - apenas quando há tasks e agentes com erro */}
+      {!agentsLoading && agents.length > 0 && agents.some(agent => agent.status === 'ERRORED') && torrents.length > 0 && (
+        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 mb-4">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-destructive">
+                {t('torrents.agentErrorWarning.title', 'Agent Errors Detected')}
+              </h3>
+              <p className="text-sm text-destructive/80 mt-1">
+                {t('torrents.agentErrorWarning.description', 'Some agents have errors that need to be fixed. This may affect task management and monitoring.')}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/agents')}
+              className="flex-shrink-0 border-destructive/20 text-destructive hover:bg-destructive/10"
+            >
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              {t('torrents.agentErrorWarning.fixAgents', 'Fix Agents')}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Filtro de busca e controles - apenas quando há agentes funcionais */}
+      {!agentsLoading && agents.length > 0 && agents.some(agent => agent.status !== 'ERRORED') && (
+        <div className="flex flex-col gap-4 w-full sm:gap-4 gap-0">
         {/* Busca e controles - desktop na mesma linha */}
         <div className="hidden sm:flex items-center gap-4 w-full">
         {/* Busca */}
@@ -1641,6 +1754,34 @@ export default function TorrentsPage() {
           </div>
         </div>
 
+        {/* Aviso de erro nos agentes - mobile */}
+        {agents.some(agent => agent.status === 'ERRORED') && torrents.length > 0 && (
+          <div className="sm:hidden mb-4">
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-xs font-medium text-destructive">
+                    {t('torrents.agentErrorWarning.title', 'Agent Errors Detected')}
+                  </h3>
+                  <p className="text-xs text-destructive/80 mt-1">
+                    {t('torrents.agentErrorWarning.description', 'Some agents have errors that need to be fixed.')}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/agents')}
+                  className="flex-shrink-0 border-destructive/20 text-destructive hover:bg-destructive/10 h-7 px-2 text-xs"
+                >
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  {t('torrents.agentErrorWarning.fix', 'Fix')}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Controles mobile */}
         <div className="sm:hidden mb-1">
           <div className="flex items-stretch gap-1.5">
@@ -1669,25 +1810,74 @@ export default function TorrentsPage() {
           </div>
         </div>
 
-      </div>
-      
-      {/* Estado vazio */}
-      {torrents.length === 0 && (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center space-y-4">
-            <Info className="h-12 w-12 text-muted-foreground mx-auto" />
-            <div>
-              <h3 className="text-lg font-semibold">{t('torrents.noTorrents')}</h3>
-              <p className="text-muted-foreground">
-                {t('torrents.noTorrentsDesc')}
-              </p>
-            </div>
-          </div>
         </div>
       )}
+      
+      {/* Estado vazio - sem agentes */}
+      {!agentsLoading && agents.length === 0 && !loading && (
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Server className="h-8 w-8 text-muted-foreground" />
+            </EmptyMedia>
+            <EmptyTitle>{t('torrents.noAgents')}</EmptyTitle>
+            <EmptyDescription>
+              {t('torrents.noAgentsDesc')}
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button onClick={() => navigate('/agents')}>
+              <Plus className="h-4 w-4 mr-2" />
+              {t('torrents.addFirstAgent')}
+            </Button>
+          </EmptyContent>
+        </Empty>
+      )}
 
-      {/* Conteúdo principal - apenas quando há torrents */}
-      {torrents.length > 0 && (
+      {/* Estado vazio - todos os agentes com erro */}
+      {!agentsLoading && agents.length > 0 && agents.every(agent => agent.status === 'ERRORED') && !loading && (
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <AlertTriangle className="h-8 w-8 text-destructive" />
+            </EmptyMedia>
+            <EmptyTitle>{t('torrents.agentError')}</EmptyTitle>
+            <EmptyDescription>
+              {t('torrents.agentErrorDesc')}
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button onClick={() => navigate('/agents')}>
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              {t('torrents.fixAgent')}
+            </Button>
+          </EmptyContent>
+        </Empty>
+      )}
+
+      {/* Estado vazio - com agentes funcionais mas sem torrents */}
+      {!agentsLoading && agents.length > 0 && agents.some(agent => agent.status !== 'ERRORED') && torrents.length === 0 && !loading && (
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Download className="h-8 w-8 text-muted-foreground" />
+            </EmptyMedia>
+            <EmptyTitle>{t('torrents.noTorrentsWithAgents')}</EmptyTitle>
+            <EmptyDescription>
+              {t('torrents.noTorrentsWithAgentsDesc')}
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button onClick={() => setIsAddModalOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              {t('torrents.addTorrent')}
+            </Button>
+          </EmptyContent>
+        </Empty>
+      )}
+
+      {/* Conteúdo principal - apenas quando há agentes funcionais e torrents */}
+      {!agentsLoading && agents.length > 0 && agents.some(agent => agent.status !== 'ERRORED') && torrents.length > 0 && (
         <>
       {/* Layout para desktop - Tabela */}
       <div className="hidden md:block">
@@ -1990,6 +2180,7 @@ export default function TorrentsPage() {
               selectedItems={selectedTags}
               onToggleItem={toggleTag}
               onSetAll={setAllTags}
+              useTagBadge={true}
             />
           </div>
 

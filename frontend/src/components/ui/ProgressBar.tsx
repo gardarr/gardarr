@@ -7,7 +7,7 @@ interface ProgressBarProps {
   
   export function ProgressBar({ 
     progress, 
-    showLabel = true, 
+    showLabel = false, 
     height = "md",
     className = "" 
   }: ProgressBarProps) {

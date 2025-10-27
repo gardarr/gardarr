@@ -15,6 +15,7 @@
       "categories": "Categories",
       "users": "Users",
       "analytics": "Analytics",
+      "integrations": "Integrations",
       "settings": "Settings",
       "profile": "Profile",
       "about": "About"
@@ -329,6 +330,7 @@
       "delete": "Delete",
       "edit": "Edit",
       "close": "Close",
+      "clickToViewDetails": "Click to view error details",
       "errors": {
         "fillRequiredFields": "Please fill in all required fields",
         "failedToLoad": "Failed to load agents",
@@ -424,6 +426,14 @@
       "tryAgain": "Try again",
       "noTorrents": "No torrents found",
       "noTorrentsDesc": "Add a torrent to start downloading",
+      "noAgents": "No agents available",
+      "noAgentsDesc": "You need to register an agent before managing torrents. Add your first torrent client to get started.",
+      "addFirstAgent": "Add Agent",
+      "agentError": "Agent Error",
+      "agentErrorDesc": "Your agent is experiencing an error and needs to be fixed before managing torrents. Please check the agent configuration and try again.",
+      "fixAgent": "Fix Agent",
+      "noTorrentsWithAgents": "No torrents yet",
+      "noTorrentsWithAgentsDesc": "You have agents configured but no torrents. Add your first torrent to start downloading.",
       "page": "Page",
       "previous": "Previous",
       "next": "Next",
@@ -510,6 +520,7 @@
       "fields": {
         "name": "Name",
         "defaultTags": "Default Tags",
+        "directory": "Directory",
         "directories": "Directories",
         "color": "Color",
         "icon": "Icon"
@@ -517,7 +528,20 @@
       "placeholders": {
         "name": "Enter category name...",
         "tag": "Add a tag...",
-        "directory": "Add a directory path..."
+        "directory": "Add a directory path...",
+        "tags": "Enter tags (ex: action, genre::action)"
+      },
+      "tagsHint": "💡 Tip: Type \"action, adventure, genre::action, year::2024\" to create simple and hierarchical tags",
+      "tagsExamples": {
+        "title": "Tag examples:",
+        "simple": "simple tag",
+        "hierarchical": "hierarchical tag",
+        "year": "year tag",
+        "quality": "quality tag",
+        "simpleExample": "action",
+        "hierarchicalExample": "genre::action",
+        "yearExample": "year::2024",
+        "qualityExample": "quality::4K"
       },
       "sortBy": {
         "name": "Name",
@@ -535,6 +559,42 @@
         "updateFailed": "Failed to update category",
         "deleteFailed": "Failed to delete category"
       }
+    },
+    "integrations": {
+      "title": "Integrations",
+      "subtitle": "Connect Gardarr with external services and tools",
+      "categories": {
+        "notifications": "Notifications",
+        "notificationsDescription": "Configure notification services to receive alerts about your torrents",
+        "synchronizations": "Synchronizations",
+        "synchronizationsDescription": "Sync libraries and data with media services",
+        "others": "Others",
+        "othersDescription": "Additional integrations and third-party services"
+      },
+      "webhook": {
+        "name": "Webhook",
+        "description": "Send HTTP requests to custom endpoints when torrent events occur"
+      },
+      "ntfy": {
+        "name": "Ntfy",
+        "description": "Send push notifications to your mobile devices using the Ntfy service"
+      },
+      "jellyfin": {
+        "name": "Jellyfin",
+        "description": "Sync library with Jellyfin server to keep content updated"
+      },
+      "kavita": {
+        "name": "Kavita",
+        "description": "Sync library with Kavita server to keep manga and comics updated"
+      },
+      "romm": {
+        "name": "RoMM",
+        "description": "Sync library with RoMM to keep ROMs and retro games updated"
+      },
+      "configure": "Configure",
+      "comingSoon": "Coming Soon",
+      "noIntegrations": "No integrations available",
+      "noIntegrationsDescription": "More integrations will be added in future updates"
     }
   }
   

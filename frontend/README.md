@@ -97,12 +97,15 @@ O projeto está configurado com shadcn/ui usando o estilo "new-york" e tema neut
 ### Tailwind CSS
 Configurado com Vite e suporte a variáveis CSS customizadas para temas.
 
-## 📊 Dashboard
+## Roadmap
 
-A página principal inclui:
-- **Cards de Estatísticas**: Downloads ativos, usuários online, espaço utilizado, etc.
-- **Downloads Recentes**: Lista com barras de progresso
-- **Atividade do Sistema**: Log de eventos em tempo real
+- TheGamesDB Integration to bound information and covers
+- TheMoviesDB Integration to bound information and covers
+- Webhooks Notification Integration on task status update
+- Ntfy Notification Integration on task status update
+- Jellyfin library Sync Integration on task status update
+- Kativa library Sync Integration on task status update
+- RoMM library Sync Integration on task status update
 
 ## 🎯 Próximos Passos
 

@@ -111,6 +111,14 @@ func (m *mockRepository) SetTags(hash string, tags []string) error {
 	return errors.New("task not found")
 }
 
+func (m *mockRepository) SetCategory(hash string, category string) error {
+	if task, exists := m.tasks[hash]; exists {
+		task.Category = category
+		return nil
+	}
+	return errors.New("task not found")
+}
+
 func (m *mockRepository) SetShareLimit(schema schemas.TaskSetShareLimitSchema) error {
 	if _, exists := m.tasks[schema.Hash]; exists {
 		// Simulate setting share limit (in real implementation, this would be handled by qBittorrent)

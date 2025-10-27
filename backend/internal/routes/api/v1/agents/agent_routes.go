@@ -54,6 +54,8 @@ func (m Module) Register() {
 	m.agentRouter.POST("/:id/task/:task_id/force_reannounce", m.forceReannounceAgentTask)
 	m.agentRouter.POST("/:id/task/:task_id/limit_download_rate", m.setAgentTaskDownloadLimit)
 	m.agentRouter.POST("/:id/task/:task_id/limit_upload_rate", m.setAgentTaskUploadLimit)
+	m.agentRouter.PUT("/:id/task/:task_id/tags", m.setAgentTaskTags)
+	m.agentRouter.PUT("/:id/task/:task_id/category", m.setAgentTaskCategory)
 	m.agentRouter.GET("/:id/task/:task_id/files", m.listAgentTaskFiles)
 }
 
@@ -429,6 +431,44 @@ func (m *Module) listAgentTaskFiles(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, mappers.ToTaskFilesResponse(files))
+}
+
+func (m *Module) setAgentTaskTags(c *gin.Context) {
+	agentID := c.Param("id")
+	taskID := c.Param("task_id")
+
+	var body schemas.TaskSetTagsSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	if err := m.service.SetAgentTaskTags(c.Request.Context(), agentID, taskID, body); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Task tags updated successfully"})
+}
+
+func (m *Module) setAgentTaskCategory(c *gin.Context) {
+	agentID := c.Param("id")
+	taskID := c.Param("task_id")
+
+	var body schemas.TaskSetCategorySchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	if err := m.service.SetAgentTaskCategory(c.Request.Context(), agentID, taskID, body); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Task category updated successfully"})
 }
 
 func (m *Module) getAgentTasksStats(c *gin.Context) {

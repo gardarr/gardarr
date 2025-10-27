@@ -23,6 +23,8 @@ type TaskService interface {
 	ForceReannounceTask(context.Context, string) error
 	SetTaskDownloadLimit(context.Context, string, schemas.TaskSetDownloadLimitSchema) error
 	SetTaskUploadLimit(context.Context, string, schemas.TaskSetUploadLimitSchema) error
+	SetTaskTags(context.Context, string, schemas.TaskSetTagsSchema) error
+	SetTaskCategory(context.Context, string, schemas.TaskSetCategorySchema) error
 	ListTaskFiles(context.Context, string) ([]*entities.TaskFile, error)
 	GetTasksStats(context.Context) (*entities.TaskStats, error)
 }
@@ -45,6 +47,7 @@ type TaskRepositoryInterface interface {
 	ForceResume(hash string) error
 	Delete(id string, deleteFiles bool) error
 	SetTags(hash string, tags []string) error
+	SetCategory(hash string, category string) error
 	SetShareLimit(schema schemas.TaskSetShareLimitSchema) error
 	SetLocation(hash string, schema schemas.TaskSetLocationSchema) error
 	Rename(hash string, schema schemas.TaskRenameSchema) error

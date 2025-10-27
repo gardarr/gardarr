@@ -3,10 +3,11 @@ import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-
 import { AuthProvider } from './contexts/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import AppLayout from './AppLayout'
-import DashboardPage from './Dashboard'
 import TorrentsPage from './Torrents'
 import AgentsPage from './Agents'
 import CategoriesPage from './Categories'
+import AnalyticsPage from './Analytics'
+import IntegrationsPage from './Integrations'
 import SettingsPage from './Settings'
 import AboutPage from './About'
 import ProfilePage from './Profile'
@@ -23,7 +24,6 @@ function App() {
     <Router>
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/setup" element={<InitialSetupPage />} />
           <Route path="/signup/:token" element={<SignupPage />} />
@@ -40,10 +40,13 @@ function App() {
               </ProtectedRoute>
             }
           >
-            <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="torrents" element={<TorrentsPage />} />
+            <Route index element={<TorrentsPage />} />
             <Route path="agents" element={<AgentsPage />} />
             <Route path="categories" element={<CategoriesPage />} />
+            <Route path="analytics" element={<AnalyticsPage />} />
+            <Route path="analytics/agent/:agent_uuid" element={<AnalyticsPage />} />
+            <Route path="analytics/agent/:agent_uuid/task/:uuid" element={<AnalyticsPage />} />
+            <Route path="integrations" element={<IntegrationsPage />} />
             <Route path="users" element={<UsersPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="profile" element={<ProfilePage />} />

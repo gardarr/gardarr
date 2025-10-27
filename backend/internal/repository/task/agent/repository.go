@@ -2,6 +2,7 @@ package task
 
 import (
 	"strings"
+	"time"
 
 	"github.com/gardarr/gardarr/cmd/constants"
 	"github.com/gardarr/gardarr/internal/entities"
@@ -18,9 +19,12 @@ type Repository struct {
 
 func New() (*Repository, error) {
 	client, err := qbt.New(qbt.Config{
-		BaseURL:  env.Get("QBITTORRENT_BASEURL").Value(),
-		Username: env.Get("QBITTORRENT_USERNAME").Value(),
-		Password: env.Get("QBITTORRENT_PASSWORD").Value(),
+		BaseURL:        env.Get("QBITTORRENT_BASEURL").Value(),
+		Username:       env.Get("QBITTORRENT_USERNAME").Value(),
+		Password:       env.Get("QBITTORRENT_PASSWORD").Value(),
+		RequestTimeout: time.Duration(env.Get("QBITTORRENT_REQUEST_TIMEOUT_SECONDS").Default(3).ValueInt()) * time.Second,
+		MaxRetries:     env.Get("QBITTORRENT_MAX_RETRIES").Default(3).ValueInt(),
+		RetryBackoff:   1 * time.Second,
 	})
 	if err != nil {
 		return nil, err
@@ -135,11 +139,21 @@ func (s *Repository) SetTags(hash string, tags []string) error {
 
 	for _, item := range items {
 		if item.Hash == hash {
-			return s.client.AddTorrentTags(hash, tags)
+			if err := s.client.AddTorrentTags(hash, tags); err != nil {
+				return errors.Wrap(err, "failed to set torrent tags")
+			}
+			return nil
 		}
 	}
 
 	return errors.ErrTaskNotFound
+}
+
+func (s *Repository) SetCategory(hash string, category string) error {
+	if err := s.client.SetCategory(hash, category); err != nil {
+		return errors.Wrap(err, "failed to set torrent category")
+	}
+	return nil
 }
 
 func (s *Repository) SetShareLimit(schema schemas.TaskSetShareLimitSchema) error {

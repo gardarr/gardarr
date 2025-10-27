@@ -14,44 +14,34 @@ interface TagData {
   count: number;
 }
 
-export default function MostUsedCategoriesWidget() {
-  // Mock data for most used categories
-  const mockCategories: CategoryData[] = [
-    {
-      id: "1",
-      name: "Software",
-      count: 156,
-    },
-    {
-      id: "2", 
-      name: "Movies",
-      count: 89,
-    },
-    {
-      id: "3",
-      name: "TV Shows",
-      count: 67,
-    }
-  ];
+interface MostUsedCategoriesWidgetProps {
+  categoryUsage?: Record<string, number>;
+  tagsUsage?: Record<string, number>;
+}
 
-  // Mock data for most used tags
-  const mockTags: TagData[] = [
-    {
-      id: "1",
-      name: "linux",
-      count: 45,
-    },
-    {
-      id: "2",
-      name: "windows",
-      count: 38,
-    },
-    {
-      id: "3",
-      name: "macos",
-      count: 29,
-    }
-  ];
+export default function MostUsedCategoriesWidget({ 
+  categoryUsage = {}, 
+  tagsUsage = {} 
+}: MostUsedCategoriesWidgetProps) {
+  // Convert category usage data to CategoryData format
+  const categories: CategoryData[] = Object.entries(categoryUsage)
+    .map(([name, count], index) => ({
+      id: `category-${index}`,
+      name: name.charAt(0).toUpperCase() + name.slice(1), // Capitalize first letter
+      count: count
+    }))
+    .sort((a, b) => b.count - a.count) // Sort by count descending
+    .slice(0, 3); // Limit to top 3
+
+  // Convert tags usage data to TagData format
+  const tags: TagData[] = Object.entries(tagsUsage)
+    .map(([name, count], index) => ({
+      id: `tag-${index}`,
+      name: name,
+      count: count
+    }))
+    .sort((a, b) => b.count - a.count) // Sort by count descending
+    .slice(0, 3); // Limit to top 3
 
   const getHighlightClass = (index: number) => {
     switch (index) {
@@ -86,25 +76,31 @@ export default function MostUsedCategoriesWidget() {
                 </span>
               </div>
               <div className="space-y-1">
-                {mockCategories.map((category, index) => (
-                  <div key={category.id} className={`flex items-center justify-between p-1.5 rounded transition-colors ${getHighlightClass(index)}`}>
-                    <div className="flex-1 min-w-0 mr-3">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="text-sm font-medium truncate block cursor-help">
-                            {category.name}
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{category.name}</p>
-                        </TooltipContent>
-                      </Tooltip>
+                {categories.length > 0 ? (
+                  categories.map((category, index) => (
+                    <div key={category.id} className={`flex items-center justify-between p-1.5 rounded transition-colors ${getHighlightClass(index)}`}>
+                      <div className="flex-1 min-w-0 mr-3">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="text-sm font-medium truncate block cursor-help">
+                              {category.name}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{category.name}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <span className="text-sm text-muted-foreground flex-shrink-0">
+                        {category.count}
+                      </span>
                     </div>
-                    <span className="text-sm text-muted-foreground flex-shrink-0">
-                      {category.count}
-                    </span>
+                  ))
+                ) : (
+                  <div className="text-sm text-muted-foreground text-center py-2">
+                    No category data available
                   </div>
-                ))}
+                )}
               </div>
             </div>
 
@@ -117,25 +113,31 @@ export default function MostUsedCategoriesWidget() {
                 </span>
               </div>
               <div className="space-y-1">
-                {mockTags.map((tag, index) => (
-                  <div key={tag.id} className={`flex items-center justify-between p-1.5 rounded transition-colors ${getHighlightClass(index)}`}>
-                    <div className="flex-1 min-w-0 mr-3">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="text-sm font-medium truncate block cursor-help">
-                            #{tag.name}
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>#{tag.name}</p>
-                        </TooltipContent>
-                      </Tooltip>
+                {tags.length > 0 ? (
+                  tags.map((tag, index) => (
+                    <div key={tag.id} className={`flex items-center justify-between p-1.5 rounded transition-colors ${getHighlightClass(index)}`}>
+                      <div className="flex-1 min-w-0 mr-3">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="text-sm font-medium truncate block cursor-help">
+                              #{tag.name}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>#{tag.name}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <span className="text-sm text-muted-foreground flex-shrink-0">
+                        {tag.count}
+                      </span>
                     </div>
-                    <span className="text-sm text-muted-foreground flex-shrink-0">
-                      {tag.count}
-                    </span>
+                  ))
+                ) : (
+                  <div className="text-sm text-muted-foreground text-center py-2">
+                    No tag data available
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>

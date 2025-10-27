@@ -102,6 +102,14 @@ func (s *service) SetTaskUploadLimit(ctx context.Context, hash string, schema sc
 	return s.repository.SetUploadLimit(hash, schema)
 }
 
+func (s *service) SetTaskTags(ctx context.Context, hash string, schema schemas.TaskSetTagsSchema) error {
+	return s.repository.SetTags(hash, schema.Tags)
+}
+
+func (s *service) SetTaskCategory(ctx context.Context, hash string, schema schemas.TaskSetCategorySchema) error {
+	return s.repository.SetCategory(hash, schema.Category)
+}
+
 func (s *service) ListTaskFiles(ctx context.Context, hash string) ([]*entities.TaskFile, error) {
 	return s.repository.ListFiles(hash)
 }

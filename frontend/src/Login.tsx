@@ -54,7 +54,7 @@ export default function LoginPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      navigate("/dashboard");
+      navigate("/");
     }
   }, [user, navigate]);
 
@@ -69,7 +69,7 @@ export default function LoginPage() {
       if (result.error) {
         setError(result.error);
       } else {
-        navigate("/dashboard");
+        navigate("/");
       }
     } catch {
       setError(t("common.error"));

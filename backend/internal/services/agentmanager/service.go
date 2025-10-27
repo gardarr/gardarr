@@ -3,6 +3,7 @@ package agentmanager
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/gardarr/gardarr/internal/entities"
@@ -569,6 +570,15 @@ func (s *Service) ListAgentTaskFiles(ctx context.Context, agentID, taskID string
 		return nil, fmt.Errorf("failed to list task files: %w", err)
 	}
 
+	for _, file := range files {
+		file.Progress = file.Progress * 100
+	}
+
+	// Sort files by size, greatest first
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].Size > files[j].Size
+	})
+
 	return files, nil
 }
 
@@ -608,4 +618,32 @@ func (s *Service) GetAgentVersion(ctx context.Context, id string) (*entities.Age
 	}
 
 	return version, nil
+}
+
+func (s *Service) SetAgentTaskTags(ctx context.Context, agentID, taskID string, schema schemas.TaskSetTagsSchema) error {
+	uid, err := uuid.Parse(agentID)
+	if err != nil {
+		return fmt.Errorf("invalid agent UUID format: %w", err)
+	}
+
+	agent, err := s.repository.GetAgentByUUID(uid)
+	if err != nil {
+		return fmt.Errorf("agent not found: %w", err)
+	}
+
+	return s.repository.SetAgentTaskTags(agent, taskID, schema)
+}
+
+func (s *Service) SetAgentTaskCategory(ctx context.Context, agentID, taskID string, schema schemas.TaskSetCategorySchema) error {
+	uid, err := uuid.Parse(agentID)
+	if err != nil {
+		return fmt.Errorf("invalid agent UUID format: %w", err)
+	}
+
+	agent, err := s.repository.GetAgentByUUID(uid)
+	if err != nil {
+		return fmt.Errorf("agent not found: %w", err)
+	}
+
+	return s.repository.SetAgentTaskCategory(agent, taskID, schema)
 }

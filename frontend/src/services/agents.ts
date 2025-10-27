@@ -25,7 +25,7 @@ export class AgentService {
    * Gets a specific agent by ID
    */
   async getAgent(agentId: string): Promise<ApiResponse<Agent>> {
-    return api.get<Agent>(`/]agent/${agentId}/`);
+    return api.get<Agent>(`/agent/${agentId}/`);
   }
 
   /**

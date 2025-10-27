@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { TagBadge } from "@/components/ui/TagBadge";
 import { ChevronDown, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -9,6 +10,7 @@ interface ListFilterProps {
   selectedItems: Set<string>;
   onToggleItem: (item: string) => void;
   onSetAll: (checked: boolean) => void;
+  useTagBadge?: boolean;
 }
 
 export function ListFilter({
@@ -17,6 +19,7 @@ export function ListFilter({
   selectedItems,
   onToggleItem,
   onSetAll,
+  useTagBadge = false,
 }: ListFilterProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -56,9 +59,28 @@ export function ListFilter({
         aria-label={`Filtrar por ${label}`}
       >
         <span className="flex items-center gap-1.5 truncate">
-          <span className="truncate">
-            {allSelected ? t('torrents.filters.all') : noneSelected ? t('torrents.filters.none') : `${selectedItems.size} ${label}`}
-          </span>
+          {useTagBadge && !allSelected && !noneSelected ? (
+            <div className="flex items-center gap-1 flex-wrap max-w-[200px]">
+              {Array.from(selectedItems).slice(0, 2).map((item) => (
+                <TagBadge
+                  key={item}
+                  tag={item}
+                  size="sm"
+                  showIcon={false}
+                  className="text-xs"
+                />
+              ))}
+              {selectedItems.size > 2 && (
+                <span className="text-xs text-muted-foreground">
+                  +{selectedItems.size - 2}
+                </span>
+              )}
+            </div>
+          ) : (
+            <span className="truncate">
+              {allSelected ? t('torrents.filters.all') : noneSelected ? t('torrents.filters.none') : `${selectedItems.size} ${label}`}
+            </span>
+          )}
         </span>
         <ChevronDown className={`h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
       </Button>
@@ -95,7 +117,18 @@ export function ListFilter({
                   aria-selected={selected}
                   title={item}
                 >
-                  <span className="truncate max-w-[220px]">{item || "(sem nome)"}</span>
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    {useTagBadge ? (
+                      <TagBadge
+                        tag={item}
+                        size="sm"
+                        showIcon={false}
+                        className="text-xs"
+                      />
+                    ) : (
+                      <span className="truncate max-w-[220px]">{item || "(sem nome)"}</span>
+                    )}
+                  </div>
                   {selected && <Check className="h-4 w-4 flex-shrink-0" />}
                 </button>
               );

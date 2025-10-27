@@ -40,3 +40,11 @@ type TaskSetDownloadLimitSchema struct {
 type TaskSetUploadLimitSchema struct {
 	Limit int `json:"limit" binding:"required,min=0"`
 }
+
+type TaskSetTagsSchema struct {
+	Tags []string `json:"tags" binding:"required"`
+}
+
+type TaskSetCategorySchema struct {
+	Category string `json:"category" binding:"required,min=1"`
+}

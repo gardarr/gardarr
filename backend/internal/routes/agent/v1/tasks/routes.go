@@ -48,6 +48,8 @@ func (m Module) Register() {
 	m.taskRouter.POST("/:id/force_reannounce", m.forceReannounceTask)
 	m.taskRouter.POST("/:id/limit_download_rate", m.setTaskDownloadLimit)
 	m.taskRouter.POST("/:id/limit_upload_rate", m.setTaskUploadLimit)
+	m.taskRouter.PUT("/:id/tags", m.setTaskTags)
+	m.taskRouter.PUT("/:id/category", m.setTaskCategory)
 	m.taskRouter.GET("/:id/files", m.listTaskFiles)
 }
 
@@ -347,4 +349,46 @@ func (m *Module) getTasksStats(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, mappers.ToTaskStatsResponse(stats))
+}
+
+func (m *Module) setTaskTags(c *gin.Context) {
+	taskID := c.Param("id")
+	if taskID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "task ID is required"})
+		return
+	}
+
+	var body schemas.TaskSetTagsSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := m.controller.SetTaskTags(c.Request.Context(), taskID, body); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "task tags updated successfully"})
+}
+
+func (m *Module) setTaskCategory(c *gin.Context) {
+	taskID := c.Param("id")
+	if taskID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "task ID is required"})
+		return
+	}
+
+	var body schemas.TaskSetCategorySchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := m.controller.SetTaskCategory(c.Request.Context(), taskID, body); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "task category updated successfully"})
 }

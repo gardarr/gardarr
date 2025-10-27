@@ -1,6 +1,6 @@
 // AppLayout.tsx
 import { Button } from "@/components/ui/button";
-import { Home, Settings, Users, BarChart3, ArrowDownUp, Menu, Sun, Moon, Info, LogOut, FolderOpen, UserCircle, Server } from "lucide-react";
+import { Settings, Users, BarChart3, ArrowDownUp, Menu, Sun, Moon, Info, LogOut, FolderOpen, UserCircle, Server, Plug } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import PageTransition from "@/components/PageTransition";
@@ -62,13 +62,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   const menuItems = [
-    { href: "/dashboard", icon: Home, label: t("navigation.dashboard") },
-    { href: "/torrents", icon: ArrowDownUp, label: t("navigation.torrents") },
+    { href: "/", icon: ArrowDownUp, label: t("navigation.torrents") },
     { href: "/agents", icon: Server, label: t("navigation.agents") },
     { href: "/categories", icon: FolderOpen, label: t("navigation.categories") },
     // Only show Users menu item for admin users
     ...(user?.role === 'admin' ? [{ href: "/users", icon: Users, label: t("navigation.users") }] : []),
     { href: "/analytics", icon: BarChart3, label: t("navigation.analytics") },
+    { href: "/integrations", icon: Plug, label: t("navigation.integrations") },
   ];
 
   return (
@@ -294,13 +294,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </Button>
             {/* Desktop: Show page title */}
             <h1 className="text-xl font-semibold hidden md:block">
-              {location.pathname === "/dashboard" && t("navigation.dashboard")}
+              {location.pathname === "/" && t("navigation.torrents")}
               {location.pathname === "/torrents" && t("navigation.torrents")}
               {location.pathname === "/instances" && "Instances"}
               {location.pathname === "/agents" && t("navigation.agents")}
               {location.pathname === "/categories" && t("navigation.categories")}
               {location.pathname === "/users" && t("navigation.users")}
               {location.pathname === "/analytics" && t("navigation.analytics")}
+              {location.pathname === "/integrations" && t("navigation.integrations")}
               {location.pathname === "/settings" && t("navigation.settings")}
               {location.pathname === "/profile" && t("navigation.profile")}
               {location.pathname === "/about" && t("navigation.about")}

@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gardarr/gardarr/internal/constants"
 	"github.com/gardarr/gardarr/internal/entities"
@@ -52,10 +53,23 @@ func NewRepository(db *database.Database, crypto *crypto.CryptoService) (*Reposi
 		}
 	}
 
+	// Get timeout from environment variable or use default
+	timeoutSeconds := constants.DefaultAgentTimeoutSeconds
+	if timeoutEnv := env.Get(constants.AgentTimeoutSecondsEnv); timeoutEnv.Value() != "" {
+		if parsedTimeout, err := strconv.Atoi(timeoutEnv.Value()); err == nil && parsedTimeout > 0 {
+			timeoutSeconds = parsedTimeout
+		}
+	}
+
+	// Create HTTP client with timeout
+	httpClient := &http.Client{
+		Timeout: time.Duration(timeoutSeconds) * time.Second,
+	}
+
 	return &Repository{
 		db:              db,
 		crypto:          crypto,
-		http:            http.DefaultClient,
+		http:            httpClient,
 		standaloneAgent: standaloneAgent,
 	}, nil
 
@@ -937,6 +951,72 @@ func (r *Repository) ListAgentTaskFiles(agent *entities.Agent, taskID string) ([
 	}
 
 	return result, nil
+}
+
+func (r *Repository) SetAgentTaskTags(agent *entities.Agent, taskID string, schema schemas.TaskSetTagsSchema) error {
+	url := fmt.Sprintf("%s/v1/task/%s/tags", agent.Address, taskID)
+
+	payload, err := json.Marshal(schema)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("PUT", url, bytes.NewReader(payload))
+	if err != nil {
+		return err
+	}
+
+	decryptedToken, err := r.crypto.Decrypt(agent.Token)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", decryptedToken))
+	req.Header.Set("Content-Type", "application/json")
+
+	response, err := r.http.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if response.StatusCode != http.StatusOK {
+		return errors.New("failed to set task tags")
+	}
+
+	return nil
+}
+
+func (r *Repository) SetAgentTaskCategory(agent *entities.Agent, taskID string, schema schemas.TaskSetCategorySchema) error {
+	url := fmt.Sprintf("%s/v1/task/%s/category", agent.Address, taskID)
+
+	payload, err := json.Marshal(schema)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("PUT", url, bytes.NewReader(payload))
+	if err != nil {
+		return err
+	}
+
+	decryptedToken, err := r.crypto.Decrypt(agent.Token)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", decryptedToken))
+	req.Header.Set("Content-Type", "application/json")
+
+	response, err := r.http.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if response.StatusCode != http.StatusOK {
+		return errors.New("failed to set task category")
+	}
+
+	return nil
 }
 
 func toAgent(item models.Agent) *entities.Agent {

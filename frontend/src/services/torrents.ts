@@ -2,7 +2,9 @@ import { api } from '../lib/api';
 import type { ApiResponse } from '../lib/api';
 import type {
   Task,
-  CreateTaskRequest
+  CreateTaskRequest,
+  TaskMagnetLink,
+  TaskFile
 } from '../types/torrent';
 
 /**
@@ -16,6 +18,13 @@ export class TorrentService {
    */
   async listTasks(): Promise<ApiResponse<Task[]>> {
     return api.get<Task[]>(this.baseEndpoint);
+  }
+
+  /**
+   * Lista tasks de um agente específico
+   */
+  async listAgentTasks(agentId: string): Promise<ApiResponse<Task[]>> {
+    return api.get<Task[]>(`/agent/${agentId}/tasks`);
   }
 
   /**
@@ -88,7 +97,75 @@ export class TorrentService {
   async setTaskLocation(agentId: string, taskId: string, location: string): Promise<ApiResponse<null>> {
     return api.post<null>(`/agent/${agentId}/task/${taskId}/location`, { location });
   }
+
+  /**
+   * Lista os arquivos de uma task/torrent específica
+   */
+  async listTaskFiles(agentId: string, taskId: string): Promise<ApiResponse<TaskFile[]>> {
+    return api.get<TaskFile[]>(`/agent/${agentId}/task/${taskId}/files`);
+  }
+
+  /**
+   * Atualiza as tags de uma task/torrent
+   */
+  async updateTaskTags(agentId: string, taskId: string, tags: string[]): Promise<ApiResponse<null>> {
+    return api.put<null>(`/agent/${agentId}/task/${taskId}/tags`, { tags });
+  }
+
+  /**
+   * Atualiza a categoria de uma task/torrent
+   */
+  async updateTaskCategory(agentId: string, taskId: string, category: string): Promise<ApiResponse<null>> {
+    return api.put<null>(`/agent/${agentId}/task/${taskId}/category`, { category });
+  }
 }
 
 // Instância padrão do serviço
 export const torrentService = new TorrentService();
+
+/**
+ * Converte um magnet URI para TaskMagnetLink
+ * @param magnetUri - O magnet URI a ser convertido
+ * @returns TaskMagnetLink ou null se o URI for inválido
+ */
+export function convertMagnetUriToTaskMagnetLink(magnetUri: string): TaskMagnetLink | null {
+  try {
+    const url = new URL(magnetUri);
+    
+    if (url.protocol !== 'magnet:') {
+      return null;
+    }
+
+    // Extrai o hash do torrent (xt parameter)
+    const xtMatch = url.searchParams.get('xt')?.match(/urn:btih:([a-fA-F0-9]{40})/);
+    const hash = xtMatch ? xtMatch[1] : '';
+
+    // Extrai o nome do torrent (dn parameter)
+    const displayName = url.searchParams.get('dn') || '';
+
+    // Extrai os trackers (tr parameters)
+    const trackers: string[] = [];
+    url.searchParams.forEach((value, key) => {
+      if (key === 'tr') {
+        trackers.push(value);
+      }
+    });
+
+    // Extrai o tamanho exato (xl parameter)
+    const exactLength = url.searchParams.get('xl') || '';
+
+    // Extrai a fonte exata (xs parameter)
+    const exactSource = url.searchParams.get('xs') || '';
+
+    return {
+      hash,
+      display_name: displayName,
+      trackers,
+      exact_length: exactLength,
+      exact_source: exactSource
+    };
+  } catch (error) {
+    console.error('Error parsing magnet URI:', error);
+    return null;
+  }
+}

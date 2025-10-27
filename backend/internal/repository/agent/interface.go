@@ -34,6 +34,8 @@ type RepositoryInterface interface {
 	ForceReannounceAgentTask(agent *entities.Agent, taskID string) error
 	SetAgentTaskDownloadLimit(agent *entities.Agent, taskID string, schema schemas.TaskSetDownloadLimitSchema) error
 	SetAgentTaskUploadLimit(agent *entities.Agent, taskID string, schema schemas.TaskSetUploadLimitSchema) error
+	SetAgentTaskTags(agent *entities.Agent, taskID string, schema schemas.TaskSetTagsSchema) error
+	SetAgentTaskCategory(agent *entities.Agent, taskID string, schema schemas.TaskSetCategorySchema) error
 	ListAgentTaskFiles(agent *entities.Agent, taskID string) ([]*entities.TaskFile, error)
 	GetAgentTasksStats(agent *entities.Agent) (*entities.TaskStats, error)
 	GetAgentVersion(agent *entities.Agent) (*entities.AgentVersion, error)

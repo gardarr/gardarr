@@ -1,66 +1,16 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TagBadge } from "@/components/ui/TagBadge";
 import { 
-  Folder, 
   X,
-  Check,
-  Tag,
-  FolderOpen,
-  Film,
-  Tv,
-  Music,
-  BookOpen,
-  Gamepad2,
-  FileText,
-  Image,
-  Video,
-  Download,
-  Star,
-  Heart,
-  Archive,
-  Package,
-  Disc,
-  type LucideIcon
+  Check
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { CreateCategoryRequest, UpdateCategoryRequest, Category } from "../types/category";
 import { useToast } from "../hooks/useToast";
 import { useTranslation } from "react-i18next";
-
-// Available icons for categories
-const availableIcons: { name: string; icon: LucideIcon }[] = [
-  { name: "Folder", icon: Folder },
-  { name: "FolderOpen", icon: FolderOpen },
-  { name: "Film", icon: Film },
-  { name: "Tv", icon: Tv },
-  { name: "Music", icon: Music },
-  { name: "BookOpen", icon: BookOpen },
-  { name: "Gamepad2", icon: Gamepad2 },
-  { name: "FileText", icon: FileText },
-  { name: "Image", icon: Image },
-  { name: "Video", icon: Video },
-  { name: "Download", icon: Download },
-  { name: "Star", icon: Star },
-  { name: "Heart", icon: Heart },
-  { name: "Archive", icon: Archive },
-  { name: "Package", icon: Package },
-  { name: "Disc", icon: Disc }
-];
-
-// Available colors for categories
-const availableColors = [
-  { name: "Blue", value: "#3b82f6" },
-  { name: "Green", value: "#10b981" },
-  { name: "Purple", value: "#8b5cf6" },
-  { name: "Red", value: "#ef4444" },
-  { name: "Orange", value: "#f97316" },
-  { name: "Pink", value: "#ec4899" },
-  { name: "Indigo", value: "#6366f1" },
-  { name: "Teal", value: "#14b8a6" },
-  { name: "Yellow", value: "#eab308" },
-  { name: "Gray", value: "#6b7280" }
-];
+import { availableIcons, availableColors, getCategoryIcon } from "../utils/categoryUtils";
 
 interface AddCategoryModalProps {
   open: boolean;
@@ -147,11 +97,16 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
 
   const addTag = () => {
     if (tagInput.trim()) {
-      setCreateForm({
-        ...createForm,
-        default_tags: [...(createForm.default_tags || []), tagInput.trim()]
-      });
-      setTagInput("");
+      // Split by comma and trim each tag
+      const tags = tagInput.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+      
+      if (tags.length > 0) {
+        setCreateForm({
+          ...createForm,
+          default_tags: [...(createForm.default_tags || []), ...tags]
+        });
+        setTagInput("");
+      }
     }
   };
 
@@ -202,8 +157,7 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
               style={{ backgroundColor: createForm.color || "#3b82f6" }}
             >
               {(() => {
-                const iconName = createForm.icon || "Folder";
-                const IconComponent = availableIcons.find(i => i.name === iconName)?.icon || Folder;
+                const IconComponent = getCategoryIcon(createForm.icon);
                 return <IconComponent className="h-6 w-6 text-white" />;
               })()}
             </div>
@@ -245,28 +199,19 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
               onClick={() => document.getElementById('tagInput')?.focus()}
             >
               {createForm.default_tags && createForm.default_tags.map((tag, index) => (
-                <div
+                <TagBadge
                   key={index}
-                  className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary border border-primary/20 rounded-md text-sm"
-                >
-                  <Tag className="h-3 w-3" />
-                  <span>{tag}</span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeTag(index);
-                    }}
-                    className="ml-1 hover:text-destructive"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
+                  tag={tag}
+                  size="sm"
+                  showIcon={true}
+                  showDelete={true}
+                  onDelete={() => removeTag(index)}
+                />
               ))}
               <input
                 id="tagInput"
                 type="text"
-                placeholder={createForm.default_tags?.length === 0 ? "Digite uma tag e pressione Enter" : ""}
+                placeholder={createForm.default_tags?.length === 0 ? t('categories.placeholders.tags') : ""}
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -280,6 +225,20 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
                 }}
                 className="flex-1 min-w-[120px] bg-transparent border-none outline-none text-sm"
               />
+            </div>
+            <div className="space-y-2">
+              <div className="text-xs text-muted-foreground">
+                {t('categories.tagsHint')}
+              </div>
+              <div className="text-xs text-muted-foreground space-y-1">
+                <div className="font-medium">{t('categories.tagsExamples.title')}</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs">
+                  <div>• <span className="font-mono bg-muted px-1 rounded">{t('categories.tagsExamples.simpleExample')}</span> - {t('categories.tagsExamples.simple')}</div>
+                  <div>• <span className="font-mono bg-muted px-1 rounded">{t('categories.tagsExamples.hierarchicalExample')}</span> - {t('categories.tagsExamples.hierarchical')}</div>
+                  <div>• <span className="font-mono bg-muted px-1 rounded">{t('categories.tagsExamples.yearExample')}</span> - {t('categories.tagsExamples.year')}</div>
+                  <div>• <span className="font-mono bg-muted px-1 rounded">{t('categories.tagsExamples.qualityExample')}</span> - {t('categories.tagsExamples.quality')}</div>
+                </div>
+              </div>
             </div>
           </div>
 

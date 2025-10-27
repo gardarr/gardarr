@@ -1,14 +1,14 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { X, Tag, Server, Folder, Check, ChevronsUpDown, HardDrive, Download, Plus, Link, Hash } from "lucide-react";
+import { X, Server, Check, ChevronsUpDown, HardDrive, Download, Link, FileText, Globe, Database, Folder } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AgentIcon } from "@/components/ui/AgentIcon";
-import { CategoryIcon } from "@/components/ui/CategoryIcon";
-import { AddCategoryModal } from "@/components/AddCategoryModal";
-import { categoryService } from "@/services/categories";
+import { SelectCategory } from "@/components/SelectCategory";
+import { SelectTags } from "@/components/SelectTags";
+import { convertMagnetUriToTaskMagnetLink } from "@/services/torrents";
 import type { Agent } from "@/types/agent";
-import type { CreateTaskRequest } from "@/types/torrent";
+import type { CreateTaskRequest, TaskMagnetLink } from "@/types/torrent";
 import type { Category } from "@/types/category";
 
 function formatBytes(bytes: number): string {
@@ -34,14 +34,10 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
   const [category, setCategory] = useState("");
   const [directory, setDirectory] = useState("");
-  const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState<string[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [agentDropdownOpen, setAgentDropdownOpen] = useState(false);
-  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
-  const categoryDropdownRef = useRef<HTMLDivElement>(null);
+  const [parsedMagnetLink, setParsedMagnetLink] = useState<TaskMagnetLink | null>(null);
   const agentDropdownRef = useRef<HTMLDivElement>(null);
 
   // Filter only active agents
@@ -59,13 +55,6 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
     return selectedAgent?.instance?.server?.free_space_on_disk || 0;
   }, [selectedAgent]);
 
-  // Load categories when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      loadCategories();
-    }
-  }, [isOpen]);
-
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -74,36 +63,31 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
       setMagnetUri("");
       setCategory("");
       setDirectory("");
-      setTagInput("");
       setTags([]);
       setErrors({});
+      setParsedMagnetLink(null);
       setIsSubmitting(false);
     }
   }, [isOpen, activeAgents]);
 
-  const loadCategories = async () => {
-    try {
-      const response = await categoryService.listCategories();
-      if (response.data) {
-        setCategories(response.data);
-      }
-    } catch (err) {
-      console.error('Failed to load categories:', err);
+  // Parse magnet URI when it changes
+  useEffect(() => {
+    if (magnetUri.trim() && magnetUri.startsWith("magnet:")) {
+      const parsed = convertMagnetUriToTaskMagnetLink(magnetUri.trim());
+      setParsedMagnetLink(parsed);
+    } else {
+      setParsedMagnetLink(null);
     }
-  };
+  }, [magnetUri]);
 
-  const handleCategoryChange = (categoryId: string) => {
+  const handleCategoryChange = (categoryId: string, category?: Category) => {
     setSelectedCategoryId(categoryId);
     setErrors({ ...errors, category: "" });
-    setCategoryDropdownOpen(false);
     
-    if (categoryId) {
-      const selectedCategory = categories.find(cat => cat.id === categoryId);
-      if (selectedCategory) {
-        setCategory(selectedCategory.name);
-        setTags([...(selectedCategory.default_tags || [])]);
-        setDirectory(selectedCategory.directory || "");
-      }
+    if (categoryId && category) {
+      setCategory(category.name);
+      setTags([...(category.default_tags || [])]);
+      setDirectory(category.directory || "");
     } else {
       setCategory("");
       setTags([]);
@@ -131,20 +115,6 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
     }
   }, [isOpen, onClose]);
 
-  // Close category dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
-        setCategoryDropdownOpen(false);
-      }
-    };
-
-    if (categoryDropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [categoryDropdownOpen]);
-
   // Close agent dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -158,41 +128,6 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [agentDropdownOpen]);
-
-  const handleAddTag = () => {
-    const trimmedTag = tagInput.trim();
-    if (trimmedTag && !tags.includes(trimmedTag)) {
-      setTags([...tags, trimmedTag]);
-      setTagInput("");
-      setErrors({ ...errors, tags: "" });
-    }
-  };
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter(tag => tag !== tagToRemove));
-  };
-
-  const handleAddCategoryClick = () => {
-    setCategoryModalOpen(true);
-  };
-
-  const handleCategoryCreated = async (categoryData: any) => {
-    try {
-      const response = await categoryService.createCategory(categoryData);
-      if (response.data) {
-        // Reload categories list
-        await loadCategories();
-        // Select the newly created category
-        setSelectedCategoryId(response.data.id);
-        setCategory(response.data.name);
-        setTags([...(response.data.default_tags || [])]);
-        setDirectory(response.data.directory || "");
-        setErrors({ ...errors, category: "" });
-      }
-    } catch (err) {
-      console.error('Failed to create category:', err);
-    }
-  };
 
 
   const validateForm = (): boolean => {
@@ -297,93 +232,63 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
             {errors.magnetUri && (
               <p className="text-sm text-destructive">{errors.magnetUri}</p>
             )}
+            
+            {/* Parsed Magnet Information */}
+            {parsedMagnetLink && (
+              <div className="mt-3 p-4 bg-muted/50 rounded-lg border">
+                <div className="flex items-center gap-2 mb-3">
+                  <Database className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium text-foreground">Informações do Torrent</span>
+                </div>
+                
+                <div className="space-y-2">
+                  {/* Display Name */}
+                  {parsedMagnetLink.display_name && (
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Nome:</span>
+                      <span className="text-xs font-medium text-foreground truncate">
+                        {parsedMagnetLink.display_name}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Trackers Count */}
+                  {parsedMagnetLink.trackers.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Trackers:</span>
+                      <span className="text-xs font-medium text-foreground">
+                        {parsedMagnetLink.trackers.length} encontrado(s)
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Exact Length */}
+                  {parsedMagnetLink.exact_length && (
+                    <div className="flex items-center gap-2">
+                      <HardDrive className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Tamanho:</span>
+                      <span className="text-xs font-medium text-foreground">
+                        {formatBytes(parseInt(parsedMagnetLink.exact_length))}
+                      </span>
+                    </div>
+                  )}
+                  
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Category Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="category" className="flex items-center gap-2">
-              <Folder className="h-4 w-4" />
-              Categoria <span className="text-destructive">*</span>
-            </Label>
-            <div className="flex gap-2">
-              <div className="relative flex-1" ref={categoryDropdownRef}>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
-                  className={`w-full justify-between ${errors.category ? "border-destructive" : ""}`}
-                >
-                  <div className="flex items-center gap-2">
-                    {selectedCategoryId ? (
-                      (() => {
-                        const selectedCategory = categories.find(cat => cat.id === selectedCategoryId);
-                        return selectedCategory ? (
-                          <CategoryIcon 
-                            iconName={selectedCategory.icon}
-                            color={selectedCategory.color}
-                            size="sm"
-                          />
-                        ) : (
-                          <Folder className="h-4 w-4 text-muted-foreground" />
-                        );
-                      })()
-                    ) : (
-                      <Folder className="h-4 w-4 text-muted-foreground" />
-                    )}
-                    <span className="truncate">
-                      {selectedCategoryId 
-                        ? categories.find(cat => cat.id === selectedCategoryId)?.name 
-                        : "Selecione uma categoria"
-                      }
-                    </span>
-                  </div>
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-                
-                {categoryDropdownOpen && (
-                  <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-auto">
-                    {categories.length === 0 ? (
-                      <div className="px-3 py-2 text-sm text-muted-foreground">
-                        Nenhuma categoria disponível
-                      </div>
-                    ) : (
-                      categories.map((cat) => (
-                        <button
-                          key={cat.id}
-                          type="button"
-                          onClick={() => handleCategoryChange(cat.id)}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground text-left"
-                        >
-                          <CategoryIcon 
-                            iconName={cat.icon}
-                            color={cat.color}
-                            size="sm"
-                          />
-                          <span className="flex-1 truncate">{cat.name}</span>
-                          {selectedCategoryId === cat.id && (
-                            <Check className="h-4 w-4 text-primary" />
-                          )}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-              <Button
-                type="button"
-                variant="default"
-                size="sm"
-                className="h-10 px-3"
-                title="Adicionar Categoria"
-                onClick={handleAddCategoryClick}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-            {errors.category && (
-              <p className="text-sm text-destructive">{errors.category}</p>
-            )}
-          </div>
+          <SelectCategory
+            selectedCategoryId={selectedCategoryId}
+            onCategoryChange={handleCategoryChange}
+            label="Categoria"
+            required={true}
+            error={errors.category}
+            showAddButton={true}
+          />
 
           {/* Directory (Optional) */}
           <div className="space-y-2">
@@ -404,61 +309,16 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
           </div>
 
           {/* Tags */}
-          <div className="space-y-2">
-            <Label htmlFor="tagInput" className="flex items-center gap-2">
-              <Hash className="h-4 w-4" />
-              Tags <span className="text-destructive">*</span>
-              {selectedCategoryId && tags.length > 0 && (
-                <span className="text-xs text-blue-600 ml-2">(preenchidas automaticamente)</span>
-              )}
-            </Label>
-            <div 
-              className={`min-h-[40px] w-full px-3 py-2 border rounded-md bg-background text-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-primary flex flex-wrap gap-1 items-center ${
-                errors.tags && tags.length === 0 ? "border-destructive" : ""
-              }`}
-              onClick={() => document.getElementById('tagInput')?.focus()}
-            >
-              {tags.map((tag) => (
-                <div
-                  key={tag}
-                  className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary border border-primary/20 rounded-md text-sm"
-                >
-                  <Tag className="h-3 w-3" />
-                  <span>{tag}</span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRemoveTag(tag);
-                    }}
-                    className="ml-1 hover:text-destructive"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
-              <input
-                id="tagInput"
-                type="text"
-                placeholder={tags.length === 0 ? "Digite uma tag e pressione Enter" : ""}
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleAddTag();
-                  } else if (e.key === "Backspace" && tagInput === "" && tags.length > 0) {
-                    e.preventDefault();
-                    handleRemoveTag(tags[tags.length - 1]);
-                  }
-                }}
-                className="flex-1 min-w-[120px] bg-transparent border-none outline-none text-sm"
-              />
-            </div>
-            {errors.tags && (
-              <p className="text-sm text-destructive">{errors.tags}</p>
-            )}
-          </div>
+          <SelectTags
+            tags={tags}
+            onTagsChange={setTags}
+            label="Tags"
+            required={true}
+            error={errors.tags}
+            placeholder="Digite uma tag e pressione Enter"
+            showHelp={!!(selectedCategoryId && tags.length > 0)}
+            helpText="(preenchidas automaticamente)"
+          />
 
           {/* Agent Selection */}
           <div className="space-y-2">
@@ -557,12 +417,6 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
         </form>
       </div>
 
-      {/* Category Creation Modal */}
-      <AddCategoryModal
-        open={categoryModalOpen}
-        onOpenChange={setCategoryModalOpen}
-        onCategoryCreated={handleCategoryCreated}
-      />
     </div>
   );
 }

@@ -14,7 +14,6 @@ import {
   Search, 
   Loader2, 
   RefreshCw,
-  Tag,
   FolderOpen
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -24,17 +23,14 @@ import { useToast } from "./hooks/useToast";
 import { ToastContainer } from "./components/ui/toast-container";
 import { useTranslation } from "react-i18next";
 import { AddCategoryModal } from "./components/AddCategoryModal";
-
-type SortType = "name" | "created_at";
-
+import { TagBadge } from "./components/ui/TagBadge";
+import { getCategoryIcon } from "./utils/categoryUtils";
 
 function Categories() {
   const { t } = useTranslation();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState<SortType>("name");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -108,7 +104,15 @@ function Categories() {
         showError(response.error);
         throw new Error(response.error);
       } else if (response.data) {
-        setCategories(categories.map(cat => cat.id === categoryId && response.data ? response.data : cat));
+        // Update the categories list
+        const updatedCategories = categories.map(cat => cat.id === categoryId && response.data ? response.data : cat);
+        setCategories(updatedCategories);
+        
+        // Update the editing category if it's the same one being updated
+        if (editingCategory && editingCategory.id === categoryId) {
+          setEditingCategory(response.data);
+        }
+        
         showSuccess(t('categories.notifications.updateSuccess'));
       }
     } catch (err) {
@@ -132,18 +136,9 @@ function Categories() {
 
 
 
-  // Filter and sort categories
+  // Filter categories
   const filteredCategories = categories
-    .filter(cat => cat.name.toLowerCase().includes(searchTerm.toLowerCase()))
-    .sort((a, b) => {
-      let comparison = 0;
-      if (sortBy === "name") {
-        comparison = a.name.localeCompare(b.name);
-      } else if (sortBy === "created_at") {
-        comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-      }
-      return sortOrder === "asc" ? comparison : -comparison;
-    });
+    .filter(cat => cat.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
     <div className="space-y-6">
@@ -160,7 +155,7 @@ function Categories() {
             <p className="text-muted-foreground">{t('categories.subtitle')}</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full sm:w-auto justify-between sm:justify-end">
           <Button onClick={loadCategories} variant="outline" size="sm">
             <RefreshCw className="h-4 w-4 mr-2" />
             {t('categories.refresh')}
@@ -173,7 +168,7 @@ function Categories() {
       </div>
 
 
-      {/* Search and Sort */}
+      {/* Search */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -183,36 +178,6 @@ function Categories() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              if (sortBy === "name") {
-                setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-              } else {
-                setSortBy("name");
-                setSortOrder("asc");
-              }
-            }}
-          >
-            {t('categories.sortBy.name')}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              if (sortBy === "created_at") {
-                setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-              } else {
-                setSortBy("created_at");
-                setSortOrder("asc");
-              }
-            }}
-          >
-            {t('categories.sortBy.date')}
-          </Button>
         </div>
       </div>
 
@@ -238,7 +203,7 @@ function Categories() {
         </Card>
       ) : (
         <>
-          <div className="grid gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {filteredCategories.map((category) => (
               <Card 
                 key={category.id} 
@@ -246,31 +211,33 @@ function Categories() {
                 onClick={() => startEditCategory(category)}
               >
                 <CardContent className="p-4">
-                  <div className="flex gap-3 items-center">
+                  <div className="flex flex-col gap-3 items-center text-center">
                     {/* Icon */}
                     <div
                       className="w-16 h-16 rounded-lg flex items-center justify-center flex-shrink-0"
                       style={{ backgroundColor: category.color || "#3b82f6" }}
                     >
-                      <Folder className="h-8 w-8 text-white" />
+                      {(() => {
+                        const IconComponent = getCategoryIcon(category.icon);
+                        return <IconComponent className="h-8 w-8 text-white" />;
+                      })()}
                     </div>
 
                     {/* Content */}
-                    <div className="flex-1 min-w-0 space-y-1.5">
+                    <div className="flex-1 min-w-0 space-y-1.5 w-full">
                       <div>
                         <h3 className="font-semibold text-base truncate">{category.name}</h3>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(category.created_at).toLocaleDateString()}
-                        </p>
                       </div>
 
                       {category.default_tags && category.default_tags.length > 0 && (
-                        <div className="flex gap-1 flex-wrap items-center">
-                          <Tag className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                        <div className="flex gap-1 flex-wrap items-center justify-center">
                           {category.default_tags.slice(0, 3).map((tag, index) => (
-                            <span key={index} className="bg-accent px-1.5 py-0.5 rounded text-xs">
-                              {tag}
-                            </span>
+                            <TagBadge
+                              key={index}
+                              tag={tag}
+                              size="sm"
+                              showIcon={false}
+                            />
                           ))}
                           {category.default_tags.length > 3 && (
                             <span className="text-xs text-muted-foreground">
@@ -281,9 +248,9 @@ function Categories() {
                       )}
 
                       {category.directory && (
-                        <div className="flex gap-1 flex-wrap items-center">
+                        <div className="flex gap-1 flex-wrap items-center justify-center">
                           <Folder className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                          <span className="bg-accent px-1.5 py-0.5 rounded text-xs font-mono truncate max-w-[200px]">
+                          <span className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono truncate max-w-[200px]">
                             {category.directory}
                           </span>
                         </div>
@@ -315,7 +282,10 @@ function Categories() {
                       className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
                       style={{ backgroundColor: categoryToDelete.color || "#3b82f6" }}
                     >
-                      <Folder className="h-6 w-6 text-white" />
+                      {(() => {
+                        const IconComponent = getCategoryIcon(categoryToDelete.icon);
+                        return <IconComponent className="h-6 w-6 text-white" />;
+                      })()}
                     </div>
                     <div className="min-w-0 flex-1">
                       <h3 className="font-semibold text-sm">{categoryToDelete.name}</h3>

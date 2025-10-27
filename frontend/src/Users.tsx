@@ -108,7 +108,7 @@ function Users() {
   useEffect(() => {
     // Only redirect if authentication is complete and user is confirmed to not be admin
     if (!authLoading && currentUser && !isAdmin) {
-      navigate('/dashboard', { replace: true });
+      navigate('/', { replace: true });
     }
   }, [authLoading, currentUser, isAdmin, navigate]);
 
@@ -384,7 +384,7 @@ function Users() {
             <p className="text-muted-foreground">Manage user accounts and permissions</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full sm:w-auto justify-between sm:justify-end">
           <Button onClick={loadUsers} variant="outline" size="sm">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh

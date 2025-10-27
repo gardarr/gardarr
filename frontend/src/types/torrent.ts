@@ -75,3 +75,13 @@ export interface TaskCreateResponse {
 export interface TaskDeleteResponse {
   data: null;
 }
+
+export interface TaskFile {
+  name: string;
+  size: number;
+  progress: number;
+  priority: number;
+  is_seed: boolean;
+  piece_range: [number, number];
+  availability: number;
+}

@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/dialog";
 import { 
   Server, 
-  XCircle,
   Plus, 
   Trash2, 
   Search, 
@@ -24,43 +23,22 @@ import {
   Check,
   Eye,
   EyeOff,
-  TrendingUp,
-  TrendingDown,
-  Users,
-  BarChart3,
-  Tag,
-  Folder,
   Lock,
-  Edit,
-  Pin
+  Pin,
+  AlertTriangle
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { agentService } from "./services/agents";
-import type { Agent, AgentStatus, CreateAgentRequest, UpdateAgentRequest, Version, TaskStats } from "./types/agent";
+import type { Agent, CreateAgentRequest, UpdateAgentRequest } from "./types/agent";
 import { useToast } from "./hooks/useToast";
 import { ToastContainer } from "./components/ui/toast-container";
 import { AgentIcon } from "./components/ui/AgentIcon";
-import { availableIcons } from "./components/ui/agent-icons";
+import { availableIcons, availableColors } from "./utils/agentUtils";
 import { QBittorrentIcon } from "./components/ui/QBittorrentIcon";
-import { ChartPieLegend } from "./components/ui/chart-pie-legend";
-import type { ChartConfig } from "./components/ui/chart";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
+import { AgentDetailsModal } from "./components/AgentDetailsModal";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./components/ui/tooltip";
 
-// Available colors for agents - will be internationalized in the component
-const availableColors = [
-  { name: "Blue", value: "#3b82f6" },
-  { name: "Green", value: "#10b981" },
-  { name: "Purple", value: "#8b5cf6" },
-  { name: "Red", value: "#ef4444" },
-  { name: "Orange", value: "#f97316" },
-  { name: "Pink", value: "#ec4899" },
-  { name: "Indigo", value: "#6366f1" },
-  { name: "Teal", value: "#14b8a6" },
-  { name: "Yellow", value: "#eab308" },
-  { name: "Gray", value: "#6b7280" }
-];
 
 function Agents() {
   const { t } = useTranslation();
@@ -68,16 +46,12 @@ function Agents() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [agentToDelete, setAgentToDelete] = useState<Agent | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [agentToEdit, setAgentToEdit] = useState<Agent | null>(null);
-  const [agentVersions, setAgentVersions] = useState<Record<string, Version>>({});
-  const [loadingVersions, setLoadingVersions] = useState<Record<string, boolean>>({});
-  const [agentTaskStats, setAgentTaskStats] = useState<Record<string, TaskStats>>({});
-  const [loadingTaskStats, setLoadingTaskStats] = useState<Record<string, boolean>>({});
   const [createForm, setCreateForm] = useState<CreateAgentRequest>({
     name: "",
     type: "qbittorrent",
@@ -120,39 +94,6 @@ function Agents() {
     loadAgents();
   }, [loadAgents]);
 
-  const loadAgentVersion = async (agentId: string) => {
-    try {
-      setLoadingVersions(prev => ({ ...prev, [agentId]: true }));
-      const response = await agentService.getAgentVersion(agentId);
-      
-      if (response.error) {
-        console.warn(`Failed to load version for agent ${agentId}:`, response.error);
-      } else if (response.data) {
-        setAgentVersions(prev => ({ ...prev, [agentId]: response.data! }));
-      }
-    } catch (err) {
-      console.warn(`Failed to load version for agent ${agentId}:`, err);
-    } finally {
-      setLoadingVersions(prev => ({ ...prev, [agentId]: false }));
-    }
-  };
-
-  const loadAgentTaskStats = async (agentId: string) => {
-    try {
-      setLoadingTaskStats(prev => ({ ...prev, [agentId]: true }));
-      const response = await agentService.getAgentTaskStats(agentId);
-      
-      if (response.error) {
-        console.warn(`Failed to load task stats for agent ${agentId}:`, response.error);
-      } else if (response.data) {
-        setAgentTaskStats(prev => ({ ...prev, [agentId]: response.data! }));
-      }
-    } catch (err) {
-      console.warn(`Failed to load task stats for agent ${agentId}:`, err);
-    } finally {
-      setLoadingTaskStats(prev => ({ ...prev, [agentId]: false }));
-    }
-  };
 
   const confirmDeleteAgent = (agent: Agent) => {
     setAgentToDelete(agent);
@@ -172,7 +113,7 @@ function Agents() {
         setShowDeleteModal(false);
         setShowDetailsModal(false);
         setAgentToDelete(null);
-        setSelectedAgent(null);
+        setSelectedAgentId(null);
       }
     } catch (err) {
       showError(err instanceof Error ? err.message : t('agents.errors.failedToDelete'));
@@ -210,11 +151,8 @@ function Agents() {
   };
 
   const showAgentDetails = (agent: Agent) => {
-    setSelectedAgent(agent);
+    setSelectedAgentId(agent.uuid);
     setShowDetailsModal(true);
-    // Always fetch version and task stats when opening modal
-    loadAgentVersion(agent.uuid);
-    loadAgentTaskStats(agent.uuid);
   };
 
   const showEditAgent = (agent: Agent) => {
@@ -262,15 +200,22 @@ function Agents() {
         showError(response.error);
       } else if (response.data) {
         // Update the agent in the list
-        setAgents(agents.map(agent => 
+        const updatedAgents = agents.map(agent => 
           agent.uuid === agentToEdit.uuid ? response.data! : agent
-        ));
+        );
+        setAgents(updatedAgents);
+        
+        // Update the selected agent if it's the same one being edited
+        if (selectedAgentId === agentToEdit.uuid) {
+          // The modal will reload the agent data automatically
+        }
+        
         showSuccess(t('agents.success.updated'));
         setShowEditModal(false);
         setShowDetailsModal(false);
         setShowEditToken(false);
         setAgentToEdit(null);
-        setSelectedAgent(null);
+        setSelectedAgentId(null);
       }
     } catch (err) {
       showError(err instanceof Error ? err.message : t('agents.errors.failedToUpdate'));
@@ -283,52 +228,6 @@ function Agents() {
     agent.address.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getStatusIndicator = (status: AgentStatus) => {
-    switch (status) {
-      case 'ACTIVE':
-        return (
-          <div 
-            className="w-3 h-3 rounded-full bg-green-500" 
-            style={{ boxShadow: '0 0 8px 2px rgba(34, 197, 94, 0.5)' }}
-          />
-        );
-      case 'ERRORED':
-        return (
-          <div 
-            className="w-3 h-3 rounded-full bg-red-500" 
-            style={{ boxShadow: '0 0 8px 2px rgba(239, 68, 68, 0.5)' }}
-          />
-        );
-      case 'INACTIVE':
-        return (
-          <div 
-            className="w-3 h-3 rounded-full bg-yellow-500" 
-            style={{ boxShadow: '0 0 8px 2px rgba(234, 179, 8, 0.5)' }}
-          />
-        );
-      default:
-        return (
-          <div 
-            className="w-3 h-3 rounded-full bg-gray-500" 
-            style={{ boxShadow: '0 0 8px 2px rgba(107, 114, 128, 0.5)' }}
-          />
-        );
-    }
-  };
-
-  const getStatusTextColor = (status: AgentStatus) => {
-    switch (status) {
-      case 'ACTIVE':
-        return 'text-green-600';
-      case 'ERRORED':
-        return 'text-red-600';
-      case 'INACTIVE':
-        return 'text-yellow-600';
-      default:
-        return 'text-gray-600';
-    }
-  };
-
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 B';
     const k = 1024;
@@ -337,99 +236,7 @@ function Agents() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const generateCategoryChartData = (categoryUsage: Record<string, number>) => {
-    const colors = [
-      "var(--chart-1)",
-      "var(--chart-2)", 
-      "var(--chart-3)",
-      "var(--chart-4)",
-      "var(--chart-5)",
-      "var(--chart-6)",
-      "var(--chart-7)",
-      "var(--chart-8)"
-    ];
-    
-    return Object.entries(categoryUsage).map(([category, count], index) => ({
-      name: category,
-      value: count,
-      fill: colors[index % colors.length]
-    }));
-  };
 
-  const generateCategoryChartConfig = (categoryUsage: Record<string, number>): ChartConfig => {
-    const config: ChartConfig = {
-      value: {
-        label: t('agents.count'),
-      }
-    };
-    
-    Object.keys(categoryUsage).forEach((category, index) => {
-      const colors = [
-        "var(--chart-1)",
-        "var(--chart-2)", 
-        "var(--chart-3)",
-        "var(--chart-4)",
-        "var(--chart-5)",
-        "var(--chart-6)",
-        "var(--chart-7)",
-        "var(--chart-8)"
-      ];
-      
-      config[category] = {
-        label: category.charAt(0).toUpperCase() + category.slice(1),
-        color: colors[index % colors.length]
-      };
-    });
-    
-    return config;
-  };
-
-  const generateTagsChartData = (tagsUsage: Record<string, number>) => {
-    const colors = [
-      "var(--chart-1)",
-      "var(--chart-2)", 
-      "var(--chart-3)",
-      "var(--chart-4)",
-      "var(--chart-5)",
-      "var(--chart-6)",
-      "var(--chart-7)",
-      "var(--chart-8)"
-    ];
-    
-    return Object.entries(tagsUsage).map(([tag, count], index) => ({
-      name: tag,
-      value: count,
-      fill: colors[index % colors.length]
-    }));
-  };
-
-  const generateTagsChartConfig = (tagsUsage: Record<string, number>): ChartConfig => {
-    const config: ChartConfig = {
-      value: {
-        label: t('agents.count'),
-      }
-    };
-    
-    Object.keys(tagsUsage).forEach((tag, index) => {
-      const colors = [
-        "var(--chart-1)",
-        "var(--chart-2)", 
-        "var(--chart-3)",
-        "var(--chart-4)",
-        "var(--chart-5)",
-        "var(--chart-6)",
-        "var(--chart-7)",
-        "var(--chart-8)"
-      ];
-      
-      config[tag] = {
-        label: tag.charAt(0).toUpperCase() + tag.slice(1),
-        color: colors[index % colors.length]
-      };
-    });
-    
-    return config;
-  };
 
   return (
     <div className="space-y-6">
@@ -446,7 +253,7 @@ function Agents() {
             <p className="text-muted-foreground">{t('agents.subtitle')}</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full sm:w-auto justify-between sm:justify-end">
           <Button onClick={loadAgents} variant="outline" size="sm">
             <RefreshCw className="h-4 w-4 mr-2" />
             {t('agents.refresh')}
@@ -681,6 +488,9 @@ function Agents() {
                                 <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)] ml-0.5"></div>
                               )}
                               <h3 className="font-semibold text-base truncate">{agent.name}</h3>
+                              {agent.status === 'ERRORED' && (
+                                <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                              )}
                             </div>
                             <p className="text-xs text-muted-foreground flex items-center gap-2">
                               <Wifi className="h-3 w-3" />
@@ -688,9 +498,9 @@ function Agents() {
                             </p>
                           </div>
 
-                          {agent.error && (
-                            <div className="text-xs text-red-600 bg-red-50 dark:bg-red-950/20 px-2 py-1 rounded">
-                              {agent.error}
+                          {agent.error && agent.status === 'ERRORED' && (
+                            <div className="text-xs text-red-600 bg-red-50 dark:bg-red-950/20 px-2 py-1 rounded cursor-pointer">
+                              {t('agents.clickToViewDetails', 'Click to view error details')}
                             </div>
                           )}
 
@@ -757,475 +567,13 @@ function Agents() {
           </div>
 
           {/* Details Modal */}
-          <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
-            <DialogContent className="max-w-2xl max-h-[90vh]">
-              <DialogHeader>
-                <DialogTitle>{t('agents.agentDetails')} - {selectedAgent?.name || 'Unknown'}</DialogTitle>
-              </DialogHeader>
-              
-              {selectedAgent && (
-                <CustomScrollArea className="w-full max-h-[calc(90vh-120px)]" variant="thin" mobileFallback>
-                  <div className="w-full">
-                  <Tabs defaultValue="info" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 mb-4">
-                      <TabsTrigger value="info">{t('agents.info')}</TabsTrigger>
-                      <TabsTrigger 
-                        value="stats" 
-                        disabled={selectedAgent?.status === 'ERRORED'}
-                        className={selectedAgent?.status === 'ERRORED' ? 'opacity-50 cursor-not-allowed' : ''}
-                      >
-                        {t('agents.stats')}
-                      </TabsTrigger>
-                    </TabsList>
-                    
-                    <TabsContent value="info" className="space-y-4">
-                      <div className="flex items-center p-3 container-content-background/50 rounded-lg">
-                        {/* Agent Icon and Content */}
-                        <div className="flex items-center gap-3 flex-1 p-4">
-                          <AgentIcon 
-                            iconName={selectedAgent?.icon}
-                            color={selectedAgent?.color}
-                            size="lg"
-                            className="w-14 h-14 rounded-lg"
-                            standalone={selectedAgent?.standalone}
-                          />
-
-                          {/* Content */}
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              {selectedAgent?.status === 'ACTIVE' && (
-                                <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] ml-0.5"></div>
-                              )}
-                              {selectedAgent?.status === 'ERRORED' && (
-                                <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)] ml-0.5"></div>
-                              )}
-                              <h3 className="font-semibold text-base">{selectedAgent?.name}</h3>
-                            </div>
-                            <p className="text-xs text-muted-foreground">{selectedAgent?.address}</p>
-                          </div>
-
-                          {/* Lock Icon for Standalone Agents */}
-                          {selectedAgent?.standalone && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <div className="flex-shrink-0 cursor-help">
-                                    <Lock className="h-4 w-4 text-muted-foreground" />
-                                  </div>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>{t('agents.standalone.tooltip', 'Standalone agent')}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-
-                          {/* Edit Button */}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={selectedAgent?.standalone}
-                            onClick={() => selectedAgent && !selectedAgent.standalone && showEditAgent(selectedAgent)}
-                            title={selectedAgent?.standalone ? t('agents.standalone.tooltip', 'Standalone agent') : t('agents.editAgent', 'Edit agent')}
-                            className="flex-shrink-0"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-
-                          {/* Delete Button */}
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            disabled={selectedAgent?.standalone}
-                            onClick={() => selectedAgent && !selectedAgent.standalone && confirmDeleteAgent(selectedAgent)}
-                            title={selectedAgent?.standalone ? t('agents.standalone.tooltip', 'Standalone agent') : t('agents.deleteAgent', 'Delete agent')}
-                            className="flex-shrink-0"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      {selectedAgent?.error && (
-                        <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-lg">
-                          <div className="flex items-start gap-2">
-                            <XCircle className="h-4 w-4 text-red-500 mt-0.5" />
-                            <div>
-                              <h4 className="text-sm font-medium text-red-900 dark:text-red-100">{t('agents.error', 'Error')}</h4>
-                              <p className="text-sm text-red-700 dark:text-red-300">{selectedAgent.error}</p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {selectedAgent?.status === 'ERRORED' && (
-                        <div className="space-y-3">
-                          <h4 className="font-semibold text-sm">{t('agents.instanceInformation')}</h4>
-                          
-                          <div className="grid gap-3 grid-cols-2">
-                            <div className="p-3 container-content-background/50 rounded-lg">
-                              <div className="space-y-2">
-                                <div className="h-3 bg-muted rounded animate-pulse"></div>
-                                <div className="h-4 bg-muted rounded animate-pulse w-3/4"></div>
-                                <div className="h-3 bg-muted rounded animate-pulse w-1/2"></div>
-                              </div>
-                            </div>
-                            
-                            <div className="p-3 container-content-background/50 rounded-lg">
-                              <div className="space-y-2">
-                                <div className="h-3 bg-muted rounded animate-pulse"></div>
-                                <div className="h-4 bg-muted rounded animate-pulse w-3/4"></div>
-                                <div className="h-3 bg-muted rounded animate-pulse w-1/2"></div>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="p-3 container-content-background/50 rounded-lg">
-                            <div className="space-y-2">
-                              <div className="h-3 bg-muted rounded animate-pulse w-1/4"></div>
-                              <div className="h-4 bg-muted rounded animate-pulse w-1/2"></div>
-                              <div className="h-2 bg-muted rounded animate-pulse w-full"></div>
-                            </div>
-                          </div>
-
-                          <div className="grid gap-3 grid-cols-2">
-                            <div className="p-3 container-content-background/50 rounded-lg">
-                              <div className="space-y-2">
-                                <div className="h-3 bg-muted rounded animate-pulse w-1/3"></div>
-                                <div className="space-y-1">
-                                  <div className="h-3 bg-muted rounded animate-pulse w-2/3"></div>
-                                  <div className="h-3 bg-muted rounded animate-pulse w-1/2"></div>
-                                  <div className="h-3 bg-muted rounded animate-pulse w-3/4"></div>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="p-3 container-content-background/50 rounded-lg">
-                              <div className="space-y-2">
-                                <div className="h-3 bg-muted rounded animate-pulse w-1/3"></div>
-                                <div className="space-y-1">
-                                  <div className="h-3 bg-muted rounded animate-pulse w-2/3"></div>
-                                  <div className="h-3 bg-muted rounded animate-pulse w-1/2"></div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {selectedAgent?.instance && selectedAgent?.status !== 'ERRORED' && (
-                        <div className="space-y-3">
-                          <h4 className="font-semibold text-sm">{t('agents.instanceInformation')}</h4>
-                          
-                          <div className="grid gap-3 grid-cols-2">
-                            <div className="flex p-3 container-content-background/50 rounded-lg">
-                              <div className="flex-1 space-y-1">
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <Activity className="h-3 w-3" />
-                                  <span>{t('agents.application')}</span>
-                                </div>
-                                <div className="text-sm font-medium">
-                                  {t('agents.version')}: {selectedAgent?.instance?.application?.version}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {t('agents.api')}: {selectedAgent?.instance?.application?.api_version}
-                                </div>
-                              </div>
-                              <div className="flex items-center justify-center ml-3">
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <div className="cursor-help">
-                                        <QBittorrentIcon 
-                                          size="sm"
-                                          className="w-5 h-5 text-muted-foreground/60"
-                                        />
-                                      </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>{t('agents.qbittorrent', 'qBittorrent')}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              </div>
-                            </div>
-
-                            {selectedAgent && agentVersions[selectedAgent.uuid] && (
-                              <div className="space-y-1 p-3 container-content-background/50 rounded-lg">
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <Server className="h-3 w-3" />
-                                  <span>{t('agents.agent')}</span>
-                                </div>
-                                <div className="text-sm font-medium">
-                                  {t('agents.version')}: {agentVersions[selectedAgent.uuid].version}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {t('agents.commit')}: {agentVersions[selectedAgent.uuid].commit}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {t('agents.date')}: {agentVersions[selectedAgent.uuid].date}
-                                </div>
-                              </div>
-                            )}
-                            {selectedAgent && loadingVersions[selectedAgent.uuid] && (
-                              <div className="space-y-1 p-3 container-content-background/50 rounded-lg">
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <Server className="h-3 w-3" />
-                                  <span>{t('agents.agent')}</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-sm">
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                  <span>{t('agents.loadingVersion')}</span>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Storage Section - Full Width */}
-                          <div className="space-y-1 p-3 container-content-background/50 rounded-lg">
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <HardDrive className="h-3 w-3" />
-                              <span>{t('agents.storage')}</span>
-                            </div>
-                            <div className="space-y-2 text-sm">
-                              {selectedAgent && agentTaskStats[selectedAgent.uuid] ? (
-                                <>
-                                  <div className="flex justify-between">
-                                    <div className="flex flex-col">
-                                      <span className="text-muted-foreground">{t('agents.usedSpace')}:</span>
-                                      <span className="font-medium">{formatBytes(agentTaskStats[selectedAgent.uuid].total_disk_size)}</span>
-                                    </div>
-                                    <div className="flex flex-col items-end">
-                                      <span className="text-muted-foreground">{t('agents.freeSpace')}:</span>
-                                      <span className="font-medium">{selectedAgent?.instance?.server?.free_space_on_disk && formatBytes(selectedAgent.instance.server.free_space_on_disk)}</span>
-                                    </div>
-                                  </div>
-                                  {(() => {
-                                    const freeSpace = selectedAgent?.instance?.server?.free_space_on_disk || 0;
-                                    const usedSpace = agentTaskStats[selectedAgent.uuid].total_disk_size;
-                                    const totalSpace = freeSpace + usedSpace;
-                                    const usedPercentage = totalSpace > 0 ? (usedSpace / totalSpace) * 100 : 0;
-                                    
-                                    return (
-                                      <div className="space-y-1">
-                                        <div className="w-full bg-muted rounded-full h-2">
-                                          <div 
-                                            className="bg-primary h-2 rounded-full transition-all duration-300" 
-                                            style={{ width: `${usedPercentage}%` }}
-                                          />
-                                        </div>
-                                        <div className="text-xs text-muted-foreground text-center">
-                                          {usedPercentage.toFixed(1)}% {t('agents.used')}
-                                        </div>
-                                      </div>
-                                    );
-                                  })()}
-                                </>
-                              ) : (
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">{t('agents.freeSpace')}:</span>
-                                  <span className="font-medium">{selectedAgent?.instance?.server?.free_space_on_disk && formatBytes(selectedAgent.instance.server.free_space_on_disk)}</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="grid gap-3 grid-cols-2">
-                            {/* Transfer Data Card */}
-                            <div className="space-y-2 p-3 container-content-background/50 rounded-lg">
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                                <Activity className="h-3 w-3" />
-                                <span>{t('agents.transferData', 'Transfer Data')}</span>
-                              </div>
-                              <div className="space-y-2 text-sm">
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">{t('agents.downloaded')}:</span>
-                                  <span className="font-medium">{selectedAgent?.instance?.transfer?.all_time_downloaded && formatBytes(selectedAgent.instance.transfer.all_time_downloaded)}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">{t('agents.uploaded')}:</span>
-                                  <span className="font-medium">{selectedAgent?.instance?.transfer?.all_time_uploaded && formatBytes(selectedAgent.instance.transfer.all_time_uploaded)}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">{t('agents.globalRatio')}:</span>
-                                  <span className="font-medium">{selectedAgent?.instance?.transfer?.global_ratio?.toFixed(2)}</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Network Information Card */}
-                            <div className="space-y-2 p-3 container-content-background/50 rounded-lg">
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                                <Wifi className="h-3 w-3" />
-                                <span>{t('agents.networkInfo', 'Network Info')}</span>
-                              </div>
-                              <div className="space-y-2 text-sm">
-                                {selectedAgent?.instance?.transfer?.last_external_address_v4 && (
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">{t('agents.ipv4', 'IPv4')}:</span>
-                                    <span className="font-mono text-xs">{selectedAgent.instance.transfer.last_external_address_v4}</span>
-                                  </div>
-                                )}
-                                {selectedAgent?.instance?.transfer?.last_external_address_v6 && (
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">{t('agents.ipv6', 'IPv6')}:</span>
-                                    <span className="font-mono text-xs">{selectedAgent.instance.transfer.last_external_address_v6}</span>
-                                  </div>
-                                )}
-                                {!selectedAgent?.instance?.transfer?.last_external_address_v4 && !selectedAgent?.instance?.transfer?.last_external_address_v6 && (
-                                  <div className="text-xs text-muted-foreground text-center py-2">
-                                    {t('agents.noNetworkInfo', 'No network information available')}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </TabsContent>
-
-                    <TabsContent value="stats" className="space-y-4">
-                      {/* Task Statistics Section */}
-                      {selectedAgent && agentTaskStats[selectedAgent.uuid] && (
-                        <div className="space-y-3">
-                          <h4 className="font-semibold text-sm">{t('agents.torrentStatistics')}</h4>
-                        
-                          {/* Overview Stats */}
-                          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                            <div className="space-y-1 p-3 container-content-background/50 rounded-lg">
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <HardDrive className="h-3 w-3" />
-                                <span>{t('agents.totalSize')}</span>
-                              </div>
-                              <div className="text-sm font-medium">
-                                {formatBytes(agentTaskStats[selectedAgent.uuid].total_disk_size)}
-                              </div>
-                            </div>
-
-                            <div className="space-y-1 p-3 container-content-background/50 rounded-lg">
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <Activity className="h-3 w-3" />
-                                <span>{t('agents.activeTasks')}</span>
-                              </div>
-                              <div className="text-sm font-medium">
-                                {agentTaskStats[selectedAgent.uuid].active_tasks_count}
-                              </div>
-                            </div>
-
-                            <div className="space-y-1 p-3 container-content-background/50 rounded-lg">
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <Users className="h-3 w-3" />
-                                <span>{t('agents.activePeers')}</span>
-                              </div>
-                              <div className="text-sm font-medium">
-                                {agentTaskStats[selectedAgent.uuid].active_peers}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Speed Stats */}
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            <div className="space-y-1 p-3 container-content-background/50 rounded-lg">
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <TrendingUp className="h-3 w-3" />
-                                <span>{t('agents.uploadSpeed')}</span>
-                              </div>
-                              <div className="text-sm font-medium">
-                                {formatBytes(agentTaskStats[selectedAgent.uuid].current_upload_speed)}/s
-                              </div>
-                            </div>
-
-                            <div className="space-y-1 p-3 container-content-background/50 rounded-lg">
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <TrendingDown className="h-3 w-3" />
-                                <span>{t('agents.downloadSpeed')}</span>
-                              </div>
-                              <div className="text-sm font-medium">
-                                {formatBytes(agentTaskStats[selectedAgent.uuid].current_download_speed)}/s
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Ratio Stats */}
-                          <div className="space-y-2 p-3 container-content-background/50 rounded-lg">
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                              <BarChart3 className="h-3 w-3" />
-                              <span>{t('agents.ratioStatistics')}</span>
-                            </div>
-                            <div className="grid gap-2 text-sm">
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">{t('agents.average')}:</span>
-                                <span className="font-medium">{agentTaskStats[selectedAgent.uuid].average_ratio.toFixed(2)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">{t('agents.median')}:</span>
-                                <span className="font-medium">{agentTaskStats[selectedAgent.uuid].median_ratio.toFixed(2)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">{t('agents.highest')}:</span>
-                                <span className="font-medium">{agentTaskStats[selectedAgent.uuid].highest_ratio.toFixed(2)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">{t('agents.lowest')}:</span>
-                                <span className="font-medium">{agentTaskStats[selectedAgent.uuid].lowest_ratio.toFixed(2)}</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Category Usage */}
-                          {Object.keys(agentTaskStats[selectedAgent.uuid].category_usage).length > 0 && (
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <Folder className="h-3 w-3" />
-                                <span>{t('agents.categoryUsage')}</span>
-                              </div>
-                              <ChartPieLegend
-                                data={generateCategoryChartData(agentTaskStats[selectedAgent.uuid].category_usage)}
-                                config={generateCategoryChartConfig(agentTaskStats[selectedAgent.uuid].category_usage)}
-                                title=""
-                                description=""
-                                className="container-content-background/50"
-                              />
-                            </div>
-                          )}
-
-                          {/* Tags Usage */}
-                          {Object.keys(agentTaskStats[selectedAgent.uuid].tags_usage).length > 0 && (
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <Tag className="h-3 w-3" />
-                                <span>{t('agents.tagsUsage')}</span>
-                              </div>
-                              <ChartPieLegend
-                                data={generateTagsChartData(agentTaskStats[selectedAgent.uuid].tags_usage)}
-                                config={generateTagsChartConfig(agentTaskStats[selectedAgent.uuid].tags_usage)}
-                                title=""
-                                description=""
-                                className="container-content-background/50"
-                              />
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {selectedAgent && loadingTaskStats[selectedAgent.uuid] && (
-                        <div className="space-y-3">
-                          <h4 className="font-semibold text-sm">{t('agents.torrentStatistics')}</h4>
-                          <div className="flex items-center justify-center py-8">
-                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                            <span className="ml-2 text-muted-foreground">{t('agents.loadingStatistics')}</span>
-                          </div>
-                        </div>
-                      )}
-                    </TabsContent>
-                  </Tabs>
-
-
-                  </div>
-                </CustomScrollArea>
-              )}
-            </DialogContent>
-          </Dialog>
+          <AgentDetailsModal
+            isOpen={showDetailsModal}
+            onClose={() => setShowDetailsModal(false)}
+            agentId={selectedAgentId}
+            onEdit={showEditAgent}
+            onDelete={confirmDeleteAgent}
+          />
 
           {/* Delete Confirmation Modal */}
           <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>

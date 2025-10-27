@@ -15,6 +15,7 @@
       "categories": "Categorias",
       "users": "Usuários",
       "analytics": "Análises",
+      "integrations": "Integrações",
       "settings": "Configurações",
       "profile": "Perfil",
       "about": "Sobre"
@@ -329,6 +330,7 @@
       "delete": "Excluir",
       "edit": "Editar",
       "close": "Fechar",
+      "clickToViewDetails": "Clique para visualizar detalhes do erro",
       "errors": {
         "fillRequiredFields": "Por favor, preencha todos os campos obrigatórios",
         "failedToLoad": "Falha ao carregar agentes",
@@ -447,6 +449,14 @@
       "tryAgain": "Tentar novamente",
       "noTorrents": "Nenhum torrent encontrado",
       "noTorrentsDesc": "Adicione um torrent para começar a fazer download",
+      "noAgents": "Nenhum agente disponível",
+      "noAgentsDesc": "Você precisa registrar um agente antes de gerenciar torrents. Adicione seu primeiro cliente de torrent para começar.",
+      "addFirstAgent": "Adicionar Agente",
+      "agentError": "Erro no Agente",
+      "agentErrorDesc": "Seu agente está com erro e precisa ser corrigido antes de gerenciar torrents. Verifique a configuração do agente e tente novamente.",
+      "fixAgent": "Corrigir Agente",
+      "noTorrentsWithAgents": "Nenhum torrent ainda",
+      "noTorrentsWithAgentsDesc": "Você tem agentes configurados mas nenhum torrent. Adicione seu primeiro torrent para começar a fazer download.",
       "page": "Página",
       "previous": "Anterior",
       "next": "Próxima",
@@ -533,6 +543,7 @@
       "fields": {
         "name": "Nome",
         "defaultTags": "Tags Padrão",
+        "directory": "Diretório",
         "directories": "Diretórios",
         "color": "Cor",
         "icon": "Ícone"
@@ -540,7 +551,20 @@
       "placeholders": {
         "name": "Digite o nome da categoria...",
         "tag": "Adicionar uma tag...",
-        "directory": "Adicionar um caminho de diretório..."
+        "directory": "Adicionar um caminho de diretório...",
+        "tags": "Digite tags (ex: ação, gênero::ação)"
+      },
+      "tagsHint": "💡 Dica: Digite \"ação, aventura, gênero::ação, ano::2024\" para criar tags simples e hierárquicas",
+      "tagsExamples": {
+        "title": "Exemplos de tags:",
+        "simple": "tag simples",
+        "hierarchical": "tag hierárquica",
+        "year": "tag de ano",
+        "quality": "tag de qualidade",
+        "simpleExample": "ação",
+        "hierarchicalExample": "gênero::ação",
+        "yearExample": "ano::2024",
+        "qualityExample": "qualidade::4K"
       },
       "sortBy": {
         "name": "Nome",
@@ -558,6 +582,42 @@
         "updateFailed": "Falha ao atualizar categoria",
         "deleteFailed": "Falha ao excluir categoria"
       }
+    },
+    "integrations": {
+      "title": "Integrações",
+      "subtitle": "Conecte o Gardarr com serviços e ferramentas externas",
+      "categories": {
+        "notifications": "Notificações",
+        "notificationsDescription": "Configure serviços de notificação para receber alertas sobre seus torrents",
+        "synchronizations": "Sincronizações",
+        "synchronizationsDescription": "Sincronize bibliotecas e dados com serviços de mídia",
+        "others": "Outros",
+        "othersDescription": "Integrações adicionais e serviços de terceiros"
+      },
+      "webhook": {
+        "name": "Webhook",
+        "description": "Envie requisições HTTP para endpoints personalizados quando eventos de torrent ocorrerem"
+      },
+      "ntfy": {
+        "name": "Ntfy",
+        "description": "Envie notificações push para seus dispositivos móveis usando o serviço Ntfy"
+      },
+      "jellyfin": {
+        "name": "Jellyfin",
+        "description": "Sincronizar biblioteca com servidor Jellyfin para manter conteúdo atualizado"
+      },
+      "kavita": {
+        "name": "Kavita",
+        "description": "Sincronizar biblioteca com servidor Kavita para manter mangás e quadrinhos atualizados"
+      },
+      "romm": {
+        "name": "RoMM",
+        "description": "Sincronizar biblioteca com RoMM para manter ROMs e jogos retrô atualizados"
+      },
+      "configure": "Configurar",
+      "comingSoon": "Em Breve",
+      "noIntegrations": "Nenhuma integração disponível",
+      "noIntegrationsDescription": "Mais integrações serão adicionadas em atualizações futuras"
     }
   }
   
