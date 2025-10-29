@@ -27,7 +27,7 @@ export default function MostUsedCategoriesWidget({
   const categories: CategoryData[] = Object.entries(categoryUsage)
     .map(([name, count], index) => ({
       id: `category-${index}`,
-      name: name.charAt(0).toUpperCase() + name.slice(1), // Capitalize first letter
+      name: name, // Keep original case
       count: count
     }))
     .sort((a, b) => b.count - a.count) // Sort by count descending
@@ -120,11 +120,11 @@ export default function MostUsedCategoriesWidget({
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <span className="text-sm font-medium truncate block cursor-help">
-                              #{tag.name}
+                              {tag.name}
                             </span>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>#{tag.name}</p>
+                            <p>{tag.name}</p>
                           </TooltipContent>
                         </Tooltip>
                       </div>

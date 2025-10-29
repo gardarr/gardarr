@@ -1,10 +1,8 @@
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface DateRangePickerProps {
   fromDate: Date | undefined;
@@ -20,54 +18,42 @@ export default function DateRangePicker({
   onToDateChange,
 }: DateRangePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [selectedDays, setSelectedDays] = useState<1 | 3 | 7>(1);
 
-  const handleDateSelect = (date: Date | undefined) => {
-    if (!date) return;
-
-    // If no fromDate is selected, set it as fromDate
-    if (!fromDate) {
-      onFromDateChange(date);
-      return;
-    }
-
-    // If fromDate is selected but no toDate, set it as toDate
-    if (fromDate && !toDate) {
-      // If selected date is before fromDate, swap them
-      if (date < fromDate) {
-        onToDateChange(fromDate);
-        onFromDateChange(date);
-      } else {
-        onToDateChange(date);
-      }
-      setIsOpen(false);
-      return;
-    }
-
-    // If both dates are selected, reset and start over
-    onFromDateChange(date);
-    onToDateChange(undefined);
+  const applyRange = (days: 1 | 3 | 7) => {
+    const now = new Date();
+    const start = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    onFromDateChange(start);
+    onToDateChange(now);
+    setSelectedDays(days);
+    setIsOpen(false);
   };
 
-  const clearSelection = () => {
-    onFromDateChange(undefined);
-    onToDateChange(undefined);
-  };
+  // Ensure default selection is 1d if no dates provided
+  useEffect(() => {
+    if (!fromDate || !toDate) {
+      const now = new Date();
+      const start = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
+      onFromDateChange(start);
+      onToDateChange(now);
+      setSelectedDays(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const getDisplayText = () => {
-    if (!fromDate && !toDate) {
-      return "Select date range";
-    }
-    
-    if (fromDate && !toDate) {
-      return `${format(fromDate, "dd/MM/yyyy")} - Select end date`;
-    }
-    
+  const displayText = useMemo(() => {
+    if (selectedDays) return `Hoje -${selectedDays} dias`;
     if (fromDate && toDate) {
-      return `${format(fromDate, "dd/MM/yyyy")} - ${format(toDate, "dd/MM/yyyy")}`;
+      // try infer known options
+      const diffMs = toDate.getTime() - fromDate.getTime();
+      const dayMs = 24 * 60 * 60 * 1000;
+      const approx = Math.round(diffMs / dayMs) as 1 | 3 | 7;
+      if (approx === 1 || approx === 3 || approx === 7) {
+        return `Hoje -${approx} dias`;
+      }
     }
-    
-    return "Select date range";
-  };
+    return "Selecionar intervalo";
+  }, [selectedDays, fromDate, toDate]);
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -76,45 +62,19 @@ export default function DateRangePicker({
           variant="outline"
           className={cn(
             "w-fit min-w-[200px] justify-start text-left font-normal",
-            (!fromDate && !toDate) && "text-muted-foreground"
+            !selectedDays && !(fromDate && toDate) && "text-muted-foreground"
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {getDisplayText()}
+          {displayText}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          selected={fromDate}
-          onSelect={handleDateSelect}
-          initialFocus
-          disabled={(date) => {
-            const today = new Date();
-            const fourteenDaysAgo = new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000);
-            return date > today || date < fourteenDaysAgo;
-          }}
-          modifiers={{
-            range_start: fromDate,
-            range_end: toDate,
-          }}
-          modifiersClassNames={{
-            range_start: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
-            range_end: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
-          }}
-        />
-        {(fromDate || toDate) && (
-          <div className="p-3 border-t">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={clearSelection}
-              className="w-full"
-            >
-              Clear Selection
-            </Button>
-          </div>
-        )}
+      <PopoverContent className="w-[200px] p-2" align="start">
+        <div className="flex flex-col gap-2">
+          <Button variant="ghost" className="justify-start" onClick={() => applyRange(1)}>1d</Button>
+          <Button variant="ghost" className="justify-start" onClick={() => applyRange(3)}>3d</Button>
+          <Button variant="ghost" className="justify-start" onClick={() => applyRange(7)}>7d</Button>
+        </div>
       </PopoverContent>
     </Popover>
   );

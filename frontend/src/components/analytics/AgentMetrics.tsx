@@ -11,8 +11,8 @@ import {
   Server
 } from 'lucide-react';
 import type { TaskStats, Agent } from '../../types/agent';
-import type { Task } from '../../types/torrent';
  import { agentService } from '../../services/agents';
+import { statisticsService } from '../../services/statistics';
 import MostUploadedTorrents from '@/components/widgets/MostUploadedTorrents';
 import ConnectedPeersCard from '@/components/widgets/ConnectedPeersCard';
 import ConnectedSeedersCard from '@/components/widgets/ConnectedSeedersCard';
@@ -29,8 +29,11 @@ const mockTaskStats: TaskStats = {
   highest_ratio: 3.67,
   lowest_ratio: 0.12,
   active_tasks_count: 23,
+  total_tasks_count: 45,
   active_seeds: 156,
   active_peers: 89,
+  swarm_seeders: 320,
+  swarm_leechers: 210,
   category_usage: {
     'movies': 45,
     'tv-shows': 32,
@@ -44,6 +47,23 @@ const mockTaskStats: TaskStats = {
     '720p': 12,
     'hdr': 8,
     'dolby-atmos': 6
+  },
+  word_cloud: {
+    'movie': 15,
+    'series': 12,
+    'episode': 10,
+    'season': 8,
+    'hd': 7,
+    'bluray': 6,
+    'x264': 5,
+    '1080p': 4,
+    'hdtv': 3,
+    'webrip': 2,
+    'torrent': 8,
+    'download': 5,
+    'complete': 4,
+    'rip': 3,
+    'quality': 2
   }
 };
 
@@ -88,72 +108,6 @@ const mockAgents: Agent[] = [
   }
 ];
 
-const mockRecentTasks: Task[] = [
-  {
-    id: '1',
-    name: 'The Matrix 4K HDR',
-    hash: 'abc123def456',
-    state: 'downloading',
-    category: 'movies',
-    path: '/downloads/movies',
-    priority: 1,
-    ratio: 0.0,
-    size: 25 * 1024 * 1024 * 1024,
-    progress: 65.5,
-    magnet_uri: 'magnet:?xt=urn:btih:abc123def456',
-    magnet_link: {
-      hash: 'abc123def456',
-      display_name: 'The Matrix 4K HDR',
-      trackers: ['http://tracker.example.com'],
-      exact_length: '26843545600',
-      exact_source: 'example.com'
-    },
-    popularity: 95,
-    pairs: {
-      swarm_seeders: 45,
-      swarm_leechers: 23,
-      seeders: 42,
-      leechers: 21
-    },
-    network: {
-      download: { speed: 15.2 * 1024 * 1024, amount: 16.4 * 1024 * 1024 * 1024 },
-      upload: { speed: 2.1 * 1024 * 1024, amount: 1.2 * 1024 * 1024 * 1024 }
-    },
-    tags: ['4k', 'hdr', 'dolby-atmos']
-  },
-  {
-    id: '2',
-    name: 'Stranger Things S04',
-    hash: 'def456ghi789',
-    state: 'seeding',
-    category: 'tv-shows',
-    path: '/downloads/tv',
-    priority: 2,
-    ratio: 2.34,
-    size: 18 * 1024 * 1024 * 1024,
-    progress: 100.0,
-    magnet_uri: 'magnet:?xt=urn:btih:def456ghi789',
-    magnet_link: {
-      hash: 'def456ghi789',
-      display_name: 'Stranger Things S04',
-      trackers: ['http://tracker.example.com'],
-      exact_length: '19327352832',
-      exact_source: 'example.com'
-    },
-    popularity: 88,
-    pairs: {
-      swarm_seeders: 78,
-      swarm_leechers: 12,
-      seeders: 75,
-      leechers: 10
-    },
-    network: {
-      download: { speed: 0, amount: 18 * 1024 * 1024 * 1024 },
-      upload: { speed: 8.5 * 1024 * 1024, amount: 42.1 * 1024 * 1024 * 1024 }
-    },
-    tags: ['1080p', 'hdr']
-  }
-];
 
 // Utility functions
 const formatBytes = (bytes: number): string => {
@@ -200,44 +154,17 @@ const MetricCard: React.FC<MetricCardProps> = ({ title, value, subtitle, icon: I
 
 // Word Cloud Component
 interface WordCloudProps {
-  tasks: Task[];
+  wordCloud: Record<string, number>;
   title: string;
 }
 
-const WordCloud: React.FC<WordCloudProps> = ({ tasks, title }) => {
-  // Extract and process terms from task names and tags
-  const extractTerms = (tasks: Task[]) => {
-    const termCounts: Record<string, number> = {};
-    
-    tasks.forEach(task => {
-      // Extract terms from task name (split by common separators)
-      const nameTerms = task.name
-        .toLowerCase()
-        .replace(/[^\w\s]/g, ' ')
-        .split(/\s+/)
-        .filter(term => term.length > 2 && !['the', 'and', 'for', 'with', 'from', 'this', 'that'].includes(term));
-      
-      // Add terms from tags
-      const tagTerms = task.tags || [];
-      
-      // Combine and count terms
-      [...nameTerms, ...tagTerms].forEach(term => {
-        if (term && term.length > 1) {
-          termCounts[term] = (termCounts[term] || 0) + 1;
-        }
-      });
-    });
-    
-    return termCounts;
-  };
-
-  const termCounts = extractTerms(tasks);
-  const sortedTerms = Object.entries(termCounts)
+const WordCloud: React.FC<WordCloudProps> = ({ wordCloud, title }) => {
+  const sortedTerms = Object.entries(wordCloud)
     .sort(([, a], [, b]) => b - a)
     .slice(0, 25); // Limit to top 25 terms
 
-  const maxCount = Math.max(...sortedTerms.map(([, count]) => count));
-  const minCount = Math.min(...sortedTerms.map(([, count]) => count));
+  const maxCount = sortedTerms.length > 0 ? Math.max(...sortedTerms.map(([, count]) => count)) : 0;
+  const minCount = sortedTerms.length > 0 ? Math.min(...sortedTerms.map(([, count]) => count)) : 0;
 
   // Color variations for theme compatibility
   const colors = [
@@ -254,6 +181,7 @@ const WordCloud: React.FC<WordCloudProps> = ({ tasks, title }) => {
   ];
 
   const getFontSize = (count: number) => {
+    if (maxCount === minCount) return 16; // Default size when all counts are the same
     const ratio = (count - minCount) / (maxCount - minCount);
     return Math.max(12, Math.min(32, 12 + ratio * 20));
   };
@@ -275,17 +203,25 @@ const WordCloud: React.FC<WordCloudProps> = ({ tasks, title }) => {
           {sortedTerms.length > 0 ? (
             <div className="flex flex-wrap gap-2 justify-center items-center h-full">
               {sortedTerms.map(([term, count], index) => (
-                <span
+                <div
                   key={term}
-                  className={`inline-block px-2 py-1 rounded-md bg-secondary/50 hover:bg-secondary transition-colors cursor-pointer ${getColor(index)}`}
-                  style={{ 
-                    fontSize: `${getFontSize(count)}px`,
-                    fontWeight: count > maxCount * 0.7 ? 'bold' : 'normal'
-                  }}
-                  title={`${term}: ${count} occurrences`}
+                  className="relative group"
                 >
-                  {term}
-                </span>
+                  <span
+                    className={`inline-block px-2 py-1 rounded-md bg-secondary/50 hover:bg-secondary transition-colors cursor-pointer ${getColor(index)}`}
+                    style={{ 
+                      fontSize: `${getFontSize(count)}px`,
+                      fontWeight: count > maxCount * 0.7 ? 'bold' : 'normal'
+                    }}
+                  >
+                    {term}
+                  </span>
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                    {term}: {count} occurrences
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                  </div>
+                </div>
               ))}
             </div>
           ) : (
@@ -295,7 +231,7 @@ const WordCloud: React.FC<WordCloudProps> = ({ tasks, title }) => {
           )}
         </div>
         <div className="mt-4 text-xs text-muted-foreground text-center">
-          {sortedTerms.length} terms from {tasks.length} tasks • Click terms to see frequency
+          {sortedTerms.length} terms from task names • Click terms to see frequency
         </div>
       </CardContent>
     </Card>
@@ -307,43 +243,35 @@ interface AgentMetricsProps {
   toDate?: Date;
   selectedAgentId?: string | null;
   onAgentChange?: (agentId: string) => void;
+  topUploaded?: Array<{ task: string; diff: number }>;
+  taskNameById?: Record<string, string>;
 }
 
-const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedAgentId, onAgentChange }) => {
+const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedAgentId, onAgentChange, topUploaded, taskNameById }) => {
   const [stats, setStats] = useState<TaskStats | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [recentTasks, setRecentTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [windowedData, setWindowedData] = useState<unknown[] | null>(null);
 
   // API calls for agent metrics
   useEffect(() => {
+    let isMounted = true; // Flag to track if component is mounted
+    
     const fetchAgentMetrics = async () => {
       setIsLoading(true);
       try {
-        // Fetch agents list
-        const agentsResponse = await agentService.listAgents();
-        setAgents(agentsResponse.data || []);
+        console.log('Fetching metrics for selectedAgentId:', selectedAgentId, 'Type:', typeof selectedAgentId);
         
-        // If a specific agent is selected, fetch its stats and agent details
-        if (selectedAgentId) {
-          const [statsResponse, agentResponse] = await Promise.all([
-            agentService.getAgentTaskStats(selectedAgentId),
-            agentService.getAgent(selectedAgentId)
-          ]);
+        // Early return if no selectedAgentId to avoid unnecessary processing
+        if (!selectedAgentId || selectedAgentId.trim() === '') {
+          console.log('No selectedAgentId, loading aggregated data from all agents');
+          // Fetch agents list
+          const agentsResponse = await agentService.listAgents();
+          if (!isMounted) return; // Check if still mounted
           
-          setStats(statsResponse.data || null);
+          setAgents(agentsResponse.data || []);
           
-          // Update the agent with real storage information
-          if (agentResponse.data) {
-            const updatedAgent = { ...agentResponse.data };
-            setAgents(prevAgents => 
-              prevAgents.map(agent => 
-                agent.uuid === selectedAgentId ? updatedAgent : agent
-              )
-            );
-          }
-        } else {
           // If no specific agent selected, aggregate data from all active agents
           const activeAgents = agentsResponse.data?.filter(agent => agent.status === 'ACTIVE') || [];
           
@@ -354,12 +282,16 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
             );
             
             const allStats = await Promise.all(statsPromises);
+            if (!isMounted) return; // Check if still mounted
+            
             const validStats = allStats.filter(response => response?.data);
             
             if (validStats.length > 0) {
+              console.log('Aggregating stats from', validStats.length, 'agents');
               // Aggregate the stats from all active agents
               const aggregatedStats = validStats.reduce((acc, response) => {
                 const data = response!.data!;
+                console.log('Adding stats from agent:', data);
                 return {
                   total_disk_size: acc.total_disk_size + data.total_disk_size,
                   current_upload_speed: acc.current_upload_speed + data.current_upload_speed,
@@ -369,8 +301,11 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
                   highest_ratio: Math.max(acc.highest_ratio, data.highest_ratio),
                   lowest_ratio: Math.min(acc.lowest_ratio, data.lowest_ratio),
                   active_tasks_count: acc.active_tasks_count + data.active_tasks_count,
+                  total_tasks_count: acc.total_tasks_count + data.total_tasks_count,
                   active_seeds: acc.active_seeds + data.active_seeds,
                   active_peers: acc.active_peers + data.active_peers,
+                  swarm_seeders: acc.swarm_seeders + (data.swarm_seeders ?? 0),
+                  swarm_leechers: acc.swarm_leechers + (data.swarm_leechers ?? 0),
                   category_usage: Object.keys(data.category_usage).reduce((catAcc, category) => {
                     catAcc[category] = (catAcc[category] || 0) + data.category_usage[category];
                     return catAcc;
@@ -378,7 +313,11 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
                   tags_usage: Object.keys(data.tags_usage).reduce((tagAcc, tag) => {
                     tagAcc[tag] = (tagAcc[tag] || 0) + data.tags_usage[tag];
                     return tagAcc;
-                  }, acc.tags_usage)
+                  }, acc.tags_usage),
+                  word_cloud: Object.keys(data.word_cloud || {}).reduce((wordAcc, word) => {
+                    wordAcc[word] = (wordAcc[word] || 0) + data.word_cloud[word];
+                    return wordAcc;
+                  }, acc.word_cloud)
                 };
               }, {
                 total_disk_size: 0,
@@ -389,10 +328,14 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
                 highest_ratio: 0,
                 lowest_ratio: Infinity,
                 active_tasks_count: 0,
+                total_tasks_count: 0,
                 active_seeds: 0,
                 active_peers: 0,
+                swarm_seeders: 0,
+                swarm_leechers: 0,
                 category_usage: {} as Record<string, number>,
-                tags_usage: {} as Record<string, number>
+                tags_usage: {} as Record<string, number>,
+                word_cloud: {} as Record<string, number>
               });
               
               // Fix lowest_ratio if no valid ratios were found
@@ -400,31 +343,74 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
                 aggregatedStats.lowest_ratio = 0;
               }
               
-              setStats(aggregatedStats);
+              console.log('Final aggregated stats:', aggregatedStats);
+              if (isMounted) setStats(aggregatedStats);
             } else {
               // Fallback to mock data if no valid stats
-              setStats(mockTaskStats);
+              if (isMounted) setStats(mockTaskStats);
             }
           } else {
             // No active agents, use mock data
-            setStats(mockTaskStats);
+            if (isMounted) setStats(mockTaskStats);
           }
+          return;
         }
         
-        // For now, use mock tasks data
-        setRecentTasks(mockRecentTasks);
+        // If a specific agent is selected, fetch its stats, agent details and windowed data
+        if (selectedAgentId && selectedAgentId.trim() !== '') {
+          console.log('Loading single agent data for:', selectedAgentId);
+          const nowIso = (toDate ?? new Date()).toISOString();
+          const fromIso = (fromDate ?? new Date(Date.now() - 24 * 60 * 60 * 1000)).toISOString();
+          const [statsResponse, agentResponse, windowedResponse] = await Promise.all([
+            agentService.getAgentTaskStats(selectedAgentId),
+            agentService.getAgent(selectedAgentId),
+            statisticsService.getWindowed({ agentId: selectedAgentId, from: fromIso, to: nowIso, step: '5m', groupBy: 'agent' })
+          ]);
+          
+          if (!isMounted) return; // Check if still mounted
+          
+          console.log('Single agent stats:', statsResponse.data);
+          setStats(statsResponse.data || null);
+          if (windowedResponse.data) {
+            setWindowedData(windowedResponse.data.windows as unknown[]);
+          } else {
+            setWindowedData(null);
+          }
+          
+          // Update the agent with real storage information
+          if (agentResponse.data) {
+            const updatedAgent = { ...agentResponse.data };
+            // Ensure the selected agent is present in the agents list and set it as selected
+            setAgents(prevAgents => {
+              const exists = prevAgents.some(agent => agent.uuid === selectedAgentId);
+              if (exists) {
+                return prevAgents.map(agent =>
+                  agent.uuid === selectedAgentId ? updatedAgent : agent
+                );
+              }
+              return [...prevAgents, updatedAgent];
+            });
+            setSelectedAgent(updatedAgent);
+          }
+        }
       } catch (error) {
         console.error('Failed to fetch agent metrics:', error);
         // Set fallback data
-        setStats(mockTaskStats);
-        setAgents(mockAgents);
-        setRecentTasks(mockRecentTasks);
+        if (isMounted) {
+          setStats(mockTaskStats);
+          setAgents(mockAgents);
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     };
 
     fetchAgentMetrics();
+    
+    // Cleanup function to mark component as unmounted
+    return () => {
+      isMounted = false;
+    };
   }, [fromDate, toDate, selectedAgentId]);
 
   // Handle selectedAgentId changes
@@ -499,46 +485,58 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
         <MetricCard
           title="Total Storage"
           value={formatBytes(stats.total_disk_size)}
-          subtitle={selectedAgent ? `Free: ${formatBytes(selectedAgent.instance.server.free_space_on_disk)}` : "Used disk space (all agents)"}
+          subtitle={selectedAgent ? `Free: ${formatBytes(selectedAgent.instance.server.free_space_on_disk)}` : `Free: ${formatBytes(agents.filter(a => a.status === 'ACTIVE').reduce((sum, agent) => sum + agent.instance.server.free_space_on_disk, 0))}`}
           icon={HardDrive}
           color="text-blue-500"
         />
         <MetricCard
           title="Download Speed"
           value={formatSpeed(stats.current_download_speed)}
-          subtitle="Current rate"
+          subtitle={selectedAgent ? `${selectedAgent.name}` : `Combined from ${agents.filter(a => a.status === 'ACTIVE').length} agents`}
           icon={Download}
           color="text-green-500"
         />
         <MetricCard
           title="Upload Speed"
           value={formatSpeed(stats.current_upload_speed)}
-          subtitle="Current rate"
+          subtitle={selectedAgent ? `${selectedAgent.name}` : `Combined from ${agents.filter(a => a.status === 'ACTIVE').length} agents`}
           icon={Upload}
           color="text-purple-500"
         />
         <MetricCard
           title="Active Tasks"
           value={stats.active_tasks_count.toString()}
-          subtitle={`${stats.active_seeds} seeding, ${stats.active_peers} peers`}
+          subtitle={`${stats.total_tasks_count} total tasks`}
           icon={Activity}
           color="text-purple-500"
         />
         <MetricCard
           title="Ratio"
           value={selectedAgent ? selectedAgent.instance.transfer.global_ratio.toFixed(2) : stats.average_ratio.toFixed(2)}
-          subtitle={selectedAgent ? `${stats.highest_ratio.toFixed(2)} highest / ${stats.lowest_ratio.toFixed(2)} lowest` : `${stats.highest_ratio.toFixed(2)} highest / ${stats.lowest_ratio.toFixed(2)} lowest (all agents)`}
+          subtitle={`${stats.highest_ratio.toFixed(2)} highest / ${stats.lowest_ratio.toFixed(2)} lowest`}
           icon={TrendingUp}
           color="text-lime-500"
         />
-        <ConnectedSeedersCard />
-        <ConnectedPeersCard />
+        <MetricCard
+          title="Connected Seeders"
+          value={stats.active_seeds.toString()}
+          subtitle={selectedAgent ? `Swarm: ${stats.swarm_seeders ?? 0}` : `Active seeders`}
+          icon={Upload}
+          color="text-green-500"
+        />
+        <MetricCard
+          title="Connected Peers"
+          value={stats.active_peers.toString()}
+          subtitle={selectedAgent ? `Swarm: ${stats.swarm_leechers ?? 0}` : `Active peers`}
+          icon={Download}
+          color="text-orange-500"
+        />
       </div>
 
 
       {/* Word Cloud Section */}
       <WordCloud
-        tasks={recentTasks}
+        wordCloud={stats.word_cloud || {}}
         title="Task Terms Cloud"
       />
 
@@ -555,7 +553,7 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
         />
 
         {/* Most Uploaded Torrents Card */}
-        <MostUploadedTorrents />
+        <MostUploadedTorrents items={topUploaded} taskNameById={taskNameById} />
       </div>
 
       {/* Selected Agent Details */}

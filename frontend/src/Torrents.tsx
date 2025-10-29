@@ -1426,7 +1426,8 @@ export default function TorrentsPage() {
     if (searchTerm.trim()) {
       filtered = filtered.filter(torrent =>
         torrent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        torrent.status.toLowerCase().includes(searchTerm.toLowerCase())
+        torrent.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        torrent.id.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     

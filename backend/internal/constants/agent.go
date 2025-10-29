@@ -1,6 +1,8 @@
 package constants
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+)
 
 const (
 	AgentPortEnv               = "AGENT_PORT"
@@ -8,6 +10,13 @@ const (
 	StandaloneAgentAddress     = "http://127.0.0.1:3100"
 	AgentTimeoutSecondsEnv     = "AGENT_TIMEOUT_SECONDS"
 	DefaultAgentTimeoutSeconds = 3
+
+	QBittorrentRequestTimeoutSecondsEnv = "QBITTORRENT_REQUEST_TIMEOUT_SECONDS"
+	QBittorrentMaxRetriesEnv            = "QBITTORRENT_MAX_RETRIES"
+	QBittorrentRetryBackoffEnv          = "QBITTORRENT_RETRY_BACKOFF"
+	QBittorrentBaseURLEnv               = "QBITTORRENT_BASEURL"
+	QBittorrentUsernameEnv              = "QBITTORRENT_USERNAME"
+	QBittorrentPasswordEnv              = "QBITTORRENT_PASSWORD"
 )
 
 const (

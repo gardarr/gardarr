@@ -3,7 +3,9 @@ package agent
 import (
 	"context"
 	"strconv"
+	"time"
 
+	"github.com/gardarr/gardarr/internal/constants"
 	"github.com/gardarr/gardarr/internal/entities"
 	"github.com/gardarr/gardarr/pkg/env"
 	"github.com/jfxdev/go-qbt"
@@ -16,9 +18,12 @@ type Repository struct {
 
 func New() (*Repository, error) {
 	client, err := qbt.New(qbt.Config{
-		BaseURL:  env.Get("QBITTORRENT_BASEURL").Value(),
-		Username: env.Get("QBITTORRENT_USERNAME").Value(),
-		Password: env.Get("QBITTORRENT_PASSWORD").Value(),
+		BaseURL:        env.Get(constants.QBittorrentBaseURLEnv).Value(),
+		Username:       env.Get(constants.QBittorrentUsernameEnv).Value(),
+		Password:       env.Get(constants.QBittorrentPasswordEnv).Value(),
+		RequestTimeout: time.Duration(env.Get(constants.QBittorrentRequestTimeoutSecondsEnv).Default(3).ValueInt()) * time.Second,
+		MaxRetries:     env.Get(constants.QBittorrentMaxRetriesEnv).Default(0).ValueInt(),
+		RetryBackoff:   time.Duration(env.Get(constants.QBittorrentRetryBackoffEnv).Default(1).ValueInt()) * time.Second,
 	})
 	if err != nil {
 		return nil, err

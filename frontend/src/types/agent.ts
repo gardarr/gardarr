@@ -82,8 +82,12 @@ export interface TaskStats {
   highest_ratio: number;
   lowest_ratio: number;
   active_tasks_count: number;
+  total_tasks_count: number;
   active_seeds: number;
   active_peers: number;
+  swarm_seeders: number; // total seeders in swarm for selected agent context
+  swarm_leechers: number; // total leechers in swarm for selected agent context
   category_usage: Record<string, number>;
   tags_usage: Record<string, number>;
+  word_cloud: Record<string, number>;
 }

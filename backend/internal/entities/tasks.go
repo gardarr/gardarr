@@ -9,6 +9,7 @@ type Task struct {
 	Category     string
 	Path         string
 	Size         int
+	Active       bool
 	Priority     int
 	Ratio        float64
 	Progress     float64
@@ -95,6 +96,24 @@ var TaskStatuses = map[string]string{
 	"unknown":            "UNKNOWN",
 }
 
+var InactiveTaskStates = []string{
+	"error",
+	"paused",
+	"completed",
+	"missingFiles",
+	"pausedUP",
+	"stoppedUP",
+	"queuedUP",
+	"stalledUP",
+	"checkingUP",
+	"queuedDL",
+	"stalledDL",
+	"checkingDL",
+	"checkingResumeData",
+	"moving",
+	"unknown",
+}
+
 type TaskStats struct {
 	TotalDiskSize        int64
 	CurrentUploadSpeed   int
@@ -104,8 +123,12 @@ type TaskStats struct {
 	HighestRatio         float64
 	LowestRatio          float64
 	ActiveTasksCount     int
+	TotalTasksCount      int
 	ActiveSeeds          int
 	ActivePeers          int
+	SwarmSeeders         int
+	SwarmLeechers        int
 	CategoryUsage        map[string]int
 	TagsUsage            map[string]int
+	WordCloud            map[string]int
 }
