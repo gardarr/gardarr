@@ -15,7 +15,7 @@ import { availableIcons, availableColors, getCategoryIcon } from "../utils/categ
 interface AddCategoryModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCategoryCreated: (category: unknown) => void;
+  onCategoryCreated: (category: CreateCategoryRequest) => Promise<Category | undefined> | void;
   editingCategory?: Category | null;
   onCategoryUpdated?: (categoryId: string, updateData: UpdateCategoryRequest) => Promise<void>;
 }

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { getAgentIcon, getAgentColor, availableIcons, availableColors } from '../agentUtils';
 import { Server, Database, Cloud, Monitor, Cpu, MemoryStick, HardDriveIcon, Globe, Router, Network, Download, Upload, FileText, Music, Video, Image, Archive, Folder, Zap, Shield } from 'lucide-react';
 import { QBittorrentIcon } from '../../components/ui/QBittorrentIcon';

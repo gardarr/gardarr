@@ -30,6 +30,14 @@ const Analytics: React.FC = () => {
   const [topUploaded, setTopUploaded] = useState<Array<{ task: string; diff: number }>>([]);
   const [taskNameById, setTaskNameById] = useState<Record<string, string>>({});
 
+  // Get the effective agent ID for metrics calculation
+  const getEffectiveAgentId = useCallback(() => {
+    // If no agent is selected, return empty string to indicate "all agents"
+    // The AgentMetrics component will handle aggregating data from all active agents
+    console.log('getEffectiveAgentId called:', { selectedAgentId, agent_uuid, result: selectedAgentId || '' });
+    return selectedAgentId || '';
+  }, [selectedAgentId, agent_uuid]);
+
   // Manual refresh anchored to now, preserving current range duration
   const handleRefreshNow = () => {
     const now = new Date();
@@ -80,17 +88,7 @@ const Analytics: React.FC = () => {
     }
   };
 
-  // Handle agent selection changes
-  const handleAgentChange = (agentId: string) => {
-    setSelectedAgentId(agentId);
-    if (agentId) {
-      // Update URL to include agent UUID
-      navigate(`/analytics/agent/${agentId}`);
-    } else {
-      // Navigate to base analytics URL when no agent selected
-      navigate('/analytics');
-    }
-  };
+  // (agent change handler no longer needed here)
 
   // Fetch Top Uploaded Torrents using upload-diffs endpoint
   useEffect(() => {
@@ -194,14 +192,6 @@ const Analytics: React.FC = () => {
     loadTasks();
   }, [selectedAgentId, getEffectiveAgentId]);
 
-  // Get the effective agent ID for metrics calculation
-  const getEffectiveAgentId = useCallback(() => {
-    // If no agent is selected, return empty string to indicate "all agents"
-    // The AgentMetrics component will handle aggregating data from all active agents
-    console.log('getEffectiveAgentId called:', { selectedAgentId, agent_uuid, result: selectedAgentId || '' });
-    return selectedAgentId || '';
-  }, [selectedAgentId, agent_uuid]);
-
   // Handle task selection changes
   const handleTaskChange = (taskId: string) => {
     setSelectedTaskId(taskId);
@@ -263,7 +253,6 @@ const Analytics: React.FC = () => {
             fromDate={fromDate}
             toDate={toDate}
             selectedAgentId={getEffectiveAgentId()}
-            onAgentChange={handleAgentChange}
             topUploaded={topUploaded}
             taskNameById={taskNameById}
           />

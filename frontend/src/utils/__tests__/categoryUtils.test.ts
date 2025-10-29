@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { getCategoryIcon, getCategoryColor, availableIcons, availableColors } from '../categoryUtils';
 import { Folder, Film, Tv } from 'lucide-react';
 

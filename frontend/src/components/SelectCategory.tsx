@@ -5,7 +5,7 @@ import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { AddCategoryModal } from "@/components/AddCategoryModal";
 import { categoryService } from "@/services/categories";
 import { Folder, ChevronsUpDown, Check, Plus } from "lucide-react";
-import type { Category } from "@/types/category";
+import type { Category, CreateCategoryRequest } from "@/types/category";
 
 interface SelectCategoryProps {
   selectedCategoryId: string;
@@ -77,9 +77,9 @@ export function SelectCategory({
     setCategoryModalOpen(true);
   };
 
-  const handleCategoryCreated = async (categoryData: unknown) => {
+  const handleCategoryCreated = async (categoryData: unknown): Promise<Category | undefined> => {
     try {
-      const response = await categoryService.createCategory(categoryData);
+      const response = await categoryService.createCategory(categoryData as CreateCategoryRequest);
       if (response.data) {
         // Reload categories list
         await loadCategories();
@@ -89,10 +89,12 @@ export function SelectCategory({
         if (onCategoryCreated) {
           onCategoryCreated(response.data);
         }
+        return response.data;
       }
     } catch (err) {
       console.error('Failed to create category:', err);
     }
+    return undefined;
   };
 
   const selectedCategory = categories.find(cat => cat.id === selectedCategoryId);

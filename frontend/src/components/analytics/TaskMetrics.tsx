@@ -469,10 +469,13 @@ interface FileSizeChartProps {
 const FileSizeChart: React.FC<FileSizeChartProps> = ({ data, title }) => {
   // Transform data to match the expected format for ChartBarHorizontal and sort by size (largest to smallest)
   const chartData = data
-    .map(file => ({
-      name: file.name,
-      size: file.sizeGB
-    }))
+    .map(file => {
+      const f = file as { name?: string; sizeGB?: number };
+      return {
+        name: f.name ?? '',
+        size: f.sizeGB ?? 0
+      };
+    })
     .sort((a, b) => b.size - a.size);
 
   const chartConfig = {
