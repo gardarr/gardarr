@@ -16,7 +16,7 @@ export interface WindowedResponse<T = unknown> {
   to: string;
   step: string;
   group_by: string;
-  windows: T[] | Record<string, any>;
+  windows: T[] | Record<string, unknown>;
 }
 
 export interface UploadDiffResult {

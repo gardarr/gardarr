@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -7,7 +6,6 @@ import { ProgressBar } from '@/components/ui/ProgressBar';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, AreaChart, Area, BarChart, Bar } from 'recharts';
 import { 
-  BarChart3, 
   HardDrive, 
   Download, 
   Upload, 
@@ -305,7 +303,7 @@ const swarmChartConfig = {
 
 // Speed Chart Component
 interface SpeedChartProps {
-  data: any[];
+  data: unknown[];
   title: string;
 }
 
@@ -358,7 +356,7 @@ const SpeedChart: React.FC<SpeedChartProps> = ({ data, title }) => {
 
 // Peers Chart Component
 interface PeersChartProps {
-  data: any[];
+  data: unknown[];
   title: string;
 }
 
@@ -411,7 +409,7 @@ const PeersChart: React.FC<PeersChartProps> = ({ data, title }) => {
 
 // Swarm Chart Component
 interface SwarmChartProps {
-  data: any[];
+  data: unknown[];
   title: string;
 }
 
@@ -464,7 +462,7 @@ const SwarmChart: React.FC<SwarmChartProps> = ({ data, title }) => {
 
 // File Size Chart Component using the existing horizontal bar chart
 interface FileSizeChartProps {
-  data: any[];
+  data: unknown[];
   title: string;
 }
 
@@ -643,10 +641,8 @@ const TaskMetrics: React.FC<TaskMetricsProps> = ({
   fromDate, 
   toDate, 
   selectedTaskId = '1', 
-  selectedAgentId,
   onTaskChange 
 }) => {
-  const { t } = useTranslation();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 

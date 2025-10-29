@@ -77,7 +77,7 @@ export function SelectCategory({
     setCategoryModalOpen(true);
   };
 
-  const handleCategoryCreated = async (categoryData: any) => {
+  const handleCategoryCreated = async (categoryData: unknown) => {
     try {
       const response = await categoryService.createCategory(categoryData);
       if (response.data) {

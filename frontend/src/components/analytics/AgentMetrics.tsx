@@ -12,10 +12,7 @@ import {
 } from 'lucide-react';
 import type { TaskStats, Agent } from '../../types/agent';
  import { agentService } from '../../services/agents';
-import { statisticsService } from '../../services/statistics';
 import MostUploadedTorrents from '@/components/widgets/MostUploadedTorrents';
-import ConnectedPeersCard from '@/components/widgets/ConnectedPeersCard';
-import ConnectedSeedersCard from '@/components/widgets/ConnectedSeedersCard';
 import RecentCreatedTorrents from '@/components/widgets/RecentCreatedTorrents';
 import MostUsedCategoriesWidget from '@/components/widgets/MostUsedCategoriesWidget';
 
@@ -242,17 +239,15 @@ interface AgentMetricsProps {
   fromDate?: Date;
   toDate?: Date;
   selectedAgentId?: string | null;
-  onAgentChange?: (agentId: string) => void;
   topUploaded?: Array<{ task: string; diff: number }>;
   taskNameById?: Record<string, string>;
 }
 
-const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedAgentId, onAgentChange, topUploaded, taskNameById }) => {
+const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedAgentId, topUploaded, taskNameById }) => {
   const [stats, setStats] = useState<TaskStats | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
-  const [windowedData, setWindowedData] = useState<unknown[] | null>(null);
 
   // API calls for agent metrics
   useEffect(() => {
@@ -359,23 +354,15 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
         // If a specific agent is selected, fetch its stats, agent details and windowed data
         if (selectedAgentId && selectedAgentId.trim() !== '') {
           console.log('Loading single agent data for:', selectedAgentId);
-          const nowIso = (toDate ?? new Date()).toISOString();
-          const fromIso = (fromDate ?? new Date(Date.now() - 24 * 60 * 60 * 1000)).toISOString();
-          const [statsResponse, agentResponse, windowedResponse] = await Promise.all([
-            agentService.getAgentTaskStats(selectedAgentId),
-            agentService.getAgent(selectedAgentId),
-            statisticsService.getWindowed({ agentId: selectedAgentId, from: fromIso, to: nowIso, step: '5m', groupBy: 'agent' })
-          ]);
+        const [statsResponse, agentResponse] = await Promise.all([
+          agentService.getAgentTaskStats(selectedAgentId),
+          agentService.getAgent(selectedAgentId)
+        ]);
           
           if (!isMounted) return; // Check if still mounted
           
           console.log('Single agent stats:', statsResponse.data);
           setStats(statsResponse.data || null);
-          if (windowedResponse.data) {
-            setWindowedData(windowedResponse.data.windows as unknown[]);
-          } else {
-            setWindowedData(null);
-          }
           
           // Update the agent with real storage information
           if (agentResponse.data) {

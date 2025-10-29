@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -155,7 +155,7 @@ const Analytics: React.FC = () => {
         })
         .catch(() => setTopUploaded([]));
     }
-  }, [fromDate, toDate, selectedAgentId]);
+  }, [fromDate, toDate, selectedAgentId, getEffectiveAgentId]);
 
   // Fetch tasks once per agent context to build id->name map (reuse across components)
   useEffect(() => {
@@ -165,8 +165,11 @@ const Analytics: React.FC = () => {
         const map: Record<string, string> = {};
         if (agentId) {
           const r = await agentService.listAgentTasks(agentId);
-          const tasks = (r.data as any[] | undefined) || [];
-          tasks.forEach((t: any) => { if (t?.id) map[t.id] = t?.name || t?.id; });
+          const tasks = (r.data as unknown[] | undefined) || [];
+          tasks.forEach((t: unknown) => { 
+            const task = t as { id?: string; name?: string };
+            if (task?.id) map[task.id] = task?.name || task?.id; 
+          });
         } else {
           // No agent selected: fetch tasks per active agent and merge
           const agentsRes = await agentService.listAgents();
@@ -175,8 +178,11 @@ const Analytics: React.FC = () => {
           const settled = await Promise.allSettled(calls);
           settled.forEach(s => {
             if (s.status === 'fulfilled') {
-              const tasks = (s.value.data as any[] | undefined) || [];
-              tasks.forEach((t: any) => { if (t?.id) map[t.id] = t?.name || t?.id; });
+              const tasks = (s.value.data as unknown[] | undefined) || [];
+              tasks.forEach((t: unknown) => { 
+                const task = t as { id?: string; name?: string };
+                if (task?.id) map[task.id] = task?.name || task?.id; 
+              });
             }
           });
         }
@@ -186,15 +192,15 @@ const Analytics: React.FC = () => {
       }
     };
     loadTasks();
-  }, [selectedAgentId]);
+  }, [selectedAgentId, getEffectiveAgentId]);
 
   // Get the effective agent ID for metrics calculation
-  const getEffectiveAgentId = () => {
+  const getEffectiveAgentId = useCallback(() => {
     // If no agent is selected, return empty string to indicate "all agents"
     // The AgentMetrics component will handle aggregating data from all active agents
     console.log('getEffectiveAgentId called:', { selectedAgentId, agent_uuid, result: selectedAgentId || '' });
     return selectedAgentId || '';
-  };
+  }, [selectedAgentId, agent_uuid]);
 
   // Handle task selection changes
   const handleTaskChange = (taskId: string) => {

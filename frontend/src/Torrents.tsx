@@ -32,7 +32,6 @@ import { RatioBadge } from "@/components/ui/RatioBadge";
 import { ToastContainer } from "@/components/ui/toast-container";
 import { useToast } from "@/hooks/useToast";
 import { AgentIcon } from "@/components/ui/AgentIcon";
-import { TagBadge } from "@/components/ui/TagBadge";
 import { getStatusIcon, getStatusColor, getStatusBackgroundColor, type TorrentStatus } from "@/components/TorrentStatusIcon";
 
 type SortType = "priority" | "alphabetical" | "size" | "progress" | "download_speed" | "upload_speed" | "downloaded" | "uploaded";
