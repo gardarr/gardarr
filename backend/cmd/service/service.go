@@ -40,8 +40,7 @@ import (
 )
 
 var (
-	router      *gin.Engine
-	agentSecret string
+	router *gin.Engine
 )
 
 func Run(cmd *cobra.Command, args []string) error {
@@ -85,13 +84,13 @@ func Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	setRoutes(db, agentSvc)
-
 	// Statistics (feature-flagged)
 	statsSvc := statistics.NewService(db, agentSvc)
 	ctx, cancelStats := context.WithCancel(context.Background())
 	defer cancelStats()
 	statsSvc.Start(ctx)
+
+	setRoutes(db, agentSvc, statsSvc)
 
 	// Initialize agent service if in standalone mode
 	if isStandalone {
@@ -242,7 +241,7 @@ func setRouter() {
 	router.Use(securityHeadersMiddleware())
 }
 
-func setRoutes(db *database.Database, a *agentmanager.Service) {
+func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statistics.Service) {
 	// Get current working directory
 	wd, _ := os.Getwd()
 	webPath := filepath.Join(wd, "web")
@@ -264,7 +263,7 @@ func setRoutes(db *database.Database, a *agentmanager.Service) {
 	signup.NewModule(v1, db).Register()
 	setup.NewModule(v1, db).Register()
 	version.NewModule(v1, db).Register()
-	statsroutes.NewModule(v1, db).Register()
+	statsroutes.NewModule(v1, db, statsSvc).Register()
 
 	// Serve the main index.html for all non-API routes (SPA fallback)
 	router.NoRoute(func(c *gin.Context) {

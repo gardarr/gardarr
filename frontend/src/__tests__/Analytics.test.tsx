@@ -5,12 +5,12 @@ import Analytics from '../Analytics';
 
 // Mock the types to avoid import issues in tests
 jest.mock('../types/torrent', () => ({
-  Task: {} as any,
+  Task: {} as unknown,
 }));
 
 jest.mock('../types/agent', () => ({
-  Agent: {} as any,
-  TaskStats: {} as any,
+  Agent: {} as unknown,
+  TaskStats: {} as unknown,
 }));
 
 describe('Analytics Component', () => {

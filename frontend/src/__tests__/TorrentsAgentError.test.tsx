@@ -1,7 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import TorrentsPage from '../Torrents';
-import { useTranslation } from 'react-i18next';
 
 // Mock the translation hook
 jest.mock('react-i18next', () => ({
@@ -91,7 +90,7 @@ describe('TorrentsPage - Agent Error States', () => {
     ];
 
     // Mock the agent service to return the errored agent
-    const { agentService } = require('../services/agents');
+    const { agentService } = jest.requireMock('../services/agents');
     agentService.listAgents.mockResolvedValue({ data: mockAgents });
 
     renderWithRouter(<TorrentsPage />);
@@ -104,7 +103,7 @@ describe('TorrentsPage - Agent Error States', () => {
 
   it('shows no agents state when no agents are available', async () => {
     // Mock empty agents array
-    const { agentService } = require('../services/agents');
+    const { agentService } = jest.requireMock('../services/agents');
     agentService.listAgents.mockResolvedValue({ data: [] });
 
     renderWithRouter(<TorrentsPage />);
@@ -135,7 +134,7 @@ describe('TorrentsPage - Agent Error States', () => {
       },
     ];
 
-    const { agentService } = require('../services/agents');
+    const { agentService } = jest.requireMock('../services/agents');
     agentService.listAgents.mockResolvedValue({ data: mockAgents });
 
     renderWithRouter(<TorrentsPage />);

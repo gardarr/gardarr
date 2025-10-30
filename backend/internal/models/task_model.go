@@ -12,6 +12,7 @@ type TaskResponseModel struct {
 	SuperSeeding bool                     `json:"super_seeding"`
 	Size         int                      `json:"size"`
 	Progress     float64                  `json:"progress"`
+	Active       bool                     `json:"active"`
 	Popularity   float64                  `json:"popularity"`
 	MagnetURI    string                   `json:"magnet_uri"`
 	MagnetLink   *TaskMagnetLinkResponse  `json:"magnet_link"`
@@ -70,8 +71,12 @@ type TaskStatsResponse struct {
 	HighestRatio         float64        `json:"highest_ratio"`
 	LowestRatio          float64        `json:"lowest_ratio"`
 	ActiveTasksCount     int            `json:"active_tasks_count"`
+	TotalTasksCount      int            `json:"total_tasks_count"`
 	ActiveSeeds          int            `json:"active_seeds"`
 	ActivePeers          int            `json:"active_peers"`
+	SwarmSeeders         int            `json:"swarm_seeders"`
+	SwarmLeechers        int            `json:"swarm_leechers"`
 	CategoryUsage        map[string]int `json:"category_usage"`
 	TagsUsage            map[string]int `json:"tags_usage"`
+	WordCloud            map[string]int `json:"word_cloud"`
 }

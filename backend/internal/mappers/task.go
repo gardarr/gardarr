@@ -39,6 +39,7 @@ func ToTask(e models.TaskResponseModel) *entities.Task {
 		},
 		NumSeeds:     e.Pairs.Seeders,
 		SuperSeeding: e.SuperSeeding,
+		Active:       e.Active,
 		Tags:         e.Tags,
 		Network: entities.TaskNetwork{
 			Download: entities.TaskDownload{
@@ -65,6 +66,7 @@ func ToTaskResponse(e *entities.Task) models.TaskResponseModel {
 		Hash:       e.Hash,
 		State:      e.State,
 		Priority:   e.Priority,
+		Active:     e.Active,
 		Popularity: e.Popularity,
 		MagnetLink: &models.TaskMagnetLinkResponse{
 			Hash:        e.MagnetLink.Hash,
@@ -135,10 +137,14 @@ func ToTaskStatsResponse(e *entities.TaskStats) models.TaskStatsResponse {
 		HighestRatio:         e.HighestRatio,
 		LowestRatio:          e.LowestRatio,
 		ActiveTasksCount:     e.ActiveTasksCount,
+		TotalTasksCount:      e.TotalTasksCount,
 		ActiveSeeds:          e.ActiveSeeds,
 		ActivePeers:          e.ActivePeers,
+		SwarmSeeders:         e.SwarmSeeders,
+		SwarmLeechers:        e.SwarmLeechers,
 		CategoryUsage:        e.CategoryUsage,
 		TagsUsage:            e.TagsUsage,
+		WordCloud:            e.WordCloud,
 	}
 }
 
@@ -152,9 +158,13 @@ func ToTaskStats(m models.TaskStatsResponse) *entities.TaskStats {
 		HighestRatio:         m.HighestRatio,
 		LowestRatio:          m.LowestRatio,
 		ActiveTasksCount:     m.ActiveTasksCount,
+		TotalTasksCount:      m.TotalTasksCount,
 		ActiveSeeds:          m.ActiveSeeds,
 		ActivePeers:          m.ActivePeers,
+		SwarmSeeders:         m.SwarmSeeders,
+		SwarmLeechers:        m.SwarmLeechers,
 		CategoryUsage:        m.CategoryUsage,
 		TagsUsage:            m.TagsUsage,
+		WordCloud:            m.WordCloud,
 	}
 }

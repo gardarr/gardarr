@@ -32,7 +32,6 @@ import { RatioBadge } from "@/components/ui/RatioBadge";
 import { ToastContainer } from "@/components/ui/toast-container";
 import { useToast } from "@/hooks/useToast";
 import { AgentIcon } from "@/components/ui/AgentIcon";
-import { TagBadge } from "@/components/ui/TagBadge";
 import { getStatusIcon, getStatusColor, getStatusBackgroundColor, type TorrentStatus } from "@/components/TorrentStatusIcon";
 
 type SortType = "priority" | "alphabetical" | "size" | "progress" | "download_speed" | "upload_speed" | "downloaded" | "uploaded";
@@ -1426,7 +1425,8 @@ export default function TorrentsPage() {
     if (searchTerm.trim()) {
       filtered = filtered.filter(torrent =>
         torrent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        torrent.status.toLowerCase().includes(searchTerm.toLowerCase())
+        torrent.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        torrent.id.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     
