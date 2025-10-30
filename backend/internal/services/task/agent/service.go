@@ -15,6 +15,15 @@ type service struct {
 	repository interfaces.TaskRepositoryInterface
 }
 
+// wordSplitReplacer replaces common punctuation/separators with spaces for tokenization
+var wordSplitReplacer = strings.NewReplacer(
+	".", " ", "_", " ", "-", " ", "(", " ", ")", " ", "[", " ", "]", " ",
+	"{", " ", "}", " ", ":", " ", ";", " ", ",", " ", "!", " ", "?", " ",
+	"@", " ", "#", " ", "$", " ", "%", " ", "^", " ", "&", " ", "*", " ",
+	"+", " ", "=", " ", "|", " ", "\\", " ", "/", " ", "<", " ", ">", " ",
+	"~", " ", "`", " ",
+)
+
 func New() (interfaces.TaskService, error) {
 	r, err := repository.New()
 	if err != nil {
@@ -244,39 +253,9 @@ func calculateWordCloud(tasks []*entities.Task) map[string]int {
 			continue
 		}
 
-		// Convert to lowercase and split by common delimiters
+		// Normalize and replace common delimiters with spaces using a reusable replacer
 		text := strings.ToLower(task.Name)
-		// Replace common delimiters with spaces
-		text = strings.ReplaceAll(text, ".", " ")
-		text = strings.ReplaceAll(text, "_", " ")
-		text = strings.ReplaceAll(text, "-", " ")
-		text = strings.ReplaceAll(text, "(", " ")
-		text = strings.ReplaceAll(text, ")", " ")
-		text = strings.ReplaceAll(text, "[", " ")
-		text = strings.ReplaceAll(text, "]", " ")
-		text = strings.ReplaceAll(text, "{", " ")
-		text = strings.ReplaceAll(text, "}", " ")
-		text = strings.ReplaceAll(text, ":", " ")
-		text = strings.ReplaceAll(text, ";", " ")
-		text = strings.ReplaceAll(text, ",", " ")
-		text = strings.ReplaceAll(text, "!", " ")
-		text = strings.ReplaceAll(text, "?", " ")
-		text = strings.ReplaceAll(text, "@", " ")
-		text = strings.ReplaceAll(text, "#", " ")
-		text = strings.ReplaceAll(text, "$", " ")
-		text = strings.ReplaceAll(text, "%", " ")
-		text = strings.ReplaceAll(text, "^", " ")
-		text = strings.ReplaceAll(text, "&", " ")
-		text = strings.ReplaceAll(text, "*", " ")
-		text = strings.ReplaceAll(text, "+", " ")
-		text = strings.ReplaceAll(text, "=", " ")
-		text = strings.ReplaceAll(text, "|", " ")
-		text = strings.ReplaceAll(text, "\\", " ")
-		text = strings.ReplaceAll(text, "/", " ")
-		text = strings.ReplaceAll(text, "<", " ")
-		text = strings.ReplaceAll(text, ">", " ")
-		text = strings.ReplaceAll(text, "~", " ")
-		text = strings.ReplaceAll(text, "`", " ")
+		text = wordSplitReplacer.Replace(text)
 
 		// Split into words
 		words := strings.Fields(text)

@@ -18,6 +18,31 @@ import {
 } from 'lucide-react';
 import type { Task } from '../../types/torrent';
 
+// Point interfaces for chart data
+interface SpeedPoint {
+	time: string;
+	download: number;
+	upload: number;
+}
+
+interface PeersPoint {
+	time: string;
+	seeders: number;
+	peers: number;
+}
+
+interface SwarmPoint {
+	time: string;
+	swarm_seeders: number;
+	swarm_leechers: number;
+}
+
+interface FileInfoPoint {
+	name: string;
+	sizeGB: number;
+	size?: number; // bytes, optional in this context
+}
+
 // Mock data for task metrics
 const mockRecentTasks: Task[] = [
   {
@@ -156,7 +181,7 @@ const mockTaskMetrics = {
 };
 
 // Mock time-series data for charts
-const mockSpeedData = [
+const mockSpeedData: SpeedPoint[] = [
   { time: '00:00', download: 0, upload: 0 },
   { time: '01:00', download: 12.5, upload: 2.1 },
   { time: '02:00', download: 18.3, upload: 3.4 },
@@ -183,7 +208,7 @@ const mockSpeedData = [
   { time: '23:00', download: 13.9, upload: 2.8 }
 ];
 
-const mockPeersData = [
+const mockPeersData: PeersPoint[] = [
   { time: '00:00', seeders: 45, peers: 23 },
   { time: '01:00', seeders: 48, peers: 26 },
   { time: '02:00', seeders: 52, peers: 29 },
@@ -210,7 +235,7 @@ const mockPeersData = [
   { time: '23:00', seeders: 46, peers: 24 }
 ];
 
-const mockSwarmData = [
+const mockSwarmData: SwarmPoint[] = [
   { time: '00:00', swarm_seeders: 120, swarm_leechers: 45 },
   { time: '01:00', swarm_seeders: 125, swarm_leechers: 48 },
   { time: '02:00', swarm_seeders: 130, swarm_leechers: 52 },
@@ -238,7 +263,7 @@ const mockSwarmData = [
 ];
 
 // Mock file data for the selected task
-const mockFileData = [
+const mockFileData: FileInfoPoint[] = [
   { name: 'movie.mkv', size: 8.5 * 1024 * 1024 * 1024, sizeGB: 8.5 },
   { name: 'subtitle_en.srt', size: 45 * 1024, sizeGB: 0.000043 },
   { name: 'subtitle_pt.srt', size: 52 * 1024, sizeGB: 0.00005 },
@@ -303,7 +328,7 @@ const swarmChartConfig = {
 
 // Speed Chart Component
 interface SpeedChartProps {
-  data: unknown[];
+  data: SpeedPoint[];
   title: string;
 }
 
@@ -356,7 +381,7 @@ const SpeedChart: React.FC<SpeedChartProps> = ({ data, title }) => {
 
 // Peers Chart Component
 interface PeersChartProps {
-  data: unknown[];
+  data: PeersPoint[];
   title: string;
 }
 
@@ -409,7 +434,7 @@ const PeersChart: React.FC<PeersChartProps> = ({ data, title }) => {
 
 // Swarm Chart Component
 interface SwarmChartProps {
-  data: unknown[];
+  data: SwarmPoint[];
   title: string;
 }
 
@@ -462,20 +487,17 @@ const SwarmChart: React.FC<SwarmChartProps> = ({ data, title }) => {
 
 // File Size Chart Component using the existing horizontal bar chart
 interface FileSizeChartProps {
-  data: unknown[];
+  data: FileInfoPoint[];
   title: string;
 }
 
 const FileSizeChart: React.FC<FileSizeChartProps> = ({ data, title }) => {
   // Transform data to match the expected format for ChartBarHorizontal and sort by size (largest to smallest)
   const chartData = data
-    .map(file => {
-      const f = file as { name?: string; sizeGB?: number };
-      return {
-        name: f.name ?? '',
-        size: f.sizeGB ?? 0
-      };
-    })
+    .map(f => ({
+      name: f.name ?? '',
+      size: f.sizeGB ?? 0
+    }))
     .sort((a, b) => b.size - a.size);
 
   const chartConfig = {

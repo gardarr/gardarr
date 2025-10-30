@@ -27,16 +27,11 @@ const Analytics: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('agents');
   const [fromDate, setFromDate] = useState<Date | undefined>(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)); // 7 days ago
   const [toDate, setToDate] = useState<Date | undefined>(new Date());
-  const [topUploaded, setTopUploaded] = useState<Array<{ task: string; diff: number }>>([]);
+  type AgentTask = { task: string; diff: number };
+  const [topUploaded, setTopUploaded] = useState<AgentTask[]>([]);
   const [taskNameById, setTaskNameById] = useState<Record<string, string>>({});
 
-  // Get the effective agent ID for metrics calculation
-  const getEffectiveAgentId = useCallback(() => {
-    // If no agent is selected, return empty string to indicate "all agents"
-    // The AgentMetrics component will handle aggregating data from all active agents
-    console.log('getEffectiveAgentId called:', { selectedAgentId, agent_uuid, result: selectedAgentId || '' });
-    return selectedAgentId || '';
-  }, [selectedAgentId, agent_uuid]);
+  // (helper removed; inline selectedAgentId || '' where needed)
 
   // Manual refresh anchored to now, preserving current range duration
   const handleRefreshNow = () => {
@@ -92,11 +87,11 @@ const Analytics: React.FC = () => {
 
   // Fetch Top Uploaded Torrents using upload-diffs endpoint
   useEffect(() => {
-    const agentId = getEffectiveAgentId();
+    const agentId = selectedAgentId || '';
     const to = (toDate ?? new Date()).toISOString();
     const from = (fromDate ?? new Date(Date.now() - 24 * 60 * 60 * 1000)).toISOString();
 
-    const aggregateResults = (resultsArrays: Array<{ task: string; diff: number }[]>) => {
+    const aggregateResults = (resultsArrays: AgentTask[][]) => {
       const taskDiffMap: Record<string, number> = {};
       resultsArrays.forEach(list => {
         list.forEach(({ task, diff }) => {
@@ -140,7 +135,7 @@ const Analytics: React.FC = () => {
           }
           const calls = active.map(a => statisticsService.getUploadDiffs({ agentId: a.uuid, from, to, step: '5m', limit: 200 }));
           const settled = await Promise.allSettled(calls);
-          const perAgentLists: Array<{ task: string; diff: number }[]> = [];
+          const perAgentLists: AgentTask[][] = [];
           settled.forEach(s => {
             if (s.status === 'fulfilled') {
               const results = s.value.data?.results || [];
@@ -153,13 +148,13 @@ const Analytics: React.FC = () => {
         })
         .catch(() => setTopUploaded([]));
     }
-  }, [fromDate, toDate, selectedAgentId, getEffectiveAgentId]);
+  }, [fromDate, toDate, selectedAgentId]);
 
   // Fetch tasks once per agent context to build id->name map (reuse across components)
   useEffect(() => {
     const loadTasks = async () => {
       try {
-        const agentId = getEffectiveAgentId();
+        const agentId = selectedAgentId || '';
         const map: Record<string, string> = {};
         if (agentId) {
           const r = await agentService.listAgentTasks(agentId);
@@ -190,7 +185,7 @@ const Analytics: React.FC = () => {
       }
     };
     loadTasks();
-  }, [selectedAgentId, getEffectiveAgentId]);
+  }, [selectedAgentId]);
 
   // Handle task selection changes
   const handleTaskChange = (taskId: string) => {
@@ -252,7 +247,7 @@ const Analytics: React.FC = () => {
           <AgentMetrics 
             fromDate={fromDate}
             toDate={toDate}
-            selectedAgentId={getEffectiveAgentId()}
+            selectedAgentId={selectedAgentId || ''}
             topUploaded={topUploaded}
             taskNameById={taskNameById}
           />

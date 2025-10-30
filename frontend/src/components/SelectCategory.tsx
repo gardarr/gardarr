@@ -77,9 +77,9 @@ export function SelectCategory({
     setCategoryModalOpen(true);
   };
 
-  const handleCategoryCreated = async (categoryData: unknown): Promise<Category | undefined> => {
+  const handleCategoryCreated = async (categoryData: CreateCategoryRequest): Promise<Category | undefined> => {
     try {
-      const response = await categoryService.createCategory(categoryData as CreateCategoryRequest);
+      const response = await categoryService.createCategory(categoryData);
       if (response.data) {
         // Reload categories list
         await loadCategories();

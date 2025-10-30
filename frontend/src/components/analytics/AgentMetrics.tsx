@@ -228,7 +228,7 @@ const WordCloud: React.FC<WordCloudProps> = ({ wordCloud, title }) => {
           )}
         </div>
         <div className="mt-4 text-xs text-muted-foreground text-center">
-          {sortedTerms.length} terms from task names • Click terms to see frequency
+          {sortedTerms.length} terms from task names • Hover terms to see frequency
         </div>
       </CardContent>
     </Card>

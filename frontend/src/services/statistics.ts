@@ -45,7 +45,7 @@ class StatisticsService {
     if (step) query.set('step', step);
     if (groupBy) query.set('group_by', groupBy);
     if (taskHash) query.set('task_hash', taskHash);
-    return api.get<WindowedResponse<T>>(`/statistics/agents/${agentId}/range/windowed?${query.toString()}`);
+    return api.get<WindowedResponse<T>>(`/statistics/agents/${encodeURIComponent(agentId)}/range/windowed?${query.toString()}`);
   }
 
   async getUploadDiffs(params: { agentId: string; from: string; to?: string; step?: string; limit?: number }): Promise<ApiResponse<UploadDiffsResponse>> {
@@ -55,7 +55,7 @@ class StatisticsService {
     if (to) query.set('to', to);
     if (step) query.set('step', step);
     if (limit) query.set('limit', limit.toString());
-    return api.get<UploadDiffsResponse>(`/statistics/agents/${agentId}/upload-diffs?${query.toString()}`);
+    return api.get<UploadDiffsResponse>(`/statistics/agents/${encodeURIComponent(agentId)}/upload-diffs?${query.toString()}`);
   }
 }
 

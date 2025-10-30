@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/gardarr/gardarr/internal/infra/database"
@@ -17,7 +18,7 @@ import (
 // setupTestDB creates an in-memory SQLite database for testing
 func setupTestDB(t *testing.T) *database.Database {
 	// Use a unique shared in-memory SQLite database per test to avoid cross-test leakage
-	dsn := "file:" + t.Name() + "?mode=memory&cache=shared"
+	dsn := "file:" + url.PathEscape(t.Name()) + "?mode=memory&cache=shared"
 	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("Failed to create test database: %v", err)

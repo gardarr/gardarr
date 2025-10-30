@@ -152,6 +152,10 @@ func (s *Service) collectOnce(ctx context.Context) {
 // date and hour, tracking file path, line count, size and time range covered by
 // the snapshot file.
 func (s *Service) upsertFileIndex(ctx context.Context, agentID string, ts time.Time, path string, lines int64, size int64) error {
+	// Guard against nil DB to avoid panics in tests or FS-only contexts
+	if s == nil || s.db == nil || s.db.DB == nil {
+		return nil
+	}
 	date := ts.Format("2006-01-02")
 	hour := ts.Hour()
 	var idx models.StatsFileIndex
@@ -181,6 +185,10 @@ func (s *Service) upsertFileIndex(ctx context.Context, agentID string, ts time.T
 // given agent, including number of tasks seen, counts of active download/upload
 // tasks and total transfer speeds in KB/s.
 func (s *Service) upsertHourSummary(ctx context.Context, agentID string, ts time.Time, path string, tasksSeen, dlActive, ulActive int, totalDlKBs, totalUlKBs int64) error {
+	// Guard against nil DB to avoid panics in tests or FS-only contexts
+	if s == nil || s.db == nil || s.db.DB == nil {
+		return nil
+	}
 	date := ts.Format("2006-01-02")
 	hour := ts.Hour()
 	var sum models.StatsFileHourSummary
@@ -581,15 +589,15 @@ func (s *Service) GetUploadDiffs(ctx context.Context, agentID string, from, to t
 			}
 			if taskWindows[sl.Task][wk] == nil {
 				taskWindows[sl.Task][wk] = &TaskUploadDiff{
-					Window: wk,
-					Task:   sl.Task,
+					Window:   wk,
+					Task:     sl.Task,
+					FirstUlB: sl.UlB,
+					LastUlB:  sl.UlB,
 				}
 			}
 
 			twd := taskWindows[sl.Task][wk]
-			if twd.FirstUlB == 0 {
-				twd.FirstUlB = sl.UlB
-			}
+			// Always advance the last observed upload bytes for this window
 			twd.LastUlB = sl.UlB
 		})
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -196,9 +197,23 @@ func TestService_GetUploadDiffs(t *testing.T) {
 	})
 
 	t.Run("Limit parameter is respected", func(t *testing.T) {
+		// Seed >5 task-window entries inside the [from,to] range
+		// Create a single daily file for 2024-01-01 with multiple tasks
+		var fw FileWriter
+		require.NoError(t, fw.OpenDaily(tmpDir, agentID, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)))
+		// Each task gets two lines within the same 5-minute window so that Diff > 0
+		baseTS := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
+		for i := 0; i < 6; i++ { // 6 tasks > limit(5)
+			taskID := "task-" + strconv.Itoa(i)
+			_ = fw.WriteLine(SnapshotLine{TS: baseTS, Task: taskID, UlB: 100})
+			_ = fw.WriteLine(SnapshotLine{TS: baseTS.Add(1 * time.Minute), Task: taskID, UlB: 200})
+		}
+		require.NoError(t, fw.Flush())
+		require.NoError(t, fw.Close())
+
 		results, err := svc.GetUploadDiffs(ctx, agentID, from, to, step, 5)
 		assert.NoError(t, err)
-		assert.LessOrEqual(t, len(results), 5)
+		assert.Equal(t, 5, len(results))
 	})
 }
 
