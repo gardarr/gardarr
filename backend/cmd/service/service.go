@@ -40,8 +40,7 @@ import (
 )
 
 var (
-	router      *gin.Engine
-	agentSecret string
+	router *gin.Engine
 )
 
 func Run(cmd *cobra.Command, args []string) error {
