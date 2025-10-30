@@ -11,6 +11,17 @@ interface DateRangePickerProps {
   onToDateChange: (date: Date | undefined) => void;
 }
 
+/**
+ * Renders a button that opens a popover for selecting a preset date range (1, 3, or 7 days).
+ *
+ * If no `fromDate` or `toDate` is provided on mount, the component initializes both dates to a 1-day range ending today.
+ *
+ * @param fromDate - Current start date of the range, or `undefined` if not set
+ * @param toDate - Current end date of the range, or `undefined` if not set
+ * @param onFromDateChange - Callback invoked with the new start `Date` when the range changes
+ * @param onToDateChange - Callback invoked with the new end `Date` when the range changes
+ * @returns A React element that displays the picker button and popover for choosing preset ranges
+ */
 export default function DateRangePicker({
   fromDate,
   toDate,

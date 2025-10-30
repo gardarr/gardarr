@@ -208,7 +208,8 @@ func (s *service) GetTasksStats(ctx context.Context) (*entities.TaskStats, error
 	return stats, nil
 }
 
-// calculateWordCloud extracts and counts the top 25 most used terms in task names
+// calculateWordCloud returns a map of the top 25 most frequent meaningful words found in the provided tasks' names.
+// It ignores common stop words, short tokens, and tokens without letters; keys are lowercased words and values are their occurrence counts.
 func calculateWordCloud(tasks []*entities.Task) map[string]int {
 	wordCount := make(map[string]int)
 

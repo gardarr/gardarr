@@ -703,6 +703,14 @@ function TorrentPagination({
   );
 }
 
+/**
+ * Render the Torrents page for viewing, filtering, sorting, paginating and managing torrent tasks across agents.
+ *
+ * Renders the full UI including header, search and filter controls, agent/status/category/tag filters, sort controls,
+ * desktop table and mobile cards, pagination, add torrent and details modals, toast notifications, and automatic refresh.
+ *
+ * @returns The React element for the torrents management page.
+ */
 export default function TorrentsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -2332,5 +2340,4 @@ export default function TorrentsPage() {
     </div>
   );
 }
-
 

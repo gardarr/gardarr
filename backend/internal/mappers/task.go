@@ -5,6 +5,8 @@ import (
 	"github.com/gardarr/gardarr/internal/models"
 )
 
+// ToTask converts a models.TaskResponseModel into an *entities.Task.
+// If e.State matches a key in entities.TaskStatuses, the mapped status value is used for the resulting Task's State.
 func ToTask(e models.TaskResponseModel) *entities.Task {
 	status := e.State
 	if value, ok := entities.TaskStatuses[e.State]; ok {
@@ -54,6 +56,11 @@ func ToTask(e models.TaskResponseModel) *entities.Task {
 	}
 }
 
+// ToTaskResponse converts an entities.Task to a models.TaskResponseModel.
+// If e is nil, it returns an empty TaskResponseModel.
+// The returned model mirrors the entity's fields, including Agent, MagnetLink,
+// Pairs, Network, and task metadata such as ID, Name, Hash, State, Priority,
+// Active, Popularity, Category, Path, Ratio, Size, Progress, Tags and SuperSeeding.
 func ToTaskResponse(e *entities.Task) models.TaskResponseModel {
 	if e == nil {
 		return models.TaskResponseModel{}
@@ -127,6 +134,9 @@ func ToTaskFilesResponse(files []*entities.TaskFile) []models.TaskFileResponse {
 	return response
 }
 
+// ToTaskStatsResponse converts a TaskStats entity into a TaskStatsResponse model.
+// It maps each statistical field from the entity to the response model.
+// Panics if e is nil.
 func ToTaskStatsResponse(e *entities.TaskStats) models.TaskStatsResponse {
 	return models.TaskStatsResponse{
 		TotalDiskSize:        e.TotalDiskSize,
@@ -148,6 +158,8 @@ func ToTaskStatsResponse(e *entities.TaskStats) models.TaskStatsResponse {
 	}
 }
 
+// ToTaskStats converts a models.TaskStatsResponse to an entities.TaskStats.
+// The returned entity is populated with the corresponding statistics fields from the input model.
 func ToTaskStats(m models.TaskStatsResponse) *entities.TaskStats {
 	return &entities.TaskStats{
 		TotalDiskSize:        m.TotalDiskSize,

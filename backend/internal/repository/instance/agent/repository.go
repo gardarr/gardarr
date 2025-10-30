@@ -16,6 +16,11 @@ type Repository struct {
 	client *qbt.Client
 }
 
+// New creates a Repository backed by a qBittorrent client configured from environment variables.
+// 
+// It reads BaseURL, Username, and Password plus request timeout, max retries, and retry backoff
+// from environment variables (request timeout defaults to 3s, max retries defaults to 0, retry backoff defaults to 1s).
+// Returns a Repository containing the initialized client, or an error if the client could not be created.
 func New() (*Repository, error) {
 	client, err := qbt.New(qbt.Config{
 		BaseURL:        env.Get(constants.QBittorrentBaseURLEnv).Value(),

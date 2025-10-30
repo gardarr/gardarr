@@ -18,6 +18,8 @@ type Module struct {
 	service *stats.Service
 }
 
+// NewModule creates a Module that mounts statistics endpoints under the "/statistics" subgroup of the provided router.
+// The Module retains the given database and statistics service for use by its handlers.
 func NewModule(router *gin.RouterGroup, db *database.Database, service *stats.Service) *Module {
 	return &Module{
 		group:   router.Group("/statistics"),

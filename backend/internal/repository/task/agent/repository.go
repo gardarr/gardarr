@@ -18,6 +18,9 @@ type Repository struct {
 	client *qbt.Client
 }
 
+// New creates a Repository configured with a qBittorrent client.
+// The client is initialized from environment variables (base URL, username, password, request timeout, max retries, retry backoff).
+// Returns an error if the qBittorrent client cannot be created.
 func New() (*Repository, error) {
 	client, err := qbt.New(qbt.Config{
 		BaseURL:        env.Get(constants.QBittorrentBaseURLEnv).Value(),
@@ -258,6 +261,8 @@ func (s *Repository) ListFiles(hash string) ([]*entities.TaskFile, error) {
 	return result, nil
 }
 
+// toTask converts a qbt.TorrentResponse into an *entities.Task.
+// It maps torrent fields (ID/Hash, name, category, save path, size, priority, ratio, progress as a percentage, magnet URI and parsed magnet link details, peer/seeder counts, tags, super-seeding flag, and upload/download speeds) into the Task structure, computes Active based on the configured inactive states, and maps the torrent state to the corresponding Task status (defaulting to UnknownStatus when unmapped).
 func toTask(item *qbt.TorrentResponse) *entities.Task {
 	status := entities.TaskStatuses[constants.UnknownStatus]
 	if value, ok := entities.TaskStatuses[item.State]; ok {

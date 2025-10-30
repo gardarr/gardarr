@@ -31,7 +31,10 @@ type Service struct {
 
 // NewService creates a new statistics Service using the provided database and
 // agent manager. Configuration such as base directory, interval and enabled
-// flag are loaded from environment variables.
+// NewService creates and returns a configured Service for collecting and managing statistics.
+// It reads configuration from environment variables: STATISTICS_DIR, STATISTICS_INTERVAL,
+// STATISTICS_ENABLED, STATISTICS_RETENTION_DAYS, and STATISTICS_PURGE_INTERVAL.
+// The provided db and agents are used for persistent storage and agent discovery.
 func NewService(db *database.Database, agents *agentmanager.Service) *Service {
 	return &Service{
 		db:            db,
@@ -206,7 +209,10 @@ func (s *Service) upsertHourSummary(ctx context.Context, agentID string, ts time
 	return tx.Create(&sum).Error
 }
 
-// ParseTime parses a timestamp string supporting multiple formats
+// ParseTime parses a timestamp string using one of several supported layouts:
+// RFC3339, "2006-01-02 15:04:05", or "2006-01-02".
+//
+// It returns the parsed time value or an error if the input does not match any supported format.
 func ParseTime(s string) (time.Time, error) {
 	layouts := []string{time.RFC3339, "2006-01-02 15:04:05", "2006-01-02"}
 	for _, l := range layouts {

@@ -19,6 +19,17 @@ interface MostUsedCategoriesWidgetProps {
   tagsUsage?: Record<string, number>;
 }
 
+/**
+ * Render a card displaying the top three most-used categories and tags with their counts.
+ *
+ * The component shows two sections — "Categories" and "Tags" — each listing up to three entries
+ * sorted by usage count in descending order. Names are displayed in their original casing and
+ * tags are shown as raw names in both the visible label and tooltip.
+ *
+ * @param categoryUsage - A record mapping category names to their usage counts; defaults to an empty object.
+ * @param tagsUsage - A record mapping tag names to their usage counts; defaults to an empty object.
+ * @returns The UI element containing the "Most Used Categories & Tags" card with the two lists.
+ */
 export default function MostUsedCategoriesWidget({ 
   categoryUsage = {}, 
   tagsUsage = {} 

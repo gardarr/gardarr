@@ -19,6 +19,25 @@ interface SelectCategoryProps {
   autoLoad?: boolean;
 }
 
+/**
+ * Render a category selector with a dropdown list and an optional modal to create new categories.
+ *
+ * The component loads categories on mount when `autoLoad` is true, closes the dropdown when clicking outside,
+ * and keeps the selected category highlighted. Selecting a category calls `onCategoryChange` with the selected
+ * category id and the matching category object. Creating a category via the modal reloads the list, selects
+ * the new category, and invokes `onCategoryCreated` if provided.
+ *
+ * @param selectedCategoryId - Id of the currently selected category.
+ * @param onCategoryChange - Callback invoked when a category is selected; receives the category id and the category object when available.
+ * @param label - Visible label for the selector.
+ * @param required - If true, renders a required indicator next to the label.
+ * @param error - Optional error message displayed beneath the selector.
+ * @param className - Additional container class names.
+ * @param showAddButton - If true, shows a button to open the add-category modal.
+ * @param onCategoryCreated - Optional callback invoked with the newly created category after creation.
+ * @param autoLoad - If true, categories are loaded automatically on mount.
+ * @returns The rendered SelectCategory component element.
+ */
 export function SelectCategory({
   selectedCategoryId,
   onCategoryChange,

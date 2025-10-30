@@ -12,6 +12,13 @@ interface MostUploadedTorrentsProps {
   taskNameById?: Record<string, string>;
 }
 
+/**
+ * Render a card listing top uploaded torrents with human-readable upload sizes.
+ *
+ * @param items - Optional array of top uploaded items; when omitted an empty list is rendered.
+ * @param taskNameById - Optional mapping from task id to display name; used to show a friendly name and falls back to the raw task id when absent.
+ * @returns A React element that displays a card of top uploaded torrents, showing each item's name (or task id) and its formatted upload size.
+ */
 export default function MostUploadedTorrents({ items, taskNameById }: MostUploadedTorrentsProps) {
   // Fallback to empty list if not provided
   const list: TopUploadedItem[] = items ?? [];

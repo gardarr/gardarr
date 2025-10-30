@@ -43,6 +43,8 @@ var (
 	router *gin.Engine
 )
 
+// Run starts the HTTP service, initializes required components (crypto, database and migrations, router, agent and statistics services), registers routes and manages the process lifecycle including graceful shutdown.
+// If APP_MODE is set to standalone, Run ensures an agent secret exists and starts the agent service in-process. It returns a non-nil error on initialization or shutdown failures.
 func Run(cmd *cobra.Command, args []string) error {
 	// Check if APP_MODE is set to standalone
 	appMode := env.Get(constants.AppModeEnv).Value()
@@ -214,6 +216,7 @@ func securityHeadersMiddleware() gin.HandlerFunc {
 	}
 }
 
+// setRouter initializes the global Gin router, registers custom validators, configures CORS (with a development-safe default and optional override via the APP_DOMAINS environment variable), and applies security header middleware.
 func setRouter() {
 	router = gin.Default()
 
@@ -241,6 +244,14 @@ func setRouter() {
 	router.Use(securityHeadersMiddleware())
 }
 
+// setRoutes registers the HTTP routes on the package router.
+//
+// It mounts static file handlers for assets, favicon, and vite.svg, registers
+// the v1 API modules (health, auth, agents, category, users, signup, setup,
+// version and statistics) using the provided database, agent service and
+// statistics service, and installs a SPA fallback that serves web/index.html
+// for non-API routes. Requests beginning with /v1/ that do not match any API
+// route return a 404 JSON error.
 func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statistics.Service) {
 	// Get current working directory
 	wd, _ := os.Getwd()
