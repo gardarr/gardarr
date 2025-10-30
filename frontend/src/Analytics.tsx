@@ -31,8 +31,6 @@ const Analytics: React.FC = () => {
   const [topUploaded, setTopUploaded] = useState<AgentTask[]>([]);
   const [taskNameById, setTaskNameById] = useState<Record<string, string>>({});
 
-  // (helper removed; inline selectedAgentId || '' where needed)
-
   // Manual refresh anchored to now, preserving current range duration
   const handleRefreshNow = () => {
     const now = new Date();
@@ -45,26 +43,21 @@ const Analytics: React.FC = () => {
 
   // Handle URL parameters and sync with component state
   useEffect(() => {
-    console.log('URL params changed:', { agent_uuid, uuid, hash });
     if (agent_uuid && uuid) {
       // Both agent and task in URL - open tasks tab with selected agent and task
-      console.log('Setting both agent and task from URL');
       setActiveTab('tasks');
       setSelectedAgentId(agent_uuid);
       setSelectedTaskId(uuid);
     } else if (agent_uuid) {
       // Only agent in URL - open agents tab with selected agent
-      console.log('Setting agent from URL:', agent_uuid);
       setActiveTab('agents');
       setSelectedAgentId(agent_uuid);
     } else if (hash) {
       // Legacy task hash in URL - open tasks tab with selected task
-      console.log('Setting task hash from URL');
       setActiveTab('tasks');
       // TODO: Find task by hash and set selectedTaskId
     } else {
       // No specific ID in URL, default to agents tab
-      console.log('No URL params, clearing selection');
       setActiveTab('agents');
       setSelectedAgentId('');
     }
@@ -82,8 +75,6 @@ const Analytics: React.FC = () => {
       navigate('/analytics');
     }
   };
-
-  // (agent change handler no longer needed here)
 
   // Fetch Top Uploaded Torrents using upload-diffs endpoint
   useEffect(() => {
