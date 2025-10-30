@@ -224,10 +224,13 @@ func (s *Service) DiscoverFiles(ctx context.Context, agentID string, from, to ti
 
 	// Try to get files from database index
 	var idx []models.StatsFileIndex
-	if err := s.db.DB.WithContext(ctx).
-		Where("agent_id = ? AND date >= ? AND date <= ?", agentID, fromDate, toDate).
-		Find(&idx).Error; err != nil {
-		return nil, fmt.Errorf("failed to query file index: %w", err)
+	// Guard against nil DB in tests or FS-only contexts
+	if s != nil && s.db != nil && s.db.DB != nil {
+		if err := s.db.DB.WithContext(ctx).
+			Where("agent_id = ? AND date >= ? AND date <= ?", agentID, fromDate, toDate).
+			Find(&idx).Error; err != nil {
+			return nil, fmt.Errorf("failed to query file index: %w", err)
+		}
 	}
 
 	fileSet := make(map[string]struct{})
@@ -591,8 +594,8 @@ func (s *Service) GetUploadDiffs(ctx context.Context, agentID string, from, to t
 		})
 	}
 
-	// Calculate differences and collect results
-	var results []TaskUploadDiff
+	// Calculate differences and collect results (ensure non-nil slice)
+	results := make([]TaskUploadDiff, 0)
 	for _, taskMap := range taskWindows {
 		for _, twd := range taskMap {
 			twd.Diff = twd.LastUlB - twd.FirstUlB

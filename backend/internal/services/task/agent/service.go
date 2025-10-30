@@ -155,7 +155,8 @@ func (s *service) GetTasksStats(ctx context.Context) (*entities.TaskStats, error
 		totalUploadSpeed += task.Network.Upload.Speed
 		totalDownloadSpeed += task.Network.Download.Speed
 
-		if task.Active {
+		// Consider task active either by explicit flag or by well-known active states
+		if task.Active || strings.EqualFold(task.State, "DOWNLOADING") || strings.EqualFold(task.State, "SEEDING") || strings.EqualFold(task.State, "UPLOADING") || strings.EqualFold(task.State, "FORCED_DOWNLOAD") || strings.EqualFold(task.State, "FORCED_UPLOAD") {
 			stats.ActiveTasksCount++
 		}
 
