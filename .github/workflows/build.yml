@@ -34,12 +34,19 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
 
+    - name: Install CGO dependencies for SQLite
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc libc6-dev
+
     - name: Download dependencies
       working-directory: ./backend
       run: go mod download
 
     - name: Run tests
       working-directory: ./backend
+      env:
+        CGO_ENABLED: 1
       run: go test -v ./...
 
     - name: Run linter
@@ -151,13 +158,24 @@ jobs:
         mkdir -p backend/web
         cp -r frontend/dist/* backend/web/
 
+    - name: Install CGO dependencies for SQLite (Linux only)
+      if: matrix.os == 'linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc libc6-dev
+
     - name: Build binary
       working-directory: ./backend
       run: |
         # Set build variables
         export GOOS=${{ matrix.os }}
         export GOARCH=${{ matrix.arch }}
-        export CGO_ENABLED=0
+        # Enable CGO for Linux builds (required for SQLite), disable for other platforms
+        if [ "${{ matrix.os }}" = "linux" ]; then
+          export CGO_ENABLED=1
+        else
+          export CGO_ENABLED=0
+        fi
         
         # Build with ldflags
         go build \

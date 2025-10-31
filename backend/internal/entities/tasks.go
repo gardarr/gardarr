@@ -1,7 +1,11 @@
 package entities
 
+import "time"
+
 type Task struct {
 	ID           string
+	CreatedAt    time.Time
+	CompletedAt  time.Time
 	Agent        *Agent
 	Name         string
 	Hash         string

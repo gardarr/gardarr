@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -76,6 +77,11 @@ func NewDatabase() (*Database, error) {
 			Logger: gormLogger,
 		})
 	case "sqlite":
+		// Ensure SQLite database file and directory exist
+		if err := ensureSQLiteFile(config.filePath); err != nil {
+			return nil, fmt.Errorf("failed to create SQLite database file: %w", err)
+		}
+
 		db, err = gorm.Open(sqlite.Open(config.filePath), &gorm.Config{
 			Logger: gormLogger,
 		})
@@ -105,6 +111,42 @@ func NewDatabase() (*Database, error) {
 	}
 
 	return &Database{DB: db, driver: config.driver}, nil
+}
+
+// ensureSQLiteFile ensures that the SQLite database file and its directory exist.
+// If the file doesn't exist, it creates an empty file. If the directory doesn't exist, it creates it.
+func ensureSQLiteFile(filePath string) error {
+	// Get the absolute path
+	absPath, err := filepath.Abs(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	// Extract directory from file path
+	dir := filepath.Dir(absPath)
+
+	// Create directory if it doesn't exist
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create database directory: %w", err)
+	}
+
+	// Check if file already exists
+	if _, err := os.Stat(absPath); os.IsNotExist(err) {
+		// Create an empty file
+		file, err := os.Create(absPath)
+		if err != nil {
+			return fmt.Errorf("failed to create database file: %w", err)
+		}
+		if err := file.Close(); err != nil {
+			return fmt.Errorf("failed to close database file: %w", err)
+		}
+		// Set appropriate permissions (read/write for owner, read for group and others)
+		if err := os.Chmod(absPath, 0644); err != nil {
+			return fmt.Errorf("failed to set database file permissions: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // Ping checks if the database connection is alive and responsive

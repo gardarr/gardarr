@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { ArrowDownCircle, ArrowUpCircle, ArrowDown, ArrowUp, Search, Loader2, ChevronDown, SortAsc, SortDesc, Plus, SlidersHorizontal, Download, Clock, Server, Activity, Folder, Tag, FileUp, AlertTriangle } from "lucide-react";
+import { ArrowDown, ArrowUp, Search, Loader2, ChevronDown, SortAsc, SortDesc, Plus, SlidersHorizontal, Download, Upload, Clock, Server, Activity, Folder, Tag, FileUp, AlertTriangle, Star } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -28,11 +28,14 @@ import { FilterSidebar } from "@/components/ui/FilterSidebar";
 import { TorrentDetailsModal } from "@/components/TorrentDetailsModal";
 import { AddTorrentModal } from "@/components/AddTorrentModal";
 import { ProgressBar } from "@/components/ui/ProgressBar";
-import { RatioBadge } from "@/components/ui/RatioBadge";
+import TorrentContextMenu from "@/components/TorrentContextMenu";
+import { RatioBadge } from "@/components/RatioBadge";
 import { ToastContainer } from "@/components/ui/toast-container";
 import { useToast } from "@/hooks/useToast";
 import { AgentIcon } from "@/components/ui/AgentIcon";
 import { getStatusIcon, getStatusColor, getStatusBackgroundColor, type TorrentStatus } from "@/components/TorrentStatusIcon";
+import { getRatioGrade } from "@/utils/ratioUtils";
+import taskDefaultBg from "@/assets/img/common/task-default-background.png";
 
 type SortType = "priority" | "alphabetical" | "size" | "progress" | "download_speed" | "upload_speed" | "downloaded" | "uploaded";
 
@@ -202,18 +205,32 @@ function getStatusPriority(status: TorrentStatus): number {
   }
 }
 
-function TorrentCard({ torrent, onShowDetails }: { 
+function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck }: { 
   torrent: Torrent; 
   onShowDetails: (id: string) => void;
+  onStart: (id: string) => void;
+  onStop: (id: string) => void;
+  onRemove: (id: string) => void;
+  onForceDownload: (id: string) => void;
+  onForceReannounce: (id: string) => void;
+  onForceRecheck: (id: string) => void;
 }) {
-  const { t } = useTranslation();
   const StatusIcon = getStatusIcon(torrent.status);
 
   return (
-    <Card 
-      className="hover:shadow-lg transition-shadow overflow-hidden p-0 gap-4 cursor-pointer"
-      onClick={() => onShowDetails(torrent.id)}
+    <TorrentContextMenu 
+      taskId={torrent.id}
+      onStart={onStart}
+      onStop={onStop}
+      onRemove={onRemove}
+      onForceDownload={onForceDownload}
+      onForceReannounce={onForceReannounce}
+      onForceRecheck={onForceRecheck}
     >
+      <Card 
+        className="hover:shadow-lg transition-shadow overflow-hidden p-0 gap-2 cursor-pointer relative"
+        onClick={() => onShowDetails(torrent.id)}
+      >
       <CardHeader className={`flex flex-row items-center justify-between space-y-0 pt-3 pb-3 px-4 ${getStatusBackgroundColor(torrent.status)}`}>
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <div className="flex-shrink-0">
@@ -236,7 +253,8 @@ function TorrentCard({ torrent, onShowDetails }: {
           </CardTitle>
         </div>
         {torrent.agentName && (
-          <div className="flex-shrink-0 ml-2">
+          <div className="flex-shrink-0 ml-2 flex items-center gap-2">
+            <RatioBadge ratio={torrent.ratio} showValue={false} />
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="inline-flex items-center justify-center rounded-full border p-1">
@@ -254,63 +272,85 @@ function TorrentCard({ torrent, onShowDetails }: {
           </div>
         )}
       </CardHeader>
-      <CardContent className="px-4 pt-1 pb-6">
-        <ProgressBar progress={torrent.progress} height="md" className="mb-0 opacity-60" showLabel={false} />
-        <div className="text-xs text-muted-foreground mt-1 mb-5">
-          {torrent.progress.toFixed(1)}% concluído ({formatBytes((torrent.progress / 100) * torrent.totalSizeBytes)} de {formatBytes(torrent.totalSizeBytes)})
+      <CardContent className="px-4 pt-1 pb-6 relative">
+        {/* Background image only for the body (not header), very low opacity */}
+        <div
+          className="absolute inset-0 bg-center bg-cover pointer-events-none opacity-[0.12] dark:opacity-[0.03]"
+          style={{ backgroundImage: `url(${taskDefaultBg})` }}
+          aria-hidden
+        />
+        <div className="flex items-center gap-2 mt-0 mb-3">
+          <div className="flex-1">
+            <ProgressBar progress={torrent.progress} height="md" className="mb-0 opacity-60" showLabel={false} />
+          </div>
+          <span className="text-xs text-muted-foreground">{torrent.progress.toFixed(0)}%</span>
         </div>
-        <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
-          <div>
-            <span className="font-medium">{t('torrents.download')}: </span>
+        <div className="grid grid-cols-1 gap-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <Download className="h-3.5 w-3.5 text-green-600 dark:text-green-400" aria-hidden="true" />
             <span className={torrent.downloadRateBps > 0 ? 'text-green-600 dark:text-green-400' : ''}>
               {formatRate(torrent.downloadRateBps)}
             </span>
-            <span className="text-xs text-muted-foreground ml-1">
-              ({formatBytes(torrent.downloadedBytes)})
+            <span className="text-muted-foreground">•</span>
+            <span className="text-xs text-muted-foreground">
+              {formatBytes(torrent.downloadedBytes)}
             </span>
           </div>
-          <div>
-            <span className="font-medium">{t('torrents.upload')}: </span>
-            <span className={torrent.uploadRateBps > 0 ? 'text-purple-600 dark:text-purple-400' : ''}>
-              {formatRate(torrent.uploadRateBps)}
-            </span>
-            <span className="text-xs text-muted-foreground ml-1">
-              ({formatBytes(torrent.uploadedBytes)})
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1">
-              <ArrowUpCircle className="h-3 w-3 text-green-600 dark:text-green-400" />
-              <span className="font-medium">{t('torrents.seeds')}: </span>
-              <span>{torrent.numSeeds}</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Upload className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" aria-hidden="true" />
+              <span className={torrent.uploadRateBps > 0 ? 'text-purple-600 dark:text-purple-400' : ''}>
+                {formatRate(torrent.uploadRateBps)}
+              </span>
+              <span className="text-muted-foreground">•</span>
+              <span className="text-xs text-muted-foreground">
+                {formatBytes(torrent.uploadedBytes)}
+              </span>
             </div>
-            <div className="flex items-center gap-1">
-              <ArrowDownCircle className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-              <span className="font-medium">{t('torrents.leechs')}: </span>
-              <span>{torrent.numLeechs}</span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1">
+                <ArrowUp className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                <span className="text-xs">{torrent.numSeeds}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <ArrowDown className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                <span className="text-xs">{torrent.numLeechs}</span>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="font-medium">{t('torrents.ratio')}: </span>
-            <RatioBadge ratio={torrent.ratio} />
           </div>
         </div>
       </CardContent>
-    </Card>
+      </Card>
+    </TorrentContextMenu>
   );
 }
 
-function TorrentRow({ torrent, onShowDetails }: { 
+function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck }: { 
   torrent: Torrent; 
   onShowDetails: (id: string) => void;
+  onStart: (id: string) => void;
+  onStop: (id: string) => void;
+  onRemove: (id: string) => void;
+  onForceDownload: (id: string) => void;
+  onForceReannounce: (id: string) => void;
+  onForceRecheck: (id: string) => void;
 }) {
   const StatusIcon = getStatusIcon(torrent.status);
 
   return (
-    <tr 
-      className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
-      onClick={() => onShowDetails(torrent.id)}
+    <TorrentContextMenu 
+      taskId={torrent.id}
+      onStart={onStart}
+      onStop={onStop}
+      onRemove={onRemove}
+      onForceDownload={onForceDownload}
+      onForceReannounce={onForceReannounce}
+      onForceRecheck={onForceRecheck}
     >
+      <tr 
+        className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
+        onClick={() => onShowDetails(torrent.id)}
+      >
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
           <Tooltip>
@@ -400,7 +440,8 @@ function TorrentRow({ torrent, onShowDetails }: {
           <span className="text-muted-foreground">—</span>
         )}
       </td>
-    </tr>
+      </tr>
+    </TorrentContextMenu>
   );
 }
 
@@ -719,6 +760,7 @@ export default function TorrentsPage() {
   const [selectedStatuses, setSelectedStatuses] = useState<Set<TorrentStatus>>(new Set());
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
+  const [selectedGrades, setSelectedGrades] = useState<Set<string>>(new Set());
   const [refreshIntervalSec, setRefreshIntervalSec] = useState<number>(5);
   const [selectedTorrent, setSelectedTorrent] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -732,6 +774,7 @@ export default function TorrentsPage() {
   const prevAvailableStatusesRef = useRef<TorrentStatus[]>([]);
   const prevAvailableCategoriesRef = useRef<string[]>([]);
   const prevAvailableTagsRef = useRef<string[]>([]);
+  const prevAvailableGradesRef = useRef<string[]>([]);
   const addDropdownRef = useRef<HTMLDivElement | null>(null);
 
   // Extrair status únicos disponíveis
@@ -759,6 +802,16 @@ export default function TorrentsPage() {
       });
     });
     return Array.from(tags).sort();
+  }, [torrents]);
+
+  // Extrair ratio grades únicas disponíveis (ordenadas pela hierarquia)
+  const availableGrades = useMemo(() => {
+    const grades = new Set<string>();
+    torrents.forEach(t => {
+      grades.add(getRatioGrade(t.ratio));
+    });
+    const order = ["S++", "S+", "S", "A", "B", "C", "D", "E"];
+    return Array.from(grades).sort((a, b) => order.indexOf(a) - order.indexOf(b));
   }, [torrents]);
 
   // Inicializar todos os status como selecionados quando houver torrents
@@ -853,6 +906,36 @@ export default function TorrentsPage() {
     // Atualizar ref para próxima comparação
     prevAvailableTagsRef.current = availableTags;
   }, [availableTags, selectedTags]);
+
+  // Inicializar todas as ratio grades como selecionadas quando houver torrents
+  // e manter todas selecionadas quando novas grades aparecerem
+  useEffect(() => {
+    if (availableGrades.length === 0) return;
+
+    const prevGrades = prevAvailableGradesRef.current;
+
+    // Selecionar todos apenas na primeira detecção de grades disponíveis
+    if (prevGrades.length === 0 && selectedGrades.size === 0) {
+      setSelectedGrades(new Set(availableGrades));
+      prevAvailableGradesRef.current = availableGrades;
+      return;
+    }
+
+    // Detectar novos grades que apareceram
+    const newGrades = availableGrades.filter(g => !prevGrades.includes(g));
+
+    // Se há novos grades E todos os grades anteriores estão selecionados,
+    // adicionar os novos automaticamente
+    if (newGrades.length > 0) {
+      const allPreviousSelected = prevGrades.every(g => selectedGrades.has(g));
+      if (allPreviousSelected) {
+        setSelectedGrades(new Set(availableGrades));
+      }
+    }
+
+    // Atualizar ref para próxima comparação
+    prevAvailableGradesRef.current = availableGrades;
+  }, [availableGrades, selectedGrades]);
 
   // Carregar torrents da API
   const loadTorrents = useCallback(async () => {
@@ -1365,6 +1448,18 @@ export default function TorrentsPage() {
       // Nenhum agent selecionado -> não exibe torrents
       return [] as Torrent[];
     }
+
+    // Filtrar por ratio grades selecionados (se houver grades disponíveis)
+    if (availableGrades.length > 0 && selectedGrades.size === 0) {
+      // Nenhum grade selecionado -> não exibe torrents
+      return [] as Torrent[];
+    }
+    if (availableGrades.length > 0 && selectedGrades.size > 0) {
+      filtered = filtered.filter((t) => {
+        const grade = getRatioGrade(t.ratio);
+        return selectedGrades.has(grade);
+      });
+    }
     if (agents.length > 0 && selectedAgentIds.size > 0) {
       filtered = filtered.filter((t) => {
         // Só exibe torrents que pertencem aos agentes selecionados
@@ -1486,7 +1581,7 @@ export default function TorrentsPage() {
       // Aplicar direção da ordenação
       return sortDirection === "asc" ? comparison : -comparison;
     });
-  }, [torrents, searchTerm, sortType, sortDirection, agents, selectedAgentIds, availableStatuses, selectedStatuses, availableCategories, selectedCategories, availableTags, selectedTags]);
+  }, [torrents, searchTerm, sortType, sortDirection, agents, selectedAgentIds, availableStatuses, selectedStatuses, availableCategories, selectedCategories, availableTags, selectedTags, availableGrades, selectedGrades]);
 
   // Calcular dados de paginação
   const totalPages = Math.ceil(filteredTorrents.length / itemsPerPage);
@@ -1573,6 +1668,24 @@ export default function TorrentsPage() {
       setSelectedTags(new Set(availableTags));
     } else {
       setSelectedTags(new Set());
+    }
+  };
+
+  // Alternar seleção de ratio grade
+  const toggleGrade = (grade: string) => {
+    setSelectedGrades((prev) => {
+      const next = new Set(prev);
+      if (next.has(grade)) next.delete(grade); else next.add(grade);
+      return next;
+    });
+  };
+
+  // Selecionar ou limpar todos os ratio grades
+  const setAllGrades = (checked: boolean) => {
+    if (checked) {
+      setSelectedGrades(new Set(availableGrades));
+    } else {
+      setSelectedGrades(new Set());
     }
   };
 
@@ -1741,7 +1854,8 @@ export default function TorrentsPage() {
               {(selectedAgentIds.size < agents.length || 
                 selectedStatuses.size < availableStatuses.length ||
                 selectedCategories.size < availableCategories.length ||
-                selectedTags.size < availableTags.length) && (
+                selectedTags.size < availableTags.length ||
+                selectedGrades.size < availableGrades.length) && (
                 <span className="ml-auto h-2 w-2 rounded-full bg-primary flex-shrink-0" />
               )}
             </Button>
@@ -1803,7 +1917,8 @@ export default function TorrentsPage() {
               {(selectedAgentIds.size < agents.length || 
                 selectedStatuses.size < availableStatuses.length ||
                 selectedCategories.size < availableCategories.length ||
-                selectedTags.size < availableTags.length) && (
+                selectedTags.size < availableTags.length ||
+                selectedGrades.size < availableGrades.length) && (
                 <span className="ml-auto h-2 w-2 rounded-full bg-primary flex-shrink-0" />
               )}
             </Button>
@@ -1970,6 +2085,12 @@ export default function TorrentsPage() {
                     key={t.id} 
                     torrent={t} 
                     onShowDetails={handleShowDetails}
+                    onStart={handlePlayTorrent}
+                    onStop={handlePauseTorrent}
+                    onRemove={(id) => handleDeleteTorrent(id, false)}
+                    onForceDownload={handleForceDownloadTorrent}
+                    onForceReannounce={handleForceReannounceTorrent}
+                    onForceRecheck={handleForceRecheckTorrent}
                   />
                 ))}
               </tbody>
@@ -2024,6 +2145,12 @@ export default function TorrentsPage() {
                 key={t.id} 
                 torrent={t} 
                 onShowDetails={handleShowDetails}
+                onStart={handlePlayTorrent}
+                onStop={handlePauseTorrent}
+                onRemove={(id) => handleDeleteTorrent(id, false)}
+                onForceDownload={handleForceDownloadTorrent}
+                onForceReannounce={handleForceReannounceTorrent}
+                onForceRecheck={handleForceRecheckTorrent}
               />
             ))}
           </div>
@@ -2182,6 +2309,53 @@ export default function TorrentsPage() {
               onSetAll={setAllTags}
               useTagBadge={true}
             />
+          </div>
+
+          {/* Filtro de ratio grades */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium flex items-center gap-2">
+              <Star className="w-4 h-4 text-muted-foreground" />
+              {t('torrents.filters.ratioGrades', 'Ratio grades')}
+              {selectedGrades.size > 0 && selectedGrades.size < availableGrades.length && (
+                <div className="w-2 h-2 rounded-full bg-primary" />
+              )}
+            </label>
+            {/* Grade badges selector */}
+            <div className="flex flex-wrap gap-2">
+              {availableGrades.map((grade) => {
+                const selected = selectedGrades.has(grade);
+                const gradeToSampleRatio: Record<string, number> = {
+                  "S++": 100,
+                  "S+": 50,
+                  "S": 30,
+                  "A": 15,
+                  "B": 7,
+                  "C": 3,
+                  "D": 1,
+                  "E": 0,
+                };
+                return (
+                  <button
+                    key={grade}
+                    type="button"
+                    onClick={() => toggleGrade(grade)}
+                    className={`inline-flex items-center gap-2 rounded-md border px-2 py-1 transition-colors ${selected ? 'bg-accent text-accent-foreground border-border' : 'hover:bg-accent hover:text-accent-foreground border-border'}`}
+                    aria-pressed={selected}
+                    title={grade}
+                  >
+                    <RatioBadge ratio={gradeToSampleRatio[grade] ?? 0} showValue={false} />
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <Button size="sm" variant="outline" onClick={() => setAllGrades(true)} className="h-7 px-2">
+                {t('common.selectAll', 'Select all')}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setAllGrades(false)} className="h-7 px-2">
+                {t('common.clearAll', 'Clear all')}
+              </Button>
+            </div>
           </div>
 
           {/* Separador */}

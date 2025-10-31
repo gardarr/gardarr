@@ -8,6 +8,8 @@
       "error": "Erro",
       "success": "Sucesso"
     },
+    "ratio": "Ratio",
+    "nota": "Nota",
     "navigation": {
       "dashboard": "Dashboard",
       "torrents": "Torrents",
@@ -619,5 +621,125 @@
       "noIntegrations": "Nenhuma integração disponível",
       "noIntegrationsDescription": "Mais integrações serão adicionadas em atualizações futuras"
     }
+  ,
+  "torrentDetails": {
+  "title": "Detalhes do Torrent",
+  "subtitle": "Informações completas sobre o torrent selecionado",
+  "actions": {
+    "forceDownload": "Forçar Download",
+    "forceReannounce": "Forçar Reannounce",
+    "forceRecheck": "Forçar Recheck"
+  },
+  "ratio": {
+    "widget": {
+      "title": "Ratio",
+      "ratioTooltip": "Razão Seeders/Leechers. Quanto maior, melhor.",
+      "popularityTooltip": "Popularidade relativa do torrent. Quanto maior, mais popular.",
+      "starsAria": "{{stars}} de {{total}} estrelas"
+    },
+    "grades": {
+      "description": {
+        "Spp": "LENDÁRIO",
+        "Sp": "INCRÍVEL",
+        "S": "MESTRE",
+        "A": "AVANÇADO",
+        "B": "INTERMEDIÁRIO",
+        "C": "APRENDIZ",
+        "D": "NOVATO",
+        "E": "INICIANTE",
+        "unknown": "DESCONHECIDO"
+      },
+      "message": {
+        "Spp": "Você é um herói da comunidade — sua contribuição faz toda a diferença!",
+        "Sp": "Incrível! Você está elevando o nível e ajudando muita gente.",
+        "S": "Excelente contribuição! Continue assim para manter a comunidade forte.",
+        "A": "Muito bom! Sua participação ajuda a manter tudo saudável.",
+        "B": "Bom trabalho! Compartilhar um pouco mais já fará grande diferença.",
+        "C": "Quase lá! Que tal deixar enviando por mais um tempo?",
+        "D": "Você está contribuindo! Um pouquinho mais de upload e fica ótimo.",
+        "E": "Tudo bem! Se puder, deixe compartilhando mais um pouco — sua ajuda conta muito.",
+        "unknown": "Obrigado por participar! Compartilhar mantém a comunidade viva."
+      }
+    }
+  },
+  "name": {
+    "label": "Nome",
+    "edit": "Editar nome",
+    "save": "Salvar nome"
+  },
+  "general": {
+    "title": "Informações Gerais",
+    "state": "Estado:",
+    "agent": "Agente:"
+  },
+  "size": {
+    "title": "Tamanho",
+    "total": "Total:",
+    "progress": "Progresso:"
+  },
+  "category": {
+    "title": "Categoria",
+    "edit": "Editar categoria",
+    "cancel": "Cancelar",
+    "save": "Salvar"
+  },
+  "tags": {
+    "title": "Tags",
+    "edit": "Editar tags",
+    "cancel": "Cancelar",
+    "save": "Salvar",
+    "placeholder": "Digite tags e pressione Enter"
+  },
+  "path": {
+    "title": "Caminho",
+    "edit": "Editar caminho",
+    "save": "Salvar caminho"
+  },
+  "files": {
+    "title": "Lista de Arquivos"
+  },
+  "network": {
+    "title": "Rede e Pares",
+    "contribution": "Contribuição para a Rede",
+    "downloaded": "Baixado:",
+    "uploaded": "Enviado:",
+    "excellentContributor": "🌱 Excelente contribuidor!",
+    "goodContribution": "📈 Boa contribuição"
+  },
+  "download": {
+    "title": "Download",
+    "speed": "Velocidade:",
+    "total": "Total:"
+  },
+  "upload": {
+    "title": "Upload",
+    "speed": "Velocidade:",
+    "total": "Total:"
+  },
+  "swarm": {
+    "title": "Swarm",
+    "seeders": "Seeders:",
+    "leechers": "Leechers:"
+  },
+  "connected": {
+    "title": "Conectados",
+    "seeders": "Seeders:",
+    "leechers": "Leechers:"
+  },
+  "magnet": {
+    "title": "Detalhes do Magnet",
+    "hash": "Hash:",
+    "link": "Magnet Link:",
+    "displayName": "Display Name:",
+    "exactLength": "Exact Length:",
+    "exactSource": "Exact Source:",
+    "trackers": "Trackers:"
+  },
+  "toasts": {
+    "categoryUpdateSuccess": "Categoria atualizada com sucesso",
+    "categoryUpdateError": "Falha ao atualizar categoria",
+    "tagsUpdateSuccess": "Tags atualizadas com sucesso",
+    "tagsUpdateError": "Falha ao atualizar tags"
   }
-  
+  }
+}

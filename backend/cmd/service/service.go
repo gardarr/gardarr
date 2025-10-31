@@ -249,8 +249,7 @@ func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statist
 
 	// Serve static files from the web directory FIRST
 	router.Static("/assets", assetsPath)
-	router.StaticFile("/favicon.ico", filepath.Join(webPath, "favicon.ico"))
-	router.StaticFile("/vite.svg", filepath.Join(webPath, "vite.svg"))
+	router.StaticFile("/logo.ico", filepath.Join(webPath, "logo.ico"))
 
 	// API routes
 

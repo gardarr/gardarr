@@ -12,14 +12,16 @@ func ToTask(e models.TaskResponseModel) *entities.Task {
 	}
 
 	return &entities.Task{
-		ID:       e.Hash,
-		Name:     e.Name,
-		Hash:     e.Hash,
-		Category: e.Category,
-		Path:     e.Path,
-		State:    status,
-		Size:     e.Size,
-		Priority: e.Priority,
+		ID:          e.Hash,
+		Name:        e.Name,
+		Hash:        e.Hash,
+		CreatedAt:   e.CreatedAt,
+		CompletedAt: e.CompletedAt,
+		Category:    e.Category,
+		Path:        e.Path,
+		State:       status,
+		Size:        e.Size,
+		Priority:    e.Priority,
 		MagnetLink: entities.TaskMagnetLink{
 			Hash:        e.MagnetLink.Hash,
 			DisplayName: e.MagnetLink.DisplayName,
@@ -60,14 +62,16 @@ func ToTaskResponse(e *entities.Task) models.TaskResponseModel {
 	}
 
 	return models.TaskResponseModel{
-		ID:         e.ID,
-		Agent:      ToAgentResponse(e.Agent),
-		Name:       e.Name,
-		Hash:       e.Hash,
-		State:      e.State,
-		Priority:   e.Priority,
-		Active:     e.Active,
-		Popularity: e.Popularity,
+		ID:          e.ID,
+		Agent:       ToAgentResponse(e.Agent),
+		Name:        e.Name,
+		Hash:        e.Hash,
+		CreatedAt:   e.CreatedAt,
+		CompletedAt: e.CompletedAt,
+		State:       e.State,
+		Priority:    e.Priority,
+		Active:      e.Active,
+		Popularity:  e.Popularity,
 		MagnetLink: &models.TaskMagnetLinkResponse{
 			Hash:        e.MagnetLink.Hash,
 			DisplayName: e.MagnetLink.DisplayName,

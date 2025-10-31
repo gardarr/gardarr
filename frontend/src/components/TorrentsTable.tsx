@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { RatioBadge } from "@/components/ui/RatioBadge";
 import { AgentIcon } from "@/components/ui/AgentIcon";
 import { getStatusIcon, getStatusColor, type TorrentStatus } from "@/components/TorrentStatusIcon";
-
+import TorrentContextMenu from "@/components/TorrentContextMenu";
 
 type SortType = "priority" | "alphabetical" | "size" | "progress" | "download_speed" | "upload_speed" | "downloaded" | "uploaded";
 
@@ -43,6 +43,12 @@ interface TorrentsTableProps {
   filteredTorrentsLength: number;
   onPreviousPage: () => void;
   onNextPage: () => void;
+  onStart: (id: string) => void;
+  onStop: (id: string) => void;
+  onRemove: (id: string) => void;
+  onForceDownload: (id: string) => void;
+  onForceReannounce: (id: string) => void;
+  onForceRecheck: (id: string) => void;
 }
 
 function formatBytes(bytes: number): string {
@@ -69,17 +75,32 @@ function isTextTruncated(text: string, maxLength: number = 50): boolean {
   return text.length > maxLength;
 }
 
-function TorrentRow({ torrent, onShowDetails }: { 
+function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck }: { 
   torrent: Torrent; 
   onShowDetails: (id: string) => void;
+  onStart: (id: string) => void;
+  onStop: (id: string) => void;
+  onRemove: (id: string) => void;
+  onForceDownload: (id: string) => void;
+  onForceReannounce: (id: string) => void;
+  onForceRecheck: (id: string) => void;
 }) {
   const StatusIcon = getStatusIcon(torrent.status);
 
   return (
-    <tr 
-      className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
-      onClick={() => onShowDetails(torrent.id)}
+    <TorrentContextMenu 
+      taskId={torrent.id}
+      onStart={onStart}
+      onStop={onStop}
+      onRemove={onRemove}
+      onForceDownload={onForceDownload}
+      onForceReannounce={onForceReannounce}
+      onForceRecheck={onForceRecheck}
     >
+      <tr 
+        className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
+        onClick={() => onShowDetails(torrent.id)}
+      >
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
           <Tooltip>
@@ -163,7 +184,8 @@ function TorrentRow({ torrent, onShowDetails }: {
           <span className="text-muted-foreground">—</span>
         )}
       </td>
-    </tr>
+      </tr>
+    </TorrentContextMenu>
   );
 }
 
@@ -215,7 +237,13 @@ export default function TorrentsTable({
   totalPages,
   filteredTorrentsLength,
   onPreviousPage,
-  onNextPage
+  onNextPage,
+  onStart,
+  onStop,
+  onRemove,
+  onForceDownload,
+  onForceReannounce,
+  onForceRecheck
 }: TorrentsTableProps) {
   const { t } = useTranslation();
 
@@ -310,6 +338,12 @@ export default function TorrentsTable({
                   key={t.id} 
                   torrent={t} 
                   onShowDetails={onShowDetails}
+                  onStart={onStart}
+                  onStop={onStop}
+                  onRemove={onRemove}
+                  onForceDownload={onForceDownload}
+                  onForceReannounce={onForceReannounce}
+                  onForceRecheck={onForceRecheck}
                 />
               ))}
             </tbody>

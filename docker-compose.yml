@@ -1,21 +1,22 @@
 services:
   gardarr:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: gardarr:local
     container_name: gardarr
     env_file: "backend/.env"
     ports:
       - "${APP_PORT:-3000}:3000"
     environment:
-      - APP_PORT=${APP_PORT:-3000}
-      - APP_DOMAINS=${APP_DOMAINS:-http://localhost:3000,http://localhost:5173}
+      APP_PORT: ${APP_PORT:-3000}
+      APP_DOMAINS: ${APP_DOMAINS:-http://localhost:3000,http://localhost:5173}
       # Adicione outras variáveis de ambiente conforme necessário
-      # - OPEN_SEEDBOX_DATABASE_URL=${OPEN_SEEDBOX_DATABASE_URL}
-      # - OPEN_SEEDBOX_REDIS_URL=${OPEN_SEEDBOX_REDIS_URL}
+      # DATABASE_DRIVER: sqlite
+      # DATABASE_FILE_PATH: /data/gardarr_database.db
+      STATISTICS_ENABLED: true
+      STATISTICS_INTERVAL: 5s
+      STATISTICS_DIR: /data/statistics
     volumes:
       # Montar volume para dados persistentes se necessário
-      - gardarr_data:/app/data
+      - gardarr_data:/data
     restart: unless-stopped
     networks:
       - gardarr-network
@@ -27,32 +28,32 @@ services:
       start_period: 40s
 
   # Agent service - runs the agent subcommand
-  gardarr-agent:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: gardarr-agent
-    command: ["./main", "agent"]
-    env_file: "backend/.agent.red.env"
-    ports:
-      - "${AGENT_PORT:-3100}:3100"
-    environment:
-      - AGENT_PORT=${AGENT_PORT:-3100}
-      - AGENT_SECRET=${AGENT_SECRET}
-      - QBITTORRENT_BASEURL=${QBITTORRENT_BASEURL}
-      - QBITTORRENT_USERNAME=${QBITTORRENT_USERNAME}
-      - QBITTORRENT_PASSWORD=${QBITTORRENT_PASSWORD}
-    volumes:
-      - gardarr_data:/app/data
-    restart: unless-stopped
-    networks:
-      - gardarr-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3100/v1/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+  #gardarr-agent:
+  #  build:
+  #    context: .
+  #    dockerfile: Dockerfile
+  #  container_name: gardarr-agent
+  #  command: ["./main", "agent"]
+  #  env_file: "backend/.agent.red.env"
+  #  ports:
+  #    - "${AGENT_PORT:-3100}:3100"
+  #  environment:
+  #    - AGENT_PORT=${AGENT_PORT:-3100}
+  #    - AGENT_SECRET=${AGENT_SECRET}
+  #    - QBITTORRENT_BASEURL=${QBITTORRENT_BASEURL}
+  #    - QBITTORRENT_USERNAME=${QBITTORRENT_USERNAME}
+  #    - QBITTORRENT_PASSWORD=${QBITTORRENT_PASSWORD}
+  #  volumes:
+  #    - gardarr_data:/app/data
+  #  restart: unless-stopped
+  #  networks:
+  #    - gardarr-network
+  #  healthcheck:
+  #    test: ["CMD", "curl", "-f", "http://localhost:3100/v1/health"]
+  #    interval: 30s
+  #    timeout: 10s
+  #    retries: 3
+  #    start_period: 40s
 
   # Exemplo de serviço de banco de dados (descomente se necessário)
   # postgres:
