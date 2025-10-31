@@ -6,6 +6,13 @@ import (
 	"testing"
 )
 
+// restoreWorkingDir restores the working directory and fails the test if it cannot be restored.
+func restoreWorkingDir(t *testing.T, dir string) {
+	if err := os.Chdir(dir); err != nil {
+		t.Errorf("Failed to restore working directory: %v", err)
+	}
+}
+
 func TestEnsureSQLiteFile(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -110,7 +117,7 @@ func TestEnsureSQLiteFile(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to get current directory: %v", err)
 			}
-			defer os.Chdir(oldWd)
+			defer restoreWorkingDir(t, oldWd)
 
 			if err := os.Chdir(tmpDir); err != nil {
 				t.Fatalf("Failed to change to temp directory: %v", err)
@@ -189,7 +196,7 @@ func TestEnsureSQLiteFile_DirectoryCreation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get current directory: %v", err)
 	}
-	defer os.Chdir(oldWd)
+	defer restoreWorkingDir(t, oldWd)
 
 	if err := os.Chdir(tmpDir); err != nil {
 		t.Fatalf("Failed to change to temp directory: %v", err)
