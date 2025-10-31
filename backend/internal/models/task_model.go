@@ -1,9 +1,13 @@
 package models
 
+import "time"
+
 type TaskResponseModel struct {
 	ID           string                   `json:"id"`
 	Name         string                   `json:"name"`
 	Hash         string                   `json:"hash"`
+	CreatedAt    time.Time                `json:"created_at"`
+	CompletedAt  time.Time                `json:"completed_at"`
 	State        string                   `json:"state"`
 	Category     string                   `json:"category"`
 	Path         string                   `json:"path"`

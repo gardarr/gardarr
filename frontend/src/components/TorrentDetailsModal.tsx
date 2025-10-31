@@ -18,7 +18,6 @@ import {
   HardDrive, 
   FolderOpen,
   Activity,
-  ArrowUpDown,
   Layers,
   ArrowDown,
   ArrowUp,
@@ -51,6 +50,8 @@ import { getCategoryIcon, getCategoryColor } from "@/utils/categoryUtils";
 import type { Task } from "@/types/torrent";
 import type { Category } from "@/types/category";
 import { TorrentFilesList } from "@/components/TorrentFilesList";
+import { TorrentRatioWidget } from "@/components/widgets/TorrentRatioWidget";
+import { formatBytes as formatBytesUtil } from "@/utils/bytes";
 
 interface TorrentDetailsModalProps {
   torrent: Task | null;
@@ -235,12 +236,12 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
             onUpdateCategory(torrent.id, editedCategoryId);
           }
           
-          showSuccess("Categoria atualizada com sucesso");
+          showSuccess(t('torrentDetails.toasts.categoryUpdateSuccess', { defaultValue: 'Categoria atualizada com sucesso' }));
           
           setIsEditingCategory(false);
         } catch (error) {
           console.error('Failed to update category:', error);
-          showError("Falha ao atualizar categoria");
+          showError(t('torrentDetails.toasts.categoryUpdateError', { defaultValue: 'Falha ao atualizar categoria' }));
         }
       }
     } else {
@@ -277,12 +278,12 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
             onUpdateTags(torrent.id, editedTags);
           }
           
-          showSuccess("Tags atualizadas com sucesso");
+          showSuccess(t('torrentDetails.toasts.tagsUpdateSuccess', { defaultValue: 'Tags atualizadas com sucesso' }));
           
           setIsEditingTags(false);
         } catch (error) {
           console.error('Failed to update tags:', error);
-          showError("Falha ao atualizar tags");
+          showError(t('torrentDetails.toasts.tagsUpdateError', { defaultValue: 'Falha ao atualizar tags' }));
         }
       }
     } else {
@@ -311,10 +312,10 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
             <div className="flex-1">
               <DialogTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
-                Detalhes do Torrent
+                {t('torrentDetails.title', { defaultValue: 'Detalhes do Torrent' })}
               </DialogTitle>
               <DialogDescription>
-                Informações completas sobre o torrent selecionado
+                {t('torrentDetails.subtitle', { defaultValue: 'Informações completas sobre o torrent selecionado' })}
               </DialogDescription>
             </div>
             {/* Botões de ação - Desktop apenas */}
@@ -363,13 +364,13 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                       size="icon"
                       onClick={() => onForceDownload(torrent.id)}
                       className="h-10 w-10 text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-950 dark:text-orange-400 dark:hover:text-orange-300"
-                      aria-label="Force Download"
+                      aria-label={t('torrentDetails.actions.forceDownload', { defaultValue: 'Force Download' })}
                     >
                       <Zap className="h-5 w-5" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    Force Download
+                    {t('torrentDetails.actions.forceDownload', { defaultValue: 'Force Download' })}
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -381,13 +382,13 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                       size="icon"
                       onClick={() => onForceReannounce(torrent.id)}
                       className="h-10 w-10 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950 dark:text-blue-400 dark:hover:text-blue-300"
-                      aria-label="Force Reannounce"
+                      aria-label={t('torrentDetails.actions.forceReannounce', { defaultValue: 'Force Reannounce' })}
                     >
                       <Radio className="h-5 w-5" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    Force Reannounce
+                    {t('torrentDetails.actions.forceReannounce', { defaultValue: 'Force Reannounce' })}
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -399,13 +400,13 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                       size="icon"
                       onClick={() => onForceRecheck(torrent.id)}
                       className="h-10 w-10 text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-950 dark:text-purple-400 dark:hover:text-purple-300"
-                      aria-label="Force Recheck"
+                      aria-label={t('torrentDetails.actions.forceRecheck', { defaultValue: 'Force Recheck' })}
                     >
                       <CheckCircle className="h-5 w-5" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    Force Recheck
+                    {t('torrentDetails.actions.forceRecheck', { defaultValue: 'Force Recheck' })}
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -550,11 +551,11 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
         <div className="space-y-3 sm:space-y-6">
           {/* Nome do Torrent */}
           <div className="space-y-2">
-            <h3 className="text-sm font-medium text-muted-foreground">Nome</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">{t('torrentDetails.name.label', { defaultValue: 'Nome' })}</h3>
             <div className="flex items-start gap-2">
               <div className="flex items-start gap-2 p-2 sm:p-3 container-content-background/50 rounded-lg min-w-0 flex-1">
                 <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                {isEditingName ? (
+                  {isEditingName ? (
                   <Input
                     value={editedName}
                     onChange={(e) => setEditedName(e.target.value)}
@@ -598,7 +599,9 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {isEditingName ? 'Salvar nome' : 'Editar nome'}
+                  {isEditingName
+                    ? t('torrentDetails.name.save', { defaultValue: 'Salvar nome' })
+                    : t('torrentDetails.name.edit', { defaultValue: 'Editar nome' })}
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -607,17 +610,17 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
 
           {/* Informações Gerais */}
           <div className="space-y-4">
-            <h3 className="text-sm font-medium text-muted-foreground">Informações Gerais</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">{t('torrentDetails.general.title', { defaultValue: 'Informações Gerais' })}</h3>
             <div className="space-y-4">
-              {/* Card Status - Full width */}
+              {/* Card Informações Gerais - Full width */}
               <div className="p-3 container-content-background/50 rounded-lg border">
                 <div className="flex items-center gap-2 mb-3">
                   <Activity className="h-4 w-4 text-muted-foreground" />
-                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Status</h4>
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('torrentDetails.general.title', { defaultValue: 'Informações Gerais' })}</h4>
                 </div>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Estado:</span>
+                    <span className="text-sm font-medium">{t('torrentDetails.general.state', { defaultValue: 'Estado:' })}</span>
                     <div className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium w-fit ${getStatusBackgroundColor(torrent.state as TorrentStatus)} ${getStatusColor(torrent.state as TorrentStatus)}`}>
                       {(() => {
                         const StatusIcon = getStatusIcon(torrent.state as TorrentStatus);
@@ -626,25 +629,46 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                       <span className="capitalize">{torrent.state}</span>
                     </div>
                   </div>
+                  {torrent.agent && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">{t('torrentDetails.general.agent', { defaultValue: 'Agent:' })}</span>
+                      <div className="flex items-center gap-2">
+                        <AgentIcon 
+                          iconName={torrent.agent.icon}
+                          color={torrent.agent.color}
+                          size="sm"
+                        />
+                        <span className="text-sm text-muted-foreground">{torrent.agent.name}</span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">{t('torrentDetails.general.createdAt', { defaultValue: 'Criado em:' })}</span>
+                    <span className="text-sm text-muted-foreground">{new Date(torrent.created_at).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">{t('torrentDetails.general.completedAt', { defaultValue: 'Concluído em:' })}</span>
+                    <span className="text-sm text-muted-foreground">{torrent.completed_at ? new Date(torrent.completed_at).toLocaleString() : '—'}</span>
+                  </div>
                 </div>
               </div>
 
               {/* Cards Tamanho e Ratio - Always on same row */}
-              <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                {/* Card Tamanho e Progresso */}
-                <div className="p-3 container-content-background/50 rounded-lg border">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 sm:gap-4">
+                {/* Card Tamanho e Progresso: ocupa a linha inteira em telas menores, 1/2 no desktop grande */}
+                <div className="p-3 container-content-background/50 rounded-lg border sm:col-span-2 lg:col-span-1">
                   <div className="flex items-center gap-2 mb-3">
                     <HardDrive className="h-4 w-4 text-muted-foreground" />
-                    <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Tamanho</h4>
+                    <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('torrentDetails.size.title', { defaultValue: 'Tamanho' })}</h4>
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm">Total:</span>
+                      <span className="text-sm">{t('torrentDetails.size.total', { defaultValue: 'Total:' })}</span>
                       <span className="text-sm text-muted-foreground">{formatBytes(torrent.size)}</span>
                     </div>
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm">Progresso:</span>
+                        <span className="text-sm">{t('torrentDetails.size.progress', { defaultValue: 'Progresso:' })}</span>
                         <span className="text-sm text-muted-foreground">{torrent.progress.toFixed(1)}%</span>
                       </div>
                       <ProgressBar progress={torrent.progress} height="sm" />
@@ -652,135 +676,125 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                   </div>
                 </div>
 
-                {/* Card Ratio e Popularidade */}
-                <div className="p-3 container-content-background/50 rounded-lg border">
-                  <div className="flex items-center gap-2 mb-3">
-                    <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
-                    <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ratio</h4>
-                  </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Ratio:</span>
-                    <span className="text-sm text-muted-foreground">{torrent.ratio.toFixed(2)}x</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Popularidade:</span>
-                    <span className="text-sm text-muted-foreground">{torrent.popularity.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Prioridade:</span>
-                    <span className="text-sm text-muted-foreground">{torrent.priority}</span>
-                  </div>
+                {/* Card Ratio: ocupa a linha inteira em telas menores, 1/2 no desktop grande */}
+                <div className="sm:col-span-2 lg:col-span-1">
+                  <TorrentRatioWidget 
+                    ratio={torrent.ratio} 
+                    popularity={torrent.popularity} 
+                    priority={torrent.priority} 
+                  />
                 </div>
-                </div>
+
+                {/* Card Agent removido - informações movidas para "Informações Gerais" */}
               </div>
 
-              {/* Card Categoria */}
-              <div className="p-3 container-content-background/50 rounded-lg border">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Layers className="h-4 w-4 text-muted-foreground" />
-                    <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Categoria</h4>
-                  </div>
-                  {!isEditingCategory && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0 bg-primary hover:bg-primary/90"
-                          aria-label="Editar categoria"
-                          onClick={handleEditCategory}
-                        >
-                          <Edit className="h-3 w-3" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        Editar categoria
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  {isEditingCategory ? (
-                    <div className="space-y-2">
-                      <SelectCategory
-                        selectedCategoryId={editedCategoryId}
-                        onCategoryChange={handleCategoryChange}
-                        label=""
-                        required={false}
-                        showAddButton={false}
-                        className="mb-2"
-                      />
-                      <div className="flex gap-2 justify-end">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleCancelEditCategory}
-                          className="h-8 px-3"
-                        >
-                          Cancelar
-                        </Button>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={handleEditCategory}
-                          className="h-8 px-3"
-                        >
-                          Salvar
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Categoria:</span>
-                      <div className="flex items-center gap-2">
-                        {currentCategoryData ? (
-                          <>
-                            {(() => {
-                              const IconComponent = getCategoryIcon(currentCategoryData.icon);
-                              const color = getCategoryColor(currentCategoryData.color);
-                              return (
-                                <IconComponent 
-                                  className="h-4 w-4" 
-                                  style={{ color }}
-                                />
-                              );
-                            })()}
-                            <span className="text-sm text-muted-foreground">{currentCategoryData.name}</span>
-                          </>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">{currentCategory || 'N/A'}</span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Card Tags */}
-              {(currentTags && currentTags.length > 0) || isEditingTags ? (
+              {/* Card Categoria + Tags (Unificado) */}
+              {((currentTags && currentTags.length > 0) || isEditingTags) && (
                 <div className="p-3 container-content-background/50 rounded-lg border">
+                  {/* Categoria */}
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <Layers className="h-4 w-4 text-muted-foreground" />
-                      <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Tags</h4>
+                      <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('torrentDetails.category.title', { defaultValue: 'Categoria' })}</h4>
+                    </div>
+                    {!isEditingCategory && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="h-8 w-8 p-0 flex-shrink-0"
+                            aria-label={t('torrentDetails.category.edit', { defaultValue: 'Editar categoria' })}
+                            onClick={handleEditCategory}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {t('torrentDetails.category.edit', { defaultValue: 'Editar categoria' })}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    {isEditingCategory ? (
+                      <div className="space-y-2">
+                        <SelectCategory
+                          selectedCategoryId={editedCategoryId}
+                          onCategoryChange={handleCategoryChange}
+                          label=""
+                          required={false}
+                          showAddButton={false}
+                          className="mb-2"
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleCancelEditCategory}
+                            className="h-8 px-3"
+                          >
+                            {t('torrentDetails.category.cancel', { defaultValue: 'Cancelar' })}
+                          </Button>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={handleEditCategory}
+                            className="h-8 px-3"
+                          >
+                            {t('torrentDetails.category.save', { defaultValue: 'Salvar' })}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm">{t('torrentDetails.category.title', { defaultValue: 'Categoria' })}:</span>
+                        <div className="flex items-center gap-2">
+                          {currentCategoryData ? (
+                            <>
+                              {(() => {
+                                const IconComponent = getCategoryIcon(currentCategoryData.icon);
+                                const color = getCategoryColor(currentCategoryData.color);
+                                return (
+                                  <IconComponent 
+                                    className="h-4 w-4" 
+                                    style={{ color }}
+                                  />
+                                );
+                              })()}
+                              <span className="text-sm text-muted-foreground">{currentCategoryData.name}</span>
+                            </>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">{currentCategory || 'N/A'}</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <Separator className="my-3" />
+
+                  {/* Tags */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Layers className="h-4 w-4 text-muted-foreground" />
+                      <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('torrentDetails.tags.title', { defaultValue: 'Tags' })}</h4>
                     </div>
                     {!isEditingTags && (
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
-                            variant="ghost"
+                            variant="default"
                             size="sm"
-                            className="h-6 w-6 p-0 bg-primary hover:bg-primary/90"
-                            aria-label="Editar tags"
+                            className="h-8 w-8 p-0 flex-shrink-0"
+                            aria-label={t('torrentDetails.tags.edit', { defaultValue: 'Editar tags' })}
                             onClick={handleEditTags}
                           >
-                            <Edit className="h-3 w-3" />
+                            <Edit className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          Editar tags
+                          {t('torrentDetails.tags.edit', { defaultValue: 'Editar tags' })}
                         </TooltipContent>
                       </Tooltip>
                     )}
@@ -793,7 +807,7 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                           onTagsChange={handleTagsChange}
                           label=""
                           required={false}
-                          placeholder="Digite tags e pressione Enter"
+                          placeholder={t('torrentDetails.tags.placeholder', { defaultValue: 'Digite tags e pressione Enter' })}
                           className="mb-2"
                         />
                         <div className="flex gap-2 justify-end">
@@ -803,7 +817,7 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                             onClick={handleCancelEditTags}
                             className="h-8 px-3"
                           >
-                            Cancelar
+                            {t('torrentDetails.tags.cancel', { defaultValue: 'Cancelar' })}
                           </Button>
                           <Button
                             variant="default"
@@ -811,48 +825,36 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                             onClick={handleEditTags}
                             className="h-8 px-3"
                           >
-                            Salvar
+                            {t('torrentDetails.tags.save', { defaultValue: 'Salvar' })}
                           </Button>
                         </div>
                       </div>
                     ) : (
                       <div className="flex flex-wrap gap-1">
-                        {currentTags?.map((tag, index) => (
-                          <TagBadge
-                            key={index}
-                            tag={tag}
-                            size="sm"
-                          />
-                        ))}
+                        {currentTags && currentTags.length > 0 ? (
+                          currentTags.map((tag, index) => (
+                            <TagBadge
+                              key={index}
+                              tag={tag}
+                              size="sm"
+                            />
+                          ))
+                        ) : (
+                          <span className="text-xs text-muted-foreground">{t('torrentDetails.tags.empty', { defaultValue: 'Sem tags' })}</span>
+                        )}
                       </div>
                     )}
                   </div>
                 </div>
-              ) : null}
-
-              {/* Card Agent */}
-              {torrent.agent && (
-                <div className="p-3 container-content-background/50 rounded-lg border">
-                  <div className="flex items-center gap-2 mb-3">
-                    <AgentIcon 
-                      iconName={torrent.agent.icon}
-                      color={torrent.agent.color}
-                      size="sm"
-                    />
-                    <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Agent</h4>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Nome:</span>
-                    <span className="text-sm text-muted-foreground">{torrent.agent.name}</span>
-                  </div>
-                </div>
               )}
+
+              
             </div>
           </div>
 
           {/* Caminho */}
           <div className="space-y-2">
-            <h3 className="text-sm font-medium text-muted-foreground">Caminho</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">{t('torrentDetails.path.title', { defaultValue: 'Caminho' })}</h3>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2 p-2 sm:p-3 container-content-background/50 rounded-lg flex-1">
                 <FolderOpen className="h-4 w-4 text-muted-foreground flex-shrink-0" />
@@ -900,7 +902,9 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {isEditingPath ? 'Salvar caminho' : 'Editar caminho'}
+                  {isEditingPath
+                    ? t('torrentDetails.path.save', { defaultValue: 'Salvar caminho' })
+                    : t('torrentDetails.path.edit', { defaultValue: 'Editar caminho' })}
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -912,19 +916,19 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
             agentId={torrent.agent?.uuid || ""}
             taskId={torrent.id}
             showAccordion={true}
-            title="Lista de Arquivos"
+            title={t('torrentDetails.files.title', { defaultValue: 'Lista de Arquivos' })}
           />
 
           <Separator />
 
           {/* Rede e Pares */}
           <div className="space-y-4">
-            <h3 className="text-sm font-medium text-muted-foreground">Rede e Pares</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">{t('torrentDetails.network.title', { defaultValue: 'Rede e Pares' })}</h3>
             
             {/* Barra de Progresso de Seeding */}
             <div className="space-y-3 p-3 container-content-background/50 rounded-lg">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Contribuição para a Rede</span>
+                <span className="text-sm font-medium">{t('torrentDetails.network.contribution', { defaultValue: 'Contribuição para a Rede' })}</span>
                 <span className="text-sm font-mono font-medium">
                   {torrent.ratio.toFixed(2)}x
                 </span>
@@ -980,14 +984,14 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                 
                 {/* Labels abaixo da barra */}
                 <div className="flex justify-between items-center text-xs px-1">
-                  <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1">
                     <div className="w-3 h-3 rounded" style={{ background: '#3b82f6' }}></div>
-                    <span className="font-medium text-muted-foreground">Baixado:</span>
+                    <span className="font-medium text-muted-foreground">{t('torrentDetails.network.downloaded', { defaultValue: 'Baixado:' })}</span>
                     <span className="font-mono">{formatBytes(torrent.network.download.amount)}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <div className="w-3 h-3 rounded" style={{ background: '#10b981' }}></div>
-                    <span className="font-medium text-muted-foreground">Enviado:</span>
+                    <span className="font-medium text-muted-foreground">{t('torrentDetails.network.uploaded', { defaultValue: 'Enviado:' })}</span>
                     <span className="font-mono">{formatBytes(torrent.network.upload.amount)}</span>
                   </div>
                 </div>
@@ -1001,10 +1005,9 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                       ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
                       : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                   }`}>
-                    {torrent.ratio >= 2 
-                      ? '🌱 Excelente contribuidor!' 
-                      : '📈 Boa contribuição'
-                    }
+                  {torrent.ratio >= 2
+                    ? t('torrentDetails.network.excellentContributor', { defaultValue: '🌱 Excelente contribuidor!' })
+                    : t('torrentDetails.network.goodContribution', { defaultValue: '📈 Boa contribuição' })}
                   </span>
                 </div>
               )}
@@ -1014,20 +1017,20 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
               <div className="p-3 container-content-background/50 rounded-lg border">
                 <div className="flex items-center gap-2 mb-3">
                   <ArrowDown className="h-4 w-4 text-blue-500" />
-                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Download</h4>
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('torrentDetails.download.title', { defaultValue: 'Download' })}</h4>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
                       <Gauge className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-sm">Velocidade:</span>
+                      <span className="text-sm">{t('torrentDetails.download.speed', { defaultValue: 'Velocidade:' })}</span>
                     </div>
                     <span className="text-sm text-muted-foreground">{formatBytes(torrent.network.download.speed)}/s</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
                       <Database className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-sm">Total:</span>
+                      <span className="text-sm">{t('torrentDetails.download.total', { defaultValue: 'Total:' })}</span>
                     </div>
                     <span className="text-sm text-muted-foreground">{formatBytes(torrent.network.download.amount)}</span>
                   </div>
@@ -1038,20 +1041,20 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
               <div className="p-3 container-content-background/50 rounded-lg border">
                 <div className="flex items-center gap-2 mb-3">
                   <ArrowUp className="h-4 w-4 text-green-500" />
-                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Upload</h4>
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('torrentDetails.upload.title', { defaultValue: 'Upload' })}</h4>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
                       <Gauge className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-sm">Velocidade:</span>
+                      <span className="text-sm">{t('torrentDetails.upload.speed', { defaultValue: 'Velocidade:' })}</span>
                     </div>
                     <span className="text-sm text-muted-foreground">{formatBytes(torrent.network.upload.speed)}/s</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
                       <Database className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-sm">Total:</span>
+                      <span className="text-sm">{t('torrentDetails.upload.total', { defaultValue: 'Total:' })}</span>
                     </div>
                     <span className="text-sm text-muted-foreground">{formatBytes(torrent.network.upload.amount)}</span>
                   </div>
@@ -1062,20 +1065,20 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
               <div className="p-3 container-content-background/50 rounded-lg border">
                 <div className="flex items-center gap-2 mb-3">
                   <Globe className="h-4 w-4 text-muted-foreground" />
-                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Swarm</h4>
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('torrentDetails.swarm.title', { defaultValue: 'Swarm' })}</h4>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
                       <UserPlus className="h-3.5 w-3.5 text-green-600" />
-                      <span className="text-sm">Seeders:</span>
+                      <span className="text-sm">{t('torrentDetails.swarm.seeders', { defaultValue: 'Seeders:' })}</span>
                     </div>
                     <span className="text-sm text-muted-foreground">{torrent.pairs.swarm_seeders}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
                       <UserMinus className="h-3.5 w-3.5 text-orange-600" />
-                      <span className="text-sm">Leechers:</span>
+                      <span className="text-sm">{t('torrentDetails.swarm.leechers', { defaultValue: 'Leechers:' })}</span>
                     </div>
                     <span className="text-sm text-muted-foreground">{torrent.pairs.swarm_leechers}</span>
                   </div>
@@ -1086,20 +1089,20 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
               <div className="p-3 container-content-background/50 rounded-lg border">
                 <div className="flex items-center gap-2 mb-3">
                   <Users className="h-4 w-4 text-muted-foreground" />
-                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Conectados</h4>
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('torrentDetails.connected.title', { defaultValue: 'Conectados' })}</h4>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
                       <UserPlus className="h-3.5 w-3.5 text-green-600" />
-                      <span className="text-sm">Seeders:</span>
+                      <span className="text-sm">{t('torrentDetails.connected.seeders', { defaultValue: 'Seeders:' })}</span>
                     </div>
                     <span className="text-sm text-muted-foreground">{torrent.pairs.seeders}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
                       <UserMinus className="h-3.5 w-3.5 text-orange-600" />
-                      <span className="text-sm">Leechers:</span>
+                      <span className="text-sm">{t('torrentDetails.connected.leechers', { defaultValue: 'Leechers:' })}</span>
                     </div>
                     <span className="text-sm text-muted-foreground">{torrent.pairs.leechers}</span>
                   </div>
@@ -1111,11 +1114,11 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
           {/* Informações do Magnet Link */}
           <Separator />
           <div className="space-y-2">
-            <h3 className="text-sm font-medium text-muted-foreground">Detalhes do Magnet</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">{t('torrentDetails.magnet.title', { defaultValue: 'Detalhes do Magnet' })}</h3>
             
             {/* Hash */}
             <div className="space-y-2">
-              <span className="text-sm font-medium">Hash:</span>
+              <span className="text-sm font-medium">{t('torrentDetails.magnet.hash', { defaultValue: 'Hash:' })}</span>
               <div className="relative">
                 <div className="p-3 container-content-background/50 rounded-lg border pr-12">
                   <span className="text-xs sm:text-sm font-mono break-all">
@@ -1139,7 +1142,7 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
 
             {/* Magnet Link */}
             <div className="space-y-2">
-              <span className="text-sm font-medium">Magnet Link:</span>
+              <span className="text-sm font-medium">{t('torrentDetails.magnet.link', { defaultValue: 'Magnet Link:' })}</span>
               <div className="relative">
                 <div className="p-3 container-content-background/50 rounded-lg border pr-12">
                   <span 
@@ -1168,20 +1171,20 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
             {torrent.magnet_link && (
               <div className="space-y-2 text-xs">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium">Display Name:</span>
+                  <span className="font-medium">{t('torrentDetails.magnet.displayName', { defaultValue: 'Display Name:' })}</span>
                   <span className="text-muted-foreground">{torrent.magnet_link.display_name}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="font-medium">Exact Length:</span>
-                  <span className="text-muted-foreground">{torrent.magnet_link.exact_length}</span>
+                  <span className="font-medium">{t('torrentDetails.magnet.exactLength', { defaultValue: 'Exact Length:' })}</span>
+                  <span className="text-muted-foreground">{formatBytesUtil(Number(torrent.magnet_link.exact_length) || 0)}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="font-medium">Exact Source:</span>
+                  <span className="font-medium">{t('torrentDetails.magnet.exactSource', { defaultValue: 'Exact Source:' })}</span>
                   <span className="text-muted-foreground">{torrent.magnet_link.exact_source}</span>
                 </div>
                 {torrent.magnet_link.trackers && torrent.magnet_link.trackers.length > 0 && (
                   <div>
-                    <span className="font-medium">Trackers:</span>
+                    <span className="font-medium">{t('torrentDetails.magnet.trackers', { defaultValue: 'Trackers:' })}</span>
                     <ul className="list-disc list-inside ml-2 text-muted-foreground">
                       {torrent.magnet_link.trackers.map((tracker, index) => (
                         <li key={index} className="break-all">{tracker}</li>

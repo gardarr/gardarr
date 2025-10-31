@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   BarChart3, 
@@ -21,6 +21,7 @@ const Analytics: React.FC = () => {
   const { t } = useTranslation();
   const { hash, agent_uuid, uuid } = useParams<{ hash?: string; agent_uuid?: string; uuid?: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   
   const [selectedTaskId, setSelectedTaskId] = useState<string>('1');
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
@@ -56,12 +57,16 @@ const Analytics: React.FC = () => {
       // Legacy task hash in URL - open tasks tab with selected task
       setActiveTab('tasks');
       // TODO: Find task by hash and set selectedTaskId
+    } else if (location.pathname.includes('/analytics/tasks')) {
+      // Explicit tasks path
+      setActiveTab('tasks');
+      setSelectedAgentId('');
     } else {
       // No specific ID in URL, default to agents tab
       setActiveTab('agents');
       setSelectedAgentId('');
     }
-  }, [agent_uuid, uuid, hash, navigate]);
+  }, [agent_uuid, uuid, hash, navigate, location.pathname]);
 
   // Handle tab changes
   const handleTabChange = (value: string) => {
@@ -71,8 +76,8 @@ const Analytics: React.FC = () => {
       navigate('/analytics');
       setSelectedAgentId('');
     } else if (value === 'tasks') {
-      // Navigate to base analytics URL when switching to tasks tab
-      navigate('/analytics');
+      // Navigate to tasks URL when switching to tasks tab
+      navigate('/analytics/tasks');
     }
   };
 

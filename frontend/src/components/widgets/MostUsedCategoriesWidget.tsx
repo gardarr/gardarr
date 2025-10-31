@@ -1,6 +1,7 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tag, Hash } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 interface CategoryData {
   id: string;
@@ -66,9 +67,9 @@ export default function MostUsedCategoriesWidget({
           <Tag className="h-4 w-4 text-primary" />
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
+          <div className="flex items-stretch gap-6">
             {/* Categories Section */}
-            <div>
+            <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
                 <Hash className="h-3 w-3 text-muted-foreground" />
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -104,8 +105,10 @@ export default function MostUsedCategoriesWidget({
               </div>
             </div>
 
+            <Separator orientation="vertical" className="h-auto self-stretch" />
+
             {/* Tags Section */}
-            <div>
+            <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
                 <Tag className="h-3 w-3 text-muted-foreground" />
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">

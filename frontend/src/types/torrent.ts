@@ -6,6 +6,8 @@ export interface Task {
   agent?: Agent;
   name: string;
   hash: string;
+  created_at: string;
+  completed_at?: string | null;
   state: string;
   category: string;
   path: string;

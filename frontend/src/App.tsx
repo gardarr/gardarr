@@ -44,6 +44,7 @@ function App() {
             <Route path="agents" element={<AgentsPage />} />
             <Route path="categories" element={<CategoriesPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
+            <Route path="analytics/tasks" element={<AnalyticsPage />} />
             <Route path="analytics/agent/:agent_uuid" element={<AnalyticsPage />} />
             <Route path="analytics/agent/:agent_uuid/task/:uuid" element={<AnalyticsPage />} />
             <Route path="integrations" element={<IntegrationsPage />} />

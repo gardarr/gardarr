@@ -8,6 +8,38 @@
       "error": "Error",
       "success": "Success"
     },
+  "ratio": {
+    "widget": {
+      "title": "Ratio",
+      "ratioTooltip": "Seeder/Leecher ratio. The higher, the better.",
+      "popularityTooltip": "Relative torrent popularity. Higher means more popular.",
+      "starsAria": "{{stars}} out of {{total}} stars"
+    },
+    "grades": {
+      "description": {
+        "Spp": "LEGENDARY",
+        "Sp": "INCREDIBLE",
+        "S": "MASTER",
+        "A": "ADVANCED",
+        "B": "INTERMEDIATE",
+        "C": "APPRENTICE",
+        "D": "NOVICE",
+        "E": "BEGINNER",
+        "unknown": "UNKNOWN"
+      },
+      "message": {
+        "Spp": "You are a community hero — your contribution makes all the difference!",
+        "Sp": "Incredible! You're raising the bar and helping many people.",
+        "S": "Excellent contribution! Keep it up to strengthen the community.",
+        "A": "Very good! Your participation helps keep everything healthy.",
+        "B": "Nice work! A bit more sharing will make a big difference.",
+        "C": "Almost there! How about seeding for a little longer?",
+        "D": "You're contributing! A little more upload and it's great.",
+        "E": "All good! If you can, keep seeding a bit more — it really helps.",
+        "unknown": "Thanks for being here! Sharing keeps the community alive."
+      }
+    }
+  },
     "navigation": {
       "dashboard": "Dashboard",
       "torrents": "Torrents",
@@ -595,7 +627,95 @@
       "comingSoon": "Coming Soon",
       "noIntegrations": "No integrations available",
       "noIntegrationsDescription": "More integrations will be added in future updates"
+    },
+    "torrentDetails": {
+      "title": "Torrent Details",
+      "subtitle": "Complete information about the selected torrent",
+      "actions": {
+        "forceDownload": "Force Download",
+        "forceReannounce": "Force Reannounce",
+        "forceRecheck": "Force Recheck"
+      },
+      "name": {
+        "label": "Name",
+        "edit": "Edit name",
+        "save": "Save name"
+      },
+      "general": {
+        "title": "General Information",
+        "state": "State:",
+        "agent": "Agent:"
+      },
+      "size": {
+        "title": "Size",
+        "total": "Total:",
+        "progress": "Progress:"
+      },
+      "category": {
+        "title": "Category",
+        "edit": "Edit category",
+        "cancel": "Cancel",
+        "save": "Save"
+      },
+      "tags": {
+        "title": "Tags",
+        "edit": "Edit tags",
+        "cancel": "Cancel",
+        "save": "Save",
+        "placeholder": "Type tags and press Enter"
+      },
+      "path": {
+        "title": "Path",
+        "edit": "Edit path",
+        "save": "Save path"
+      },
+      "files": {
+        "title": "File List"
+      },
+      "network": {
+        "title": "Network & Peers",
+        "contribution": "Network Contribution",
+        "downloaded": "Downloaded:",
+        "uploaded": "Uploaded:",
+        "excellentContributor": "🌱 Excellent contributor!",
+        "goodContribution": "📈 Good contribution"
+      },
+      "download": {
+        "title": "Download",
+        "speed": "Speed:",
+        "total": "Total:"
+      },
+      "upload": {
+        "title": "Upload",
+        "speed": "Speed:",
+        "total": "Total:"
+      },
+      "swarm": {
+        "title": "Swarm",
+        "seeders": "Seeders:",
+        "leechers": "Leechers:"
+      },
+      "connected": {
+        "title": "Connected",
+        "seeders": "Seeders:",
+        "leechers": "Leechers:"
+      },
+      "magnet": {
+        "title": "Magnet Details",
+        "hash": "Hash:",
+        "link": "Magnet Link:",
+        "displayName": "Display Name:",
+        "exactLength": "Exact Length:",
+        "exactSource": "Exact Source:",
+        "trackers": "Trackers:"
+      },
+      "toasts": {
+        "categoryUpdateSuccess": "Category updated successfully",
+        "categoryUpdateError": "Failed to update category",
+        "tagsUpdateSuccess": "Tags updated successfully",
+        "tagsUpdateError": "Failed to update tags"
+      }
     }
-  }
-  
-  
+}
+
+
