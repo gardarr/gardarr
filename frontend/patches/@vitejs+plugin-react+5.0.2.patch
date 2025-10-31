@@ -1,0 +1,13 @@
+diff --git a/node_modules/@vitejs/plugin-react/dist/index.d.ts b/node_modules/@vitejs/plugin-react/dist/index.d.ts
+index 3542637..4fff0d3 100644
+--- a/node_modules/@vitejs/plugin-react/dist/index.d.ts
++++ b/node_modules/@vitejs/plugin-react/dist/index.d.ts
+@@ -61,4 +61,5 @@ declare namespace viteReact {
+ }
+ declare function viteReactForCjs(this: unknown, options: Options): Plugin[];
+ //#endregion
+-export { BabelOptions, Options, ReactBabelOptions, ViteReactPluginApi, viteReact as default, viteReactForCjs as "module.exports" };
+\ No newline at end of file
++export { BabelOptions, Options, ReactBabelOptions, ViteReactPluginApi, viteReact as default };
++export { viteReactForCjs };
+\ No newline at end of file

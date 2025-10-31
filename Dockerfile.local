@@ -1,11 +1,15 @@
+# Dockerfile for local development and testing
+# This file compiles everything inside the container, no pre-compiled binaries needed
+# Usage: docker build -f Dockerfile.local -t gardarr:local .
+
 # Define build arguments for image tags and port
 ARG GO_IMAGE=golang:1.25.3-alpine
 ARG NODE_IMAGE=node:24.10.0-alpine
 ARG APP_PORT=3000
 
-# Version build arguments
-ARG VERSION=0.0.0
-ARG COMMIT=unknown
+# Version build arguments (with defaults for local development)
+ARG VERSION=0.0.0-dev
+ARG COMMIT=local
 ARG DATE=unknown
 
 # Stage 1: Build the frontend
@@ -18,7 +22,6 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 
 # Install all frontend dependencies (including dev dependencies for build)
-# Note: We need dev dependencies like TypeScript and Vite for the build process
 RUN npm ci && \
     npm cache clean --force
 
@@ -36,33 +39,49 @@ RUN npm run build && \
     rm -f tailwind.config.js && \
     rm -f postcss.config.js
 
-# Stage 2: Copy pre-compiled Go binary
-FROM alpine:3.20 AS build
+# Stage 2: Build Go binary
+FROM ${GO_IMAGE} AS go-build
 
-# Install necessary dependencies
-RUN apk add --no-cache ca-certificates && \
-    rm -rf /var/cache/apk/*
+# Install CGO dependencies for SQLite
+# SQLite requires CGO to be enabled, so we need gcc and SQLite development libraries
+RUN apk add --no-cache gcc musl-dev sqlite-dev
 
-# Set the working directory inside the container
+# Version build arguments
+ARG VERSION=0.0.0-dev
+ARG COMMIT=local
+ARG DATE=unknown
+
+# Set the working directory
 WORKDIR /app
 
-# Copy all pre-compiled Go binaries
-COPY backend/dist/ ./binaries/
+# Copy Go module files
+COPY backend/go.mod backend/go.sum ./
 
-# Select the correct binary based on architecture
+# Download dependencies
+RUN go mod download
+
+# Copy backend source code
+COPY backend/ ./
+
+# Build the Go binary for the current architecture with CGO enabled
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then \
-        cp binaries/gardarr-amd64 ./main; \
+        CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
+            -ldflags="-X github.com/gardarr/gardarr/pkg/version.Version=${VERSION} \
+                      -X github.com/gardarr/gardarr/pkg/version.Commit=${COMMIT} \
+                      -X github.com/gardarr/gardarr/pkg/version.Date=${DATE} \
+                      -w -s" \
+            -o /app/main .; \
     elif [ "$ARCH" = "aarch64" ]; then \
-        cp binaries/gardarr-arm64 ./main; \
+        CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build \
+            -ldflags="-X github.com/gardarr/gardarr/pkg/version.Version=${VERSION} \
+                      -X github.com/gardarr/gardarr/pkg/version.Commit=${COMMIT} \
+                      -X github.com/gardarr/gardarr/pkg/version.Date=${DATE} \
+                      -w -s" \
+            -o /app/main .; \
     else \
         echo "Unsupported architecture: $ARCH" && exit 1; \
-    fi && \
-    chmod +x ./main && \
-    rm -rf ./binaries
-
-# Copy built frontend from frontend-build stage
-COPY --from=frontend-build /app/frontend/dist ./web
+    fi
 
 # Stage 3: Create a minimal runtime image with curl for healthchecks
 FROM alpine:3.20
@@ -88,11 +107,11 @@ ARG APP_PORT=3000
 # Set the working directory
 WORKDIR /app
 
-# Copy the built binary from the builder stage
-COPY --from=build /app/main .
+# Copy the built binary from the go-build stage
+COPY --from=go-build /app/main .
 
-# Copy the built frontend files
-COPY --from=build /app/web ./web
+# Copy the built frontend files from frontend-build stage
+COPY --from=frontend-build /app/frontend/dist ./web
 
 # Set a default environment variable for the port
 ENV PORT=${APP_PORT}
@@ -108,3 +127,4 @@ USER nonroot:nonroot
 
 # Run the Go application
 CMD ["./main"]
+

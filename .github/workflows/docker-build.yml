@@ -72,6 +72,11 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
 
+    - name: Install CGO dependencies for SQLite
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc libc6-dev gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+
     - name: Download Go dependencies
       working-directory: ./backend
       run: go mod download
@@ -82,24 +87,22 @@ jobs:
         # Create dist directory
         mkdir -p ../dist
         
-        # Build for amd64
+        # Build for amd64 with CGO enabled (required for SQLite)
         echo "Building for linux/amd64..."
-        CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+        CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
           -ldflags="-X github.com/gardarr/gardarr/pkg/version.Version=${{ steps.version.outputs.version }} \
                     -X github.com/gardarr/gardarr/pkg/version.Commit=${{ steps.version.outputs.commit }} \
                     -X github.com/gardarr/gardarr/pkg/version.Date=${{ steps.version.outputs.date }} \
-                    -w -s -extldflags '-static'" \
-          -a -installsuffix cgo \
+                    -w -s" \
           -o ../dist/gardarr-amd64 .
         
-        # Build for arm64
+        # Build for arm64 with CGO enabled (required for SQLite)
         echo "Building for linux/arm64..."
-        CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build \
+        CC=aarch64-linux-gnu-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build \
           -ldflags="-X github.com/gardarr/gardarr/pkg/version.Version=${{ steps.version.outputs.version }} \
                     -X github.com/gardarr/gardarr/pkg/version.Commit=${{ steps.version.outputs.commit }} \
                     -X github.com/gardarr/gardarr/pkg/version.Date=${{ steps.version.outputs.date }} \
-                    -w -s -extldflags '-static'" \
-          -a -installsuffix cgo \
+                    -w -s" \
           -o ../dist/gardarr-arm64 .
 
     - name: Log in to Container Registry

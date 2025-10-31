@@ -62,7 +62,7 @@ build-with-version: get-version
 	@echo "Building with dynamic version..."
 	@source .version && \
 	cd $(BACKEND_DIR) && \
-	CGO_ENABLED=0 go build \
+	CGO_ENABLED=1 go build \
 		-ldflags "-X github.com/gardarr/gardarr/pkg/version.Version=$$VERSION \
 		          -X github.com/gardarr/gardarr/pkg/version.Commit=$$COMMIT \
 		          -X github.com/gardarr/gardarr/pkg/version.Date=$$DATE \
@@ -83,6 +83,10 @@ build-full-script: build-frontend copy-frontend build-script
 docker-build:
 	docker build -t $(BINARY_NAME) .
 
+# Comando para build local com Docker (compila tudo dentro do container)
+docker-build-local:
+	docker build -f Dockerfile.local -t $(BINARY_NAME):local .
+
 # Comando para rodar o código localmente (com frontend)
 run-local: build-frontend copy-frontend
 	cd $(BACKEND_DIR) && go run main.go
@@ -97,7 +101,7 @@ run-frontend:
 
 # Comando para compilar para Linux
 build-linux:
-	cd $(BACKEND_DIR) && GOOS=linux GOARCH=amd64 go build $(BUILD_FLAGS) -o ../$(BINARY_NAME)_linux_amd64 main.go
+	cd $(BACKEND_DIR) && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build $(BUILD_FLAGS) -o ../$(BINARY_NAME)_linux_amd64 main.go
 
 # Comando para compilar para macOS (Darwin)
 build-darwin:
@@ -175,6 +179,10 @@ dev-separate:
 docker-prod: docker-build
 	docker run -p 3000:3000 $(BINARY_NAME)
 
+# Comando para build e executar localmente com Docker
+docker-run-local: docker-build-local
+	docker run -p 3000:3000 $(BINARY_NAME):local
+
 # Comando para parar containers Docker
 docker-stop:
 	docker stop $$(docker ps -q --filter ancestor=$(BINARY_NAME)) 2>/dev/null || true
@@ -194,7 +202,9 @@ help:
 	@echo "  make dev              - Desenvolvimento com hot-reload (paralelo)"
 	@echo "  make dev-separate     - Instruções para desenvolvimento separado"
 	@echo "  make build-full       - Build completo para produção"
-	@echo "  make docker-build     - Build com Docker"
+	@echo "  make docker-build     - Build com Docker (CI/CD)"
+	@echo "  make docker-build-local - Build local com Docker (compila tudo)"
+	@echo "  make docker-run-local - Build e executar local com Docker"
 	@echo "  make docker-prod      - Build e executar com Docker"
 	@echo "  make test-integration - Testar integração"
 	@echo "  make clean            - Limpar builds"
@@ -205,4 +215,4 @@ help:
 	@echo "  Terminal 1: make run-backend   (Backend na porta 3000)"
 	@echo "  Terminal 2: make run-frontend  (Frontend na porta 5173)"
 
-.PHONY: build-frontend copy-frontend build-full docker-build run-local run-backend run-frontend test-backend build-linux build-darwin build-darwin-arm64 build-windows build-windows-arm64 build-all install-frontend install-backend install test-integration clean clean-deps clean-all dev dev-separate docker-prod docker-stop docker-clean help
+.PHONY: build-frontend copy-frontend build-full docker-build docker-build-local docker-run-local run-local run-backend run-frontend test-backend build-linux build-darwin build-darwin-arm64 build-windows build-windows-arm64 build-all install-frontend install-backend install test-integration clean clean-deps clean-all dev dev-separate docker-prod docker-stop docker-clean help

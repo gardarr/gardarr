@@ -67,7 +67,13 @@ mkdir -p "$OUTPUT_DIR"
 # Set build variables
 export GOOS="$TARGET_OS"
 export GOARCH="$TARGET_ARCH"
-export CGO_ENABLED=0
+# Enable CGO for Linux builds (required for SQLite), disable for other platforms
+if [ "$TARGET_OS" = "linux" ]; then
+    export CGO_ENABLED=1
+    echo -e "${YELLOW}Note: CGO is enabled for Linux builds (SQLite support required)${NC}"
+else
+    export CGO_ENABLED=0
+fi
 
 # Determine binary name
 BINARY_NAME="gardarr"
