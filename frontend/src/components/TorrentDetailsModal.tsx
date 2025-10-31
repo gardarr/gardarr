@@ -51,7 +51,7 @@ import type { Task } from "@/types/torrent";
 import type { Category } from "@/types/category";
 import { TorrentFilesList } from "@/components/TorrentFilesList";
 import { TorrentRatioWidget } from "@/components/widgets/TorrentRatioWidget";
-import { formatBytes as formatBytesUtil } from "@/utils/bytes";
+import { formatBytes  } from "@/utils/bytes";
 
 interface TorrentDetailsModalProps {
   torrent: Task | null;
@@ -69,14 +69,6 @@ interface TorrentDetailsModalProps {
   onUpdateTags?: (torrentId: string, tags: string[]) => void;
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  const value = bytes / Math.pow(k, i);
-  return `${value.toFixed(value >= 100 ? 0 : value >= 10 ? 1 : 2)} ${sizes[i]}`;
-}
 
 function truncateText(text: string, maxLength: number = 80): string {
   if (text.length <= maxLength) return text;
@@ -681,7 +673,6 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                   <TorrentRatioWidget 
                     ratio={torrent.ratio} 
                     popularity={torrent.popularity} 
-                    priority={torrent.priority} 
                   />
                 </div>
 
@@ -1176,7 +1167,7 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{t('torrentDetails.magnet.exactLength', { defaultValue: 'Exact Length:' })}</span>
-                  <span className="text-muted-foreground">{formatBytesUtil(Number(torrent.magnet_link.exact_length) || 0)}</span>
+                  <span className="text-muted-foreground">{formatBytes(Number(torrent.magnet_link.exact_length) || 0)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{t('torrentDetails.magnet.exactSource', { defaultValue: 'Exact Source:' })}</span>

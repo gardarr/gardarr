@@ -6,6 +6,7 @@
  */
 
 import { getRatioGrade, getGradeColor, getGradeDescription } from "@/utils/ratioUtils";
+import i18n from "@/i18n";
   
   export function RatioBadge({ ratio, showValue = true }: { ratio: number; showValue?: boolean }) {
     const grade = getRatioGrade(ratio);
@@ -15,7 +16,7 @@ import { getRatioGrade, getGradeColor, getGradeDescription } from "@/utils/ratio
       <div className="flex items-center gap-2">
         <span 
           className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-md text-xs font-medium border ${colorClass}`}
-          title={`Ratio: ${ratio.toFixed(2)} - Nota: ${grade} (${getGradeDescription(grade)})`}
+          title={`${i18n.t('ratio.widget.title')}: ${ratio.toFixed(2)} - ${i18n.t('nota')}: ${grade} (${getGradeDescription(grade)})`}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

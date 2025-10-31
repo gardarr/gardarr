@@ -6,7 +6,6 @@ import { useTranslation } from "react-i18next";
 interface TorrentRatioWidgetProps {
   ratio: number;
   popularity: number;
-  priority: number | string;
 }
 
 export function TorrentRatioWidget({ ratio, popularity }: TorrentRatioWidgetProps) {
@@ -45,7 +44,7 @@ export function TorrentRatioWidget({ ratio, popularity }: TorrentRatioWidgetProp
                   <span className="text-sm opacity-80">{Number(popularity).toFixed(2)}</span>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <span>{t("ratio.widget.popularityTooltip", { defaultValue: "Popularidade relativa do torrent. Quanto maior, mais popular." })}</span>
+                  <span>{t("ratio.widget.popularityTooltip", { defaultValue: "Relative torrent popularity. Higher means more popular." })}</span>
                 </TooltipContent>
               </Tooltip>
             </div>

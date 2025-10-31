@@ -8,6 +8,8 @@
       "error": "Erro",
       "success": "Sucesso"
     },
+    "ratio": "Ratio",
+    "nota": "Nota",
     "navigation": {
       "dashboard": "Dashboard",
       "torrents": "Torrents",

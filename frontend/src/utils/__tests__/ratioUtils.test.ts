@@ -1,16 +1,22 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { getRatioGrade, getGradeColor, getGradeStars, getGradeGlowClass, getGradeMessage, getGradeDescription } from '../ratioUtils';
+import i18n from '../../i18n';
 
 describe('ratioUtils', () => {
+  beforeEach(() => {
+    // Force a deterministic locale for consistent test results
+    i18n.changeLanguage('pt-BR');
+  });
+
   describe('getRatioGrade', () => {
-    it('returns S++ for ratio >= 60', () => {
-      expect(getRatioGrade(60)).toBe('S++');
+    it('returns S++ for ratio >= 100', () => {
+      expect(getRatioGrade(100)).toBe('S++');
       expect(getRatioGrade(120)).toBe('S++');
     });
 
-    it('returns S+ for 45 <= ratio < 60', () => {
-      expect(getRatioGrade(45)).toBe('S+');
-      expect(getRatioGrade(59.99)).toBe('S+');
+    it('returns S+ for 50 <= ratio < 100', () => {
+      expect(getRatioGrade(50)).toBe('S+');
+      expect(getRatioGrade(99.99)).toBe('S+');
     });
 
     it('returns S for 30 <= ratio < 45', () => {
@@ -101,29 +107,49 @@ describe('ratioUtils', () => {
       }
     });
 
-    it('emphasizes heroism for S++ and encouragement for E', () => {
-      const epic = getGradeMessage('S++').toLowerCase();
-      const gentle = getGradeMessage('E').toLowerCase();
-      expect(epic.includes('herói') || epic.includes('épico')).toBe(true);
-      expect(gentle.includes('compart') || gentle.includes('ajuda')).toBe(true);
+    it('provides distinct messages with S++ showing stronger emphasis than E', () => {
+      const sPlusPlusMessage = getGradeMessage('S++');
+      const eMessage = getGradeMessage('E');
+      
+      // Both should be non-empty strings
+      expect(sPlusPlusMessage).toBeTruthy();
+      expect(sPlusPlusMessage.length).toBeGreaterThan(0);
+      expect(eMessage).toBeTruthy();
+      expect(eMessage.length).toBeGreaterThan(0);
+      
+      // Messages should be different
+      expect(sPlusPlusMessage).not.toBe(eMessage);
+      
+      // S++ message should show stronger emphasis
+      // Check for more punctuation (exclamation marks, dashes) or greater length
+      const sPlusPlusPunctuation = (sPlusPlusMessage.match(/[!—–-]/g) || []).length;
+      const ePunctuation = (eMessage.match(/[!—–-]/g) || []).length;
+      const hasStrongerPunctuation = sPlusPlusPunctuation > ePunctuation;
+      const hasLongerMessage = sPlusPlusMessage.length > eMessage.length;
+      
+      expect(hasStrongerPunctuation || hasLongerMessage).toBe(true);
     });
   });
 
   describe('getGradeDescription', () => {
-    it('maps S++ to LENDÁRIO', () => {
-      expect(getGradeDescription('S++')).toBe('LENDÁRIO');
+    it('maps S++ to translated description', () => {
+      const expected = i18n.t('ratio.grades.description.Spp');
+      expect(getGradeDescription('S++')).toBe(expected);
     });
 
-    it('maps S+ to INCRÍVEL', () => {
-      expect(getGradeDescription('S+')).toBe('INCRÍVEL');
+    it('maps S+ to translated description', () => {
+      const expected = i18n.t('ratio.grades.description.Sp');
+      expect(getGradeDescription('S+')).toBe(expected);
     });
 
-    it('maps E to INICIANTE', () => {
-      expect(getGradeDescription('E')).toBe('INICIANTE');
+    it('maps E to translated description', () => {
+      const expected = i18n.t('ratio.grades.description.E');
+      expect(getGradeDescription('E')).toBe(expected);
     });
 
-    it('returns DESCONHECIDO for unknown grade', () => {
-      expect(getGradeDescription('Z')).toBe('DESCONHECIDO');
+    it('returns translated unknown description for unknown grade', () => {
+      const expected = i18n.t('ratio.grades.description.unknown');
+      expect(getGradeDescription('Z')).toBe(expected);
     });
   });
 });

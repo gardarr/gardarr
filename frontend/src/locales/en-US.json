@@ -1,13 +1,14 @@
 {
-    "common": {
-      "save": "Save",
-      "cancel": "Cancel",
-      "delete": "Delete",
-      "reset": "Reset",
-      "loading": "Loading...",
-      "error": "Error",
-      "success": "Success"
-    },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "reset": "Reset",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success"
+  },
+  "nota": "Grade",
   "ratio": {
     "widget": {
       "title": "Ratio",
@@ -40,682 +41,680 @@
       }
     }
   },
-    "navigation": {
-      "dashboard": "Dashboard",
-      "torrents": "Torrents",
-      "agents": "Agents",
-      "categories": "Categories",
-      "users": "Users",
-      "analytics": "Analytics",
-      "integrations": "Integrations",
-      "settings": "Settings",
-      "profile": "Profile",
-      "about": "About"
-    },
-    "profile": {
-      "title": "Profile",
-      "subtitle": "Manage your account and preferences",
-      "personalInfo": {
-        "title": "Personal Information",
-        "description": "Manage your personal data",
-        "email": "Email",
-        "role": "Role",
-        "uuid": "User ID",
-        "memberSince": "Member since"
-      },
-      "preferences": {
-        "title": "Preferences",
-        "description": "Customize your experience",
-        "theme": "Theme",
-        "dark": "Dark",
-        "light": "Light",
-        "switchToDark": "Switch to Dark",
-        "switchToLight": "Switch to Light",
-        "language": "Language"
-      },
-      "sessions": {
-        "title": "Active Sessions",
-        "description": "Manage your connected devices",
-        "logoutAll": "Logout All",
-        "noSessions": "No active sessions",
-        "active": "Active",
-        "signedIn": "Signed in",
-        "expires": "Expires"
-      },
-      "confirmLogoutAll": "Are you sure you want to logout from all devices? You will be disconnected."
-    },
-    "theme": {
-      "toggle": "Toggle theme"
-    },
-    "dashboard": {
-      "title": "Dashboard",
-      "subtitle": "Overview of your Gardarr server",
-      "activeDownloads": "Active Downloads",
-      "activeDownloadsDesc": "+12% compared to last month",
-      "onlineUsers": "Online Users",
-      "onlineUsersDesc": "12 active users now",
-      "usedSpace": "Used Space",
-      "usedSpaceDesc": "of total capacity",
-      "averageSpeed": "Average Speed",
-      "averageSpeedDesc": "Current transfer rate",
-      "connectedPeers": "Connected Peers",
-      "connectedSeeders": "Connected Seeders",
-      "peersInSwarm": "{{count}} peers in swarm",
-      "seedersInSwarm": "{{count}} seeders in swarm",
-      "recentDownloads": "Recent Downloads",
-      "systemActivity": "System Activity",
-      "complete": "complete",
-      "activities": {
-        "newUser": "New user registered",
-        "downloadStarted": "Download started: Ubuntu",
-        "lowDiskSpace": "Low disk space",
-        "backupCompleted": "Automatic backup completed",
-        "userDisconnected": "User disconnected"
-      },
-      "timeAgo": {
-        "minAgo": "min ago",
-        "minsAgo": "mins ago"
-      }
-    },
-    "settings": {
-      "title": "Settings",
-      "subtitle": "Manage system preferences",
-      "timezone": {
-        "title": "Timezone",
-        "description": "Configure the timezone for displaying dates and times in the system",
-        "currentTime": "Current Time",
-        "selectLabel": "Select Timezone",
-        "selectPlaceholder": "Select a timezone...",
-        "detected": "Detected Timezone",
-        "saved": "Saved Timezone",
-        "saveChanges": "Save Changes",
-        "resetToDetected": "Reset to Detected",
-        "saveSuccess": "Timezone saved successfully"
-      },
-      "language": {
-        "title": "Language",
-        "description": "Choose your preferred language for the interface",
-        "selectLabel": "Select Language",
-        "selectPlaceholder": "Select a language...",
-        "current": "Current Language",
-        "saveSuccess": "Language changed successfully",
-        "languages": {
-          "en-US": "English (United States)",
-          "pt-BR": "Portuguese (Brazil)"
-        }
-      },
-      "colorVariant": {
-        "title": "Color Variant",
-        "description": "Customize the color palette of the interface",
-        "selectLabel": "Select Color Variant",
-        "current": "Current Variant",
-        "preview": "Color Preview",
-        "saveSuccess": "Color variant saved successfully",
-        "saveChanges": "Save Changes",
-        "variants": {
-          "title": "Variants",
-          "default": "Default",
-          "aura": "Aura",
-          "sunset": "Sunset",
-          "ocean": "Ocean",
-          "forest": "Forest",
-          "lavender": "Lavender",
-          "rose": "Rose",
-          "amber": "Amber",
-          "mint": "Mint",
-          "crimson": "Crimson",
-          "cyberpunk": "Cyberpunk",
-          "golden": "Golden",
-          "earth": "Earth",
-          "silver": "Silver"
-        },
-        "palette": {
-          "title": "Palette"
-        }
-      },
-      "other": {
-        "title": "Other Settings",
-        "description": "Additional settings will be available soon",
-        "comingSoon": "Future settings such as notification preferences, download limits, and privacy settings will be added here."
-      }
-    },
-    "timezones": {
-      "America/New_York": "Eastern Time (ET) - New York",
-      "America/Chicago": "Central Time (CT) - Chicago",
-      "America/Denver": "Mountain Time (MT) - Denver",
-      "America/Los_Angeles": "Pacific Time (PT) - Los Angeles",
-      "America/Sao_Paulo": "Brasília Time (BRT) - São Paulo",
-      "America/Argentina/Buenos_Aires": "Argentina Time (ART) - Buenos Aires",
-      "Europe/London": "Greenwich Mean Time (GMT) - London",
-      "Europe/Paris": "Central European Time (CET) - Paris",
-      "Europe/Berlin": "Central European Time (CET) - Berlin",
-      "Europe/Moscow": "Moscow Standard Time (MSK) - Moscow",
-      "Asia/Tokyo": "Japan Standard Time (JST) - Tokyo",
-      "Asia/Shanghai": "China Standard Time (CST) - Shanghai",
-      "Asia/Dubai": "Gulf Standard Time (GST) - Dubai",
-      "Asia/Kolkata": "India Standard Time (IST) - Mumbai",
-      "Australia/Sydney": "Australian Eastern Time (AET) - Sydney",
-      "Pacific/Auckland": "New Zealand Time (NZST) - Auckland",
-      "UTC": "Coordinated Universal Time (UTC)"
-    },
-    "about": {
-      "title": "About",
-      "subtitle": "Information about the Gardarr project",
-      "tagline": "Lightweight open-source tool for qBittorrent management and analytics",
-      "version": "Version",
-      "description": {
-        "title": "About the Project",
-        "text1": "Gardarr is a modern, lightweight management and analytics tool designed specifically for qBittorrent. Built with a focus on mobile optimization, it provides an intuitive interface for monitoring and managing your torrents from any device.",
-        "text2": "The project is open-source and community-driven, prioritizing clean, maintainable code that can be self-hosted by anyone. Whether you're managing a single instance or multiple agents, Gardarr offers the tools you need in a beautiful, responsive interface."
-      },
-      "features": {
-        "title": "Key Features",
-        "multiPlatform": "Multi-platform support with Docker images for AMD64 and ARM64",
-        "automated": "Automated CI/CD pipeline with GitHub Actions",
-        "lightweight": "Lightweight and optimized for performance",
-        "openSource": "Open-source with GPL-3.0 license",
-        "mobileOptimized": "Mobile-first design with responsive UI"
-      },
-      "links": {
-        "title": "Project Links",
-        "repository": "GitHub Repository",
-        "documentation": "Development Documentation"
-      },
-      "attribution": {
-        "title": "Attributions",
-        "logo": "Project logo based on sprout icons:"
-      },
-      "license": {
-        "title": "License",
-        "description": "This project is licensed under the GNU General Public License v3.0. You are free to use, modify, and distribute this software under the terms of the GPL-3.0 license."
-      },
-      "footer": "Built with ❤️ by the community"
-    },
-    "auth": {
-      "login": {
-        "title": "Sign In",
-        "subtitle": "Manage your torrents from anywhere",
-        "description": "Enter your credentials to access your account",
-        "email": "Email",
-        "emailPlaceholder": "you@email.com",
-        "password": "Password",
-        "passwordPlaceholder": "Enter your password",
-        "forgotPassword": "Forgot password?",
-        "submit": "Sign In",
-        "noAccount": "New users by invitation only",
-        "signupLink": "Sign up"
-      },
-      "signup": {
-        "title": "Create Account",
-        "subtitle": "Start managing your torrents today",
-        "description": "Create a new account to get started",
-        "email": "Email",
-        "emailPlaceholder": "you@email.com",
-        "password": "Password",
-        "passwordPlaceholder": "Minimum 8 characters",
-        "confirmPassword": "Confirm Password",
-        "confirmPasswordPlaceholder": "Enter your password again",
-        "submit": "Create Account",
-        "hasAccount": "Already have an account?",
-        "loginLink": "Sign in",
-        "passwordMismatch": "Passwords do not match",
-        "passwordTooShort": "Password must be at least 8 characters"
-      },
-      "logout": "Logout"
-    },
-    "resetPassword": {
-      "title": "Reset Your Password",
-      "subtitle": "Enter your new password below",
-      "newPassword": "New Password",
-      "newPasswordPlaceholder": "Enter your new password",
-      "confirmPassword": "Confirm Password",
-      "confirmPasswordPlaceholder": "Confirm your new password",
-      "submit": "Reset Password",
-      "submitting": "Resetting Password...",
-      "backToLogin": "Back to Login",
-      "success": {
-        "title": "Password Reset Successful",
-        "message": "Your password has been successfully reset. You will be redirected to the login page shortly.",
-        "goToLogin": "Go to Login",
-        "redirecting": "Redirecting automatically in 3 seconds..."
-      },
-      "errors": {
-        "tokenRequired": "Reset token is required",
-        "passwordTooShort": "Password must be at least 8 characters long",
-        "passwordsMismatch": "Passwords do not match",
-        "resetFailed": "Failed to reset password",
-        "invalidLink": "Invalid Reset Link",
-        "invalidLinkDescription": "This password reset link is invalid or has expired. Please request a new one."
-      },
-      "validation": {
-        "passwordStrength": {
-          "weak": "Weak",
-          "fair": "Fair",
-          "good": "Good",
-          "strong": "Strong"
-        },
-        "passwordRequirement": "Password must be at least 8 characters long",
-        "passwordsMatch": "Passwords match",
-        "passwordsDoNotMatch": "Passwords do not match"
-      }
-    },
-    "agents": {
-      "title": "Agents",
-      "subtitle": "Manage your torrent clients and connections",
-      "refresh": "Refresh",
-      "addAgent": "Add Agent",
-      "cancel": "Cancel",
-      "createNewAgent": "Create New Agent",
-      "editAgent": "Edit Agent",
-      "deleteAgent": "Delete Agent",
-      "agentDetails": "Agent Details",
-      "name": "Name",
-      "type": "Type",
-      "address": "Address",
-      "token": "Token",
-      "color": "Color",
-      "icon": "Icon",
-      "preview": "Preview",
-      "createAgent": "Create Agent",
-      "updateAgent": "Update Agent",
-      "searchAgents": "Search agents...",
-      "loadingAgents": "Loading agents...",
-      "noAgentsFound": "No agents found",
-      "noAgentsMatch": "No agents match your search criteria.",
-      "getStarted": "Get started by adding your first agent.",
-      "agentName": "Agent Name",
-      "authenticationToken": "Authentication token",
-      "newAuthenticationToken": "New authentication token",
-      "leaveEmptyToKeep": "leave empty to keep current",
-      "info": "Info",
-      "stats": "Stats",
-      "instanceInformation": "Instance Information",
-      "application": "Application",
-      "version": "Version",
-      "api": "API",
-      "agent": "Agent",
-      "commit": "Commit",
-      "date": "Date",
-      "loadingVersion": "Loading version...",
-      "storage": "Storage",
-      "usedSpace": "Used Space",
-      "freeSpace": "Free Space",
-      "used": "used",
-      "transferStatistics": "Transfer Statistics",
-      "downloaded": "Downloaded",
-      "uploaded": "Uploaded",
-      "globalRatio": "Global Ratio",
-      "torrentStatistics": "Torrent Statistics",
-      "totalSize": "Total Size",
-      "activeTasks": "Active Tasks",
-      "activePeers": "Active Peers",
-      "uploadSpeed": "Upload Speed",
-      "downloadSpeed": "Download Speed",
-      "ratioStatistics": "Ratio Statistics",
-      "average": "Average",
-      "median": "Median",
-      "highest": "Highest",
-      "lowest": "Lowest",
-      "categoryUsage": "Category Usage",
-      "tagsUsage": "Tags Usage",
-      "loadingStatistics": "Loading statistics...",
-      "delete": "Delete",
-      "edit": "Edit",
-      "close": "Close",
-      "clickToViewDetails": "Click to view error details",
-      "errors": {
-        "fillRequiredFields": "Please fill in all required fields",
-        "failedToLoad": "Failed to load agents",
-        "failedToDelete": "Failed to delete agent",
-        "failedToCreate": "Failed to create agent",
-        "failedToUpdate": "Failed to update agent",
-        "noChangesDetected": "No changes detected"
-      },
-      "success": {
-        "deleted": "Agent deleted successfully",
-        "created": "Agent created successfully",
-        "updated": "Agent updated successfully"
-      },
-      "confirmDelete": {
-        "title": "Are you sure you want to delete this agent?",
-        "description": "This action cannot be undone."
-      },
-      "standalone": {
-        "title": "Standalone Agent",
-        "description": "This agent is initialized with the default Gardarr instance and cannot be modified or deleted.",
-        "cannotDelete": "Cannot Delete Standalone Agent",
-        "cannotDeleteDescription": "Standalone agents are initialized with the default Gardarr instance and cannot be deleted for system integrity.",
-        "cannotModify": "This is a standalone agent and cannot be modified.",
-        "tooltip": "Standalone agents cannot be edited"
-      },
-      "status": {
-        "active": "Active",
-        "errored": "Errored", 
-        "inactive": "Inactive",
-        "unknown": "Unknown"
-      }
-    },
-    "users": {
-      "title": "Users",
-      "subtitle": "Manage user accounts and permissions",
-      "inviteUser": "Invite User",
-      "inviteOnly": "Invite-Only Registration",
-      "inviteOnlyDescription": "New users can only be added through invitations. Click \"Invite User\" to generate a magic link that can be shared with new users.",
-      "noUsersYet": "Get started by inviting your first user."
-    },
-    "invites": {
-      "title": "Invites",
-      "subtitle": "Manage user invitations",
-      "createNew": "Create New Invite",
-      "manageInvites": "Manage Invites",
-      "emailOptional": "Email (optional)",
-      "emailPlaceholder": "user@example.com (leave empty for generic link)",
+  "navigation": {
+    "dashboard": "Dashboard",
+    "torrents": "Torrents",
+    "agents": "Agents",
+    "categories": "Categories",
+    "users": "Users",
+    "analytics": "Analytics",
+    "integrations": "Integrations",
+    "settings": "Settings",
+    "profile": "Profile",
+    "about": "About"
+  },
+  "profile": {
+    "title": "Profile",
+    "subtitle": "Manage your account and preferences",
+    "personalInfo": {
+      "title": "Personal Information",
+      "description": "Manage your personal data",
+      "email": "Email",
       "role": "Role",
-      "expiresIn": "Expires In",
-      "oneDay": "1 day",
-      "sevenDays": "7 days",
-      "thirtyDays": "30 days",
-      "createInvite": "Create Invite",
-      "copyLink": "Copy Link",
-      "revoke": "Revoke",
-      "genericInvite": "Generic Invite",
-      "used": "Used",
-      "expired": "Expired",
-      "expires": "Expires",
-      "created": "Created",
-      "usedOn": "Used on",
-      "noInvites": "No invites created yet",
-      "validInvitation": "Valid Invitation",
-      "acceptInvite": "Accept Invitation",
-      "acceptInviteSubtitle": "Create your account to get started",
-      "acceptAndCreate": "Accept Invite & Create Account",
-      "invalidInvite": "Invalid Invite",
-      "invalidInviteMessage": "This invite link is invalid, expired, or has already been used.",
-      "goToLogin": "Go to Login",
-      "notifications": {
-        "createSuccess": "Invite created successfully",
-        "revokeSuccess": "Invite revoked successfully",
-        "copySuccess": "Invite link copied to clipboard",
-        "copyError": "Failed to copy link",
-        "acceptSuccess": "Account created successfully! Redirecting to login...",
-        "validateError": "Invalid invite code"
+      "uuid": "User ID",
+      "memberSince": "Member since"
+    },
+    "preferences": {
+      "title": "Preferences",
+      "description": "Customize your experience",
+      "theme": "Theme",
+      "dark": "Dark",
+      "light": "Light",
+      "switchToDark": "Switch to Dark",
+      "switchToLight": "Switch to Light",
+      "language": "Language"
+    },
+    "sessions": {
+      "title": "Active Sessions",
+      "description": "Manage your connected devices",
+      "logoutAll": "Logout All",
+      "noSessions": "No active sessions",
+      "active": "Active",
+      "signedIn": "Signed in",
+      "expires": "Expires"
+    },
+    "confirmLogoutAll": "Are you sure you want to logout from all devices? You will be disconnected."
+  },
+  "theme": {
+    "toggle": "Toggle theme"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Overview of your Gardarr server",
+    "activeDownloads": "Active Downloads",
+    "activeDownloadsDesc": "+12% compared to last month",
+    "onlineUsers": "Online Users",
+    "onlineUsersDesc": "12 active users now",
+    "usedSpace": "Used Space",
+    "usedSpaceDesc": "of total capacity",
+    "averageSpeed": "Average Speed",
+    "averageSpeedDesc": "Current transfer rate",
+    "connectedPeers": "Connected Peers",
+    "connectedSeeders": "Connected Seeders",
+    "peersInSwarm": "{{count}} peers in swarm",
+    "seedersInSwarm": "{{count}} seeders in swarm",
+    "recentDownloads": "Recent Downloads",
+    "systemActivity": "System Activity",
+    "complete": "complete",
+    "activities": {
+      "newUser": "New user registered",
+      "downloadStarted": "Download started: Ubuntu",
+      "lowDiskSpace": "Low disk space",
+      "backupCompleted": "Automatic backup completed",
+      "userDisconnected": "User disconnected"
+    },
+    "timeAgo": {
+      "minAgo": "min ago",
+      "minsAgo": "mins ago"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Manage system preferences",
+    "timezone": {
+      "title": "Timezone",
+      "description": "Configure the timezone for displaying dates and times in the system",
+      "currentTime": "Current Time",
+      "selectLabel": "Select Timezone",
+      "selectPlaceholder": "Select a timezone...",
+      "detected": "Detected Timezone",
+      "saved": "Saved Timezone",
+      "saveChanges": "Save Changes",
+      "resetToDetected": "Reset to Detected",
+      "saveSuccess": "Timezone saved successfully"
+    },
+    "language": {
+      "title": "Language",
+      "description": "Choose your preferred language for the interface",
+      "selectLabel": "Select Language",
+      "selectPlaceholder": "Select a language...",
+      "current": "Current Language",
+      "saveSuccess": "Language changed successfully",
+      "languages": {
+        "en-US": "English (United States)",
+        "pt-BR": "Portuguese (Brazil)"
       }
     },
-    "torrents": {
-      "title": "Torrents",
-      "subtitle": "Manage your downloads and uploads",
-      "addTorrent": "Add Torrent",
-      "search": "Search torrents...",
-      "itemsPerPage": "Items per page",
-      "update": "Update",
-      "agent": "Agent",
+    "colorVariant": {
+      "title": "Color Variant",
+      "description": "Customize the color palette of the interface",
+      "selectLabel": "Select Color Variant",
+      "current": "Current Variant",
+      "preview": "Color Preview",
+      "saveSuccess": "Color variant saved successfully",
+      "saveChanges": "Save Changes",
+      "variants": {
+        "title": "Variants",
+        "default": "Default",
+        "aura": "Aura",
+        "sunset": "Sunset",
+        "ocean": "Ocean",
+        "forest": "Forest",
+        "lavender": "Lavender",
+        "rose": "Rose",
+        "amber": "Amber",
+        "mint": "Mint",
+        "crimson": "Crimson",
+        "cyberpunk": "Cyberpunk",
+        "golden": "Golden",
+        "earth": "Earth",
+        "silver": "Silver"
+      },
+      "palette": {
+        "title": "Palette"
+      }
+    },
+    "other": {
+      "title": "Other Settings",
+      "description": "Additional settings will be available soon",
+      "comingSoon": "Future settings such as notification preferences, download limits, and privacy settings will be added here."
+    }
+  },
+  "timezones": {
+    "America/New_York": "Eastern Time (ET) - New York",
+    "America/Chicago": "Central Time (CT) - Chicago",
+    "America/Denver": "Mountain Time (MT) - Denver",
+    "America/Los_Angeles": "Pacific Time (PT) - Los Angeles",
+    "America/Sao_Paulo": "Brasília Time (BRT) - São Paulo",
+    "America/Argentina/Buenos_Aires": "Argentina Time (ART) - Buenos Aires",
+    "Europe/London": "Greenwich Mean Time (GMT) - London",
+    "Europe/Paris": "Central European Time (CET) - Paris",
+    "Europe/Berlin": "Central European Time (CET) - Berlin",
+    "Europe/Moscow": "Moscow Standard Time (MSK) - Moscow",
+    "Asia/Tokyo": "Japan Standard Time (JST) - Tokyo",
+    "Asia/Shanghai": "China Standard Time (CST) - Shanghai",
+    "Asia/Dubai": "Gulf Standard Time (GST) - Dubai",
+    "Asia/Kolkata": "India Standard Time (IST) - Mumbai",
+    "Australia/Sydney": "Australian Eastern Time (AET) - Sydney",
+    "Pacific/Auckland": "New Zealand Time (NZST) - Auckland",
+    "UTC": "Coordinated Universal Time (UTC)"
+  },
+  "about": {
+    "title": "About",
+    "subtitle": "Information about the Gardarr project",
+    "tagline": "Lightweight open-source tool for qBittorrent management and analytics",
+    "version": "Version",
+    "description": {
+      "title": "About the Project",
+      "text1": "Gardarr is a modern, lightweight management and analytics tool designed specifically for qBittorrent. Built with a focus on mobile optimization, it provides an intuitive interface for monitoring and managing your torrents from any device.",
+      "text2": "The project is open-source and community-driven, prioritizing clean, maintainable code that can be self-hosted by anyone. Whether you're managing a single instance or multiple agents, Gardarr offers the tools you need in a beautiful, responsive interface."
+    },
+    "features": {
+      "title": "Key Features",
+      "multiPlatform": "Multi-platform support with Docker images for AMD64 and ARM64",
+      "automated": "Automated CI/CD pipeline with GitHub Actions",
+      "lightweight": "Lightweight and optimized for performance",
+      "openSource": "Open-source with GPL-3.0 license",
+      "mobileOptimized": "Mobile-first design with responsive UI"
+    },
+    "links": {
+      "title": "Project Links",
+      "repository": "GitHub Repository",
+      "documentation": "Development Documentation"
+    },
+    "attribution": {
+      "title": "Attributions",
+      "logo": "Project logo based on sprout icons:"
+    },
+    "license": {
+      "title": "License",
+      "description": "This project is licensed under the GNU General Public License v3.0. You are free to use, modify, and distribute this software under the terms of the GPL-3.0 license."
+    },
+    "footer": "Built with ❤️ by the community"
+  },
+  "auth": {
+    "login": {
+      "title": "Sign In",
+      "subtitle": "Manage your torrents from anywhere",
+      "description": "Enter your credentials to access your account",
+      "email": "Email",
+      "emailPlaceholder": "you@email.com",
+      "password": "Password",
+      "passwordPlaceholder": "Enter your password",
+      "forgotPassword": "Forgot password?",
+      "submit": "Sign In",
+      "noAccount": "New users by invitation only",
+      "signupLink": "Sign up"
+    },
+    "signup": {
+      "title": "Create Account",
+      "subtitle": "Start managing your torrents today",
+      "description": "Create a new account to get started",
+      "email": "Email",
+      "emailPlaceholder": "you@email.com",
+      "password": "Password",
+      "passwordPlaceholder": "Minimum 8 characters",
+      "confirmPassword": "Confirm Password",
+      "confirmPasswordPlaceholder": "Enter your password again",
+      "submit": "Create Account",
+      "hasAccount": "Already have an account?",
+      "loginLink": "Sign in",
+      "passwordMismatch": "Passwords do not match",
+      "passwordTooShort": "Password must be at least 8 characters"
+    },
+    "logout": "Logout"
+  },
+  "resetPassword": {
+    "title": "Reset Your Password",
+    "subtitle": "Enter your new password below",
+    "newPassword": "New Password",
+    "newPasswordPlaceholder": "Enter your new password",
+    "confirmPassword": "Confirm Password",
+    "confirmPasswordPlaceholder": "Confirm your new password",
+    "submit": "Reset Password",
+    "submitting": "Resetting Password...",
+    "backToLogin": "Back to Login",
+    "success": {
+      "title": "Password Reset Successful",
+      "message": "Your password has been successfully reset. You will be redirected to the login page shortly.",
+      "goToLogin": "Go to Login",
+      "redirecting": "Redirecting automatically in 3 seconds..."
+    },
+    "errors": {
+      "tokenRequired": "Reset token is required",
+      "passwordTooShort": "Password must be at least 8 characters long",
+      "passwordsMismatch": "Passwords do not match",
+      "resetFailed": "Failed to reset password",
+      "invalidLink": "Invalid Reset Link",
+      "invalidLinkDescription": "This password reset link is invalid or has expired. Please request a new one."
+    },
+    "validation": {
+      "passwordStrength": {
+        "weak": "Weak",
+        "fair": "Fair",
+        "good": "Good",
+        "strong": "Strong"
+      },
+      "passwordRequirement": "Password must be at least 8 characters long",
+      "passwordsMatch": "Passwords match",
+      "passwordsDoNotMatch": "Passwords do not match"
+    }
+  },
+  "agents": {
+    "title": "Agents",
+    "subtitle": "Manage your torrent clients and connections",
+    "refresh": "Refresh",
+    "addAgent": "Add Agent",
+    "cancel": "Cancel",
+    "createNewAgent": "Create New Agent",
+    "editAgent": "Edit Agent",
+    "deleteAgent": "Delete Agent",
+    "agentDetails": "Agent Details",
+    "name": "Name",
+    "type": "Type",
+    "address": "Address",
+    "token": "Token",
+    "color": "Color",
+    "icon": "Icon",
+    "preview": "Preview",
+    "createAgent": "Create Agent",
+    "updateAgent": "Update Agent",
+    "searchAgents": "Search agents...",
+    "loadingAgents": "Loading agents...",
+    "noAgentsFound": "No agents found",
+    "noAgentsMatch": "No agents match your search criteria.",
+    "getStarted": "Get started by adding your first agent.",
+    "agentName": "Agent Name",
+    "authenticationToken": "Authentication token",
+    "newAuthenticationToken": "New authentication token",
+    "leaveEmptyToKeep": "leave empty to keep current",
+    "info": "Info",
+    "stats": "Stats",
+    "instanceInformation": "Instance Information",
+    "application": "Application",
+    "version": "Version",
+    "api": "API",
+    "agent": "Agent",
+    "commit": "Commit",
+    "date": "Date",
+    "loadingVersion": "Loading version...",
+    "storage": "Storage",
+    "usedSpace": "Used Space",
+    "freeSpace": "Free Space",
+    "used": "used",
+    "transferStatistics": "Transfer Statistics",
+    "downloaded": "Downloaded",
+    "uploaded": "Uploaded",
+    "globalRatio": "Global Ratio",
+    "torrentStatistics": "Torrent Statistics",
+    "totalSize": "Total Size",
+    "activeTasks": "Active Tasks",
+    "activePeers": "Active Peers",
+    "uploadSpeed": "Upload Speed",
+    "downloadSpeed": "Download Speed",
+    "ratioStatistics": "Ratio Statistics",
+    "average": "Average",
+    "median": "Median",
+    "highest": "Highest",
+    "lowest": "Lowest",
+    "categoryUsage": "Category Usage",
+    "tagsUsage": "Tags Usage",
+    "loadingStatistics": "Loading statistics...",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "clickToViewDetails": "Click to view error details",
+    "errors": {
+      "fillRequiredFields": "Please fill in all required fields",
+      "failedToLoad": "Failed to load agents",
+      "failedToDelete": "Failed to delete agent",
+      "failedToCreate": "Failed to create agent",
+      "failedToUpdate": "Failed to update agent",
+      "noChangesDetected": "No changes detected"
+    },
+    "success": {
+      "deleted": "Agent deleted successfully",
+      "created": "Agent created successfully",
+      "updated": "Agent updated successfully"
+    },
+    "confirmDelete": {
+      "title": "Are you sure you want to delete this agent?",
+      "description": "This action cannot be undone."
+    },
+    "standalone": {
+      "title": "Standalone Agent",
+      "description": "This agent is initialized with the default Gardarr instance and cannot be modified or deleted.",
+      "cannotDelete": "Cannot Delete Standalone Agent",
+      "cannotDeleteDescription": "Standalone agents are initialized with the default Gardarr instance and cannot be deleted for system integrity.",
+      "cannotModify": "This is a standalone agent and cannot be modified.",
+      "tooltip": "Standalone agents cannot be edited"
+    },
+    "status": {
+      "active": "Active",
+      "errored": "Errored",
+      "inactive": "Inactive",
+      "unknown": "Unknown"
+    }
+  },
+  "users": {
+    "title": "Users",
+    "subtitle": "Manage user accounts and permissions",
+    "inviteUser": "Invite User",
+    "inviteOnly": "Invite-Only Registration",
+    "inviteOnlyDescription": "New users can only be added through invitations. Click \"Invite User\" to generate a magic link that can be shared with new users.",
+    "noUsersYet": "Get started by inviting your first user."
+  },
+  "invites": {
+    "title": "Invites",
+    "subtitle": "Manage user invitations",
+    "createNew": "Create New Invite",
+    "manageInvites": "Manage Invites",
+    "emailOptional": "Email (optional)",
+    "emailPlaceholder": "user@example.com (leave empty for generic link)",
+    "role": "Role",
+    "expiresIn": "Expires In",
+    "oneDay": "1 day",
+    "sevenDays": "7 days",
+    "thirtyDays": "30 days",
+    "createInvite": "Create Invite",
+    "copyLink": "Copy Link",
+    "revoke": "Revoke",
+    "genericInvite": "Generic Invite",
+    "used": "Used",
+    "expired": "Expired",
+    "expires": "Expires",
+    "created": "Created",
+    "usedOn": "Used on",
+    "noInvites": "No invites created yet",
+    "validInvitation": "Valid Invitation",
+    "acceptInvite": "Accept Invitation",
+    "acceptInviteSubtitle": "Create your account to get started",
+    "acceptAndCreate": "Accept Invite & Create Account",
+    "invalidInvite": "Invalid Invite",
+    "invalidInviteMessage": "This invite link is invalid, expired, or has already been used.",
+    "goToLogin": "Go to Login",
+    "notifications": {
+      "createSuccess": "Invite created successfully",
+      "revokeSuccess": "Invite revoked successfully",
+      "copySuccess": "Invite link copied to clipboard",
+      "copyError": "Failed to copy link",
+      "acceptSuccess": "Account created successfully! Redirecting to login...",
+      "validateError": "Invalid invite code"
+    }
+  },
+  "torrents": {
+    "title": "Torrents",
+    "subtitle": "Manage your downloads and uploads",
+    "addTorrent": "Add Torrent",
+    "search": "Search torrents...",
+    "itemsPerPage": "Items per page",
+    "update": "Update",
+    "agent": "Agent",
+    "agents": "Agents",
+    "of": "of",
+    "torrents": "torrents",
+    "sortedBy": "sorted by",
+    "loading": "Loading torrents...",
+    "error": "Error loading torrents",
+    "tryAgain": "Try again",
+    "noTorrents": "No torrents found",
+    "noTorrentsDesc": "Add a torrent to start downloading",
+    "noAgents": "No agents available",
+    "noAgentsDesc": "You need to register an agent before managing torrents. Add your first torrent client to get started.",
+    "addFirstAgent": "Add Agent",
+    "agentError": "Agent Error",
+    "agentErrorDesc": "Your agent is experiencing an error and needs to be fixed before managing torrents. Please check the agent configuration and try again.",
+    "fixAgent": "Fix Agent",
+    "noTorrentsWithAgents": "No torrents yet",
+    "noTorrentsWithAgentsDesc": "You have agents configured but no torrents. Add your first torrent to start downloading.",
+    "page": "Page",
+    "previous": "Previous",
+    "next": "Next",
+    "details": "Details",
+    "remove": "Remove",
+    "removing": "Removing...",
+    "moreOptions": "More options",
+    "status": "Status",
+    "ratio": "Ratio",
+    "download": "Download",
+    "upload": "Upload",
+    "downloaded": "Downloaded",
+    "uploaded": "Uploaded",
+    "seeds": "Seeds",
+    "leechs": "Leechs",
+    "size": "Size",
+    "progress": "Progress",
+    "name": "Name",
+    "actions": "Actions",
+    "filters": {
+      "allAgents": "All Agents",
+      "allStatuses": "All Statuses",
+      "allCategories": "All Categories",
+      "allTags": "All Tags",
+      "title": "Filters",
+      "sorting": "Sorting",
+      "close": "Close filters",
+      "all": "All",
+      "none": "None",
       "agents": "Agents",
-      "of": "of",
-      "torrents": "torrents",
-      "sortedBy": "sorted by",
-      "loading": "Loading torrents...",
-      "error": "Error loading torrents",
-      "tryAgain": "Try again",
-      "noTorrents": "No torrents found",
-      "noTorrentsDesc": "Add a torrent to start downloading",
-      "noAgents": "No agents available",
-      "noAgentsDesc": "You need to register an agent before managing torrents. Add your first torrent client to get started.",
-      "addFirstAgent": "Add Agent",
-      "agentError": "Agent Error",
-      "agentErrorDesc": "Your agent is experiencing an error and needs to be fixed before managing torrents. Please check the agent configuration and try again.",
-      "fixAgent": "Fix Agent",
-      "noTorrentsWithAgents": "No torrents yet",
-      "noTorrentsWithAgentsDesc": "You have agents configured but no torrents. Add your first torrent to start downloading.",
-      "page": "Page",
-      "previous": "Previous",
-      "next": "Next",
-      "details": "Details",
-      "remove": "Remove",
-      "removing": "Removing...",
-      "moreOptions": "More options",
       "status": "Status",
-      "ratio": "Ratio",
+      "categories": "Categories",
+      "tags": "Tags"
+    },
+    "sortBy": {
+      "priority": "priority",
+      "alphabetical": "alphabetical",
+      "size": "size",
+      "progress": "progress",
+      "downloadSpeed": "download speed",
+      "uploadSpeed": "upload speed",
+      "downloaded": "downloaded",
+      "uploaded": "uploaded"
+    },
+    "sortButtons": {
+      "priority": "Priority",
+      "name": "Name",
+      "size": "Size",
+      "progress": "Progress",
       "download": "Download",
       "upload": "Upload",
       "downloaded": "Downloaded",
-      "uploaded": "Uploaded",
-      "seeds": "Seeds",
-      "leechs": "Leechs",
-      "size": "Size",
-      "progress": "Progress",
-      "name": "Name",
-      "actions": "Actions",
-      "filters": {
-        "allAgents": "All Agents",
-        "allStatuses": "All Statuses",
-        "allCategories": "All Categories",
-        "allTags": "All Tags",
-        "title": "Filters",
-        "sorting": "Sorting",
-        "close": "Close filters",
-        "all": "All",
-        "none": "None",
-        "agents": "Agents",
-        "status": "Status",
-        "categories": "Categories",
-        "tags": "Tags"
-      },
-      "sortBy": {
-        "priority": "priority",
-        "alphabetical": "alphabetical",
-        "size": "size",
-        "progress": "progress",
-        "downloadSpeed": "download speed",
-        "uploadSpeed": "upload speed",
-        "downloaded": "downloaded",
-        "uploaded": "uploaded"
-      },
-      "sortButtons": {
-        "priority": "Priority",
-        "name": "Name",
-        "size": "Size",
-        "progress": "Progress",
-        "download": "Download",
-        "upload": "Upload",
-        "downloaded": "Downloaded",
-        "uploaded": "Uploaded"
-      },
-      "notifications": {
-        "addSuccess": "Torrent added successfully!",
-        "addError": "Error creating torrent: {{error}}",
-        "deleteSuccess": "Torrent removed successfully!",
-        "deleteWithFilesSuccess": "Torrent and files removed successfully!",
-        "deleteError": "Error removing torrent"
-      },
-      "actionButtons": {
-        "play": "Start/Resume",
-        "pause": "Pause",
-        "delete": "Remove"
-      }
+      "uploaded": "Uploaded"
     },
-    "categories": {
-      "title": "Categories",
-      "subtitle": "Manage torrent categories",
-      "addCategory": "Add Category",
-      "createNew": "Create New Category",
-      "create": "Create Category",
-      "edit": "Edit",
-      "refresh": "Refresh",
-      "search": "Search categories...",
-      "loading": "Loading categories...",
-      "noCategories": "No categories found",
-      "noCategoriesDesc": "Create a category to organize your torrents",
-      "confirmDelete": "Are you sure you want to delete this category?",
-      "deleteConfirmTitle": "Delete Category",
-      "deleteConfirmMessage": "Are you sure you want to delete the category \"{{name}}\"? This action cannot be undone.",
-      "immutableName": "Category name cannot be changed",
-      "fields": {
-        "name": "Name",
-        "defaultTags": "Default Tags",
-        "directory": "Directory",
-        "directories": "Directories",
-        "color": "Color",
-        "icon": "Icon"
-      },
-      "placeholders": {
-        "name": "Enter category name...",
-        "tag": "Add a tag...",
-        "directory": "Add a directory path...",
-        "tags": "Enter tags (ex: action, genre::action)"
-      },
-      "tagsHint": "💡 Tip: Type \"action, adventure, genre::action, year::2024\" to create simple and hierarchical tags",
-      "tagsExamples": {
-        "title": "Tag examples:",
-        "simple": "simple tag",
-        "hierarchical": "hierarchical tag",
-        "year": "year tag",
-        "quality": "quality tag",
-        "simpleExample": "action",
-        "hierarchicalExample": "genre::action",
-        "yearExample": "year::2024",
-        "qualityExample": "quality::4K"
-      },
-      "sortBy": {
-        "name": "Name",
-        "date": "Creation Date"
-      },
-      "notifications": {
-        "createSuccess": "Category created successfully!",
-        "updateSuccess": "Category updated successfully!",
-        "deleteSuccess": "Category deleted successfully!"
-      },
-      "errors": {
-        "nameRequired": "Category name is required",
-        "loadFailed": "Failed to load categories",
-        "createFailed": "Failed to create category",
-        "updateFailed": "Failed to update category",
-        "deleteFailed": "Failed to delete category"
-      }
+    "notifications": {
+      "addSuccess": "Torrent added successfully!",
+      "addError": "Error creating torrent: {{error}}",
+      "deleteSuccess": "Torrent removed successfully!",
+      "deleteWithFilesSuccess": "Torrent and files removed successfully!",
+      "deleteError": "Error removing torrent"
     },
-    "integrations": {
-      "title": "Integrations",
-      "subtitle": "Connect Gardarr with external services and tools",
-      "categories": {
-        "notifications": "Notifications",
-        "notificationsDescription": "Configure notification services to receive alerts about your torrents",
-        "synchronizations": "Synchronizations",
-        "synchronizationsDescription": "Sync libraries and data with media services",
-        "others": "Others",
-        "othersDescription": "Additional integrations and third-party services"
-      },
-      "webhook": {
-        "name": "Webhook",
-        "description": "Send HTTP requests to custom endpoints when torrent events occur"
-      },
-      "ntfy": {
-        "name": "Ntfy",
-        "description": "Send push notifications to your mobile devices using the Ntfy service"
-      },
-      "jellyfin": {
-        "name": "Jellyfin",
-        "description": "Sync library with Jellyfin server to keep content updated"
-      },
-      "kavita": {
-        "name": "Kavita",
-        "description": "Sync library with Kavita server to keep manga and comics updated"
-      },
-      "romm": {
-        "name": "RoMM",
-        "description": "Sync library with RoMM to keep ROMs and retro games updated"
-      },
-      "configure": "Configure",
-      "comingSoon": "Coming Soon",
-      "noIntegrations": "No integrations available",
-      "noIntegrationsDescription": "More integrations will be added in future updates"
-    },
-    "torrentDetails": {
-      "title": "Torrent Details",
-      "subtitle": "Complete information about the selected torrent",
-      "actions": {
-        "forceDownload": "Force Download",
-        "forceReannounce": "Force Reannounce",
-        "forceRecheck": "Force Recheck"
-      },
-      "name": {
-        "label": "Name",
-        "edit": "Edit name",
-        "save": "Save name"
-      },
-      "general": {
-        "title": "General Information",
-        "state": "State:",
-        "agent": "Agent:"
-      },
-      "size": {
-        "title": "Size",
-        "total": "Total:",
-        "progress": "Progress:"
-      },
-      "category": {
-        "title": "Category",
-        "edit": "Edit category",
-        "cancel": "Cancel",
-        "save": "Save"
-      },
-      "tags": {
-        "title": "Tags",
-        "edit": "Edit tags",
-        "cancel": "Cancel",
-        "save": "Save",
-        "placeholder": "Type tags and press Enter"
-      },
-      "path": {
-        "title": "Path",
-        "edit": "Edit path",
-        "save": "Save path"
-      },
-      "files": {
-        "title": "File List"
-      },
-      "network": {
-        "title": "Network & Peers",
-        "contribution": "Network Contribution",
-        "downloaded": "Downloaded:",
-        "uploaded": "Uploaded:",
-        "excellentContributor": "🌱 Excellent contributor!",
-        "goodContribution": "📈 Good contribution"
-      },
-      "download": {
-        "title": "Download",
-        "speed": "Speed:",
-        "total": "Total:"
-      },
-      "upload": {
-        "title": "Upload",
-        "speed": "Speed:",
-        "total": "Total:"
-      },
-      "swarm": {
-        "title": "Swarm",
-        "seeders": "Seeders:",
-        "leechers": "Leechers:"
-      },
-      "connected": {
-        "title": "Connected",
-        "seeders": "Seeders:",
-        "leechers": "Leechers:"
-      },
-      "magnet": {
-        "title": "Magnet Details",
-        "hash": "Hash:",
-        "link": "Magnet Link:",
-        "displayName": "Display Name:",
-        "exactLength": "Exact Length:",
-        "exactSource": "Exact Source:",
-        "trackers": "Trackers:"
-      },
-      "toasts": {
-        "categoryUpdateSuccess": "Category updated successfully",
-        "categoryUpdateError": "Failed to update category",
-        "tagsUpdateSuccess": "Tags updated successfully",
-        "tagsUpdateError": "Failed to update tags"
-      }
+    "actionButtons": {
+      "play": "Start/Resume",
+      "pause": "Pause",
+      "delete": "Remove"
     }
+  },
+  "categories": {
+    "title": "Categories",
+    "subtitle": "Manage torrent categories",
+    "addCategory": "Add Category",
+    "createNew": "Create New Category",
+    "create": "Create Category",
+    "edit": "Edit",
+    "refresh": "Refresh",
+    "search": "Search categories...",
+    "loading": "Loading categories...",
+    "noCategories": "No categories found",
+    "noCategoriesDesc": "Create a category to organize your torrents",
+    "confirmDelete": "Are you sure you want to delete this category?",
+    "deleteConfirmTitle": "Delete Category",
+    "deleteConfirmMessage": "Are you sure you want to delete the category \"{{name}}\"? This action cannot be undone.",
+    "immutableName": "Category name cannot be changed",
+    "fields": {
+      "name": "Name",
+      "defaultTags": "Default Tags",
+      "directory": "Directory",
+      "directories": "Directories",
+      "color": "Color",
+      "icon": "Icon"
+    },
+    "placeholders": {
+      "name": "Enter category name...",
+      "tag": "Add a tag...",
+      "directory": "Add a directory path...",
+      "tags": "Enter tags (ex: action, genre::action)"
+    },
+    "tagsHint": "💡 Tip: Type \"action, adventure, genre::action, year::2024\" to create simple and hierarchical tags",
+    "tagsExamples": {
+      "title": "Tag examples:",
+      "simple": "simple tag",
+      "hierarchical": "hierarchical tag",
+      "year": "year tag",
+      "quality": "quality tag",
+      "simpleExample": "action",
+      "hierarchicalExample": "genre::action",
+      "yearExample": "year::2024",
+      "qualityExample": "quality::4K"
+    },
+    "sortBy": {
+      "name": "Name",
+      "date": "Creation Date"
+    },
+    "notifications": {
+      "createSuccess": "Category created successfully!",
+      "updateSuccess": "Category updated successfully!",
+      "deleteSuccess": "Category deleted successfully!"
+    },
+    "errors": {
+      "nameRequired": "Category name is required",
+      "loadFailed": "Failed to load categories",
+      "createFailed": "Failed to create category",
+      "updateFailed": "Failed to update category",
+      "deleteFailed": "Failed to delete category"
+    }
+  },
+  "integrations": {
+    "title": "Integrations",
+    "subtitle": "Connect Gardarr with external services and tools",
+    "categories": {
+      "notifications": "Notifications",
+      "notificationsDescription": "Configure notification services to receive alerts about your torrents",
+      "synchronizations": "Synchronizations",
+      "synchronizationsDescription": "Sync libraries and data with media services",
+      "others": "Others",
+      "othersDescription": "Additional integrations and third-party services"
+    },
+    "webhook": {
+      "name": "Webhook",
+      "description": "Send HTTP requests to custom endpoints when torrent events occur"
+    },
+    "ntfy": {
+      "name": "Ntfy",
+      "description": "Send push notifications to your mobile devices using the Ntfy service"
+    },
+    "jellyfin": {
+      "name": "Jellyfin",
+      "description": "Sync library with Jellyfin server to keep content updated"
+    },
+    "kavita": {
+      "name": "Kavita",
+      "description": "Sync library with Kavita server to keep manga and comics updated"
+    },
+    "romm": {
+      "name": "RoMM",
+      "description": "Sync library with RoMM to keep ROMs and retro games updated"
+    },
+    "configure": "Configure",
+    "comingSoon": "Coming Soon",
+    "noIntegrations": "No integrations available",
+    "noIntegrationsDescription": "More integrations will be added in future updates"
+  },
+  "torrentDetails": {
+    "title": "Torrent Details",
+    "subtitle": "Complete information about the selected torrent",
+    "actions": {
+      "forceDownload": "Force Download",
+      "forceReannounce": "Force Reannounce",
+      "forceRecheck": "Force Recheck"
+    },
+    "name": {
+      "label": "Name",
+      "edit": "Edit name",
+      "save": "Save name"
+    },
+    "general": {
+      "title": "General Information",
+      "state": "State:",
+      "agent": "Agent:"
+    },
+    "size": {
+      "title": "Size",
+      "total": "Total:",
+      "progress": "Progress:"
+    },
+    "category": {
+      "title": "Category",
+      "edit": "Edit category",
+      "cancel": "Cancel",
+      "save": "Save"
+    },
+    "tags": {
+      "title": "Tags",
+      "edit": "Edit tags",
+      "cancel": "Cancel",
+      "save": "Save",
+      "placeholder": "Type tags and press Enter"
+    },
+    "path": {
+      "title": "Path",
+      "edit": "Edit path",
+      "save": "Save path"
+    },
+    "files": {
+      "title": "File List"
+    },
+    "network": {
+      "title": "Network & Peers",
+      "contribution": "Network Contribution",
+      "downloaded": "Downloaded:",
+      "uploaded": "Uploaded:",
+      "excellentContributor": "🌱 Excellent contributor!",
+      "goodContribution": "📈 Good contribution"
+    },
+    "download": {
+      "title": "Download",
+      "speed": "Speed:",
+      "total": "Total:"
+    },
+    "upload": {
+      "title": "Upload",
+      "speed": "Speed:",
+      "total": "Total:"
+    },
+    "swarm": {
+      "title": "Swarm",
+      "seeders": "Seeders:",
+      "leechers": "Leechers:"
+    },
+    "connected": {
+      "title": "Connected",
+      "seeders": "Seeders:",
+      "leechers": "Leechers:"
+    },
+    "magnet": {
+      "title": "Magnet Details",
+      "hash": "Hash:",
+      "link": "Magnet Link:",
+      "displayName": "Display Name:",
+      "exactLength": "Exact Length:",
+      "exactSource": "Exact Source:",
+      "trackers": "Trackers:"
+    },
+    "toasts": {
+      "categoryUpdateSuccess": "Category updated successfully",
+      "categoryUpdateError": "Failed to update category",
+      "tagsUpdateSuccess": "Tags updated successfully",
+      "tagsUpdateError": "Failed to update tags"
+    }
+  }
 }
-
-
