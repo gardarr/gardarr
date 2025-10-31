@@ -63,7 +63,7 @@ export function TorrentRatioWidget({ ratio, popularity }: TorrentRatioWidgetProp
                 <sup className="relative -top-2 ml-0.5 text-xl md:text-2xl leading-none">{"+".repeat(plusCount)}</sup>
               )}
             </span>
-            <div className="flex items-center" aria-label={t("ratio.widget.starsAria", { stars, total: 5, defaultValue: `${stars} de 5 estrelas` })}>
+            <div className="flex items-center" aria-label={t("ratio.widget.starsAria", { stars, total: 5, defaultValue: `${stars} out of 5 stars` })}>
               {Array.from({ length: 5 }).map((_, idx) => (
                 <svg
                   key={idx}

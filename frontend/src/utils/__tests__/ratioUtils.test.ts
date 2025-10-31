@@ -19,9 +19,9 @@ describe('ratioUtils', () => {
       expect(getRatioGrade(99.99)).toBe('S+');
     });
 
-    it('returns S for 30 <= ratio < 45', () => {
+    it('returns S for 30 <= ratio < 50', () => {
       expect(getRatioGrade(30)).toBe('S');
-      expect(getRatioGrade(44.99)).toBe('S');
+      expect(getRatioGrade(49.99)).toBe('S');
     });
 
     it('returns A for 15 <= ratio < 30', () => {

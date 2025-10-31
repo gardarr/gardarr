@@ -645,7 +645,9 @@
     "general": {
       "title": "General Information",
       "state": "State:",
-      "agent": "Agent:"
+      "agent": "Agent:",
+      "createdAt": "Created at",
+      "completedAt": "Completed at"
     },
     "size": {
       "title": "Size",
