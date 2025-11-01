@@ -93,14 +93,16 @@ jobs:
         # Create dist directory
         mkdir -p ../dist
         
-        # Build command with optional cross-compiler
-        BUILD_CMD="CGO_ENABLED=1 GOOS=linux GOARCH=${{ matrix.goarch }}"
+        # Set build environment
+        export CGO_ENABLED=1
+        export GOOS=linux
+        export GOARCH=${{ matrix.goarch }}
         if [ -n "${{ matrix.cc }}" ]; then
-          BUILD_CMD="$BUILD_CMD CC=${{ matrix.cc }}"
+          export CC=${{ matrix.cc }}
         fi
-        
+
         echo "Building for linux/${{ matrix.goarch }}..."
-        $BUILD_CMD go build \
+        go build \
           -ldflags="-X github.com/gardarr/gardarr/pkg/version.Version=${{ steps.version.outputs.version }} \
                     -X github.com/gardarr/gardarr/pkg/version.Commit=${{ steps.version.outputs.commit }} \
                     -X github.com/gardarr/gardarr/pkg/version.Date=${{ steps.version.outputs.date }} \
@@ -112,7 +114,7 @@ jobs:
       with:
         name: binary-${{ matrix.arch }}
         path: dist/${{ matrix.output }}
-        retention-days: 1
+        retention-days: 3
 
   build-and-push:
     needs: build-binaries
@@ -135,6 +137,21 @@ jobs:
         pattern: binary-*
         merge-multiple: true
         path: backend/dist
+
+    - name: Verify binary artifacts
+      run: |
+        for arch in amd64 arm64; do
+          binary="backend/dist/gardarr-$arch"
+          if [ ! -f "$binary" ]; then
+            echo "❌ Missing binary for $arch: $binary"
+            exit 1
+          fi
+          if [ ! -x "$binary" ]; then
+            echo "❌ Binary is not executable: $binary"
+            exit 1
+          fi
+          echo "✅ Found executable binary: $binary"
+        done
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
