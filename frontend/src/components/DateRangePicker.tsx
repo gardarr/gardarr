@@ -11,6 +11,11 @@ interface DateRangePickerProps {
   onToDateChange: (date: Date | undefined) => void;
 }
 
+type RangeOption = 
+  | { type: 'minute'; value: 5 | 10 | 30 } 
+  | { type: 'hour'; value: 1 | 3 | 6 } 
+  | { type: 'day'; value: 1 | 3 | 7 };
+
 export default function DateRangePicker({
   fromDate,
   toDate,
@@ -18,42 +23,76 @@ export default function DateRangePicker({
   onToDateChange,
 }: DateRangePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedDays, setSelectedDays] = useState<1 | 3 | 7>(1);
+  const [selectedRange, setSelectedRange] = useState<RangeOption>({ type: 'hour', value: 1 });
 
-  const applyRange = (days: 1 | 3 | 7) => {
+  const applyRange = (range: RangeOption) => {
     const now = new Date();
-    const start = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    let start: Date;
+    
+    if (range.type === 'minute') {
+      start = new Date(now.getTime() - range.value * 60 * 1000);
+    } else if (range.type === 'hour') {
+      start = new Date(now.getTime() - range.value * 60 * 60 * 1000);
+    } else {
+      start = new Date(now.getTime() - range.value * 24 * 60 * 60 * 1000);
+    }
+    
     onFromDateChange(start);
     onToDateChange(now);
-    setSelectedDays(days);
+    setSelectedRange(range);
     setIsOpen(false);
   };
 
-  // Ensure default selection is 1d if no dates provided
+  // Ensure default selection is 1h if no dates provided
   useEffect(() => {
     if (!fromDate || !toDate) {
       const now = new Date();
-      const start = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
+      const start = new Date(now.getTime() - 1 * 60 * 60 * 1000); // 1 hour ago
       onFromDateChange(start);
       onToDateChange(now);
-      setSelectedDays(1);
+      setSelectedRange({ type: 'hour', value: 1 });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const displayText = useMemo(() => {
-    if (selectedDays) return `Hoje -${selectedDays} dias`;
+    if (selectedRange) {
+      if (selectedRange.type === 'minute') {
+        return `Hoje -${selectedRange.value}min`;
+      } else if (selectedRange.type === 'hour') {
+        return `Hoje -${selectedRange.value}h`;
+      } else {
+        return `Hoje -${selectedRange.value} dias`;
+      }
+    }
+    
     if (fromDate && toDate) {
-      // try infer known options
+      // Try to infer known options
       const diffMs = toDate.getTime() - fromDate.getTime();
+      const minuteMs = 60 * 1000;
+      const hourMs = 60 * 60 * 1000;
       const dayMs = 24 * 60 * 60 * 1000;
-      const approx = Math.round(diffMs / dayMs) as 1 | 3 | 7;
-      if (approx === 1 || approx === 3 || approx === 7) {
-        return `Hoje -${approx} dias`;
+      
+      // Check for minute ranges first
+      const minutes = Math.round(diffMs / minuteMs);
+      if (minutes === 5 || minutes === 10 || minutes === 30) {
+        return `Hoje -${minutes}min`;
+      }
+      
+      // Check for hour ranges
+      const hours = Math.round(diffMs / hourMs);
+      if (hours === 1 || hours === 3 || hours === 6) {
+        return `Hoje -${hours}h`;
+      }
+      
+      // Check for day ranges
+      const days = Math.round(diffMs / dayMs);
+      if (days === 1 || days === 3 || days === 7) {
+        return `Hoje -${days} dias`;
       }
     }
     return "Selecionar intervalo";
-  }, [selectedDays, fromDate, toDate]);
+  }, [selectedRange, fromDate, toDate]);
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -62,7 +101,7 @@ export default function DateRangePicker({
           variant="outline"
           className={cn(
             "w-fit min-w-[200px] justify-start text-left font-normal",
-            !selectedDays && !(fromDate && toDate) && "text-muted-foreground"
+            !selectedRange && !(fromDate && toDate) && "text-muted-foreground"
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
@@ -71,9 +110,18 @@ export default function DateRangePicker({
       </PopoverTrigger>
       <PopoverContent className="w-[200px] p-2" align="start">
         <div className="flex flex-col gap-2">
-          <Button variant="ghost" className="justify-start" onClick={() => applyRange(1)}>1d</Button>
-          <Button variant="ghost" className="justify-start" onClick={() => applyRange(3)}>3d</Button>
-          <Button variant="ghost" className="justify-start" onClick={() => applyRange(7)}>7d</Button>
+          <div className="text-xs font-semibold text-muted-foreground px-2 py-1">Minutos</div>
+          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'minute', value: 5 })}>5min</Button>
+          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'minute', value: 10 })}>10min</Button>
+          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'minute', value: 30 })}>30min</Button>
+          <div className="text-xs font-semibold text-muted-foreground px-2 py-1 mt-2">Horas</div>
+          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'hour', value: 1 })}>1h</Button>
+          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'hour', value: 3 })}>3h</Button>
+          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'hour', value: 6 })}>6h</Button>
+          <div className="text-xs font-semibold text-muted-foreground px-2 py-1 mt-2">Dias</div>
+          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'day', value: 1 })}>1d</Button>
+          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'day', value: 3 })}>3d</Button>
+          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'day', value: 7 })}>7d</Button>
         </div>
       </PopoverContent>
     </Popover>

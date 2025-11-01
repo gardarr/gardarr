@@ -502,12 +502,29 @@ func (s *Service) aggregateByTask(files []string, from, to time.Time, step time.
 
 			a := out[wk][sl.Task]
 			a.Snaps++
-			a.DlKB += int64(sl.DlKB)
-			a.UlKB += int64(sl.UlKB)
-			a.Seeders += int64(sl.Sd)
-			a.Leechers += int64(sl.Lc)
-			a.TotalDlB += sl.DlB
-			a.TotalUlB += sl.UlB
+			// DlKB and UlKB should use the maximum value in the window, not sum
+			if int64(sl.DlKB) > a.DlKB {
+				a.DlKB = int64(sl.DlKB)
+			}
+			if int64(sl.UlKB) > a.UlKB {
+				a.UlKB = int64(sl.UlKB)
+			}
+			// Seeders and Leechers should be averaged, not summed
+			if a.Snaps == 1 {
+				a.Seeders = int64(sl.Sd)
+				a.Leechers = int64(sl.Lc)
+			} else {
+				// Calculate incremental average: new_avg = (old_avg * (n-1) + new_value) / n
+				a.Seeders = int64((float64(a.Seeders)*(float64(a.Snaps)-1) + float64(sl.Sd)) / float64(a.Snaps))
+				a.Leechers = int64((float64(a.Leechers)*(float64(a.Snaps)-1) + float64(sl.Lc)) / float64(a.Snaps))
+			}
+			// TotalDlB and TotalUlB are absolute cumulative values, so use max instead of sum
+			if sl.DlB > a.TotalDlB {
+				a.TotalDlB = sl.DlB
+			}
+			if sl.UlB > a.TotalUlB {
+				a.TotalUlB = sl.UlB
+			}
 			a.SumR1e4 += int64(sl.R1e4)
 			if a.Snaps > 0 {
 				a.AvgRatio = (float64(a.SumR1e4) / 10000.0) / float64(a.Snaps)
@@ -538,12 +555,29 @@ func (s *Service) aggregateByAgent(files []string, from, to time.Time, step time
 
 			a := out[wk]
 			a.Snaps++
-			a.DlKB += int64(sl.DlKB)
-			a.UlKB += int64(sl.UlKB)
-			a.Seeders += int64(sl.Sd)
-			a.Leechers += int64(sl.Lc)
-			a.TotalDlB += sl.DlB
-			a.TotalUlB += sl.UlB
+			// DlKB and UlKB should use the maximum value in the window, not sum
+			if int64(sl.DlKB) > a.DlKB {
+				a.DlKB = int64(sl.DlKB)
+			}
+			if int64(sl.UlKB) > a.UlKB {
+				a.UlKB = int64(sl.UlKB)
+			}
+			// Seeders and Leechers should be averaged, not summed
+			if a.Snaps == 1 {
+				a.Seeders = int64(sl.Sd)
+				a.Leechers = int64(sl.Lc)
+			} else {
+				// Calculate incremental average: new_avg = (old_avg * (n-1) + new_value) / n
+				a.Seeders = int64((float64(a.Seeders)*(float64(a.Snaps)-1) + float64(sl.Sd)) / float64(a.Snaps))
+				a.Leechers = int64((float64(a.Leechers)*(float64(a.Snaps)-1) + float64(sl.Lc)) / float64(a.Snaps))
+			}
+			// TotalDlB and TotalUlB are absolute cumulative values, so use max instead of sum
+			if sl.DlB > a.TotalDlB {
+				a.TotalDlB = sl.DlB
+			}
+			if sl.UlB > a.TotalUlB {
+				a.TotalUlB = sl.UlB
+			}
 			a.SumR1e4 += int64(sl.R1e4)
 			if a.Snaps > 0 {
 				a.AvgRatio = (float64(a.SumR1e4) / 10000.0) / float64(a.Snaps)

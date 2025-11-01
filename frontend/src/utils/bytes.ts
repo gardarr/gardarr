@@ -8,3 +8,6 @@ export function formatBytes(bytes: number): string {
 }
 
 
+export function formatBytesPerSecond(bytesPerSecond: number): string {
+  return `${formatBytes(bytesPerSecond)}/s`;
+}
