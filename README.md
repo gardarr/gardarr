@@ -49,17 +49,67 @@ Lightweight qBittorrent management and analytics tool, optimized for mobile
 
 ## 🚀 Getting Started
 
-### Using Pre-built Images
+### Running on Docker
 
-The easiest way to run Gardarr is using the pre-built Docker images from GitHub Container Registry:
+The easiest way to run Gardarr is using pre-built Docker images from GitHub Container Registry. Choose a deployment configuration that fits your needs:
+
+#### 🖥️ Standalone Mode
+
+Perfect for simple deployments where you want everything in one container. The application runs with an embedded agent that connects to your qBittorrent instance.
 
 ```bash
-# Pull the latest image
-docker pull ghcr.io/gardarr/gardarr:latest
+# Copy the standalone example
+cp examples/standalone/docker-compose.yml docker-compose.yml
 
-# Run with docker-compose
+# Set your qBittorrent credentials in .env file
+echo "QBITTORRENT_BASEURL=http://your-qbittorrent:8080" >> .env
+echo "QBITTORRENT_USERNAME=your_username" >> .env
+echo "QBITTORRENT_PASSWORD=your_password" >> .env
+
+# Start the service
 docker-compose up -d
 ```
+
+[View Full Configuration →](./examples/standalone/docker-compose.yml)
+
+#### 🔌 Agent Mode (Default)
+
+Ideal for managing multiple qBittorrent instances across different hosts. Deploy the main application and register agents through the web interface.
+
+```bash
+# Copy the default example
+cp examples/default/docker-compose.yml docker-compose.yml
+
+# Set your agent secret and qBittorrent credentials
+echo "AGENT_SECRET=$(openssl rand -hex 32)" >> .env
+echo "QBITTORRENT_BASEURL=http://your-qbittorrent:8080" >> .env
+echo "QBITTORRENT_USERNAME=your_username" >> .env
+echo "QBITTORRENT_PASSWORD=your_password" >> .env
+
+# Start the services
+docker-compose up -d
+```
+
+[View Full Configuration →](./examples/default/docker-compose.yml)
+
+#### 🐘 PostgreSQL Configuration
+
+For production deployments requiring PostgreSQL instead of SQLite:
+
+```bash
+# Copy the PostgreSQL example
+cp examples/postgres/docker-compose.yml docker-compose.yml
+
+# Configure your environment
+echo "POSTGRES_DB=gardarr" >> .env
+echo "POSTGRES_USER=gardarr" >> .env
+echo "POSTGRES_PASSWORD=your_secure_password" >> .env
+
+# Start the services
+docker-compose up -d
+```
+
+[View Full Configuration →](./examples/postgres/docker-compose.yml)
 
 ### Building from Source
 
@@ -99,12 +149,21 @@ This project uses GitHub Actions to automatically build and publish Docker image
 
 See [.github/workflows/README.md](.github/workflows/README.md) for detailed information about the CI/CD pipeline.
 
-## 📋 Available Tags
+## 📋 Roadmap
 
-- `latest` - Latest stable release
-- `v1.0.0` - Specific version releases
-- `1.0` - Major.minor version
-- `1` - Major version only
+Planned features and improvements for future releases:
+
+- [ ] **Integrations Page**: Create custom webhooks and event triggers when torrents change their status (completed, paused, failed, etc.)
+
+- [ ] **Smart Speed Limit Windows**: Advanced scheduling system for agent speed limits with time-based rules and automatic adjustments
+
+- [ ] **OIDC Authentication**: Support for OpenID Connect (OIDC) providers for enhanced security and single sign-on (SSO) capabilities
+
+- [ ] **Torrent Image Gallery**: Upload and display custom images for torrents to enhance visual organization and identification
+
+- [ ] **Contribution Card Generator**: Generate shareable contribution cards showcasing seeding statistics for social media sharing
+
+- [ ] **Cross-Host File Transfer**: Seamlessly move torrent files between different agent hosts using SCP protocol, enabling load balancing and storage management across distributed setups
 
 ## 🛠️ Development
 

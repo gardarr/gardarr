@@ -82,6 +82,10 @@ RUN mkdir -p /data && \
     chown -R nonroot:nonroot /data && \
     chmod 755 /data
 
+RUN mkdir -p /media && \
+    chown -R nonroot:nonroot /media && \
+    chmod 755 /media
+
 # Set build argument for port
 ARG APP_PORT=3000
 
@@ -97,8 +101,8 @@ COPY --from=build /app/web ./web
 # Set a default environment variable for the port
 ENV PORT=${APP_PORT}
 
-# Create volume for persistent data (SQLite database and task images)
-VOLUME ["/data"]
+# Create volumes for persistent data
+VOLUME ["/data", "/media"]
 
 # Expose the application port
 EXPOSE ${APP_PORT}
