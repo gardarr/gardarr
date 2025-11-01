@@ -186,17 +186,38 @@ jobs:
         echo "Package published to: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
         echo "Tags: ${{ steps.meta.outputs.tags }}"
         echo "Platforms: linux/amd64,linux/arm64"
-        echo "Making package public..."
         
         # Get the package name from the repository name
         PACKAGE_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
         
+        # Check current package visibility
+        echo "Checking package visibility..."
+        PACKAGE_INFO=$(gh api \
+          --method GET \
+          -H "Accept: application/vnd.github+json" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          /orgs/${{ github.repository_owner }}/packages/container/$PACKAGE_NAME 2>/dev/null || echo "")
+        
+        if [ -z "$PACKAGE_INFO" ]; then
+          echo "⚠️  Package not found or inaccessible, skipping visibility update"
+          exit 0
+        fi
+        
+        VISIBILITY=$(echo "$PACKAGE_INFO" | jq -r '.visibility // "unknown"')
+        echo "Current visibility: $VISIBILITY"
+        
+        if [ "$VISIBILITY" = "public" ]; then
+          echo "✅ Package is already public, no action needed"
+          exit 0
+        fi
+        
         # Make the package public using GitHub CLI
+        echo "Making package public..."
         gh api \
           --method PATCH \
           -H "Accept: application/vnd.github+json" \
           -H "X-GitHub-Api-Version: 2022-11-28" \
           /orgs/${{ github.repository_owner }}/packages/container/$PACKAGE_NAME \
-          -f visibility=public || echo "Failed to make package public automatically"
+          -f visibility=public || echo "⚠️  Failed to make package public automatically"
         
-        echo "Package visibility updated to public"
+        echo "✅ Package visibility updated to public"

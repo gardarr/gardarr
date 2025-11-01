@@ -12,7 +12,10 @@ services:
       STATISTICS_INTERVAL: 5s
       STATISTICS_DIR: /data/statistics
     volumes:
+      # Use /data if you're using SQLite for database
       - gardarr_data:/data
+      # Use /media to store images and media files
+      - gardarr_media:/media
     restart: unless-stopped
     networks:
       - gardarr-network
@@ -23,7 +26,7 @@ services:
       retries: 3
       start_period: 30s
 
-  # Exemplo de serviço de banco de dados (descomente se necessário)
+  # PostgreSQL container example
   postgres:
     image: postgres:15-alpine
     container_name: gardarr-postgres

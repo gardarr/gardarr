@@ -16,7 +16,10 @@ services:
       QBITTORRENT_USERNAME: "${QBITTORRENT_USERNAME}"
       QBITTORRENT_PASSWORD: "${QBITTORRENT_PASSWORD}"
     volumes:
+      # Use /data if you're using SQLite for database
       - gardarr_data:/data
+      # Use /media to store images and media files
+      - gardarr_media:/media
     restart: unless-stopped
     networks:
       - gardarr-network
@@ -29,6 +32,8 @@ services:
 
 volumes:
   gardarr_data:
+    driver: local
+  gardarr_media:
     driver: local
 
 networks:

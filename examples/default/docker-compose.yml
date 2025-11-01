@@ -12,7 +12,10 @@ services:
       STATISTICS_INTERVAL: 5s
       STATISTICS_DIR: /data/statistics
     volumes:
+      # Use /data to persist SQLite database
       - gardarr_data:/data
+      # Use /media to persist images and media files
+      - gardarr_media:/media
     restart: unless-stopped
     networks:
       - gardarr-network
