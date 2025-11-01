@@ -55,7 +55,7 @@ The easiest way to run Gardarr is using the pre-built Docker images from GitHub 
 
 ```bash
 # Pull the latest image
-docker pull ghcr.io/your-username/gardarr:latest
+docker pull ghcr.io/gardarr/gardarr:latest
 
 # Run with docker-compose
 docker-compose up -d
@@ -65,7 +65,7 @@ docker-compose up -d
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/gardarr.git
+git clone https://github.com/gardarr/gardarr.git
 cd gardarr
 
 # Build and run with Docker Compose

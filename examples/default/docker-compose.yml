@@ -1,6 +1,6 @@
 services:
   gardarr:
-    image: gardarr:local
+    image: ghcr.io/gardarr/gardarr:latest
     container_name: gardarr
     ports:
       - "${APP_PORT:-3000}:3000"
@@ -24,7 +24,7 @@ services:
       start_period: 40s
 
   gardarr-agent:
-    image: gardarr:local
+    image: ghcr.io/gardarr/gardarr:latest
     container_name: gardarr-agent
     command: ["./main", "agent"]
     ports:
@@ -32,9 +32,10 @@ services:
     environment:
       AGENT_PORT: ${AGENT_PORT:-3100}
       AGENT_SECRET: ${AGENT_SECRET}
-      QBITTORRENT_BASEURL: "your-qbittorrent-baseurl"
-      QBITTORRENT_USERNAME: "your-qbittorrent-username"
-      QBITTORRENT_PASSWORD: "your-qbittorrent-password"
+      # Replace the following placeholder values with your actual qBittorrent credentials
+      QBITTORRENT_BASEURL: "${QBITTORRENT_BASEURL}"
+      QBITTORRENT_USERNAME: "${QBITTORRENT_USERNAME}"
+      QBITTORRENT_PASSWORD: "${QBITTORRENT_PASSWORD}"
     restart: unless-stopped
     networks:
       - gardarr-network

@@ -1,6 +1,6 @@
 services:
   gardarr:
-    image: gardarr:local
+    image: ghcr.io/gardarr/gardarr:latest
     container_name: gardarr
     ports:
       - "${APP_PORT:-3000}:3000"
@@ -11,9 +11,10 @@ services:
       STATISTICS_ENABLED: true
       STATISTICS_INTERVAL: 5s
       STATISTICS_DIR: /data/statistics
-      QBITTORRENT_BASEURL: "your-qbittorrent-baseurl"
-      QBITTORRENT_USERNAME: "your-qbittorrent-username"
-      QBITTORRENT_PASSWORD: "your-qbittorrent-password"
+      # Replace the following placeholder values with your actual qBittorrent credentials
+      QBITTORRENT_BASEURL: "${QBITTORRENT_BASEURL}"
+      QBITTORRENT_USERNAME: "${QBITTORRENT_USERNAME}"
+      QBITTORRENT_PASSWORD: "${QBITTORRENT_PASSWORD}"
     volumes:
       - gardarr_data:/data
     restart: unless-stopped
