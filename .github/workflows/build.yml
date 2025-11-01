@@ -43,17 +43,25 @@ jobs:
       working-directory: ./backend
       run: go mod download
 
-    - name: Run tests
+    - name: Run backend tests
       working-directory: ./backend
       env:
         CGO_ENABLED: 1
       run: go test -v ./...
 
-    - name: Run linter
+    - name: Run backend linter
       working-directory: ./backend
       run: |
         go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.62.2
         golangci-lint run
+
+    - name: Build backend
+      working-directory: ./backend
+      env:
+        CGO_ENABLED: 1
+      run: |
+        mkdir -p ../dist
+        go build -o ../dist/gardarr-test .
 
   frontend:
     runs-on: ubuntu-latest
@@ -73,7 +81,11 @@ jobs:
       working-directory: ./frontend
       run: npm ci
 
-    - name: Run linter
+    - name: Run frontend tests
+      working-directory: ./frontend
+      run: npx vitest run
+
+    - name: Run frontend linter
       working-directory: ./frontend
       run: npm run lint
 
@@ -86,7 +98,7 @@ jobs:
       with:
         name: frontend-dist
         path: frontend/dist/
-        retention-days: 30
+        retention-days: 7
 
   build:
     runs-on: ubuntu-latest

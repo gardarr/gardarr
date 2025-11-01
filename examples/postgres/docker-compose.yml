@@ -12,9 +12,9 @@ services:
       STATISTICS_INTERVAL: 5s
       STATISTICS_DIR: /data/statistics
     volumes:
-      # Use /data to persist SQLite database
+      # Use /data if you're using SQLite for database
       - gardarr_data:/data
-      # Use /media to persist images and media files
+      # Use /media to store images and media files
       - gardarr_media:/media
     restart: unless-stopped
     networks:
@@ -26,31 +26,26 @@ services:
       retries: 3
       start_period: 30s
 
-  gardarr-agent:
-    image: ghcr.io/gardarr/gardarr:latest
-    container_name: gardarr-agent
-    command: ["./main", "agent"]
-    ports:
-      - "${AGENT_PORT:-3100}:3100"
+  # PostgreSQL container example
+  postgres:
+    image: postgres:15-alpine
+    container_name: gardarr-postgres
     environment:
-      AGENT_PORT: ${AGENT_PORT:-3100}
-      AGENT_SECRET: ${AGENT_SECRET}
-      # Replace the following placeholder values with your actual qBittorrent credentials
-      QBITTORRENT_BASEURL: "${QBITTORRENT_BASEURL}"
-      QBITTORRENT_USERNAME: "${QBITTORRENT_USERNAME}"
-      QBITTORRENT_PASSWORD: "${QBITTORRENT_PASSWORD}"
+      - POSTGRES_DB=${POSTGRES_DB:-seedbox}
+      - POSTGRES_USER=${POSTGRES_USER:-seedbox}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-seedbox123}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
     restart: unless-stopped
     networks:
       - gardarr-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3100/v1/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
 volumes:
   gardarr_data:
+    driver: local
+  postgres_data:
     driver: local
 
 networks:

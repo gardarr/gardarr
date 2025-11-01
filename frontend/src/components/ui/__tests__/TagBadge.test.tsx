@@ -127,10 +127,21 @@ describe('TagBadge', () => {
       expect(screen.getByText('sub::value')).toBeInTheDocument();
     });
 
-    it('handles empty category or value gracefully', () => {
+    it('handles empty category gracefully', () => {
       render(<TagBadge tag="::value" />);
-      expect(screen.getByText('')).toBeInTheDocument();
+      // Check that value badge exists and displays correctly
       expect(screen.getByText('value')).toBeInTheDocument();
+      // Category badge exists but has no text content
+      const categoryBadge = screen.getByText('value').closest('div')?.querySelector('span:first-child');
+      expect(categoryBadge).toBeInTheDocument();
+    });
+
+    it('handles empty value gracefully', () => {
+      render(<TagBadge tag="category::" />);
+      expect(screen.getByText('category')).toBeInTheDocument();
+      // Value badge exists but has no text content
+      const valueBadge = screen.getByText('category').closest('div')?.querySelector('span:last-child');
+      expect(valueBadge).toBeInTheDocument();
     });
   });
 });

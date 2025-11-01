@@ -34,7 +34,10 @@ export function TagBadge({
   const isComposite = tag.includes('::');
   
   if (isComposite) {
-    const [category, value] = tag.split('::');
+    // Split only on the first occurrence of ::
+    const separatorIndex = tag.indexOf('::');
+    const category = tag.substring(0, separatorIndex);
+    const value = tag.substring(separatorIndex + 2);
     
     return (
       <div className={cn("inline-flex items-center", className)}>

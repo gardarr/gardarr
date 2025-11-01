@@ -1,3 +1,4 @@
+import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
@@ -39,18 +40,30 @@ vi.mock('../hooks/useToast', () => ({
   }),
 }));
 
-// Mock the auth context
-const mockAuthContext = {
+// Mock the auth context - use vi.hoisted to create shared state
+const mockAuthContext = vi.hoisted(() => ({
   user: null as User | null,
   loading: true,
   login: vi.fn(),
   logout: vi.fn(),
   checkAuth: vi.fn(),
-};
+}));
 
-vi.mock('../contexts/AuthContext', () => ({
+vi.mock('../contexts/AuthContext', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../contexts/AuthContext')>();
+  const { createContext } = await import('react');
+  
+  const MockAuthContext = createContext(mockAuthContext);
+  
+  return {
+    ...actual,
+    AuthContext: MockAuthContext,
+    AuthProvider: ({ children }: { children: React.ReactNode }) => children,
+  };
+});
+
+vi.mock('../contexts/auth-hooks', () => ({
   useAuth: () => mockAuthContext,
-  AuthProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 const renderWithRouter = (component: React.ReactElement) => {
@@ -66,6 +79,8 @@ const renderWithRouter = (component: React.ReactElement) => {
 describe('Users Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockAuthContext.loading = true;
+    mockAuthContext.user = null;
   });
 
   it('shows loading state when authentication is loading', () => {
