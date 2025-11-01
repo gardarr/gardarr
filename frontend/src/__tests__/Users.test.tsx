@@ -79,6 +79,8 @@ const renderWithRouter = (component: React.ReactElement) => {
 describe('Users Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockAuthContext.loading = true;
+    mockAuthContext.user = null;
   });
 
   it('shows loading state when authentication is loading', () => {
