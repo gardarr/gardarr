@@ -1,0 +1,55 @@
+services:
+  gardarr:
+    image: ghcr.io/gardarr/gardarr:latest
+    container_name: gardarr
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      APP_PORT: ${APP_PORT:-3000}
+      APP_DOMAINS: ${APP_DOMAINS:-http://localhost:3000,http://localhost:5173}
+      APP_MODE: standalone
+      STATISTICS_ENABLED: true
+      STATISTICS_INTERVAL: 5s
+      STATISTICS_DIR: /data/statistics
+    volumes:
+      - gardarr_data:/data
+    restart: unless-stopped
+    networks:
+      - gardarr-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  gardarr-agent:
+    image: ghcr.io/gardarr/gardarr:latest
+    container_name: gardarr-agent
+    command: ["./main", "agent"]
+    ports:
+      - "${AGENT_PORT:-3100}:3100"
+    environment:
+      AGENT_PORT: ${AGENT_PORT:-3100}
+      AGENT_SECRET: ${AGENT_SECRET}
+      # Replace the following placeholder values with your actual qBittorrent credentials
+      QBITTORRENT_BASEURL: "${QBITTORRENT_BASEURL}"
+      QBITTORRENT_USERNAME: "${QBITTORRENT_USERNAME}"
+      QBITTORRENT_PASSWORD: "${QBITTORRENT_PASSWORD}"
+    restart: unless-stopped
+    networks:
+      - gardarr-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3100/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  gardarr_data:
+    driver: local
+
+networks:
+  gardarr-network:
+    driver: bridge
