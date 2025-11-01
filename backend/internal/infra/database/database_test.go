@@ -9,7 +9,7 @@ import (
 // restoreWorkingDir restores the working directory and fails the test if it cannot be restored.
 func restoreWorkingDir(t *testing.T, dir string) {
 	if err := os.Chdir(dir); err != nil {
-		t.Errorf("Failed to restore working directory: %v", err)
+		t.Fatalf("Failed to restore working directory: %v", err)
 	}
 }
 

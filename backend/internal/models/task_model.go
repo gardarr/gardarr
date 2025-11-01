@@ -7,7 +7,7 @@ type TaskResponseModel struct {
 	Name         string                   `json:"name"`
 	Hash         string                   `json:"hash"`
 	CreatedAt    time.Time                `json:"created_at"`
-	CompletedAt  time.Time                `json:"completed_at"`
+	CompletedAt  *time.Time               `json:"completed_at,omitempty"`
 	State        string                   `json:"state"`
 	Category     string                   `json:"category"`
 	Path         string                   `json:"path"`

@@ -269,12 +269,18 @@ func toTask(item *qbt.TorrentResponse) *entities.Task {
 		active = false
 	}
 
+	var completedAt *time.Time
+	if item.CompletionOn > 0 {
+		completedTime := time.Unix(int64(item.CompletionOn), 0)
+		completedAt = &completedTime
+	}
+
 	return &entities.Task{
 		ID:          item.Hash,
 		Name:        strings.TrimSpace(item.Name),
 		Hash:        item.Hash,
 		CreatedAt:   time.Unix(int64(item.AddedOn), 0),
-		CompletedAt: time.Unix(int64(item.CompletionOn), 0),
+		CompletedAt: completedAt,
 		Category:    item.Category,
 		Path:        item.SavePath,
 		State:       status,
