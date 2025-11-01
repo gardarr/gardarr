@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "test:unit": "npx vitest run"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",

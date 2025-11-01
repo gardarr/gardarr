@@ -1,57 +1,63 @@
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
+import { vi } from 'vitest';
 import TorrentsPage from '../Torrents';
 
 // Mock the translation hook
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => {
-      const translations: Record<string, string> = {
-        'torrents.title': 'Torrents',
-        'torrents.subtitle': 'Manage your downloads and uploads',
-        'torrents.agentError': 'Agent Error',
-        'torrents.agentErrorDesc': 'Your agent is experiencing an error and needs to be fixed before managing torrents. Please check the agent configuration and try again.',
-        'torrents.fixAgent': 'Fix Agent',
-        'torrents.noAgents': 'No agents available',
-        'torrents.noAgentsDesc': 'You need to register an agent before managing torrents. Add your first torrent client to get started.',
-        'torrents.addFirstAgent': 'Add Agent',
-        'torrents.noTorrentsWithAgents': 'No torrents yet',
-        'torrents.noTorrentsWithAgentsDesc': 'You have agents configured but no torrents. Add your first torrent to start downloading.',
-        'torrents.addTorrent': 'Add Torrent',
-      };
-      return translations[key] || key;
-    },
-  }),
-}));
+vi.mock('react-i18next', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-i18next')>();
+  return {
+    ...actual,
+    useTranslation: () => ({
+      t: (key: string) => {
+        const translations: Record<string, string> = {
+          'torrents.title': 'Torrents',
+          'torrents.subtitle': 'Manage your downloads and uploads',
+          'torrents.agentError': 'Agent Error',
+          'torrents.agentErrorDesc': 'Your agent is experiencing an error and needs to be fixed before managing torrents. Please check the agent configuration and try again.',
+          'torrents.fixAgent': 'Fix Agent',
+          'torrents.noAgents': 'No agents available',
+          'torrents.noAgentsDesc': 'You need to register an agent before managing torrents. Add your first torrent client to get started.',
+          'torrents.addFirstAgent': 'Add Agent',
+          'torrents.noTorrentsWithAgents': 'No torrents yet',
+          'torrents.noTorrentsWithAgentsDesc': 'You have agents configured but no torrents. Add your first torrent to start downloading.',
+          'torrents.addTorrent': 'Add Torrent',
+        };
+        return translations[key] || key;
+      },
+    }),
+  };
+});
 
 // Mock the services
-jest.mock('../services/torrents', () => ({
+vi.mock('../services/torrents', () => ({
   torrentService: {
-    listTasks: jest.fn().mockResolvedValue({ data: [] }),
+    listTasks: vi.fn().mockResolvedValue({ data: [] }),
+    listAgentTasks: vi.fn().mockResolvedValue({ data: [] }),
   },
 }));
 
-jest.mock('../services/agents', () => ({
+vi.mock('../services/agents', () => ({
   agentService: {
-    listAgents: jest.fn().mockResolvedValue({ data: [] }),
+    listAgents: vi.fn().mockResolvedValue({ data: [] }),
   },
 }));
 
 // Mock the toast hook
-jest.mock('../hooks/useToast', () => ({
+vi.mock('../hooks/useToast', () => ({
   useToast: () => ({
     toasts: [],
-    showSuccess: jest.fn(),
-    showError: jest.fn(),
-    removeToast: jest.fn(),
+    showSuccess: vi.fn(),
+    showError: vi.fn(),
+    removeToast: vi.fn(),
   }),
 }));
 
 // Mock the auth context
-jest.mock('../contexts/auth-hooks', () => ({
+vi.mock('../contexts/auth-hooks', () => ({
   useAuth: () => ({
     user: { role: 'admin' },
-    logout: jest.fn(),
+    logout: vi.fn(),
   }),
 }));
 
@@ -65,7 +71,7 @@ const renderWithRouter = (component: React.ReactElement) => {
 
 describe('TorrentsPage - Agent Error States', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('shows agent error state when only agent has ERRORED status', async () => {
@@ -90,8 +96,8 @@ describe('TorrentsPage - Agent Error States', () => {
     ];
 
     // Mock the agent service to return the errored agent
-    const { agentService } = jest.requireMock('../services/agents');
-    agentService.listAgents.mockResolvedValue({ data: mockAgents });
+    const { agentService } = await import('../services/agents');
+    vi.mocked(agentService.listAgents).mockResolvedValue({ data: mockAgents });
 
     renderWithRouter(<TorrentsPage />);
 
@@ -103,8 +109,8 @@ describe('TorrentsPage - Agent Error States', () => {
 
   it('shows no agents state when no agents are available', async () => {
     // Mock empty agents array
-    const { agentService } = jest.requireMock('../services/agents');
-    agentService.listAgents.mockResolvedValue({ data: [] });
+    const { agentService } = await import('../services/agents');
+    vi.mocked(agentService.listAgents).mockResolvedValue({ data: [] });
 
     renderWithRouter(<TorrentsPage />);
 
@@ -134,14 +140,16 @@ describe('TorrentsPage - Agent Error States', () => {
       },
     ];
 
-    const { agentService } = jest.requireMock('../services/agents');
-    agentService.listAgents.mockResolvedValue({ data: mockAgents });
+    const { agentService } = await import('../services/agents');
+    vi.mocked(agentService.listAgents).mockResolvedValue({ data: mockAgents });
 
     renderWithRouter(<TorrentsPage />);
 
     // Wait for the component to load and check for no torrents state
     await screen.findByText('No torrents yet');
     expect(screen.getByText('You have agents configured but no torrents. Add your first torrent to start downloading.')).toBeInTheDocument();
-    expect(screen.getByText('Add Torrent')).toBeInTheDocument();
+    // There are multiple "Add Torrent" buttons (header and empty state), so use getAllByText
+    const addTorrentButtons = screen.getAllByText('Add Torrent');
+    expect(addTorrentButtons.length).toBeGreaterThan(0);
   });
 });
