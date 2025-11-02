@@ -740,6 +740,7 @@
     "categoryUpdateError": "Falha ao atualizar categoria",
     "tagsUpdateSuccess": "Tags atualizadas com sucesso",
     "tagsUpdateError": "Falha ao atualizar tags"
+  }
   },
   "torrent": {
     "created": "Criado",
@@ -770,6 +771,5 @@
     "minutes": "Minutos",
     "hours": "Horas",
     "days": "Dias"
-  }
   }
 }

@@ -322,28 +322,31 @@ export function TorrentMetricsModal({
           step: "1m",
         });
 
-        // Verify we're still supposed to be fetching this
-        const currentFetchKey = `${agentId}-${taskHash}-${fromDate.toISOString()}-${toDate.toISOString()}`;
-        if (fetchingKeyRef.current !== currentFetchKey) {
+        // Verify we're still supposed to be fetching this (compare against original fetchKey)
+        if (fetchingKeyRef.current !== fetchKey) {
           // Another fetch started, ignore this one
-          fetchingKeyRef.current = "";
-          setLoading(false);
           return;
         }
 
         if (response.error) {
-          setError(response.error);
-          fetchingKeyRef.current = "";
-          metricsFetchedRef.current = "";
-          setLoading(false);
+          // Only update state if this is still the current fetch
+          if (fetchingKeyRef.current === fetchKey) {
+            setError(response.error);
+            fetchingKeyRef.current = "";
+            metricsFetchedRef.current = "";
+            setLoading(false);
+          }
           return;
         }
 
         if (!response.data?.windows) {
-          setError("No data available");
-          fetchingKeyRef.current = "";
-          metricsFetchedRef.current = "";
-          setLoading(false);
+          // Only update state if this is still the current fetch
+          if (fetchingKeyRef.current === fetchKey) {
+            setError("No data available");
+            fetchingKeyRef.current = "";
+            metricsFetchedRef.current = "";
+            setLoading(false);
+          }
           return;
         }
 
@@ -353,10 +356,13 @@ export function TorrentMetricsModal({
         const windowsData = response.data.windows;
         
         if (typeof windowsData !== 'object' || windowsData === null || Array.isArray(windowsData)) {
-          setError("Invalid data format");
-          fetchingKeyRef.current = "";
-          metricsFetchedRef.current = "";
-          setLoading(false);
+          // Only update state if this is still the current fetch
+          if (fetchingKeyRef.current === fetchKey) {
+            setError("Invalid data format");
+            fetchingKeyRef.current = "";
+            metricsFetchedRef.current = "";
+            setLoading(false);
+          }
           return;
         }
 
@@ -430,21 +436,27 @@ export function TorrentMetricsModal({
           });
         }
 
-        if (transformed.length === 0) {
-          setError("No data available for this task");
-        } else {
-          setChartData(transformed);
+        // Only update state if this is still the current fetch
+        if (fetchingKeyRef.current === fetchKey) {
+          if (transformed.length === 0) {
+            setError("No data available for this task");
+          } else {
+            setChartData(transformed);
+          }
         }
       } catch (err) {
         console.error("Failed to fetch metrics:", err);
-        setError(err instanceof Error ? err.message : "Failed to fetch metrics");
-        metricsFetchedRef.current = "";
+        // Only update state if this is still the current fetch
+        if (fetchingKeyRef.current === fetchKey) {
+          setError(err instanceof Error ? err.message : "Failed to fetch metrics");
+          metricsFetchedRef.current = "";
+        }
       } finally {
-        // Only clear the fetching key if this is still the current fetch
+        // Only clear the fetching key and loading state if this is still the current fetch
         if (fetchingKeyRef.current === fetchKey) {
           fetchingKeyRef.current = "";
+          setLoading(false);
         }
-        setLoading(false);
       }
     };
 

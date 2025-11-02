@@ -30,7 +30,7 @@ export function TorrentContributionWidget({ taskData }: TorrentContributionWidge
             style={{ 
               width: `${downloadPercent}%`,
               background: `linear-gradient(90deg, var(--accent) 0%, color-mix(in oklch, var(--accent) 85%, black) 100%)`,
-              minWidth: downloadPercent > 0 ? '20%' : '0%'
+              minWidth: downloadPercent > 0 ? '8px' : '0'
             }}
           />
           
@@ -40,7 +40,7 @@ export function TorrentContributionWidget({ taskData }: TorrentContributionWidge
             style={{ 
               width: `${uploadPercent}%`,
               background: `linear-gradient(90deg, var(--primary) 0%, color-mix(in oklch, var(--primary) 85%, black) 100%)`,
-              minWidth: uploadPercent > 0 ? '20%' : '0%'
+              minWidth: uploadPercent > 0 ? '8px' : '0'
             }}
           />
         </div>
