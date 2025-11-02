@@ -43,6 +43,10 @@ func (s *service) GetTask(ctx context.Context, id string) (*entities.Task, error
 	return s.repository.Get(id)
 }
 
+func (s *service) GetTaskLimits(ctx context.Context, id string) (*entities.TaskLimits, error) {
+	return s.repository.GetLimits(id)
+}
+
 func (s *service) CreateTask(ctx context.Context, schema schemas.TaskCreateSchema) (*entities.Task, error) {
 	uri, err := repository.ParseMagnetLink(schema.MagnetURI)
 	if err != nil {

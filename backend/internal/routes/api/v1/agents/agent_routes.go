@@ -49,6 +49,7 @@ func (m Module) Register() {
 	m.agentRouter.POST("/:id/task/:task_id/share_limit", m.setAgentTaskShareLimit)
 	m.agentRouter.POST("/:id/task/:task_id/location", m.setAgentTaskLocation)
 	m.agentRouter.POST("/:id/task/:task_id/rename", m.renameAgentTask)
+	m.agentRouter.GET("/:id/task/:task_id/limits", m.getAgentTaskLimits)
 	m.agentRouter.POST("/:id/task/:task_id/super_seeding", m.setAgentTaskSuperSeeding)
 	m.agentRouter.POST("/:id/task/:task_id/force_recheck", m.forceRecheckAgentTask)
 	m.agentRouter.POST("/:id/task/:task_id/force_reannounce", m.forceReannounceAgentTask)
@@ -504,4 +505,23 @@ func (m *Module) getAgentVersion(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, mappers.ToAgentVersionResponse(version))
+}
+
+func (m *Module) getAgentTaskLimits(c *gin.Context) {
+	agentID := c.Param("id")
+	taskID := c.Param("task_id")
+
+	agent, err := m.service.Get(c.Request.Context(), agentID)
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	limits, err := m.service.GetAgentTaskLimits(c.Request.Context(), agent, taskID)
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, mappers.ToTaskLimitsResponse(limits))
 }

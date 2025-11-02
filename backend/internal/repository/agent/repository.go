@@ -1019,6 +1019,43 @@ func (r *Repository) SetAgentTaskCategory(agent *entities.Agent, taskID string, 
 	return nil
 }
 
+func (r *Repository) GetAgentTaskLimits(agent *entities.Agent, taskID string) (*entities.TaskLimits, error) {
+	url := fmt.Sprintf("%s/v1/task/%s/limits", agent.Address, taskID)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	decryptedToken, err := r.crypto.Decrypt(agent.Token)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", decryptedToken))
+
+	response, err := r.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode != http.StatusOK {
+		return nil, errors.New("failed to get task limits")
+	}
+
+	var handler models.TaskLimitsResponse
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := json.NewDecoder(bytes.NewReader(body)).Decode(&handler); err != nil {
+		return nil, err
+	}
+
+	return mappers.ToTaskLimits(handler), nil
+}
+
 func toAgent(item models.Agent) *entities.Agent {
 	return &entities.Agent{
 		UUID:    item.UUID,

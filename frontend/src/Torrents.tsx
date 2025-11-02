@@ -27,6 +27,7 @@ import { ListFilter } from "@/components/ui/ListFilter";
 import { FilterSidebar } from "@/components/ui/FilterSidebar";
 import { TorrentDetailsModal } from "@/components/TorrentDetailsModal";
 import { AddTorrentModal } from "@/components/AddTorrentModal";
+import { TorrentMetricsModal } from "@/components/TorrentMetricsModal";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import TorrentContextMenu from "@/components/TorrentContextMenu";
 import { RatioBadge } from "@/components/RatioBadge";
@@ -205,7 +206,7 @@ function getStatusPriority(status: TorrentStatus): number {
   }
 }
 
-function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck }: { 
+function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics }: { 
   torrent: Torrent; 
   onShowDetails: (id: string) => void;
   onStart: (id: string) => void;
@@ -214,18 +215,21 @@ function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForc
   onForceDownload: (id: string) => void;
   onForceReannounce: (id: string) => void;
   onForceRecheck: (id: string) => void;
+  onMetrics?: (taskId: string, agentId?: string) => void;
 }) {
   const StatusIcon = getStatusIcon(torrent.status);
 
   return (
     <TorrentContextMenu 
       taskId={torrent.id}
+      agentId={torrent.agentUUID}
       onStart={onStart}
       onStop={onStop}
       onRemove={onRemove}
       onForceDownload={onForceDownload}
       onForceReannounce={onForceReannounce}
       onForceRecheck={onForceRecheck}
+      onMetrics={onMetrics}
     >
       <Card 
         className="hover:shadow-lg transition-shadow overflow-hidden p-0 gap-2 cursor-pointer relative"
@@ -325,7 +329,7 @@ function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForc
   );
 }
 
-function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck }: { 
+function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics }: { 
   torrent: Torrent; 
   onShowDetails: (id: string) => void;
   onStart: (id: string) => void;
@@ -334,18 +338,21 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
   onForceDownload: (id: string) => void;
   onForceReannounce: (id: string) => void;
   onForceRecheck: (id: string) => void;
+  onMetrics?: (taskId: string, agentId?: string) => void;
 }) {
   const StatusIcon = getStatusIcon(torrent.status);
 
   return (
     <TorrentContextMenu 
       taskId={torrent.id}
+      agentId={torrent.agentUUID}
       onStart={onStart}
       onStop={onStop}
       onRemove={onRemove}
       onForceDownload={onForceDownload}
       onForceReannounce={onForceReannounce}
       onForceRecheck={onForceRecheck}
+      onMetrics={onMetrics}
     >
       <tr 
         className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
@@ -766,6 +773,9 @@ export default function TorrentsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [originalTasks, setOriginalTasks] = useState<Task[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isMetricsModalOpen, setIsMetricsModalOpen] = useState(false);
+  const [metricsTaskId, setMetricsTaskId] = useState<string>("");
+  const [metricsAgentId, setMetricsAgentId] = useState<string>("");
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false);
   const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
   const { toasts, showSuccess, showError, removeToast } = useToast();
@@ -1071,6 +1081,20 @@ export default function TorrentsPage() {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedTorrent(null);
+  };
+
+  // Abrir modal de métricas
+  const handleShowMetrics = (taskId: string, agentId?: string) => {
+    setMetricsTaskId(taskId);
+    setMetricsAgentId(agentId || "");
+    setIsMetricsModalOpen(true);
+  };
+
+  // Fechar modal de métricas
+  const handleCloseMetricsModal = () => {
+    setIsMetricsModalOpen(false);
+    setMetricsTaskId("");
+    setMetricsAgentId("");
   };
 
   // Controles de torrent
@@ -1844,6 +1868,13 @@ export default function TorrentsPage() {
               onChange={setRefreshIntervalSec}
             />
           </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">{t('torrents.itemsPerPage')}:</span>
+              <ItemsPerPageDropdown 
+                value={itemsPerPage} 
+                onChange={handleItemsPerPageChange} 
+              />
+            </div>
             <Button
               variant="outline"
               onClick={() => setIsFilterSidebarOpen(true)}
@@ -1904,6 +1935,14 @@ export default function TorrentsPage() {
               <UpdateIntervalDropdown
                 value={refreshIntervalSec}
                 onChange={setRefreshIntervalSec}
+              />
+            </div>
+            <div className="w-px bg-border self-stretch flex-shrink-0" />
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <span className="text-xs text-muted-foreground">{t('torrents.itemsPerPage').split(' ')[0]}:</span>
+              <ItemsPerPageDropdown 
+                value={itemsPerPage} 
+                onChange={handleItemsPerPageChange} 
               />
             </div>
             <div className="w-px bg-border self-stretch flex-shrink-0" />
@@ -2091,6 +2130,7 @@ export default function TorrentsPage() {
                     onForceDownload={handleForceDownloadTorrent}
                     onForceReannounce={handleForceReannounceTorrent}
                     onForceRecheck={handleForceRecheckTorrent}
+                    onMetrics={handleShowMetrics}
                   />
                 ))}
               </tbody>
@@ -2100,24 +2140,12 @@ export default function TorrentsPage() {
         
         {/* Controles de paginação para desktop */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t bg-background">
-            <div className="text-sm text-muted-foreground">
-              {t('torrents.page')} {currentPage} {t('torrents.of')} {totalPages} ({filteredTorrents.length} {t('torrents.torrents')})
-            </div>
-            <div className="flex items-center gap-4">
-              <TorrentPagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={handlePageChange}
-              />
-            <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">{t('torrents.itemsPerPage')}:</span>
-                <ItemsPerPageDropdown 
-                  value={itemsPerPage} 
-                  onChange={handleItemsPerPageChange} 
-                />
-              </div>
-            </div>
+          <div className="flex items-center justify-center px-4 py-3 border-t bg-background">
+            <TorrentPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+            />
           </div>
         )}
       </div>
@@ -2147,6 +2175,7 @@ export default function TorrentsPage() {
                 onShowDetails={handleShowDetails}
                 onStart={handlePlayTorrent}
                 onStop={handlePauseTorrent}
+                onMetrics={handleShowMetrics}
                 onRemove={(id) => handleDeleteTorrent(id, false)}
                 onForceDownload={handleForceDownloadTorrent}
                 onForceReannounce={handleForceReannounceTorrent}
@@ -2157,24 +2186,12 @@ export default function TorrentsPage() {
           
           {/* Controles de paginação para mobile */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t bg-background mt-4">
-              <div className="text-sm text-muted-foreground">
-                {currentPage} {t('torrents.of')} {totalPages}
-              </div>
-              <div className="flex items-center gap-3">
-                <TorrentPagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={handlePageChange}
-                />
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">{t('torrents.itemsPerPage').split(' ')[0]}:</span>
-                  <ItemsPerPageDropdown 
-                    value={itemsPerPage} 
-                    onChange={handleItemsPerPageChange} 
-                  />
-                </div>
-              </div>
+            <div className="flex items-center justify-center px-4 py-3 border-t bg-background mt-4">
+              <TorrentPagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
             </div>
           )}
         </div>
@@ -2205,6 +2222,16 @@ export default function TorrentsPage() {
           onClose={() => setIsAddModalOpen(false)}
           onSubmit={handleCreateTorrent}
           agents={agents}
+        />
+      )}
+
+      {/* Modal de métricas do torrent - só renderiza quando aberto */}
+      {isMetricsModalOpen && metricsTaskId && (
+        <TorrentMetricsModal
+          isOpen={isMetricsModalOpen}
+          onClose={handleCloseMetricsModal}
+          taskId={metricsTaskId}
+          agentId={metricsAgentId}
         />
       )}
 

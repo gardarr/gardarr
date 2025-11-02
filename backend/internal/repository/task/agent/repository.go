@@ -158,7 +158,13 @@ func (s *Repository) SetCategory(hash string, category string) error {
 }
 
 func (s *Repository) SetShareLimit(schema schemas.TaskSetShareLimitSchema) error {
-	if err := s.client.SetTorrentShareLimit(schema.Hash, schema.RatioLimit, schema.SeedingTimeLimit); err != nil {
+	// Default to -2 (use global limit) if InactiveSeedingTimeLimit is not provided (zero value)
+	inactiveSeedingTimeLimit := schema.InactiveSeedingTimeLimit
+	if inactiveSeedingTimeLimit == 0 {
+		inactiveSeedingTimeLimit = -2 // Use global limit by default
+	}
+
+	if err := s.client.SetTorrentShareLimit(schema.Hash, schema.RatioLimit, schema.SeedingTimeLimit, inactiveSeedingTimeLimit); err != nil {
 		return errors.Wrap(err, "failed to set torrent share limit")
 	}
 
@@ -256,6 +262,45 @@ func (s *Repository) ListFiles(hash string) ([]*entities.TaskFile, error) {
 	}
 
 	return result, nil
+}
+
+func (s *Repository) GetLimits(hash string) (*entities.TaskLimits, error) {
+	dlLimit, err := s.client.GetTorrentDownloadLimit(hash)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get torrent download limit")
+	}
+
+	upLimit, err := s.client.GetTorrentUploadLimit(hash)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get torrent upload limit")
+	}
+
+	// Use GetTorrent (which uses /info endpoint) instead of GetTorrentProperties
+	// because /properties doesn't return share limit fields
+	torrent, err := s.client.GetTorrent(hash)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get torrent info")
+	}
+
+	// Normalize fields: use max_ratio/max_seeding_time if ratio_limit/seeding_time_limit are 0
+	ratioLimit := torrent.RatioLimit
+	if ratioLimit == 0 && torrent.MaxRatio != 0 {
+		ratioLimit = torrent.MaxRatio
+	}
+
+	seedingTimeLimit := torrent.SeedingTimeLimit
+	if seedingTimeLimit == 0 && torrent.MaxSeedingTime != 0 {
+		seedingTimeLimit = torrent.MaxSeedingTime
+	}
+
+	return &entities.TaskLimits{
+		DownloadLimit:            dlLimit,
+		UploadLimit:              upLimit,
+		ShareLimit:               torrent.Ratio, // Use current ratio for backward compatibility
+		RatioLimit:               ratioLimit,
+		SeedingTimeLimit:         seedingTimeLimit,
+		InactiveSeedingTimeLimit: torrent.InactiveSeedingTimeLimit,
+	}, nil
 }
 
 func toTask(item *qbt.TorrentResponse) *entities.Task {

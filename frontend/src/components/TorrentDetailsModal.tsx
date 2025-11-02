@@ -19,14 +19,6 @@ import {
   FolderOpen,
   Activity,
   Layers,
-  ArrowDown,
-  ArrowUp,
-  Gauge,
-  Database,
-  Globe,
-  Users,
-  UserPlus,
-  UserMinus,
   Play,
   Pause,
   Trash2,
@@ -51,6 +43,7 @@ import type { Task } from "@/types/torrent";
 import type { Category } from "@/types/category";
 import { TorrentFilesList } from "@/components/TorrentFilesList";
 import { TorrentRatioWidget } from "@/components/widgets/TorrentRatioWidget";
+import { TorrentLifetimeWidget } from "@/components/widgets/TorrentLifetimeWidget";
 import { formatBytes  } from "@/utils/bytes";
 
 interface TorrentDetailsModalProps {
@@ -645,6 +638,9 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                 </div>
               </div>
 
+              {/* Timeline Widget */}
+              <TorrentLifetimeWidget task={torrent} />
+
               {/* Cards Tamanho e Ratio - Always on same row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 sm:gap-4">
                 {/* Card Tamanho e Progresso: ocupa a linha inteira em telas menores, 1/2 no desktop grande */}
@@ -912,198 +908,7 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
 
           <Separator />
 
-          {/* Rede e Pares */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-medium text-muted-foreground">{t('torrentDetails.network.title', { defaultValue: 'Rede e Pares' })}</h3>
-            
-            {/* Barra de Progresso de Seeding */}
-            <div className="space-y-3 p-3 container-content-background/50 rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">{t('torrentDetails.network.contribution', { defaultValue: 'Contribuição para a Rede' })}</span>
-                <span className="text-sm font-mono font-medium">
-                  {torrent.ratio.toFixed(2)}x
-                </span>
-              </div>
-              
-              {/* Barra de Proporção Download/Upload */}
-              <div className="space-y-2">
-                <div className="w-full h-8 rounded-lg overflow-hidden flex">
-                  {(() => {
-                    const downloadAmount = torrent.network.download.amount;
-                    const uploadAmount = torrent.network.upload.amount;
-                    const total = downloadAmount + uploadAmount;
-                    const downloadPercent = total > 0 ? (downloadAmount / total) * 100 : 50;
-                    const uploadPercent = total > 0 ? (uploadAmount / total) * 100 : 50;
-                    
-                    return (
-                      <>
-                        {/* Parte de Download */}
-                        <div 
-                          className="flex items-center justify-center text-xs font-medium text-white transition-all duration-500"
-                          style={{ 
-                            width: `${downloadPercent}%`,
-                            background: 'linear-gradient(90deg, #3b82f6 0%, #2563eb 100%)',
-                            minWidth: downloadPercent > 0 ? '20%' : '0%'
-                          }}
-                        >
-                          {downloadPercent > 15 && (
-                            <span className="truncate px-2">
-                              ↓ {formatBytes(downloadAmount)}
-                            </span>
-                          )}
-                        </div>
-                        
-                        {/* Parte de Upload */}
-                        <div 
-                          className="flex items-center justify-center text-xs font-medium text-white transition-all duration-500"
-                          style={{ 
-                            width: `${uploadPercent}%`,
-                            background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
-                            minWidth: uploadPercent > 0 ? '20%' : '0%'
-                          }}
-                        >
-                          {uploadPercent > 15 && (
-                            <span className="truncate px-2">
-                              ↑ {formatBytes(uploadAmount)}
-                            </span>
-                          )}
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
-                
-                {/* Labels abaixo da barra */}
-                <div className="flex justify-between items-center text-xs px-1">
-                    <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 rounded" style={{ background: '#3b82f6' }}></div>
-                    <span className="font-medium text-muted-foreground">{t('torrentDetails.network.downloaded', { defaultValue: 'Baixado:' })}</span>
-                    <span className="font-mono">{formatBytes(torrent.network.download.amount)}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 rounded" style={{ background: '#10b981' }}></div>
-                    <span className="font-medium text-muted-foreground">{t('torrentDetails.network.uploaded', { defaultValue: 'Enviado:' })}</span>
-                    <span className="font-mono">{formatBytes(torrent.network.upload.amount)}</span>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Status do seeding */}
-              {torrent.ratio >= 1 && (
-                <div className="text-center">
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    torrent.ratio >= 2 
-                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                      : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                  }`}>
-                  {torrent.ratio >= 2
-                    ? t('torrentDetails.network.excellentContributor', { defaultValue: '🌱 Excelente contribuidor!' })
-                    : t('torrentDetails.network.goodContribution', { defaultValue: '📈 Boa contribuição' })}
-                  </span>
-                </div>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              {/* Card Download */}
-              <div className="p-3 container-content-background/50 rounded-lg border">
-                <div className="flex items-center gap-2 mb-3">
-                  <ArrowDown className="h-4 w-4 text-blue-500" />
-                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('torrentDetails.download.title', { defaultValue: 'Download' })}</h4>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <Gauge className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-sm">{t('torrentDetails.download.speed', { defaultValue: 'Velocidade:' })}</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">{formatBytes(torrent.network.download.speed)}/s</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <Database className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-sm">{t('torrentDetails.download.total', { defaultValue: 'Total:' })}</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">{formatBytes(torrent.network.download.amount)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Card Upload */}
-              <div className="p-3 container-content-background/50 rounded-lg border">
-                <div className="flex items-center gap-2 mb-3">
-                  <ArrowUp className="h-4 w-4 text-green-500" />
-                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('torrentDetails.upload.title', { defaultValue: 'Upload' })}</h4>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <Gauge className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-sm">{t('torrentDetails.upload.speed', { defaultValue: 'Velocidade:' })}</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">{formatBytes(torrent.network.upload.speed)}/s</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <Database className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-sm">{t('torrentDetails.upload.total', { defaultValue: 'Total:' })}</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">{formatBytes(torrent.network.upload.amount)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Card Swarm */}
-              <div className="p-3 container-content-background/50 rounded-lg border">
-                <div className="flex items-center gap-2 mb-3">
-                  <Globe className="h-4 w-4 text-muted-foreground" />
-                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('torrentDetails.swarm.title', { defaultValue: 'Swarm' })}</h4>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <UserPlus className="h-3.5 w-3.5 text-green-600" />
-                      <span className="text-sm">{t('torrentDetails.swarm.seeders', { defaultValue: 'Seeders:' })}</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">{torrent.pairs.swarm_seeders}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <UserMinus className="h-3.5 w-3.5 text-orange-600" />
-                      <span className="text-sm">{t('torrentDetails.swarm.leechers', { defaultValue: 'Leechers:' })}</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">{torrent.pairs.swarm_leechers}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Card Conectados */}
-              <div className="p-3 container-content-background/50 rounded-lg border">
-                <div className="flex items-center gap-2 mb-3">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('torrentDetails.connected.title', { defaultValue: 'Conectados' })}</h4>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <UserPlus className="h-3.5 w-3.5 text-green-600" />
-                      <span className="text-sm">{t('torrentDetails.connected.seeders', { defaultValue: 'Seeders:' })}</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">{torrent.pairs.seeders}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <UserMinus className="h-3.5 w-3.5 text-orange-600" />
-                      <span className="text-sm">{t('torrentDetails.connected.leechers', { defaultValue: 'Leechers:' })}</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">{torrent.pairs.leechers}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Informações do Magnet Link */}
-          <Separator />
           <div className="space-y-2">
             <h3 className="text-sm font-medium text-muted-foreground">{t('torrentDetails.magnet.title', { defaultValue: 'Detalhes do Magnet' })}</h3>
             
