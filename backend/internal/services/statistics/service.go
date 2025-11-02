@@ -235,6 +235,16 @@ func calculateIncrementalAverage(currentAvg int64, count int64, newValue int64) 
 	return int64((float64(currentAvg)*(float64(count)-1) + float64(newValue)) / float64(count))
 }
 
+// calculateWeightedAverage computes a weighted average of two values using their weights.
+// Formula: weighted_avg = (value1 * weight1 + value2 * weight2) / (weight1 + weight2)
+func calculateWeightedAverage(value1, weight1, value2, weight2 int64) int64 {
+	totalWeight := weight1 + weight2
+	if totalWeight == 0 {
+		return 0
+	}
+	return int64((float64(value1)*float64(weight1) + float64(value2)*float64(weight2)) / float64(totalWeight))
+}
+
 // updateAggregation applies a snapshot line to an existing aggregation,
 // updating all metrics according to their aggregation strategy (max, average, or sum)
 func updateAggregation(a WindowedAggregation, sl *SnapshotLine) WindowedAggregation {
@@ -554,7 +564,8 @@ func (s *Service) aggregateByTask(files []string, from, to time.Time, step time.
 
 // aggregateByAgent aggregates statistics for the entire agent
 func (s *Service) aggregateByAgent(files []string, from, to time.Time, step time.Duration, filterTask string) (map[string]WindowedAggregation, error) {
-	out := make(map[string]WindowedAggregation)
+	// First pass: group by timestamp, sum speeds per timestamp (for concurrent torrents)
+	timestampAggs := make(map[time.Time]*WindowedAggregation)
 
 	for _, p := range files {
 		_ = s.ScanFile(p, func(sl *SnapshotLine) {
@@ -566,13 +577,72 @@ func (s *Service) aggregateByAgent(files []string, from, to time.Time, step time
 				return
 			}
 
-			w := ts.Truncate(step)
-			wk := w.Format(time.RFC3339)
+			// Group by exact timestamp to sum concurrent torrents
+			tsKey := ts.Truncate(time.Second) // Group by second for concurrent aggregation
+			if timestampAggs[tsKey] == nil {
+				timestampAggs[tsKey] = &WindowedAggregation{}
+			}
 
-			a := out[wk]
-			a = updateAggregation(a, sl)
-			out[wk] = a
+			a := timestampAggs[tsKey]
+			a.Snaps++
+
+			// Sum speeds for concurrent torrents at this timestamp
+			a.DlKB += int64(sl.DlKB)
+			a.UlKB += int64(sl.UlKB)
+
+			// Other metrics use incremental average (seeders/leechers) or sum (ratio)
+			a.Seeders = calculateIncrementalAverage(a.Seeders, a.Snaps, int64(sl.Sd))
+			a.Leechers = calculateIncrementalAverage(a.Leechers, a.Snaps, int64(sl.Lc))
+
+			// TotalDlB and TotalUlB use max (cumulative values)
+			if sl.DlB > a.TotalDlB {
+				a.TotalDlB = sl.DlB
+			}
+			if sl.UlB > a.TotalUlB {
+				a.TotalUlB = sl.UlB
+			}
+
+			a.SumR1e4 += int64(sl.R1e4)
+			if a.Snaps > 0 {
+				a.AvgRatio = (float64(a.SumR1e4) / 10000.0) / float64(a.Snaps)
+			}
 		})
+	}
+
+	// Second pass: aggregate timestamp-level sums into windows (take max per window)
+	out := make(map[string]WindowedAggregation)
+	for ts, tsAgg := range timestampAggs {
+		w := ts.Truncate(step)
+		wk := w.Format(time.RFC3339)
+
+		windowAgg := out[wk]
+		if windowAgg.Snaps == 0 {
+			windowAgg = *tsAgg
+		} else {
+			// Merge timestamp aggregation into window
+			// For speeds: take max of timestamp sums (peak concurrent throughput)
+			if tsAgg.DlKB > windowAgg.DlKB {
+				windowAgg.DlKB = tsAgg.DlKB
+			}
+			if tsAgg.UlKB > windowAgg.UlKB {
+				windowAgg.UlKB = tsAgg.UlKB
+			}
+			// For other metrics: aggregate appropriately
+			totalSnaps := windowAgg.Snaps + tsAgg.Snaps
+			// Weighted average for seeders/leechers when merging timestamp aggregations
+			windowAgg.Seeders = calculateWeightedAverage(windowAgg.Seeders, windowAgg.Snaps, tsAgg.Seeders, tsAgg.Snaps)
+			windowAgg.Leechers = calculateWeightedAverage(windowAgg.Leechers, windowAgg.Snaps, tsAgg.Leechers, tsAgg.Snaps)
+			if tsAgg.TotalDlB > windowAgg.TotalDlB {
+				windowAgg.TotalDlB = tsAgg.TotalDlB
+			}
+			if tsAgg.TotalUlB > windowAgg.TotalUlB {
+				windowAgg.TotalUlB = tsAgg.TotalUlB
+			}
+			windowAgg.SumR1e4 += tsAgg.SumR1e4
+			windowAgg.Snaps = totalSnaps
+			windowAgg.AvgRatio = (float64(windowAgg.SumR1e4) / 10000.0) / float64(windowAgg.Snaps)
+		}
+		out[wk] = windowAgg
 	}
 
 	return out, nil

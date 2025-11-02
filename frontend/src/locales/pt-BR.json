@@ -759,6 +759,17 @@
     "minute_other": "minutos",
     "second_one": "segundo",
     "second_other": "segundos"
+  },
+  "dateRangePicker": {
+    "today": "Hoje",
+    "minuteShort": "min",
+    "hourShort": "h",
+    "dayShort": "dias",
+    "dayShortLabel": "d",
+    "selectInterval": "Selecionar intervalo",
+    "minutes": "Minutos",
+    "hours": "Horas",
+    "days": "Dias"
   }
   }
 }

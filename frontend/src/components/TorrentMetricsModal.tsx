@@ -240,7 +240,7 @@ export function TorrentMetricsModal({
   const [error, setError] = useState<string | null>(null);
   const [taskHash, setTaskHash] = useState<string>(taskId);
   const [taskData, setTaskData] = useState<Task | null>(null);
-  const fetchingRef = useRef(false);
+  const fetchingKeyRef = useRef<string>(""); // Track the key currently being fetched
   const metricsFetchedRef = useRef<string>(""); // Track what was already fetched
   
   // Date range state - initialize with 1 hour
@@ -257,7 +257,7 @@ export function TorrentMetricsModal({
       setError(null);
       setTaskHash(taskId);
       setTaskData(null);
-      fetchingRef.current = false;
+      fetchingKeyRef.current = "";
       metricsFetchedRef.current = "";
       // Reset dates to 1 hour
       const to = new Date();
@@ -302,13 +302,13 @@ export function TorrentMetricsModal({
     // Create a unique key for this fetch (include date range)
     const fetchKey = `${agentId}-${taskHash}-${fromDate.toISOString()}-${toDate.toISOString()}`;
     
-    // Skip if already fetched this exact combination
-    if (fetchingRef.current || metricsFetchedRef.current === fetchKey) {
+    // Skip if already fetched this exact combination, or if already fetching this exact key
+    if (fetchingKeyRef.current === fetchKey || metricsFetchedRef.current === fetchKey) {
       return;
     }
 
     const fetchMetrics = async () => {
-      fetchingRef.current = true;
+      fetchingKeyRef.current = fetchKey;
       metricsFetchedRef.current = fetchKey;
       setLoading(true);
       setError(null);
@@ -324,16 +324,16 @@ export function TorrentMetricsModal({
 
         // Verify we're still supposed to be fetching this
         const currentFetchKey = `${agentId}-${taskHash}-${fromDate.toISOString()}-${toDate.toISOString()}`;
-        if (metricsFetchedRef.current !== currentFetchKey) {
+        if (fetchingKeyRef.current !== currentFetchKey) {
           // Another fetch started, ignore this one
-          fetchingRef.current = false;
+          fetchingKeyRef.current = "";
           setLoading(false);
           return;
         }
 
         if (response.error) {
           setError(response.error);
-          fetchingRef.current = false;
+          fetchingKeyRef.current = "";
           metricsFetchedRef.current = "";
           setLoading(false);
           return;
@@ -341,7 +341,7 @@ export function TorrentMetricsModal({
 
         if (!response.data?.windows) {
           setError("No data available");
-          fetchingRef.current = false;
+          fetchingKeyRef.current = "";
           metricsFetchedRef.current = "";
           setLoading(false);
           return;
@@ -354,7 +354,7 @@ export function TorrentMetricsModal({
         
         if (typeof windowsData !== 'object' || windowsData === null || Array.isArray(windowsData)) {
           setError("Invalid data format");
-          fetchingRef.current = false;
+          fetchingKeyRef.current = "";
           metricsFetchedRef.current = "";
           setLoading(false);
           return;
@@ -440,17 +440,20 @@ export function TorrentMetricsModal({
         setError(err instanceof Error ? err.message : "Failed to fetch metrics");
         metricsFetchedRef.current = "";
       } finally {
-        fetchingRef.current = false;
+        // Only clear the fetching key if this is still the current fetch
+        if (fetchingKeyRef.current === fetchKey) {
+          fetchingKeyRef.current = "";
+        }
         setLoading(false);
       }
     };
 
     fetchMetrics();
 
-    // Cleanup: reset fetching flag when modal closes or dependencies change
+    // Cleanup: reset fetching key when modal closes or dependencies change
     return () => {
       if (!isOpen) {
-        fetchingRef.current = false;
+        fetchingKeyRef.current = "";
         metricsFetchedRef.current = "";
       }
     };

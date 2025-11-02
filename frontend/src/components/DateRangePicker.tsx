@@ -3,6 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface DateRangePickerProps {
   fromDate: Date | undefined;
@@ -22,6 +23,7 @@ export default function DateRangePicker({
   onFromDateChange,
   onToDateChange,
 }: DateRangePickerProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedRange, setSelectedRange] = useState<RangeOption | undefined>(undefined);
 
@@ -122,11 +124,11 @@ export default function DateRangePicker({
   const displayText = useMemo(() => {
     if (selectedRange) {
       if (selectedRange.type === 'minute') {
-        return `Hoje -${selectedRange.value}min`;
+        return `${t("dateRangePicker.today")} -${selectedRange.value}${t("dateRangePicker.minuteShort")}`;
       } else if (selectedRange.type === 'hour') {
-        return `Hoje -${selectedRange.value}h`;
+        return `${t("dateRangePicker.today")} -${selectedRange.value}${t("dateRangePicker.hourShort")}`;
       } else {
-        return `Hoje -${selectedRange.value} dias`;
+        return `${t("dateRangePicker.today")} -${selectedRange.value} ${t("dateRangePicker.dayShort")}`;
       }
     }
     
@@ -140,23 +142,23 @@ export default function DateRangePicker({
       // Check for minute ranges first
       const minutes = Math.round(diffMs / minuteMs);
       if (minutes === 5 || minutes === 10 || minutes === 30) {
-        return `Hoje -${minutes}min`;
+        return `${t("dateRangePicker.today")} -${minutes}${t("dateRangePicker.minuteShort")}`;
       }
       
       // Check for hour ranges
       const hours = Math.round(diffMs / hourMs);
       if (hours === 1 || hours === 3 || hours === 6) {
-        return `Hoje -${hours}h`;
+        return `${t("dateRangePicker.today")} -${hours}${t("dateRangePicker.hourShort")}`;
       }
       
       // Check for day ranges
       const days = Math.round(diffMs / dayMs);
       if (days === 1 || days === 3 || days === 7) {
-        return `Hoje -${days} dias`;
+        return `${t("dateRangePicker.today")} -${days} ${t("dateRangePicker.dayShort")}`;
       }
     }
-    return "Selecionar intervalo";
-  }, [selectedRange, fromDate, toDate]);
+    return t("dateRangePicker.selectInterval");
+  }, [selectedRange, fromDate, toDate, t]);
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -174,18 +176,18 @@ export default function DateRangePicker({
       </PopoverTrigger>
       <PopoverContent className="w-[200px] p-2" align="start">
         <div className="flex flex-col gap-2">
-          <div className="text-xs font-semibold text-muted-foreground px-2 py-1">Minutos</div>
-          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'minute', value: 5 })}>5min</Button>
-          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'minute', value: 10 })}>10min</Button>
-          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'minute', value: 30 })}>30min</Button>
-          <div className="text-xs font-semibold text-muted-foreground px-2 py-1 mt-2">Horas</div>
-          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'hour', value: 1 })}>1h</Button>
-          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'hour', value: 3 })}>3h</Button>
-          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'hour', value: 6 })}>6h</Button>
-          <div className="text-xs font-semibold text-muted-foreground px-2 py-1 mt-2">Dias</div>
-          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'day', value: 1 })}>1d</Button>
-          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'day', value: 3 })}>3d</Button>
-          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'day', value: 7 })}>7d</Button>
+          <div className="text-xs font-semibold text-muted-foreground px-2 py-1">{t("dateRangePicker.minutes")}</div>
+          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'minute', value: 5 })}>5{t("dateRangePicker.minuteShort")}</Button>
+          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'minute', value: 10 })}>10{t("dateRangePicker.minuteShort")}</Button>
+          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'minute', value: 30 })}>30{t("dateRangePicker.minuteShort")}</Button>
+          <div className="text-xs font-semibold text-muted-foreground px-2 py-1 mt-2">{t("dateRangePicker.hours")}</div>
+          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'hour', value: 1 })}>1{t("dateRangePicker.hourShort")}</Button>
+          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'hour', value: 3 })}>3{t("dateRangePicker.hourShort")}</Button>
+          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'hour', value: 6 })}>6{t("dateRangePicker.hourShort")}</Button>
+          <div className="text-xs font-semibold text-muted-foreground px-2 py-1 mt-2">{t("dateRangePicker.days")}</div>
+          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'day', value: 1 })}>1{t("dateRangePicker.dayShortLabel")}</Button>
+          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'day', value: 3 })}>3{t("dateRangePicker.dayShortLabel")}</Button>
+          <Button variant="ghost" className="justify-start" onClick={() => applyRange({ type: 'day', value: 7 })}>7{t("dateRangePicker.dayShortLabel")}</Button>
         </div>
       </PopoverContent>
     </Popover>
