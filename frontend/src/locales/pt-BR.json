@@ -740,6 +740,25 @@
     "categoryUpdateError": "Falha ao atualizar categoria",
     "tagsUpdateSuccess": "Tags atualizadas com sucesso",
     "tagsUpdateError": "Falha ao atualizar tags"
+  },
+  "torrent": {
+    "created": "Criado",
+    "completed": "Concluído",
+    "now": "Agora",
+    "timeline": "Timeline",
+    "after": "depois",
+    "total": "Total",
+    "download": "Download"
+  },
+  "duration": {
+    "day_one": "dia",
+    "day_other": "dias",
+    "hour_one": "hora",
+    "hour_other": "horas",
+    "minute_one": "minuto",
+    "minute_other": "minutos",
+    "second_one": "segundo",
+    "second_other": "segundos"
   }
   }
 }

@@ -23,7 +23,7 @@ export default function DateRangePicker({
   onToDateChange,
 }: DateRangePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedRange, setSelectedRange] = useState<RangeOption>({ type: 'hour', value: 1 });
+  const [selectedRange, setSelectedRange] = useState<RangeOption | undefined>(undefined);
 
   const applyRange = (range: RangeOption) => {
     const now = new Date();
@@ -43,7 +43,7 @@ export default function DateRangePicker({
     setIsOpen(false);
   };
 
-  // Ensure default selection is 1h if no dates provided
+  // Ensure default selection is 1h if no dates provided on mount
   useEffect(() => {
     if (!fromDate || !toDate) {
       const now = new Date();
@@ -54,6 +54,70 @@ export default function DateRangePicker({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Compute matching preset from fromDate/toDate whenever they change
+  useEffect(() => {
+    if (!fromDate || !toDate) {
+      setSelectedRange(undefined);
+      return;
+    }
+
+    const diffMs = toDate.getTime() - fromDate.getTime();
+    const minuteMs = 60 * 1000;
+    const hourMs = 60 * 60 * 1000;
+    const dayMs = 24 * 60 * 60 * 1000;
+    
+    // Allow small tolerance for rounding (±1 second)
+    const tolerance = 1000;
+
+    // Check for minute ranges
+    const minutes = diffMs / minuteMs;
+    if (Math.abs(minutes - 5) < tolerance / minuteMs) {
+      setSelectedRange({ type: 'minute', value: 5 });
+      return;
+    }
+    if (Math.abs(minutes - 10) < tolerance / minuteMs) {
+      setSelectedRange({ type: 'minute', value: 10 });
+      return;
+    }
+    if (Math.abs(minutes - 30) < tolerance / minuteMs) {
+      setSelectedRange({ type: 'minute', value: 30 });
+      return;
+    }
+
+    // Check for hour ranges
+    const hours = diffMs / hourMs;
+    if (Math.abs(hours - 1) < tolerance / hourMs) {
+      setSelectedRange({ type: 'hour', value: 1 });
+      return;
+    }
+    if (Math.abs(hours - 3) < tolerance / hourMs) {
+      setSelectedRange({ type: 'hour', value: 3 });
+      return;
+    }
+    if (Math.abs(hours - 6) < tolerance / hourMs) {
+      setSelectedRange({ type: 'hour', value: 6 });
+      return;
+    }
+
+    // Check for day ranges
+    const days = diffMs / dayMs;
+    if (Math.abs(days - 1) < tolerance / dayMs) {
+      setSelectedRange({ type: 'day', value: 1 });
+      return;
+    }
+    if (Math.abs(days - 3) < tolerance / dayMs) {
+      setSelectedRange({ type: 'day', value: 3 });
+      return;
+    }
+    if (Math.abs(days - 7) < tolerance / dayMs) {
+      setSelectedRange({ type: 'day', value: 7 });
+      return;
+    }
+
+    // No matching preset found
+    setSelectedRange(undefined);
+  }, [fromDate, toDate]);
 
   const displayText = useMemo(() => {
     if (selectedRange) {

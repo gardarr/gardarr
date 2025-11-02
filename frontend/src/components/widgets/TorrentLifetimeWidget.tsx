@@ -2,6 +2,7 @@ import { Clock, CheckCircle2, Calendar } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { Task } from "@/types/torrent";
+import { useTranslation } from "react-i18next";
 
 interface TorrentLifetimeWidgetProps {
   task: Task;
@@ -15,6 +16,7 @@ interface TimelinePoint {
 }
 
 export function TorrentLifetimeWidget({ task }: TorrentLifetimeWidgetProps) {
+  const { t, i18n } = useTranslation();
   const now = new Date();
   const createdAt = new Date(task.created_at);
   const completedAt = task.completed_at ? new Date(task.completed_at) : null;
@@ -23,7 +25,7 @@ export function TorrentLifetimeWidget({ task }: TorrentLifetimeWidgetProps) {
   const points: TimelinePoint[] = [
     {
       date: createdAt,
-      label: "Criado",
+      label: t("torrent.created"),
       icon: <Calendar className="h-4 w-4" />,
       status: "completed",
     },
@@ -32,7 +34,7 @@ export function TorrentLifetimeWidget({ task }: TorrentLifetimeWidgetProps) {
   if (completedAt) {
     points.push({
       date: completedAt,
-      label: "Concluído",
+      label: t("torrent.completed"),
       icon: <CheckCircle2 className="h-4 w-4" />,
       status: "completed",
     });
@@ -40,7 +42,7 @@ export function TorrentLifetimeWidget({ task }: TorrentLifetimeWidgetProps) {
 
   points.push({
     date: now,
-    label: "Agora",
+    label: t("torrent.now"),
     icon: <Clock className="h-4 w-4" />,
     status: "current",
   });
@@ -50,7 +52,7 @@ export function TorrentLifetimeWidget({ task }: TorrentLifetimeWidgetProps) {
   const completedDuration = completedAt ? completedAt.getTime() - createdAt.getTime() : null;
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString("pt-BR", {
+    return date.toLocaleDateString(i18n.language, {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -58,7 +60,7 @@ export function TorrentLifetimeWidget({ task }: TorrentLifetimeWidgetProps) {
   };
 
   const formatDateTime = (date: Date) => {
-    return date.toLocaleString("pt-BR", {
+    return date.toLocaleString(i18n.language, {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -74,13 +76,13 @@ export function TorrentLifetimeWidget({ task }: TorrentLifetimeWidgetProps) {
     const days = Math.floor(hours / 24);
 
     if (days > 0) {
-      return `${days} dia${days !== 1 ? "s" : ""}`;
+      return `${days} ${t("duration.day", { count: days })}`;
     } else if (hours > 0) {
-      return `${hours} hora${hours !== 1 ? "s" : ""}`;
+      return `${hours} ${t("duration.hour", { count: hours })}`;
     } else if (minutes > 0) {
-      return `${minutes} minuto${minutes !== 1 ? "s" : ""}`;
+      return `${minutes} ${t("duration.minute", { count: minutes })}`;
     }
-    return `${seconds} segundo${seconds !== 1 ? "s" : ""}`;
+    return `${seconds} ${t("duration.second", { count: seconds })}`;
   };
 
   return (
@@ -88,7 +90,7 @@ export function TorrentLifetimeWidget({ task }: TorrentLifetimeWidgetProps) {
       <div className="flex items-center gap-2 mb-4">
         <Clock className="h-4 w-4 text-muted-foreground" />
         <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Timeline
+          {t("torrent.timeline")}
         </h4>
       </div>
 
@@ -131,7 +133,7 @@ export function TorrentLifetimeWidget({ task }: TorrentLifetimeWidgetProps) {
                       {index > 0 && (
                         <p className="text-xs text-muted-foreground mt-1">
                           {formatDuration(point.date.getTime() - points[index - 1].date.getTime())}{" "}
-                          depois
+                          {t("torrent.after")}
                         </p>
                       )}
                     </div>
@@ -162,12 +164,12 @@ export function TorrentLifetimeWidget({ task }: TorrentLifetimeWidgetProps) {
         {/* Duration info */}
         <div className="mt-4 pt-3 border-t flex justify-between items-center text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
-            <span>Total:</span>
+            <span>{t("torrent.total")}:</span>
             <span className="font-mono font-medium">{formatDuration(totalDuration)}</span>
           </div>
           {completedAt && completedDuration && (
             <div className="flex items-center gap-1">
-              <span>Download:</span>
+              <span>{t("torrent.download")}:</span>
               <span className="font-mono font-medium">
                 {formatDuration(completedDuration)}
               </span>

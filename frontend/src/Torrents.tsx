@@ -1868,6 +1868,13 @@ export default function TorrentsPage() {
               onChange={setRefreshIntervalSec}
             />
           </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">{t('torrents.itemsPerPage')}:</span>
+              <ItemsPerPageDropdown 
+                value={itemsPerPage} 
+                onChange={handleItemsPerPageChange} 
+              />
+            </div>
             <Button
               variant="outline"
               onClick={() => setIsFilterSidebarOpen(true)}
@@ -1928,6 +1935,14 @@ export default function TorrentsPage() {
               <UpdateIntervalDropdown
                 value={refreshIntervalSec}
                 onChange={setRefreshIntervalSec}
+              />
+            </div>
+            <div className="w-px bg-border self-stretch flex-shrink-0" />
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <span className="text-xs text-muted-foreground">{t('torrents.itemsPerPage').split(' ')[0]}:</span>
+              <ItemsPerPageDropdown 
+                value={itemsPerPage} 
+                onChange={handleItemsPerPageChange} 
               />
             </div>
             <div className="w-px bg-border self-stretch flex-shrink-0" />
@@ -2125,24 +2140,12 @@ export default function TorrentsPage() {
         
         {/* Controles de paginação para desktop */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t bg-background">
-            <div className="text-sm text-muted-foreground">
-              {t('torrents.page')} {currentPage} {t('torrents.of')} {totalPages} ({filteredTorrents.length} {t('torrents.torrents')})
-            </div>
-            <div className="flex items-center gap-4">
-              <TorrentPagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={handlePageChange}
-              />
-            <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">{t('torrents.itemsPerPage')}:</span>
-                <ItemsPerPageDropdown 
-                  value={itemsPerPage} 
-                  onChange={handleItemsPerPageChange} 
-                />
-              </div>
-            </div>
+          <div className="flex items-center justify-center px-4 py-3 border-t bg-background">
+            <TorrentPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+            />
           </div>
         )}
       </div>
@@ -2183,24 +2186,12 @@ export default function TorrentsPage() {
           
           {/* Controles de paginação para mobile */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t bg-background mt-4">
-              <div className="text-sm text-muted-foreground">
-                {currentPage} {t('torrents.of')} {totalPages}
-              </div>
-              <div className="flex items-center gap-3">
-                <TorrentPagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={handlePageChange}
-                />
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">{t('torrents.itemsPerPage').split(' ')[0]}:</span>
-                  <ItemsPerPageDropdown 
-                    value={itemsPerPage} 
-                    onChange={handleItemsPerPageChange} 
-                  />
-                </div>
-              </div>
+            <div className="flex items-center justify-center px-4 py-3 border-t bg-background mt-4">
+              <TorrentPagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
             </div>
           )}
         </div>

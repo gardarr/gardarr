@@ -225,6 +225,49 @@ func ParseTime(s string) (time.Time, error) {
 	return time.Time{}, fmt.Errorf("invalid time format")
 }
 
+// calculateIncrementalAverage computes a new average using the incremental
+// averaging formula: new_avg = (old_avg * (n-1) + new_value) / n
+// For the first value (count == 1), it simply returns the new value.
+func calculateIncrementalAverage(currentAvg int64, count int64, newValue int64) int64 {
+	if count == 1 {
+		return newValue
+	}
+	return int64((float64(currentAvg)*(float64(count)-1) + float64(newValue)) / float64(count))
+}
+
+// updateAggregation applies a snapshot line to an existing aggregation,
+// updating all metrics according to their aggregation strategy (max, average, or sum)
+func updateAggregation(a WindowedAggregation, sl *SnapshotLine) WindowedAggregation {
+	a.Snaps++
+
+	// DlKB and UlKB should use the maximum value in the window, not sum
+	if int64(sl.DlKB) > a.DlKB {
+		a.DlKB = int64(sl.DlKB)
+	}
+	if int64(sl.UlKB) > a.UlKB {
+		a.UlKB = int64(sl.UlKB)
+	}
+
+	// Seeders and Leechers should be averaged, not summed
+	a.Seeders = calculateIncrementalAverage(a.Seeders, a.Snaps, int64(sl.Sd))
+	a.Leechers = calculateIncrementalAverage(a.Leechers, a.Snaps, int64(sl.Lc))
+
+	// TotalDlB and TotalUlB are absolute cumulative values, so use max instead of sum
+	if sl.DlB > a.TotalDlB {
+		a.TotalDlB = sl.DlB
+	}
+	if sl.UlB > a.TotalUlB {
+		a.TotalUlB = sl.UlB
+	}
+
+	a.SumR1e4 += int64(sl.R1e4)
+	if a.Snaps > 0 {
+		a.AvgRatio = (float64(a.SumR1e4) / 10000.0) / float64(a.Snaps)
+	}
+
+	return a
+}
+
 // DiscoverFiles finds statistics files for an agent within a date range
 func (s *Service) DiscoverFiles(ctx context.Context, agentID string, from, to time.Time) ([]string, error) {
 	fromDate := from.UTC().Format("2006-01-02")
@@ -501,34 +544,7 @@ func (s *Service) aggregateByTask(files []string, from, to time.Time, step time.
 			}
 
 			a := out[wk][sl.Task]
-			a.Snaps++
-			// DlKB and UlKB should use the maximum value in the window, not sum
-			if int64(sl.DlKB) > a.DlKB {
-				a.DlKB = int64(sl.DlKB)
-			}
-			if int64(sl.UlKB) > a.UlKB {
-				a.UlKB = int64(sl.UlKB)
-			}
-			// Seeders and Leechers should be averaged, not summed
-			if a.Snaps == 1 {
-				a.Seeders = int64(sl.Sd)
-				a.Leechers = int64(sl.Lc)
-			} else {
-				// Calculate incremental average: new_avg = (old_avg * (n-1) + new_value) / n
-				a.Seeders = int64((float64(a.Seeders)*(float64(a.Snaps)-1) + float64(sl.Sd)) / float64(a.Snaps))
-				a.Leechers = int64((float64(a.Leechers)*(float64(a.Snaps)-1) + float64(sl.Lc)) / float64(a.Snaps))
-			}
-			// TotalDlB and TotalUlB are absolute cumulative values, so use max instead of sum
-			if sl.DlB > a.TotalDlB {
-				a.TotalDlB = sl.DlB
-			}
-			if sl.UlB > a.TotalUlB {
-				a.TotalUlB = sl.UlB
-			}
-			a.SumR1e4 += int64(sl.R1e4)
-			if a.Snaps > 0 {
-				a.AvgRatio = (float64(a.SumR1e4) / 10000.0) / float64(a.Snaps)
-			}
+			a = updateAggregation(a, sl)
 			out[wk][sl.Task] = a
 		})
 	}
@@ -554,34 +570,7 @@ func (s *Service) aggregateByAgent(files []string, from, to time.Time, step time
 			wk := w.Format(time.RFC3339)
 
 			a := out[wk]
-			a.Snaps++
-			// DlKB and UlKB should use the maximum value in the window, not sum
-			if int64(sl.DlKB) > a.DlKB {
-				a.DlKB = int64(sl.DlKB)
-			}
-			if int64(sl.UlKB) > a.UlKB {
-				a.UlKB = int64(sl.UlKB)
-			}
-			// Seeders and Leechers should be averaged, not summed
-			if a.Snaps == 1 {
-				a.Seeders = int64(sl.Sd)
-				a.Leechers = int64(sl.Lc)
-			} else {
-				// Calculate incremental average: new_avg = (old_avg * (n-1) + new_value) / n
-				a.Seeders = int64((float64(a.Seeders)*(float64(a.Snaps)-1) + float64(sl.Sd)) / float64(a.Snaps))
-				a.Leechers = int64((float64(a.Leechers)*(float64(a.Snaps)-1) + float64(sl.Lc)) / float64(a.Snaps))
-			}
-			// TotalDlB and TotalUlB are absolute cumulative values, so use max instead of sum
-			if sl.DlB > a.TotalDlB {
-				a.TotalDlB = sl.DlB
-			}
-			if sl.UlB > a.TotalUlB {
-				a.TotalUlB = sl.UlB
-			}
-			a.SumR1e4 += int64(sl.R1e4)
-			if a.Snaps > 0 {
-				a.AvgRatio = (float64(a.SumR1e4) / 10000.0) / float64(a.Snaps)
-			}
+			a = updateAggregation(a, sl)
 			out[wk] = a
 		})
 	}

@@ -718,5 +718,24 @@
       "tagsUpdateSuccess": "Tags updated successfully",
       "tagsUpdateError": "Failed to update tags"
     }
+  },
+  "torrent": {
+    "created": "Created",
+    "completed": "Completed",
+    "now": "Now",
+    "timeline": "Timeline",
+    "after": "after",
+    "total": "Total",
+    "download": "Download"
+  },
+  "duration": {
+    "day_one": "day",
+    "day_other": "days",
+    "hour_one": "hour",
+    "hour_other": "hours",
+    "minute_one": "minute",
+    "minute_other": "minutes",
+    "second_one": "second",
+    "second_other": "seconds"
   }
 }

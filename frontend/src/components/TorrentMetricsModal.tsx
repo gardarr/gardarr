@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BarChart3, Loader2, ArrowDown, ArrowUp, Gauge, Database, Globe, Users, UserPlus, UserMinus, Activity, Network, TrendingUp, HardDrive, Users2 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
@@ -102,6 +103,130 @@ const totalBytesChartConfig = {
     },
   },
 };
+
+// Reusable components
+interface MetricItemProps {
+  icon: LucideIcon;
+  label: string;
+  value: string | number;
+  iconClassName?: string;
+}
+
+function MetricItem({ icon: Icon, label, value, iconClassName }: MetricItemProps) {
+  return (
+    <div className="flex items-center gap-2">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Icon className={`h-3.5 w-3.5 text-muted-foreground cursor-help ${iconClassName || ""}`} />
+        </TooltipTrigger>
+        <TooltipContent>
+          <span>{label}</span>
+        </TooltipContent>
+      </Tooltip>
+      <span className="text-sm text-muted-foreground">{value}</span>
+    </div>
+  );
+}
+
+interface MetricSectionProps {
+  title: string;
+  icon: LucideIcon;
+  iconColor?: string;
+  items: Array<{
+    icon: LucideIcon;
+    label: string;
+    value: string | number;
+    iconClassName?: string;
+  }>;
+}
+
+function MetricSection({ title, icon: Icon, iconColor, items }: MetricSectionProps) {
+  return (
+    <div className="flex-1">
+      <div className="flex items-center gap-2 mb-3">
+        <Icon className={`h-4 w-4 ${iconColor || "text-muted-foreground"}`} />
+        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{title}</h4>
+      </div>
+      <TooltipProvider>
+        <div className="space-y-2">
+          {items.map((item, index) => (
+            <MetricItem key={index} {...item} />
+          ))}
+        </div>
+      </TooltipProvider>
+    </div>
+  );
+}
+
+interface MetricsChartProps {
+  title: string;
+  icon: LucideIcon;
+  config: Record<string, { label: string; theme: { light: string; dark: string } }>;
+  data: SpeedPoint[];
+  areas: Array<{
+    dataKey: string;
+    tooltipFormatter?: (value: number, name: string) => [string, string];
+    yAxisFormatter?: (value: number) => string;
+  }>;
+  yAxisFormatter?: (value: number) => string;
+}
+
+function MetricsChart({ title, icon: Icon, config, data, areas, yAxisFormatter }: MetricsChartProps) {
+  return (
+    <div className="rounded-lg border p-2 sm:p-4 overflow-x-hidden">
+      <div className="flex items-center gap-2 mb-4">
+        <Icon className="h-4 w-4 text-primary" />
+        <h3 className="text-sm font-semibold">{title}</h3>
+      </div>
+      <ChartContainer config={config} className="h-[250px] sm:h-[400px] w-full min-w-0">
+        <AreaChart 
+          data={data} 
+          width={undefined} 
+          height={undefined}
+          margin={{ left: 0, right: 0, top: 5, bottom: 5 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis 
+            dataKey="time" 
+            tick={{ fontSize: 10 }}
+            tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
+            className="text-xs"
+          />
+          <YAxis 
+            tick={{ fontSize: 10 }}
+            tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
+            className="text-xs"
+            width={60}
+            tickFormatter={yAxisFormatter}
+          />
+          <ChartTooltip 
+            content={
+              <ChartTooltipContent 
+                formatter={(value, name) => {
+                  const area = areas.find(a => a.dataKey === name);
+                  if (area?.tooltipFormatter) {
+                    return area.tooltipFormatter(value as number, name as string);
+                  }
+                  return [`${value}`, config[name as string]?.label || name as string];
+                }}
+              />
+            } 
+          />
+          {areas.map((area) => (
+            <Area 
+              key={area.dataKey}
+              type="monotone" 
+              dataKey={area.dataKey}
+              stroke={`var(--color-${area.dataKey})`}
+              fill={`var(--color-${area.dataKey})`}
+              fillOpacity={0.2}
+            />
+          ))}
+        </AreaChart>
+      </ChartContainer>
+    </div>
+  );
+}
 
 
 export function TorrentMetricsModal({
@@ -365,152 +490,48 @@ export function TorrentMetricsModal({
                 {/* Card Download e Upload */}
                 <div className="col-span-2 p-3 container-content-background/50 rounded-lg border">
                   <div className="flex gap-4 items-stretch">
-                    {/* Seção Download */}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-3">
-                        <ArrowDown className="h-4 w-4 text-blue-500" />
-                        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Download</h4>
-                      </div>
-                      <TooltipProvider>
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Gauge className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <span>Velocidade</span>
-                              </TooltipContent>
-                            </Tooltip>
-                            <span className="text-sm text-muted-foreground">{formatBytes(taskData.network.download.speed)}/s</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Database className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <span>Total</span>
-                              </TooltipContent>
-                            </Tooltip>
-                            <span className="text-sm text-muted-foreground">{formatBytes(taskData.network.download.amount)}</span>
-                          </div>
-                        </div>
-                      </TooltipProvider>
-                    </div>
-
-                    {/* Divisória Vertical */}
+                    <MetricSection
+                      title="Download"
+                      icon={ArrowDown}
+                      iconColor="text-blue-500"
+                      items={[
+                        { icon: Gauge, label: "Velocidade", value: `${formatBytes(taskData.network.download.speed)}/s` },
+                        { icon: Database, label: "Total", value: formatBytes(taskData.network.download.amount) },
+                      ]}
+                    />
                     <div className="w-px bg-border self-stretch mx-2" />
-
-                    {/* Seção Upload */}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-3">
-                        <ArrowUp className="h-4 w-4 text-green-500" />
-                        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Upload</h4>
-                      </div>
-                      <TooltipProvider>
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Gauge className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <span>Velocidade</span>
-                              </TooltipContent>
-                            </Tooltip>
-                            <span className="text-sm text-muted-foreground">{formatBytes(taskData.network.upload.speed)}/s</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Database className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <span>Total</span>
-                              </TooltipContent>
-                            </Tooltip>
-                            <span className="text-sm text-muted-foreground">{formatBytes(taskData.network.upload.amount)}</span>
-                          </div>
-                        </div>
-                      </TooltipProvider>
-                    </div>
+                    <MetricSection
+                      title="Upload"
+                      icon={ArrowUp}
+                      iconColor="text-green-500"
+                      items={[
+                        { icon: Gauge, label: "Velocidade", value: `${formatBytes(taskData.network.upload.speed)}/s` },
+                        { icon: Database, label: "Total", value: formatBytes(taskData.network.upload.amount) },
+                      ]}
+                    />
                   </div>
                 </div>
 
                 {/* Card Conectados e Swarm */}
                 <div className="col-span-2 p-3 container-content-background/50 rounded-lg border">
                   <div className="flex gap-4 items-stretch">
-                    {/* Seção Conectados */}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Conectados</h4>
-                      </div>
-                      <TooltipProvider>
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <UserPlus className="h-3.5 w-3.5 text-green-600 cursor-help" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <span>Seeders</span>
-                              </TooltipContent>
-                            </Tooltip>
-                            <span className="text-sm text-muted-foreground">{taskData.pairs.seeders}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <UserMinus className="h-3.5 w-3.5 text-orange-600 cursor-help" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <span>Leechers</span>
-                              </TooltipContent>
-                            </Tooltip>
-                            <span className="text-sm text-muted-foreground">{taskData.pairs.leechers}</span>
-                          </div>
-                        </div>
-                      </TooltipProvider>
-                    </div>
-
-                    {/* Divisória Vertical */}
+                    <MetricSection
+                      title="Conectados"
+                      icon={Users}
+                      items={[
+                        { icon: UserPlus, label: "Seeders", value: taskData.pairs.seeders, iconClassName: "text-green-600" },
+                        { icon: UserMinus, label: "Leechers", value: taskData.pairs.leechers, iconClassName: "text-orange-600" },
+                      ]}
+                    />
                     <div className="w-px bg-border self-stretch mx-2" />
-
-                    {/* Seção Swarm */}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Globe className="h-4 w-4 text-muted-foreground" />
-                        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Swarm</h4>
-                      </div>
-                      <TooltipProvider>
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Users2 className="h-3.5 w-3.5 text-green-600 cursor-help" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <span>Swarm Seeders</span>
-                              </TooltipContent>
-                            </Tooltip>
-                            <span className="text-sm text-muted-foreground">{taskData.pairs.swarm_seeders}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Users2 className="h-3.5 w-3.5 text-orange-600 cursor-help" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <span>Swarm Leechers</span>
-                              </TooltipContent>
-                            </Tooltip>
-                            <span className="text-sm text-muted-foreground">{taskData.pairs.swarm_leechers}</span>
-                          </div>
-                        </div>
-                      </TooltipProvider>
-                    </div>
+                    <MetricSection
+                      title="Swarm"
+                      icon={Globe}
+                      items={[
+                        { icon: Users2, label: "Swarm Seeders", value: taskData.pairs.swarm_seeders, iconClassName: "text-green-600" },
+                        { icon: Users2, label: "Swarm Leechers", value: taskData.pairs.swarm_leechers, iconClassName: "text-orange-600" },
+                      ]}
+                    />
                   </div>
                 </div>
               </div>
@@ -541,213 +562,72 @@ export function TorrentMetricsModal({
             </div>
           ) : (
             <div className="space-y-4 w-full overflow-x-hidden">
-              <div className="rounded-lg border p-2 sm:p-4 overflow-x-hidden">
-                <div className="flex items-center gap-2 mb-4">
-                  <Activity className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-semibold">Velocidades de Download e Upload</h3>
-                </div>
-                <ChartContainer config={speedChartConfig} className="h-[250px] sm:h-[400px] w-full min-w-0">
-                  <AreaChart 
-                    data={chartData} 
-                    width={undefined} 
-                    height={undefined}
-                    margin={{ left: 0, right: 0, top: 5, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="time" 
-                      tick={{ fontSize: 10 }}
-                      tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
-                      className="text-xs"
-                    />
-                    <YAxis 
-                      tick={{ fontSize: 10 }}
-                      tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
-                      tickFormatter={(value) => formatBytes(value)}
-                      className="text-xs"
-                      width={60}
-                    />
-                    <ChartTooltip 
-                      content={
-                        <ChartTooltipContent 
-                          formatter={(value, name) => [
-                            formatBytesPerSecond(value as number),
-                            name === "download" ? "Download" : "Upload"
-                          ]}
-                        />
-                      } 
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="download" 
-                      stroke="var(--color-download)" 
-                      fill="var(--color-download)"
-                      fillOpacity={0.2}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="upload" 
-                      stroke="var(--color-upload)" 
-                      fill="var(--color-upload)"
-                      fillOpacity={0.2}
-                    />
-                  </AreaChart>
-                </ChartContainer>
-              </div>
+              <MetricsChart
+                title="Velocidades de Download e Upload"
+                icon={Activity}
+                config={speedChartConfig}
+                data={chartData}
+                yAxisFormatter={(value) => formatBytes(value)}
+                areas={[
+                  {
+                    dataKey: "download",
+                    tooltipFormatter: (value) => [formatBytesPerSecond(value), "Download"],
+                  },
+                  {
+                    dataKey: "upload",
+                    tooltipFormatter: (value) => [formatBytesPerSecond(value), "Upload"],
+                  },
+                ]}
+              />
 
-              <div className="rounded-lg border p-2 sm:p-4 overflow-x-hidden">
-                <div className="flex items-center gap-2 mb-4">
-                  <Network className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-semibold">Seeders e Leechers</h3>
-                </div>
-                <ChartContainer config={peersChartConfig} className="h-[250px] sm:h-[400px] w-full min-w-0">
-                  <AreaChart 
-                    data={chartData} 
-                    width={undefined} 
-                    height={undefined}
-                    margin={{ left: 0, right: 0, top: 5, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="time" 
-                      tick={{ fontSize: 10 }}
-                      tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
-                      className="text-xs"
-                    />
-                    <YAxis 
-                      tick={{ fontSize: 10 }}
-                      tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
-                      className="text-xs"
-                      width={60}
-                    />
-                    <ChartTooltip 
-                      content={
-                        <ChartTooltipContent 
-                          formatter={(value, name) => [
-                            `${value} peer${Number(value) !== 1 ? 's' : ''}`,
-                            name === "seeders" ? "Seeders" : "Leechers"
-                          ]}
-                        />
-                      } 
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="seeders" 
-                      stroke="var(--color-seeders)" 
-                      fill="var(--color-seeders)"
-                      fillOpacity={0.2}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="leechers" 
-                      stroke="var(--color-leechers)" 
-                      fill="var(--color-leechers)"
-                      fillOpacity={0.2}
-                    />
-                  </AreaChart>
-                </ChartContainer>
-              </div>
+              <MetricsChart
+                title="Seeders e Leechers"
+                icon={Network}
+                config={peersChartConfig}
+                data={chartData}
+                areas={[
+                  {
+                    dataKey: "seeders",
+                    tooltipFormatter: (value) => [`${value} peer${Number(value) !== 1 ? 's' : ''}`, "Seeders"],
+                  },
+                  {
+                    dataKey: "leechers",
+                    tooltipFormatter: (value) => [`${value} peer${Number(value) !== 1 ? 's' : ''}`, "Leechers"],
+                  },
+                ]}
+              />
 
-              <div className="rounded-lg border p-2 sm:p-4 overflow-x-hidden">
-                <div className="flex items-center gap-2 mb-4">
-                  <TrendingUp className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-semibold">Ratio Médio</h3>
-                </div>
-                <ChartContainer config={ratioChartConfig} className="h-[250px] sm:h-[400px] w-full min-w-0">
-                  <AreaChart 
-                    data={chartData} 
-                    width={undefined} 
-                    height={undefined}
-                    margin={{ left: 0, right: 0, top: 5, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="time" 
-                      tick={{ fontSize: 10 }}
-                      tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
-                      className="text-xs"
-                    />
-                    <YAxis 
-                      tick={{ fontSize: 10 }}
-                      tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
-                      className="text-xs"
-                      width={60}
-                      tickFormatter={(value) => value.toFixed(2)}
-                    />
-                    <ChartTooltip 
-                      content={
-                        <ChartTooltipContent 
-                          formatter={(value) => [
-                            `${Number(value).toFixed(2)}`,
-                            "Ratio Médio"
-                          ]}
-                        />
-                      } 
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="avgRatio" 
-                      stroke="var(--color-avgRatio)" 
-                      fill="var(--color-avgRatio)"
-                      fillOpacity={0.2}
-                    />
-                  </AreaChart>
-                </ChartContainer>
-              </div>
+              <MetricsChart
+                title="Ratio Médio"
+                icon={TrendingUp}
+                config={ratioChartConfig}
+                data={chartData}
+                yAxisFormatter={(value) => value.toFixed(2)}
+                areas={[
+                  {
+                    dataKey: "avgRatio",
+                    tooltipFormatter: (value) => [`${Number(value).toFixed(2)}`, "Ratio Médio"],
+                  },
+                ]}
+              />
 
-              <div className="rounded-lg border p-2 sm:p-4 overflow-x-hidden">
-                <div className="flex items-center gap-2 mb-4">
-                  <HardDrive className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-semibold">Total Acumulado de Bytes</h3>
-                </div>
-                <ChartContainer config={totalBytesChartConfig} className="h-[250px] sm:h-[400px] w-full min-w-0">
-                  <AreaChart 
-                    data={chartData} 
-                    width={undefined} 
-                    height={undefined}
-                    margin={{ left: 0, right: 0, top: 5, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="time" 
-                      tick={{ fontSize: 10 }}
-                      tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
-                      className="text-xs"
-                    />
-                    <YAxis 
-                      tick={{ fontSize: 10 }}
-                      tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
-                      tickFormatter={(value) => formatBytes(value)}
-                      className="text-xs"
-                      width={60}
-                    />
-                    <ChartTooltip 
-                      content={
-                        <ChartTooltipContent 
-                          formatter={(value, name) => [
-                            formatBytes(value as number),
-                            name === "totalDownloadBytes" ? "Total Download" : "Total Upload"
-                          ]}
-                        />
-                      } 
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="totalDownloadBytes" 
-                      stroke="var(--color-totalDownloadBytes)" 
-                      fill="var(--color-totalDownloadBytes)"
-                      fillOpacity={0.2}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="totalUploadBytes" 
-                      stroke="var(--color-totalUploadBytes)" 
-                      fill="var(--color-totalUploadBytes)"
-                      fillOpacity={0.2}
-                    />
-                  </AreaChart>
-                </ChartContainer>
-              </div>
+              <MetricsChart
+                title="Total Acumulado de Bytes"
+                icon={HardDrive}
+                config={totalBytesChartConfig}
+                data={chartData}
+                yAxisFormatter={(value) => formatBytes(value)}
+                areas={[
+                  {
+                    dataKey: "totalDownloadBytes",
+                    tooltipFormatter: (value) => [formatBytes(value), "Total Download"],
+                  },
+                  {
+                    dataKey: "totalUploadBytes",
+                    tooltipFormatter: (value) => [formatBytes(value), "Total Upload"],
+                  },
+                ]}
+              />
             </div>
           )}
         </div>
