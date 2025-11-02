@@ -27,6 +27,7 @@ type TaskService interface {
 	SetTaskCategory(context.Context, string, schemas.TaskSetCategorySchema) error
 	ListTaskFiles(context.Context, string) ([]*entities.TaskFile, error)
 	GetTasksStats(context.Context) (*entities.TaskStats, error)
+	GetTaskLimits(context.Context, string) (*entities.TaskLimits, error)
 }
 
 type InstanceService interface {
@@ -41,6 +42,7 @@ type InstanceService interface {
 type TaskRepositoryInterface interface {
 	List() ([]*entities.Task, error)
 	Get(hash string) (*entities.Task, error)
+	GetLimits(hash string) (*entities.TaskLimits, error)
 	Add(schema schemas.TaskCreateSchema) (*entities.Task, error)
 	Stop(hash string) error
 	Start(hash string) error

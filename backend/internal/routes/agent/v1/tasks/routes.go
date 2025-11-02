@@ -39,6 +39,7 @@ func (m Module) Register() {
 	m.taskRouter.GET("/:id", m.getTask)
 	m.taskRouter.POST("/:id/stop", m.stopTask)
 	m.taskRouter.POST("/:id/start", m.startTask)
+	m.taskRouter.GET("/:id/limits", m.getTaskLimits)
 	m.taskRouter.POST("/:id/force_resume", m.forceResumeTask)
 	m.taskRouter.POST("/:id/share_limit", m.setTaskShareLimit)
 	m.taskRouter.POST("/:id/location", m.setTaskLocation)
@@ -230,6 +231,22 @@ func (m *Module) renameTask(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "task renamed successfully"})
+}
+
+func (m *Module) getTaskLimits(c *gin.Context) {
+	taskID := c.Param("id")
+	if taskID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "task ID is required"})
+		return
+	}
+
+	limits, err := m.controller.GetTaskLimits(c.Request.Context(), taskID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, mappers.ToTaskLimitsResponse(limits))
 }
 
 func (m *Module) setTaskSuperSeeding(c *gin.Context) {

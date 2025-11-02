@@ -172,3 +172,25 @@ func ToTaskStats(m models.TaskStatsResponse) *entities.TaskStats {
 		WordCloud:            m.WordCloud,
 	}
 }
+
+func ToTaskLimitsResponse(e *entities.TaskLimits) models.TaskLimitsResponse {
+	return models.TaskLimitsResponse{
+		DownloadLimit:            e.DownloadLimit,
+		UploadLimit:              e.UploadLimit,
+		ShareLimit:               e.ShareLimit,
+		RatioLimit:               e.RatioLimit,
+		SeedingTimeLimit:         e.SeedingTimeLimit,
+		InactiveSeedingTimeLimit: e.InactiveSeedingTimeLimit,
+	}
+}
+
+func ToTaskLimits(m models.TaskLimitsResponse) *entities.TaskLimits {
+	return &entities.TaskLimits{
+		DownloadLimit:            m.DownloadLimit,
+		UploadLimit:              m.UploadLimit,
+		ShareLimit:               m.ShareLimit,
+		RatioLimit:               m.RatioLimit,
+		SeedingTimeLimit:         m.SeedingTimeLimit,
+		InactiveSeedingTimeLimit: m.InactiveSeedingTimeLimit,
+	}
+}

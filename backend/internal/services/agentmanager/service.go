@@ -666,6 +666,10 @@ func (s *Service) SetAgentTaskCategory(ctx context.Context, agentID, taskID stri
 	return s.repository.SetAgentTaskCategory(agent, taskID, schema)
 }
 
+func (s *Service) GetAgentTaskLimits(ctx context.Context, agent *entities.Agent, taskID string) (*entities.TaskLimits, error) {
+	return s.repository.GetAgentTaskLimits(agent, taskID)
+}
+
 // calculateWordCloud extracts and counts the top 25 most used terms in task names
 func (s *Service) calculateWordCloud(tasks []*entities.Task) map[string]int {
 	wordCount := make(map[string]int)

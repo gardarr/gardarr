@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/gardarr/gardarr/internal/entities"
@@ -92,60 +93,83 @@ func (s *Service) collectOnce(ctx context.Context) {
 		return
 	}
 
+	// Capture timestamp once for all agents to ensure consistency
 	now := time.Now().UTC()
+
+	// Filter active agents
+	var activeAgents []*entities.Agent
 	for _, a := range agents {
-		if a.Status != entities.AgentStatusActive {
-			continue
+		if a.Status == entities.AgentStatusActive {
+			activeAgents = append(activeAgents, a)
 		}
-
-		// Get tasks for this agent only
-		tasks, _ := s.agents.ListTasks([]*entities.Agent{a})
-		if len(tasks) == 0 {
-			continue
-		}
-
-		// Open writer per agent/day
-		var fw FileWriter
-		if err := fw.OpenDaily(s.baseDir, a.UUID.String(), now); err != nil {
-			continue
-		}
-
-		// Build and write lines
-		var tasksSeen, dlActive, ulActive int
-		var totalDlKBs, totalUlKBs int64
-		for _, t := range tasks {
-			line := SnapshotLine{
-				TS:   now,
-				Task: t.Hash,
-				St:   t.State,
-				P01:  int(t.Progress * 100.0),
-				R1e4: int(t.Ratio * 10000.0),
-				DlKB: t.Network.Download.Speed / 1024,
-				UlKB: t.Network.Upload.Speed / 1024,
-				Sd:   int16(t.Pairs.Seeders),
-				Lc:   int16(t.Pairs.Leechers),
-				DlB:  int64(t.Network.Download.Amount),
-				UlB:  int64(t.Network.Upload.Amount),
-			}
-			_ = fw.WriteLine(line)
-
-			tasksSeen++
-			if line.DlKB > 0 {
-				dlActive++
-			}
-			if line.UlKB > 0 {
-				ulActive++
-			}
-			totalDlKBs += int64(line.DlKB)
-			totalUlKBs += int64(line.UlKB)
-		}
-		_ = fw.Flush()
-		_ = fw.Close()
-
-		// Upsert file index for current hour
-		_ = s.upsertFileIndex(ctx, a.UUID.String(), now, fw.Path(), fw.Lines(), fw.Size())
-		_ = s.upsertHourSummary(ctx, a.UUID.String(), now, fw.Path(), tasksSeen, dlActive, ulActive, totalDlKBs, totalUlKBs)
 	}
+
+	if len(activeAgents) == 0 {
+		return
+	}
+
+	// Process agents concurrently
+	var wg sync.WaitGroup
+	for _, agent := range activeAgents {
+		wg.Add(1)
+		go func(a *entities.Agent) {
+			defer wg.Done()
+			s.collectAgentData(ctx, a, now)
+		}(agent)
+	}
+
+	wg.Wait()
+}
+
+// collectAgentData collects statistics for a single agent
+func (s *Service) collectAgentData(ctx context.Context, a *entities.Agent, now time.Time) {
+	// Get tasks for this agent only
+	tasks, err := s.agents.ListTasks([]*entities.Agent{a})
+	if err != nil || len(tasks) == 0 {
+		return
+	}
+
+	// Open writer per agent/day
+	var fw FileWriter
+	if err := fw.OpenDaily(s.baseDir, a.UUID.String(), now); err != nil {
+		return
+	}
+
+	// Build and write lines
+	var tasksSeen, dlActive, ulActive int
+	var totalDlKBs, totalUlKBs int64
+	for _, t := range tasks {
+		line := SnapshotLine{
+			TS:   now,
+			Task: t.Hash,
+			St:   t.State,
+			P01:  int(t.Progress * 100.0),
+			R1e4: int(t.Ratio * 10000.0),
+			DlKB: t.Network.Download.Speed / 1024,
+			UlKB: t.Network.Upload.Speed / 1024,
+			Sd:   int16(t.Pairs.Seeders),
+			Lc:   int16(t.Pairs.Leechers),
+			DlB:  int64(t.Network.Download.Amount),
+			UlB:  int64(t.Network.Upload.Amount),
+		}
+		_ = fw.WriteLine(line)
+
+		tasksSeen++
+		if line.DlKB > 0 {
+			dlActive++
+		}
+		if line.UlKB > 0 {
+			ulActive++
+		}
+		totalDlKBs += int64(line.DlKB)
+		totalUlKBs += int64(line.UlKB)
+	}
+	_ = fw.Flush()
+	_ = fw.Close()
+
+	// Upsert file index for current hour
+	_ = s.upsertFileIndex(ctx, a.UUID.String(), now, fw.Path(), fw.Lines(), fw.Size())
+	_ = s.upsertHourSummary(ctx, a.UUID.String(), now, fw.Path(), tasksSeen, dlActive, ulActive, totalDlKBs, totalUlKBs)
 }
 
 // upsertFileIndex records or updates the file index entry for the given agent,
@@ -278,6 +302,55 @@ func updateAggregation(a WindowedAggregation, sl *SnapshotLine) WindowedAggregat
 	return a
 }
 
+// mergeAggregations combines two WindowedAggregation structures by applying appropriate
+// merging strategies for each metric: max for speeds and cumulative values, weighted
+// average for seeders/leechers, and sum for ratio components
+func mergeAggregations(a1, a2 WindowedAggregation) WindowedAggregation {
+	totalSnaps := a1.Snaps + a2.Snaps
+
+	result := WindowedAggregation{
+		Snaps: totalSnaps,
+	}
+
+	// Use max for speed metrics
+	if a1.DlKB > a2.DlKB {
+		result.DlKB = a1.DlKB
+	} else {
+		result.DlKB = a2.DlKB
+	}
+
+	if a1.UlKB > a2.UlKB {
+		result.UlKB = a1.UlKB
+	} else {
+		result.UlKB = a2.UlKB
+	}
+
+	// Weighted average for seeders and leechers
+	result.Seeders = calculateWeightedAverage(a1.Seeders, a1.Snaps, a2.Seeders, a2.Snaps)
+	result.Leechers = calculateWeightedAverage(a1.Leechers, a1.Snaps, a2.Leechers, a2.Snaps)
+
+	// Use max for cumulative byte values
+	if a1.TotalDlB > a2.TotalDlB {
+		result.TotalDlB = a1.TotalDlB
+	} else {
+		result.TotalDlB = a2.TotalDlB
+	}
+
+	if a1.TotalUlB > a2.TotalUlB {
+		result.TotalUlB = a1.TotalUlB
+	} else {
+		result.TotalUlB = a2.TotalUlB
+	}
+
+	// Sum the ratio components and recalculate average
+	result.SumR1e4 = a1.SumR1e4 + a2.SumR1e4
+	if totalSnaps > 0 {
+		result.AvgRatio = (float64(result.SumR1e4) / 10000.0) / float64(totalSnaps)
+	}
+
+	return result
+}
+
 // DiscoverFiles finds statistics files for an agent within a date range
 func (s *Service) DiscoverFiles(ctx context.Context, agentID string, from, to time.Time) ([]string, error) {
 	fromDate := from.UTC().Format("2006-01-02")
@@ -324,30 +397,77 @@ func (s *Service) discoverFilesFromFS(agentID string, from, to time.Time, fromDa
 		}
 	}
 
-	var files []string
-
-	// Try structured path first
+	// Build list of dates to check
+	var dates []time.Time
 	cur := from.UTC().Truncate(24 * time.Hour)
 	end := to.UTC().Truncate(24 * time.Hour)
 	for !cur.After(end) {
-		yyyy := cur.Format("2006")
-		mm := cur.Format("01")
-		day := cur.Format("2006-01-02")
-		candidates := []string{
-			filepath.Join(base, yyyy, mm, agentID, agentID+"-"+day+".jsonl.gz"),
-			filepath.Join(base, "statistics", yyyy, mm, agentID, agentID+"-"+day+".jsonl.gz"),
-		}
-		for _, p := range candidates {
-			if _, err := os.Stat(p); err == nil {
-				files = append(files, p)
-				break
-			}
-		}
+		dates = append(dates, cur)
 		cur = cur.Add(24 * time.Hour)
 	}
 
-	// Fallback: walk and find matching files
+	// Process dates concurrently with worker pool
+	type dateResult struct {
+		path string
+	}
+
+	resultsChan := make(chan dateResult, len(dates))
+	var wg sync.WaitGroup
+
+	// Use worker pool to limit concurrent file system operations
+	// Too many concurrent stats can overwhelm the filesystem
+	workers := 16
+	if len(dates) < workers {
+		workers = len(dates)
+	}
+	if workers == 0 {
+		workers = 1
+	}
+
+	dateChan := make(chan time.Time, len(dates))
+	for _, d := range dates {
+		dateChan <- d
+	}
+	close(dateChan)
+
+	// Start workers
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for date := range dateChan {
+				yyyy := date.Format("2006")
+				mm := date.Format("01")
+				day := date.Format("2006-01-02")
+				candidates := []string{
+					filepath.Join(base, yyyy, mm, agentID, agentID+"-"+day+".jsonl.gz"),
+					filepath.Join(base, "statistics", yyyy, mm, agentID, agentID+"-"+day+".jsonl.gz"),
+				}
+				for _, p := range candidates {
+					if _, err := os.Stat(p); err == nil {
+						resultsChan <- dateResult{path: p}
+						break
+					}
+				}
+			}
+		}()
+	}
+
+	// Close results channel when all workers complete
+	go func() {
+		wg.Wait()
+		close(resultsChan)
+	}()
+
+	// Collect results
+	var files []string
+	for result := range resultsChan {
+		files = append(files, result.path)
+	}
+
+	// Fallback: walk and find matching files if structured search found nothing
 	if len(files) == 0 {
+		var mu sync.Mutex
 		_ = filepath.Walk(base, func(path string, info os.FileInfo, err error) error {
 			if err != nil || info == nil || info.IsDir() {
 				return nil
@@ -358,7 +478,9 @@ func (s *Service) discoverFilesFromFS(agentID string, from, to time.Time, fromDa
 				if len(rest) >= 10 {
 					d := rest[:10]
 					if d >= fromDate && d <= toDate {
+						mu.Lock()
 						files = append(files, path)
+						mu.Unlock()
 					}
 				}
 			}
@@ -534,29 +656,67 @@ func (s *Service) GetWindowedAggregation(ctx context.Context, agentID string, fr
 
 // aggregateByTask aggregates statistics grouped by task
 func (s *Service) aggregateByTask(files []string, from, to time.Time, step time.Duration, filterTask string) (map[string]map[string]WindowedAggregation, error) {
+	type fileResult struct {
+		data map[string]map[string]WindowedAggregation
+	}
+
+	resultsChan := make(chan fileResult, len(files))
+	var wg sync.WaitGroup
+
+	// Process each file concurrently
+	for _, filePath := range files {
+		wg.Add(1)
+		go func(p string) {
+			defer wg.Done()
+
+			localData := make(map[string]map[string]WindowedAggregation)
+
+			_ = s.ScanFile(p, func(sl *SnapshotLine) {
+				ts := sl.TS.UTC()
+				if ts.Before(from.UTC()) || ts.After(to.UTC()) {
+					return
+				}
+				if filterTask != "" && sl.Task != filterTask {
+					return
+				}
+
+				w := ts.Truncate(step)
+				wk := w.Format(time.RFC3339)
+
+				if _, ok := localData[wk]; !ok {
+					localData[wk] = map[string]WindowedAggregation{}
+				}
+
+				a := localData[wk][sl.Task]
+				a = updateAggregation(a, sl)
+				localData[wk][sl.Task] = a
+			})
+
+			resultsChan <- fileResult{data: localData}
+		}(filePath)
+	}
+
+	// Close channel when all goroutines complete
+	go func() {
+		wg.Wait()
+		close(resultsChan)
+	}()
+
+	// Merge results from all files
 	out := make(map[string]map[string]WindowedAggregation)
-
-	for _, p := range files {
-		_ = s.ScanFile(p, func(sl *SnapshotLine) {
-			ts := sl.TS.UTC()
-			if ts.Before(from.UTC()) || ts.After(to.UTC()) {
-				return
-			}
-			if filterTask != "" && sl.Task != filterTask {
-				return
-			}
-
-			w := ts.Truncate(step)
-			wk := w.Format(time.RFC3339)
-
+	for result := range resultsChan {
+		for wk, tasks := range result.data {
 			if _, ok := out[wk]; !ok {
 				out[wk] = map[string]WindowedAggregation{}
 			}
-
-			a := out[wk][sl.Task]
-			a = updateAggregation(a, sl)
-			out[wk][sl.Task] = a
-		})
+			for task, agg := range tasks {
+				if existing, ok := out[wk][task]; ok {
+					out[wk][task] = mergeAggregations(existing, agg)
+				} else {
+					out[wk][task] = agg
+				}
+			}
+		}
 	}
 
 	return out, nil
@@ -564,49 +724,94 @@ func (s *Service) aggregateByTask(files []string, from, to time.Time, step time.
 
 // aggregateByAgent aggregates statistics for the entire agent
 func (s *Service) aggregateByAgent(files []string, from, to time.Time, step time.Duration, filterTask string) (map[string]WindowedAggregation, error) {
-	// First pass: group by timestamp, sum speeds per timestamp (for concurrent torrents)
+	type fileResult struct {
+		timestampAggs map[time.Time]*WindowedAggregation
+	}
+
+	resultsChan := make(chan fileResult, len(files))
+	var wg sync.WaitGroup
+
+	// First pass: process files concurrently to build timestamp aggregations
+	for _, filePath := range files {
+		wg.Add(1)
+		go func(p string) {
+			defer wg.Done()
+
+			localTimestampAggs := make(map[time.Time]*WindowedAggregation)
+
+			_ = s.ScanFile(p, func(sl *SnapshotLine) {
+				ts := sl.TS.UTC()
+				if ts.Before(from.UTC()) || ts.After(to.UTC()) {
+					return
+				}
+				if filterTask != "" && sl.Task != filterTask {
+					return
+				}
+
+				// Group by exact timestamp to sum concurrent torrents
+				tsKey := ts.Truncate(time.Second)
+				if localTimestampAggs[tsKey] == nil {
+					localTimestampAggs[tsKey] = &WindowedAggregation{}
+				}
+
+				a := localTimestampAggs[tsKey]
+				a.Snaps++
+
+				// Sum speeds for concurrent torrents at this timestamp
+				a.DlKB += int64(sl.DlKB)
+				a.UlKB += int64(sl.UlKB)
+
+				// Other metrics use incremental average (seeders/leechers) or sum (ratio)
+				a.Seeders = calculateIncrementalAverage(a.Seeders, a.Snaps, int64(sl.Sd))
+				a.Leechers = calculateIncrementalAverage(a.Leechers, a.Snaps, int64(sl.Lc))
+
+				// TotalDlB and TotalUlB use max (cumulative values)
+				if sl.DlB > a.TotalDlB {
+					a.TotalDlB = sl.DlB
+				}
+				if sl.UlB > a.TotalUlB {
+					a.TotalUlB = sl.UlB
+				}
+
+				a.SumR1e4 += int64(sl.R1e4)
+				if a.Snaps > 0 {
+					a.AvgRatio = (float64(a.SumR1e4) / 10000.0) / float64(a.Snaps)
+				}
+			})
+
+			resultsChan <- fileResult{timestampAggs: localTimestampAggs}
+		}(filePath)
+	}
+
+	// Close channel when all goroutines complete
+	go func() {
+		wg.Wait()
+		close(resultsChan)
+	}()
+
+	// Merge timestamp aggregations from all files
 	timestampAggs := make(map[time.Time]*WindowedAggregation)
-
-	for _, p := range files {
-		_ = s.ScanFile(p, func(sl *SnapshotLine) {
-			ts := sl.TS.UTC()
-			if ts.Before(from.UTC()) || ts.After(to.UTC()) {
-				return
+	for result := range resultsChan {
+		for ts, tsAgg := range result.timestampAggs {
+			if existing, ok := timestampAggs[ts]; ok {
+				// Merge two timestamp aggregations
+				existing.Snaps += tsAgg.Snaps
+				existing.DlKB += tsAgg.DlKB
+				existing.UlKB += tsAgg.UlKB
+				existing.Seeders = calculateWeightedAverage(existing.Seeders, existing.Snaps-tsAgg.Snaps, tsAgg.Seeders, tsAgg.Snaps)
+				existing.Leechers = calculateWeightedAverage(existing.Leechers, existing.Snaps-tsAgg.Snaps, tsAgg.Leechers, tsAgg.Snaps)
+				if tsAgg.TotalDlB > existing.TotalDlB {
+					existing.TotalDlB = tsAgg.TotalDlB
+				}
+				if tsAgg.TotalUlB > existing.TotalUlB {
+					existing.TotalUlB = tsAgg.TotalUlB
+				}
+				existing.SumR1e4 += tsAgg.SumR1e4
+				existing.AvgRatio = (float64(existing.SumR1e4) / 10000.0) / float64(existing.Snaps)
+			} else {
+				timestampAggs[ts] = tsAgg
 			}
-			if filterTask != "" && sl.Task != filterTask {
-				return
-			}
-
-			// Group by exact timestamp to sum concurrent torrents
-			tsKey := ts.Truncate(time.Second) // Group by second for concurrent aggregation
-			if timestampAggs[tsKey] == nil {
-				timestampAggs[tsKey] = &WindowedAggregation{}
-			}
-
-			a := timestampAggs[tsKey]
-			a.Snaps++
-
-			// Sum speeds for concurrent torrents at this timestamp
-			a.DlKB += int64(sl.DlKB)
-			a.UlKB += int64(sl.UlKB)
-
-			// Other metrics use incremental average (seeders/leechers) or sum (ratio)
-			a.Seeders = calculateIncrementalAverage(a.Seeders, a.Snaps, int64(sl.Sd))
-			a.Leechers = calculateIncrementalAverage(a.Leechers, a.Snaps, int64(sl.Lc))
-
-			// TotalDlB and TotalUlB use max (cumulative values)
-			if sl.DlB > a.TotalDlB {
-				a.TotalDlB = sl.DlB
-			}
-			if sl.UlB > a.TotalUlB {
-				a.TotalUlB = sl.UlB
-			}
-
-			a.SumR1e4 += int64(sl.R1e4)
-			if a.Snaps > 0 {
-				a.AvgRatio = (float64(a.SumR1e4) / 10000.0) / float64(a.Snaps)
-			}
-		})
+		}
 	}
 
 	// Second pass: aggregate timestamp-level sums into windows (take max per window)
@@ -664,44 +869,114 @@ func (s *Service) GetUploadDiffs(ctx context.Context, agentID string, from, to t
 		return nil, err
 	}
 
-	taskWindows := make(map[string]map[string]*TaskUploadDiff)
+	type taskWindowEntry struct {
+		window   string
+		task     string
+		firstUlB int64
+		firstTS  time.Time
+		lastUlB  int64
+		lastTS   time.Time
+	}
 
-	// Scan files and collect first/last values per task per window
-	for _, p := range files {
-		_ = s.ScanFile(p, func(sl *SnapshotLine) {
-			ts := sl.TS.UTC()
-			if ts.Before(from.UTC()) || ts.After(to.UTC()) {
-				return
+	type fileResult struct {
+		entries map[string]map[string]*taskWindowEntry // task -> window -> entry
+	}
+
+	resultsChan := make(chan fileResult, len(files))
+	var wg sync.WaitGroup
+
+	// Process each file concurrently
+	for _, filePath := range files {
+		wg.Add(1)
+		go func(p string) {
+			defer wg.Done()
+
+			localEntries := make(map[string]map[string]*taskWindowEntry)
+
+			_ = s.ScanFile(p, func(sl *SnapshotLine) {
+				ts := sl.TS.UTC()
+				if ts.Before(from.UTC()) || ts.After(to.UTC()) {
+					return
+				}
+
+				w := ts.Truncate(step)
+				wk := w.Format(time.RFC3339)
+
+				if localEntries[sl.Task] == nil {
+					localEntries[sl.Task] = make(map[string]*taskWindowEntry)
+				}
+				if localEntries[sl.Task][wk] == nil {
+					localEntries[sl.Task][wk] = &taskWindowEntry{
+						window:   wk,
+						task:     sl.Task,
+						firstUlB: sl.UlB,
+						firstTS:  ts,
+						lastUlB:  sl.UlB,
+						lastTS:   ts,
+					}
+				} else {
+					entry := localEntries[sl.Task][wk]
+					// Update first if this timestamp is earlier
+					if ts.Before(entry.firstTS) {
+						entry.firstUlB = sl.UlB
+						entry.firstTS = ts
+					}
+					// Update last if this timestamp is later
+					if ts.After(entry.lastTS) {
+						entry.lastUlB = sl.UlB
+						entry.lastTS = ts
+					}
+				}
+			})
+
+			resultsChan <- fileResult{entries: localEntries}
+		}(filePath)
+	}
+
+	// Close channel when all goroutines complete
+	go func() {
+		wg.Wait()
+		close(resultsChan)
+	}()
+
+	// Merge results from all files
+	taskWindows := make(map[string]map[string]*taskWindowEntry)
+	for result := range resultsChan {
+		for task, windowMap := range result.entries {
+			if taskWindows[task] == nil {
+				taskWindows[task] = make(map[string]*taskWindowEntry)
 			}
-
-			w := ts.Truncate(step)
-			wk := w.Format(time.RFC3339)
-
-			if taskWindows[sl.Task] == nil {
-				taskWindows[sl.Task] = make(map[string]*TaskUploadDiff)
-			}
-			if taskWindows[sl.Task][wk] == nil {
-				taskWindows[sl.Task][wk] = &TaskUploadDiff{
-					Window:   wk,
-					Task:     sl.Task,
-					FirstUlB: sl.UlB,
-					LastUlB:  sl.UlB,
+			for window, entry := range windowMap {
+				if existing, ok := taskWindows[task][window]; ok {
+					// Merge entries: keep earliest first and latest last
+					if entry.firstTS.Before(existing.firstTS) {
+						existing.firstUlB = entry.firstUlB
+						existing.firstTS = entry.firstTS
+					}
+					if entry.lastTS.After(existing.lastTS) {
+						existing.lastUlB = entry.lastUlB
+						existing.lastTS = entry.lastTS
+					}
+				} else {
+					taskWindows[task][window] = entry
 				}
 			}
-
-			twd := taskWindows[sl.Task][wk]
-			// Always advance the last observed upload bytes for this window
-			twd.LastUlB = sl.UlB
-		})
+		}
 	}
 
 	// Calculate differences and collect results (ensure non-nil slice)
 	results := make([]TaskUploadDiff, 0)
 	for _, taskMap := range taskWindows {
-		for _, twd := range taskMap {
-			twd.Diff = twd.LastUlB - twd.FirstUlB
-			if twd.Diff > 0 {
-				results = append(results, *twd)
+		for _, entry := range taskMap {
+			diff := entry.lastUlB - entry.firstUlB
+			if diff > 0 {
+				results = append(results, TaskUploadDiff{
+					Window:   entry.window,
+					Task:     entry.task,
+					FirstUlB: entry.firstUlB,
+					LastUlB:  entry.lastUlB,
+					Diff:     diff,
+				})
 			}
 		}
 	}

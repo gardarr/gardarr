@@ -84,3 +84,12 @@ type TaskStatsResponse struct {
 	TagsUsage            map[string]int `json:"tags_usage"`
 	WordCloud            map[string]int `json:"word_cloud"`
 }
+
+type TaskLimitsResponse struct {
+	DownloadLimit            int     `json:"download_limit"`
+	UploadLimit              int     `json:"upload_limit"`
+	ShareLimit               float64 `json:"share_limit"` // Deprecated: use specific limits below
+	RatioLimit               float64 `json:"ratio_limit"`
+	SeedingTimeLimit         int     `json:"seeding_time_limit"`
+	InactiveSeedingTimeLimit int     `json:"inactive_seeding_time_limit"`
+}

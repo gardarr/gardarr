@@ -136,3 +136,12 @@ type TaskStats struct {
 	TagsUsage            map[string]int
 	WordCloud            map[string]int
 }
+
+type TaskLimits struct {
+	DownloadLimit            int
+	UploadLimit              int
+	ShareLimit               float64 // Deprecated: use specific limits below
+	RatioLimit               float64 // -2 = use global, -1 = no limit
+	SeedingTimeLimit         int     // in minutes, -2 = use global, -1 = no limit
+	InactiveSeedingTimeLimit int     // in minutes, -2 = use global, -1 = no limit
+}

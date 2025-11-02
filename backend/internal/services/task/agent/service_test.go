@@ -17,6 +17,7 @@ type mockRepository struct {
 	forceError  error
 	deleteError error
 	createError error
+	limitsError error
 }
 
 func newMockRepository() *mockRepository {
@@ -208,6 +209,17 @@ func (m *mockRepository) ListFiles(hash string) ([]*entities.TaskFile, error) {
 		}, nil
 	}
 	return nil, errors.New("task not found")
+}
+
+func (m *mockRepository) GetLimits(hash string) (*entities.TaskLimits, error) {
+	if m.limitsError != nil {
+		return nil, m.limitsError
+	}
+	return &entities.TaskLimits{
+		DownloadLimit: 1024 * 1024 * 1024, // 1GB
+		UploadLimit:   512 * 1024 * 1024,  // 512MB
+		ShareLimit:    2.0,
+	}, nil
 }
 
 func TestService_StopTask(t *testing.T) {

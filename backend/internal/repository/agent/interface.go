@@ -39,4 +39,5 @@ type RepositoryInterface interface {
 	ListAgentTaskFiles(agent *entities.Agent, taskID string) ([]*entities.TaskFile, error)
 	GetAgentTasksStats(agent *entities.Agent) (*entities.TaskStats, error)
 	GetAgentVersion(agent *entities.Agent) (*entities.AgentVersion, error)
+	GetAgentTaskLimits(agent *entities.Agent, taskID string) (*entities.TaskLimits, error)
 }
