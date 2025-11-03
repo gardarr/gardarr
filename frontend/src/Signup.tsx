@@ -58,7 +58,7 @@ export default function SignupPage() {
   // Check if user is already logged in
   useEffect(() => {
     if (!authLoading && user) {
-      toast.info("Para utilizar um magic link é necessário não estar logado no sistema");
+      toast.info("You must be logged out to use a magic link");
       navigate("/users");
     }
   }, [user, authLoading, navigate]);

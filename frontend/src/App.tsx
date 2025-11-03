@@ -24,7 +24,7 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <Toaster />
+        <Toaster richColors />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/setup" element={<InitialSetupPage />} />

@@ -132,7 +132,6 @@ export default function InitialSetupPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 flex items-center justify-center p-4">
       <Toaster richColors />
-      
       <Card className="w-full max-w-md border-border/50 shadow-lg">
         <CardHeader className="space-y-4 pb-6">
           <div className="flex items-center justify-center">
