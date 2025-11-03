@@ -90,7 +90,12 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
       setTagInput("");
       onOpenChange(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : (editingCategory ? t('categories.errors.updateFailed') : t('categories.errors.createFailed')));
+      const errorMessage = err instanceof Error 
+        ? err.message 
+        : editingCategory 
+          ? t('categories.errors.updateFailed') 
+          : t('categories.errors.createFailed');
+      toast.error(errorMessage);
     }
   };
 
