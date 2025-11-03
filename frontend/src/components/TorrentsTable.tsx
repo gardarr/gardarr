@@ -6,6 +6,8 @@ import { RatioBadge } from "@/components/ui/RatioBadge";
 import { AgentIcon } from "@/components/ui/AgentIcon";
 import { getStatusIcon, getStatusColor, type TorrentStatus } from "@/components/TorrentStatusIcon";
 import TorrentContextMenu from "@/components/TorrentContextMenu";
+import { formatBytes, formatBytesPerSecond } from "@/utils/bytes";
+import { truncateText, isTextTruncated } from "@/utils/textUtils";
 
 type SortType = "priority" | "alphabetical" | "size" | "progress" | "download_speed" | "upload_speed" | "downloaded" | "uploaded";
 
@@ -49,30 +51,6 @@ interface TorrentsTableProps {
   onForceDownload: (id: string) => void;
   onForceReannounce: (id: string) => void;
   onForceRecheck: (id: string) => void;
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  const value = bytes / Math.pow(k, i);
-  return `${value.toFixed(value >= 100 ? 0 : value >= 10 ? 1 : 2)} ${sizes[i]}`;
-}
-
-function formatRate(bps: number): string {
-  return `${formatBytes(bps)}/s`;
-}
-
-function truncateText(text: string, maxLength: number = 50): string {
-  if (text.length <= maxLength) {
-    return text;
-  }
-  return text.substring(0, maxLength) + "...";
-}
-
-function isTextTruncated(text: string, maxLength: number = 50): boolean {
-  return text.length > maxLength;
 }
 
 function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck }: { 
@@ -138,7 +116,7 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
       <td className="px-4 py-3 text-sm">
         <div className="flex flex-col">
           <span className={torrent.downloadRateBps > 0 ? 'text-green-600 dark:text-green-400' : ''}>
-            {formatRate(torrent.downloadRateBps)}
+            {formatBytesPerSecond(torrent.downloadRateBps)}
           </span>
           <span className="text-xs text-muted-foreground">
             ({formatBytes(torrent.downloadedBytes)})
@@ -148,7 +126,7 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
       <td className="px-4 py-3 text-sm">
         <div className="flex flex-col">
           <span className={torrent.uploadRateBps > 0 ? 'text-purple-600 dark:text-purple-400' : ''}>
-            {formatRate(torrent.uploadRateBps)}
+            {formatBytesPerSecond(torrent.uploadRateBps)}
           </span>
           <span className="text-xs text-muted-foreground">
             ({formatBytes(torrent.uploadedBytes)})

@@ -37,6 +37,8 @@ import { AgentIcon } from "@/components/ui/AgentIcon";
 import { getStatusIcon, getStatusColor, getStatusBackgroundColor, type TorrentStatus } from "@/components/TorrentStatusIcon";
 import { normalizeTaskStatus } from "@/utils/statusUtils";
 import { getRatioGrade } from "@/utils/ratioUtils";
+import { formatBytes, formatBytesPerSecond } from "@/utils/bytes";
+import { truncateText, isTextTruncated } from "@/utils/textUtils";
 import taskDefaultBg from "@/assets/img/common/task-default-background.png";
 
 type SortType = "priority" | "alphabetical" | "size" | "progress" | "download_speed" | "upload_speed" | "downloaded" | "uploaded";
@@ -97,34 +99,6 @@ function mapTaskToTorrent(task: Task): Torrent {
     tags: task.tags || [],
   };
 }
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  const value = bytes / Math.pow(k, i);
-  return `${value.toFixed(value >= 100 ? 0 : value >= 10 ? 1 : 2)} ${sizes[i]}`;
-}
-
-function formatRate(bps: number): string {
-  return `${formatBytes(bps)}/s`;
-}
-
-function truncateText(text: string, maxLength: number = 50): string {
-  if (text.length <= maxLength) {
-    return text;
-  }
-  return text.substring(0, maxLength) + "...";
-}
-
-function isTextTruncated(text: string, maxLength: number = 50): boolean {
-  return text.length > maxLength;
-}
-
-
-
-
 
 // Função para obter chave de tradução do tipo de ordenação
 function getSortTypeKey(sortType: SortType): string {
@@ -196,7 +170,7 @@ function getStatusPriority(status: TorrentStatus): number {
   }
 }
 
-function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits }: { 
+function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits }: Readonly<{ 
   torrent: Torrent; 
   onShowDetails: (id: string) => void;
   onStart: (id: string) => void;
@@ -207,7 +181,7 @@ function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForc
   onForceRecheck: (id: string) => void;
   onMetrics?: (taskId: string, agentId?: string) => void;
   onLimits?: (taskId: string, agentId?: string) => void;
-}) {
+}>) {
   const StatusIcon = getStatusIcon(torrent.status);
 
   return (
@@ -285,7 +259,7 @@ function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForc
           <div className="flex items-center gap-1.5">
             <Download className="h-3.5 w-3.5 text-green-600 dark:text-green-400" aria-hidden="true" />
             <span className={torrent.downloadRateBps > 0 ? 'text-green-600 dark:text-green-400' : ''}>
-              {formatRate(torrent.downloadRateBps)}
+              {formatBytesPerSecond(torrent.downloadRateBps)}
             </span>
             <span className="text-muted-foreground">•</span>
             <span className="text-xs text-muted-foreground">
@@ -296,7 +270,7 @@ function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForc
             <div className="flex items-center gap-1.5">
               <Upload className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" aria-hidden="true" />
               <span className={torrent.uploadRateBps > 0 ? 'text-purple-600 dark:text-purple-400' : ''}>
-                {formatRate(torrent.uploadRateBps)}
+                {formatBytesPerSecond(torrent.uploadRateBps)}
               </span>
               <span className="text-muted-foreground">•</span>
               <span className="text-xs text-muted-foreground">
@@ -321,7 +295,7 @@ function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForc
   );
 }
 
-function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits }: { 
+function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits }: Readonly<{ 
   torrent: Torrent; 
   onShowDetails: (id: string) => void;
   onStart: (id: string) => void;
@@ -332,7 +306,7 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
   onForceRecheck: (id: string) => void;
   onMetrics?: (taskId: string, agentId?: string) => void;
   onLimits?: (taskId: string, agentId?: string) => void;
-}) {
+}>) {
   const StatusIcon = getStatusIcon(torrent.status);
 
   return (
@@ -389,7 +363,7 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
       <td className="px-4 py-3 text-sm">
         <div className="flex flex-col">
           <span className={torrent.downloadRateBps > 0 ? 'text-green-600 dark:text-green-400' : ''}>
-            {formatRate(torrent.downloadRateBps)}
+            {formatBytesPerSecond(torrent.downloadRateBps)}
           </span>
           <span className="text-xs text-muted-foreground">
             ({formatBytes(torrent.downloadedBytes)})
@@ -399,7 +373,7 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
       <td className="px-4 py-3 text-sm">
         <div className="flex flex-col">
           <span className={torrent.uploadRateBps > 0 ? 'text-purple-600 dark:text-purple-400' : ''}>
-            {formatRate(torrent.uploadRateBps)}
+            {formatBytesPerSecond(torrent.uploadRateBps)}
           </span>
           <span className="text-xs text-muted-foreground">
             ({formatBytes(torrent.uploadedBytes)})
