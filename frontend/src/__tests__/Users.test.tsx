@@ -30,14 +30,13 @@ vi.mock('../services/signup', () => ({
   },
 }));
 
-// Mock the toast hook
-vi.mock('../hooks/useToast', () => ({
-  useToast: () => ({
-    toasts: [],
-    showSuccess: vi.fn(),
-    showError: vi.fn(),
-    removeToast: vi.fn(),
-  }),
+// Mock sonner toast
+vi.mock('sonner', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+  },
 }));
 
 // Mock the auth context - use vi.hoisted to create shared state

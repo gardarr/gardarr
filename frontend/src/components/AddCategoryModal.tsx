@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { CreateCategoryRequest, UpdateCategoryRequest, Category } from "../types/category";
-import { useToast } from "../hooks/useToast";
+import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { availableIcons, availableColors, getCategoryIcon } from "../utils/categoryUtils";
 
@@ -31,7 +31,6 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
   });
   const [tagInput, setTagInput] = useState("");
   
-  const { showError } = useToast();
 
   // Initialize form when modal opens
   useEffect(() => {
@@ -61,7 +60,7 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
 
   const handleSubmit = async () => {
     if (!createForm.name) {
-      showError(t('categories.errors.nameRequired'));
+      toast.error(t('categories.errors.nameRequired'));
       return;
     }
 
@@ -91,7 +90,12 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
       setTagInput("");
       onOpenChange(false);
     } catch (err) {
-      showError(err instanceof Error ? err.message : (editingCategory ? t('categories.errors.updateFailed') : t('categories.errors.createFailed')));
+      const errorMessage = err instanceof Error 
+        ? err.message 
+        : editingCategory 
+          ? t('categories.errors.updateFailed') 
+          : t('categories.errors.createFailed');
+      toast.error(errorMessage);
     }
   };
 

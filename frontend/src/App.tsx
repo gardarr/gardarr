@@ -18,11 +18,13 @@ import InviteAcceptPage from './InviteAccept'
 import InitialSetupPage from './InitialSetup'
 import ResetPasswordPage from './ResetPassword'
 import ForgotPasswordPage from './ForgotPassword'
+import { Toaster } from './components/ui/sonner'
 
 function App() {
   return (
     <Router>
       <AuthProvider>
+        <Toaster richColors />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/setup" element={<InitialSetupPage />} />

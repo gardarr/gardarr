@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   ContextMenu,
@@ -6,7 +7,7 @@ import {
   ContextMenuContent,
   ContextMenuItem
 } from "@/components/ui/context-menu";
-import { Play, Pause, Trash2, Zap, Radio, CheckCircle, BarChart3 } from "lucide-react";
+import { Play, Pause, Trash2, Zap, Radio, CheckCircle, BarChart3, Settings } from "lucide-react";
 
 type TorrentContextMenuProps = {
   taskId: string;
@@ -19,10 +20,12 @@ type TorrentContextMenuProps = {
   onForceReannounce?: (taskId: string) => void;
   onForceRecheck?: (taskId: string) => void;
   onMetrics?: (taskId: string, agentId?: string) => void;
+  onLimits?: (taskId: string, agentId?: string) => void;
 };
 
 export default function TorrentContextMenu(props: TorrentContextMenuProps) {
-  const { taskId, agentId, children, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics } = props;
+  const { t } = useTranslation();
+  const { taskId, agentId, children, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits } = props;
 
   const handleStart = React.useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -80,6 +83,12 @@ export default function TorrentContextMenu(props: TorrentContextMenuProps) {
     }
   }, [onMetrics, taskId, agentId]);
 
+  const handleLimits = React.useCallback(() => {
+    if (onLimits) {
+      onLimits(taskId, agentId);
+    }
+  }, [onLimits, taskId, agentId]);
+
   return (
     <ContextMenu modal={false}>
       <ContextMenuTrigger asChild>
@@ -112,6 +121,10 @@ export default function TorrentContextMenu(props: TorrentContextMenuProps) {
         <ContextMenuItem onClick={handleMetrics} disabled={!onMetrics}>
           <BarChart3 />
           Métricas
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={handleLimits} disabled={!onLimits}>
+          <Settings />
+          {t("torrents.limits")}
         </ContextMenuItem>
         <ContextMenuItem onClick={handleRemove} variant="destructive">
           <Trash2 />

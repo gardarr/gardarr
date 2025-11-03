@@ -6,8 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, CheckCircle, XCircle, Mail, Lock, UserPlus, Sparkles } from "lucide-react";
 import { signupService } from "./services/signup";
-import { useToast } from "./hooks/useToast";
-import { ToastContainer } from "./components/ui/toast-container";
+import { toast, Toaster } from "sonner";
 import { useAuth } from "./contexts/auth-hooks";
 import logoImage from "@/assets/img/logo/logo_64x64.png";
 
@@ -23,7 +22,6 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [setupChecked, setSetupChecked] = useState(false);
-  const { toasts, showSuccess, showError, showInfo, removeToast } = useToast();
 
   // Set dark theme as default on mount
   useEffect(() => {
@@ -60,10 +58,10 @@ export default function SignupPage() {
   // Check if user is already logged in
   useEffect(() => {
     if (!authLoading && user) {
-      showInfo("Para utilizar um magic link é necessário não estar logado no sistema");
+      toast.info("You must be logged out to use a magic link");
       navigate("/users");
     }
-  }, [user, authLoading, navigate, showInfo]);
+  }, [user, authLoading, navigate]);
 
   useEffect(() => {
     if (!token) {
@@ -86,23 +84,23 @@ export default function SignupPage() {
     e.preventDefault();
 
     if (!token) {
-      showError("Invalid signup link");
+      toast.error("Invalid signup link");
       return;
     }
 
     // Validate form
     if (!email || !password) {
-      showError("Please fill in all fields");
+      toast.error("Please fill in all fields");
       return;
     }
 
     if (password.length < 8) {
-      showError("Password must be at least 8 characters");
+      toast.error("Password must be at least 8 characters");
       return;
     }
 
     if (password !== confirmPassword) {
-      showError("Passwords do not match");
+      toast.error("Passwords do not match");
       return;
     }
 
@@ -115,15 +113,15 @@ export default function SignupPage() {
       });
 
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
       } else {
-        showSuccess("Account created successfully! Redirecting to login...");
+        toast.success("Account created successfully! Redirecting to login...");
         setTimeout(() => {
           navigate("/login");
         }, 2000);
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : "Failed to create account");
+      toast.error(err instanceof Error ? err.message : "Failed to create account");
     } finally {
       setSubmitting(false);
     }
@@ -145,7 +143,6 @@ export default function SignupPage() {
   if (!valid || !token) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 flex items-center justify-center p-4">
-        <ToastContainer toasts={toasts} onRemove={removeToast} />
         <Card className="w-full max-w-md">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <XCircle className="h-16 w-16 text-destructive mb-4" />
@@ -164,7 +161,7 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 flex items-center justify-center p-4">
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
+      <Toaster richColors />
       
       <Card className="w-full max-w-md border-border/50 shadow-lg">
         <CardHeader className="space-y-4 pb-6">

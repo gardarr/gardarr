@@ -4,7 +4,8 @@ import type {
   Task,
   CreateTaskRequest,
   TaskMagnetLink,
-  TaskFile
+  TaskFile,
+  TaskLimits
 } from '../types/torrent';
 
 /**
@@ -117,6 +118,44 @@ export class TorrentService {
    */
   async updateTaskCategory(agentId: string, taskId: string, category: string): Promise<ApiResponse<null>> {
     return api.put<null>(`/agent/${agentId}/task/${taskId}/category`, { category });
+  }
+
+  /**
+   * Obtém os limites de uma task/torrent específica
+   */
+  async getTaskLimits(agentId: string, taskId: string): Promise<ApiResponse<TaskLimits>> {
+    return api.get<TaskLimits>(`/agent/${agentId}/task/${taskId}/limits`);
+  }
+
+  /**
+   * Define o limite de download de uma task/torrent
+   */
+  async setTaskDownloadLimit(agentId: string, taskId: string, limit: number): Promise<ApiResponse<null>> {
+    return api.post<null>(`/agent/${agentId}/task/${taskId}/limit_download_rate`, { limit });
+  }
+
+  /**
+   * Define o limite de upload de uma task/torrent
+   */
+  async setTaskUploadLimit(agentId: string, taskId: string, limit: number): Promise<ApiResponse<null>> {
+    return api.post<null>(`/agent/${agentId}/task/${taskId}/limit_upload_rate`, { limit });
+  }
+
+  /**
+   * Define o limite de compartilhamento (share limit) de uma task/torrent
+   */
+  async setTaskShareLimit(
+    agentId: string,
+    taskId: string,
+    ratioLimit: number,
+    seedingTimeLimit: number,
+    inactiveSeedingTimeLimit: number
+  ): Promise<ApiResponse<null>> {
+    return api.put<null>(`/agent/${agentId}/task/${taskId}/share_limit`, {
+      ratio_limit: ratioLimit,
+      seeding_time_limit: seedingTimeLimit,
+      inactive_seeding_time_limit: inactiveSeedingTimeLimit
+    });
   }
 }
 

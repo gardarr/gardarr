@@ -26,7 +26,6 @@ type RepositoryInterface interface {
 	GetAgentTask(agent *entities.Agent, taskID string) (*entities.Task, error)
 	DeleteAgentTask(agent *entities.Agent, taskID string, purge bool) error
 	ForceResumeAgentTask(agent *entities.Agent, taskID string) error
-	SetAgentTaskShareLimit(agent *entities.Agent, taskID string, schema schemas.TaskSetShareLimitSchema) error
 	SetAgentTaskLocation(agent *entities.Agent, taskID string, schema schemas.TaskSetLocationSchema) error
 	RenameAgentTask(agent *entities.Agent, taskID string, schema schemas.TaskRenameSchema) error
 	SetAgentTaskSuperSeeding(agent *entities.Agent, taskID string, schema schemas.TaskSuperSeedingSchema) error
@@ -40,4 +39,5 @@ type RepositoryInterface interface {
 	GetAgentTasksStats(agent *entities.Agent) (*entities.TaskStats, error)
 	GetAgentVersion(agent *entities.Agent) (*entities.AgentVersion, error)
 	GetAgentTaskLimits(agent *entities.Agent, taskID string) (*entities.TaskLimits, error)
+	SetAgentTaskShareLimit(agent *entities.Agent, taskID string, limits schemas.TaskSetShareLimitSchema) error
 }

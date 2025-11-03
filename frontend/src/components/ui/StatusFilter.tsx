@@ -3,30 +3,10 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { LucideIcon } from "lucide-react";
+import type { TaskStatus } from "@/utils/statusUtils";
 
-type TorrentStatus = 
-  | "ERROR" 
-  | "MISSING_FILES"
-  | "UPLOADING"
-  | "PAUSED_UPLOAD"
-  | "STOPPED_UPLOAD"
-  | "QUEUED_UPLOAD"
-  | "STALLED_UPLOAD"
-  | "CHECKING_UPLOAD"
-  | "FORCED_UPLOAD"
-  | "ALLOCATING"
-  | "DOWNLOADING"
-  | "METADATA_DOWNLOAD"
-  | "FORCED_METADATA_DOWNLOAD"
-  | "PAUSED_DOWNLOAD"
-  | "STOPPED_DOWNLOAD"
-  | "QUEUED_DOWNLOAD"
-  | "FORCED_DOWNLOAD"
-  | "STALLED_DOWNLOAD"
-  | "CHECKING_DOWNLOAD"
-  | "CHECKING_RESUME_DATA"
-  | "MOVING"
-  | "UNKNOWN";
+// Export TaskStatus as TorrentStatus for backward compatibility
+type TorrentStatus = TaskStatus;
 
 interface StatusFilterProps {
   availableStatuses: TorrentStatus[];

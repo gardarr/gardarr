@@ -414,7 +414,6 @@ func (r *Repository) ListAgentTasks(agent *entities.Agent) ([]*entities.Task, er
 	result := make([]*entities.Task, len(handler))
 	for i, item := range handler {
 		task := mappers.ToTask(item)
-		task.Agent = agent
 		result[i] = task
 	}
 
@@ -617,7 +616,6 @@ func (r *Repository) GetAgentTask(agent *entities.Agent, taskID string) (*entiti
 	}
 
 	task := mappers.ToTask(handler)
-	task.Agent = agent
 
 	return task, nil
 }
@@ -657,7 +655,7 @@ func (r *Repository) SetAgentTaskShareLimit(agent *entities.Agent, taskID string
 		return err
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewReader(payload))
+	req, err := http.NewRequest("PUT", url, bytes.NewReader(payload))
 	if err != nil {
 		return err
 	}

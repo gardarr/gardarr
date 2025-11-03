@@ -532,7 +532,8 @@
       "play": "Start/Resume",
       "pause": "Pause",
       "delete": "Remove"
-    }
+    },
+    "limits": "Limits"
   },
   "categories": {
     "title": "Categories",

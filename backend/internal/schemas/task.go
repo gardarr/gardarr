@@ -16,10 +16,9 @@ type TaskDeleteOptionsSchema struct {
 }
 
 type TaskSetShareLimitSchema struct {
-	Hash                     string  `json:"hash" binding:"required"`
-	RatioLimit               float64 `json:"ratio_limit" binding:"required,min=0"`
-	SeedingTimeLimit         int     `json:"seeding_time_limit" binding:"required,min=0"`
-	InactiveSeedingTimeLimit int     `json:"inactive_seeding_time_limit"` // -2 = use global limit, -1 = no limit, >= 0 = minutes
+	RatioLimit               float64 `json:"ratio_limit" binding:"min=-2"`
+	SeedingTimeLimit         int     `json:"seeding_time_limit" binding:"min=-2"`
+	InactiveSeedingTimeLimit int     `json:"inactive_seeding_time_limit" binding:"min=-2"` // -2 = use global limit, -1 = no limit, >= 0 = minutes
 }
 
 type TaskSetLocationSchema struct {
@@ -35,11 +34,11 @@ type TaskSuperSeedingSchema struct {
 }
 
 type TaskSetDownloadLimitSchema struct {
-	Limit int `json:"limit" binding:"required,min=0"`
+	Limit int `json:"limit" binding:"required,min=-2"`
 }
 
 type TaskSetUploadLimitSchema struct {
-	Limit int `json:"limit" binding:"required,min=0"`
+	Limit int `json:"limit" binding:"required,min=-2"`
 }
 
 type TaskSetTagsSchema struct {

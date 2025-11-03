@@ -23,7 +23,6 @@ type TaskResponseModel struct {
 	Pairs        TaskPairsResponse        `json:"pairs"`
 	Network      TaskNetworkResponseModel `json:"network"`
 	Tags         []string                 `json:"tags,omitempty"`
-	Agent        *AgentResponse           `json:"agent,omitempty"`
 }
 
 type TaskMagnetLinkResponse struct {

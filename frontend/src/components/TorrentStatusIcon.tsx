@@ -10,32 +10,12 @@ import {
   XCircle, 
   FileX 
 } from "lucide-react";
+import type { TaskStatus } from "@/utils/statusUtils";
 
-export type TorrentStatus = 
-  | "ERROR" 
-  | "MISSING_FILES"
-  | "UPLOADING"
-  | "PAUSED_UPLOAD"
-  | "STOPPED_UPLOAD"
-  | "QUEUED_UPLOAD"
-  | "STALLED_UPLOAD"
-  | "CHECKING_UPLOAD"
-  | "FORCED_UPLOAD"
-  | "ALLOCATING"
-  | "DOWNLOADING"
-  | "METADATA_DOWNLOAD"
-  | "FORCED_METADATA_DOWNLOAD"
-  | "PAUSED_DOWNLOAD"
-  | "STOPPED_DOWNLOAD"
-  | "QUEUED_DOWNLOAD"
-  | "FORCED_DOWNLOAD"
-  | "STALLED_DOWNLOAD"
-  | "CHECKING_DOWNLOAD"
-  | "CHECKING_RESUME_DATA"
-  | "MOVING"
-  | "UNKNOWN";
+// Export TaskStatus as TorrentStatus for backward compatibility
+export type TorrentStatus = TaskStatus;
 
-export function getStatusIcon(status: TorrentStatus) {
+export function getStatusIcon(status: TaskStatus) {
   switch (status) {
     // Error states - highest priority
     case "ERROR":
@@ -88,7 +68,7 @@ export function getStatusIcon(status: TorrentStatus) {
   }
 }
 
-export function getStatusColor(status: TorrentStatus): string {
+export function getStatusColor(status: TaskStatus): string {
   switch (status) {
     // Error states - red colors
     case "ERROR":
@@ -141,7 +121,7 @@ export function getStatusColor(status: TorrentStatus): string {
   }
 }
 
-export function getStatusBackgroundColor(status: TorrentStatus): string {
+export function getStatusBackgroundColor(status: TaskStatus): string {
   switch (status) {
     // Error states - light red backgrounds
     case "ERROR":

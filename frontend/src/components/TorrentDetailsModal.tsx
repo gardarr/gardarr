@@ -37,7 +37,7 @@ import { SelectCategory } from "@/components/SelectCategory";
 import { SelectTags } from "@/components/SelectTags";
 import { useTranslation } from "react-i18next";
 import { torrentService } from "@/services/torrents";
-import { useToast } from "@/hooks/useToast";
+import { toast } from "sonner";
 import { getCategoryIcon, getCategoryColor } from "@/utils/categoryUtils";
 import type { Task } from "@/types/torrent";
 import type { Category } from "@/types/category";
@@ -102,7 +102,6 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
   const [currentTags, setCurrentTags] = useState<string[]>([]);
   const isMobile = useIsMobile();
   const { t } = useTranslation();
-  const { showSuccess, showError } = useToast();
 
   // Initialize current values when torrent changes
   useEffect(() => {
@@ -221,12 +220,12 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
             onUpdateCategory(torrent.id, editedCategoryId);
           }
           
-          showSuccess(t('torrentDetails.toasts.categoryUpdateSuccess', { defaultValue: 'Categoria atualizada com sucesso' }));
+          toast.success(t('torrentDetails.toasts.categoryUpdateSuccess', { defaultValue: 'Categoria atualizada com sucesso' }));
           
           setIsEditingCategory(false);
         } catch (error) {
           console.error('Failed to update category:', error);
-          showError(t('torrentDetails.toasts.categoryUpdateError', { defaultValue: 'Falha ao atualizar categoria' }));
+          toast.error(t('torrentDetails.toasts.categoryUpdateError', { defaultValue: 'Falha ao atualizar categoria' }));
         }
       }
     } else {
@@ -263,12 +262,12 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
             onUpdateTags(torrent.id, editedTags);
           }
           
-          showSuccess(t('torrentDetails.toasts.tagsUpdateSuccess', { defaultValue: 'Tags atualizadas com sucesso' }));
+          toast.success(t('torrentDetails.toasts.tagsUpdateSuccess', { defaultValue: 'Tags atualizadas com sucesso' }));
           
           setIsEditingTags(false);
         } catch (error) {
           console.error('Failed to update tags:', error);
-          showError(t('torrentDetails.toasts.tagsUpdateError', { defaultValue: 'Falha ao atualizar tags' }));
+          toast.error(t('torrentDetails.toasts.tagsUpdateError', { defaultValue: 'Falha ao atualizar tags' }));
         }
       }
     } else {

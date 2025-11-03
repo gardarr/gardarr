@@ -28,14 +28,17 @@ import { FilterSidebar } from "@/components/ui/FilterSidebar";
 import { TorrentDetailsModal } from "@/components/TorrentDetailsModal";
 import { AddTorrentModal } from "@/components/AddTorrentModal";
 import { TorrentMetricsModal } from "@/components/TorrentMetricsModal";
+import { TorrentLimitModal } from "@/components/TorrentLimitModal";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import TorrentContextMenu from "@/components/TorrentContextMenu";
 import { RatioBadge } from "@/components/RatioBadge";
-import { ToastContainer } from "@/components/ui/toast-container";
-import { useToast } from "@/hooks/useToast";
+import { toast } from "sonner";
 import { AgentIcon } from "@/components/ui/AgentIcon";
 import { getStatusIcon, getStatusColor, getStatusBackgroundColor, type TorrentStatus } from "@/components/TorrentStatusIcon";
+import { normalizeTaskStatus } from "@/utils/statusUtils";
 import { getRatioGrade } from "@/utils/ratioUtils";
+import { formatBytes, formatBytesPerSecond } from "@/utils/bytes";
+import { truncateText, isTextTruncated } from "@/utils/textUtils";
 import taskDefaultBg from "@/assets/img/common/task-default-background.png";
 
 type SortType = "priority" | "alphabetical" | "size" | "progress" | "download_speed" | "upload_speed" | "downloaded" | "uploaded";
@@ -68,20 +71,9 @@ type Torrent = {
 function mapTaskToTorrent(task: Task): Torrent {
   // Mapear status do backend (já convertido para uppercase pelo mapeamento TaskStatuses)
   const mapStatus = (state: string): TorrentStatus => {
-    
     // O backend já converte os status do qBittorrent para uppercase através do mapeamento TaskStatuses
-    // Então aqui apenas validamos se é um status conhecido
-    const validStatuses: TorrentStatus[] = [
-      'ERROR', 'MISSING_FILES', 'UPLOADING', 'PAUSED_UPLOAD', 'STOPPED_UPLOAD',
-      'QUEUED_UPLOAD', 'STALLED_UPLOAD', 'CHECKING_UPLOAD', 'FORCED_UPLOAD',
-      'ALLOCATING', 'DOWNLOADING', 'METADATA_DOWNLOAD', 'FORCED_METADATA_DOWNLOAD',
-      'PAUSED_DOWNLOAD', 'STOPPED_DOWNLOAD', 'QUEUED_DOWNLOAD', 'FORCED_DOWNLOAD',
-      'STALLED_DOWNLOAD', 'CHECKING_DOWNLOAD', 'CHECKING_RESUME_DATA', 'MOVING', 'UNKNOWN'
-    ];
-    
-    const mappedStatus = validStatuses.includes(state as TorrentStatus) ? state as TorrentStatus : 'UNKNOWN';
-    
-    return mappedStatus;
+    // Usamos normalizeTaskStatus para garantir que temos um status válido ou 'UNKNOWN'
+    return normalizeTaskStatus(state);
   };
 
   return {
@@ -107,34 +99,6 @@ function mapTaskToTorrent(task: Task): Torrent {
     tags: task.tags || [],
   };
 }
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  const value = bytes / Math.pow(k, i);
-  return `${value.toFixed(value >= 100 ? 0 : value >= 10 ? 1 : 2)} ${sizes[i]}`;
-}
-
-function formatRate(bps: number): string {
-  return `${formatBytes(bps)}/s`;
-}
-
-function truncateText(text: string, maxLength: number = 50): string {
-  if (text.length <= maxLength) {
-    return text;
-  }
-  return text.substring(0, maxLength) + "...";
-}
-
-function isTextTruncated(text: string, maxLength: number = 50): boolean {
-  return text.length > maxLength;
-}
-
-
-
-
 
 // Função para obter chave de tradução do tipo de ordenação
 function getSortTypeKey(sortType: SortType): string {
@@ -206,7 +170,7 @@ function getStatusPriority(status: TorrentStatus): number {
   }
 }
 
-function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics }: { 
+function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits }: Readonly<{ 
   torrent: Torrent; 
   onShowDetails: (id: string) => void;
   onStart: (id: string) => void;
@@ -216,7 +180,8 @@ function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForc
   onForceReannounce: (id: string) => void;
   onForceRecheck: (id: string) => void;
   onMetrics?: (taskId: string, agentId?: string) => void;
-}) {
+  onLimits?: (taskId: string, agentId?: string) => void;
+}>) {
   const StatusIcon = getStatusIcon(torrent.status);
 
   return (
@@ -230,6 +195,7 @@ function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForc
       onForceReannounce={onForceReannounce}
       onForceRecheck={onForceRecheck}
       onMetrics={onMetrics}
+      onLimits={onLimits}
     >
       <Card 
         className="hover:shadow-lg transition-shadow overflow-hidden p-0 gap-2 cursor-pointer relative"
@@ -293,7 +259,7 @@ function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForc
           <div className="flex items-center gap-1.5">
             <Download className="h-3.5 w-3.5 text-green-600 dark:text-green-400" aria-hidden="true" />
             <span className={torrent.downloadRateBps > 0 ? 'text-green-600 dark:text-green-400' : ''}>
-              {formatRate(torrent.downloadRateBps)}
+              {formatBytesPerSecond(torrent.downloadRateBps)}
             </span>
             <span className="text-muted-foreground">•</span>
             <span className="text-xs text-muted-foreground">
@@ -304,7 +270,7 @@ function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForc
             <div className="flex items-center gap-1.5">
               <Upload className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" aria-hidden="true" />
               <span className={torrent.uploadRateBps > 0 ? 'text-purple-600 dark:text-purple-400' : ''}>
-                {formatRate(torrent.uploadRateBps)}
+                {formatBytesPerSecond(torrent.uploadRateBps)}
               </span>
               <span className="text-muted-foreground">•</span>
               <span className="text-xs text-muted-foreground">
@@ -329,7 +295,7 @@ function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForc
   );
 }
 
-function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics }: { 
+function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits }: Readonly<{ 
   torrent: Torrent; 
   onShowDetails: (id: string) => void;
   onStart: (id: string) => void;
@@ -339,7 +305,8 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
   onForceReannounce: (id: string) => void;
   onForceRecheck: (id: string) => void;
   onMetrics?: (taskId: string, agentId?: string) => void;
-}) {
+  onLimits?: (taskId: string, agentId?: string) => void;
+}>) {
   const StatusIcon = getStatusIcon(torrent.status);
 
   return (
@@ -353,6 +320,7 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
       onForceReannounce={onForceReannounce}
       onForceRecheck={onForceRecheck}
       onMetrics={onMetrics}
+      onLimits={onLimits}
     >
       <tr 
         className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
@@ -395,7 +363,7 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
       <td className="px-4 py-3 text-sm">
         <div className="flex flex-col">
           <span className={torrent.downloadRateBps > 0 ? 'text-green-600 dark:text-green-400' : ''}>
-            {formatRate(torrent.downloadRateBps)}
+            {formatBytesPerSecond(torrent.downloadRateBps)}
           </span>
           <span className="text-xs text-muted-foreground">
             ({formatBytes(torrent.downloadedBytes)})
@@ -405,7 +373,7 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
       <td className="px-4 py-3 text-sm">
         <div className="flex flex-col">
           <span className={torrent.uploadRateBps > 0 ? 'text-purple-600 dark:text-purple-400' : ''}>
-            {formatRate(torrent.uploadRateBps)}
+            {formatBytesPerSecond(torrent.uploadRateBps)}
           </span>
           <span className="text-xs text-muted-foreground">
             ({formatBytes(torrent.uploadedBytes)})
@@ -776,9 +744,13 @@ export default function TorrentsPage() {
   const [isMetricsModalOpen, setIsMetricsModalOpen] = useState(false);
   const [metricsTaskId, setMetricsTaskId] = useState<string>("");
   const [metricsAgentId, setMetricsAgentId] = useState<string>("");
+  const [isLimitsModalOpen, setIsLimitsModalOpen] = useState(false);
+  const [limitsTaskId, setLimitsTaskId] = useState<string>("");
+  const [limitsAgentId, setLimitsAgentId] = useState<string>("");
+  const [limitsTaskName, setLimitsTaskName] = useState<string>("");
+  const [limitsTaskStatus, setLimitsTaskStatus] = useState<string>("");
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false);
   const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
-  const { toasts, showSuccess, showError, removeToast } = useToast();
   
   // Refs para rastrear valores anteriores de status/categorias/tags disponíveis
   const prevAvailableStatusesRef = useRef<TorrentStatus[]>([]);
@@ -987,18 +959,18 @@ export default function TorrentsPage() {
       if (errors.length > 0) {
         console.warn('Some agents failed to load tasks:', errors);
         // Opcional: mostrar um toast de aviso sobre agentes com erro
-        // showError(`Some agents failed to load tasks: ${errors.join(', ')}`);
+        // toast.error(`Some agents failed to load tasks: ${errors.join(', ')}`);
       }
 
       setOriginalTasks(allTasks);
       const mappedTorrents = allTasks.map(mapTaskToTorrent);
       setTorrents(mappedTorrents);
     } catch (err) {
-      showError(err instanceof Error ? err.message : t('torrents.error'));
+      toast.error(err instanceof Error ? err.message : t('torrents.error'));
     } finally {
       setLoading(false);
     }
-  }, [showError, t, agents]);
+  }, [t, agents]);
 
   // Atualização silenciosa para não afetar UI (sem spinner)
   const refreshTorrentsSilently = useCallback(async () => {
@@ -1097,22 +1069,41 @@ export default function TorrentsPage() {
     setMetricsAgentId("");
   };
 
+  // Abrir modal de limites
+  const handleShowLimits = (taskId: string, agentId?: string) => {
+    const task = originalTasks.find(t => t.id === taskId);
+    setLimitsTaskId(taskId);
+    setLimitsAgentId(agentId || "");
+    setLimitsTaskName(task?.name || "");
+    setLimitsTaskStatus(task?.state || "");
+    setIsLimitsModalOpen(true);
+  };
+
+  // Fechar modal de limites
+  const handleCloseLimitsModal = () => {
+    setIsLimitsModalOpen(false);
+    setLimitsTaskId("");
+    setLimitsAgentId("");
+    setLimitsTaskName("");
+    setLimitsTaskStatus("");
+  };
+
   // Controles de torrent
   const handlePlayTorrent = async (torrentId: string) => {
     try {
       const task = originalTasks.find(t => t.id === torrentId);
       if (!task || !task.agent?.uuid) {
-        showError('Agent ID não encontrado para este torrent');
+        toast.error('Agent ID não encontrado para este torrent');
         return;
       }
 
       const response = await torrentService.resumeTask(task.agent.uuid, torrentId);
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
         return;
       }
 
-      showSuccess('Torrent retomado com sucesso');
+      toast.success('Torrent retomado com sucesso');
       
       // Recarregar dados sem fechar o modal
       const refreshResponse = await torrentService.listTasks();
@@ -1128,7 +1119,7 @@ export default function TorrentsPage() {
         }
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Erro ao retomar torrent');
+      toast.error(err instanceof Error ? err.message : 'Erro ao retomar torrent');
     }
   };
 
@@ -1136,17 +1127,17 @@ export default function TorrentsPage() {
     try {
       const task = originalTasks.find(t => t.id === torrentId);
       if (!task || !task.agent?.uuid) {
-        showError('Agent ID não encontrado para este torrent');
+        toast.error('Agent ID não encontrado para este torrent');
         return;
       }
 
       const response = await torrentService.pauseTask(task.agent.uuid, torrentId);
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
         return;
       }
 
-      showSuccess('Torrent pausado com sucesso');
+      toast.success('Torrent pausado com sucesso');
       
       // Recarregar dados sem fechar o modal
       const refreshResponse = await torrentService.listTasks();
@@ -1162,7 +1153,7 @@ export default function TorrentsPage() {
         }
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Erro ao pausar torrent');
+      toast.error(err instanceof Error ? err.message : 'Erro ao pausar torrent');
     }
   };
 
@@ -1170,17 +1161,17 @@ export default function TorrentsPage() {
     try {
       const task = originalTasks.find(t => t.id === torrentId);
       if (!task || !task.agent?.uuid) {
-        showError('Agent ID não encontrado para este torrent');
+        toast.error('Agent ID não encontrado para este torrent');
         return;
       }
 
       const response = await torrentService.forceDownloadTask(task.agent.uuid, torrentId);
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
         return;
       }
 
-      showSuccess('Force download iniciado com sucesso');
+      toast.success('Force download iniciado com sucesso');
       
       // Recarregar dados sem fechar o modal
       const refreshResponse = await torrentService.listTasks();
@@ -1196,7 +1187,7 @@ export default function TorrentsPage() {
         }
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Erro ao forçar download do torrent');
+      toast.error(err instanceof Error ? err.message : 'Erro ao forçar download do torrent');
     }
   };
 
@@ -1204,17 +1195,17 @@ export default function TorrentsPage() {
     try {
       const task = originalTasks.find(t => t.id === torrentId);
       if (!task || !task.agent?.uuid) {
-        showError('Agent ID não encontrado para este torrent');
+        toast.error('Agent ID não encontrado para este torrent');
         return;
       }
 
       const response = await torrentService.forceReannounceTask(task.agent.uuid, torrentId);
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
         return;
       }
 
-      showSuccess('Force reannounce iniciado com sucesso');
+      toast.success('Force reannounce iniciado com sucesso');
       
       // Recarregar dados sem fechar o modal
       const refreshResponse = await torrentService.listTasks();
@@ -1230,7 +1221,7 @@ export default function TorrentsPage() {
         }
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Erro ao forçar reannounce do torrent');
+      toast.error(err instanceof Error ? err.message : 'Erro ao forçar reannounce do torrent');
     }
   };
 
@@ -1238,17 +1229,17 @@ export default function TorrentsPage() {
     try {
       const task = originalTasks.find(t => t.id === torrentId);
       if (!task || !task.agent?.uuid) {
-        showError('Agent ID não encontrado para este torrent');
+        toast.error('Agent ID não encontrado para este torrent');
         return;
       }
 
       const response = await torrentService.forceRecheckTask(task.agent.uuid, torrentId);
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
         return;
       }
 
-      showSuccess('Force recheck iniciado com sucesso');
+      toast.success('Force recheck iniciado com sucesso');
       
       // Recarregar dados sem fechar o modal
       const refreshResponse = await torrentService.listTasks();
@@ -1264,7 +1255,7 @@ export default function TorrentsPage() {
         }
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Erro ao forçar recheck do torrent');
+      toast.error(err instanceof Error ? err.message : 'Erro ao forçar recheck do torrent');
     }
   };
 
@@ -1273,17 +1264,17 @@ export default function TorrentsPage() {
     try {
       const task = originalTasks.find(t => t.id === torrentId);
       if (!task || !task.agent?.uuid) {
-        showError('Agent ID não encontrado para este torrent');
+        toast.error('Agent ID não encontrado para este torrent');
         return;
       }
 
       const response = await torrentService.renameTask(task.agent.uuid, torrentId, newName);
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
         return;
       }
 
-      showSuccess('Torrent renomeado com sucesso');
+      toast.success('Torrent renomeado com sucesso');
       
       // Recarregar dados sem fechar o modal
       const refreshResponse = await torrentService.listTasks();
@@ -1299,7 +1290,7 @@ export default function TorrentsPage() {
         }
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Erro ao renomear torrent');
+      toast.error(err instanceof Error ? err.message : 'Erro ao renomear torrent');
     }
   };
 
@@ -1307,17 +1298,17 @@ export default function TorrentsPage() {
     try {
       const task = originalTasks.find(t => t.id === torrentId);
       if (!task || !task.agent?.uuid) {
-        showError('Agent ID não encontrado para este torrent');
+        toast.error('Agent ID não encontrado para este torrent');
         return;
       }
 
       const response = await torrentService.setTaskLocation(task.agent.uuid, torrentId, location);
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
         return;
       }
 
-      showSuccess('Caminho alterado com sucesso');
+      toast.success('Caminho alterado com sucesso');
       
       // Recarregar dados sem fechar o modal
       const refreshResponse = await torrentService.listTasks();
@@ -1333,7 +1324,7 @@ export default function TorrentsPage() {
         }
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Erro ao alterar caminho do torrent');
+      toast.error(err instanceof Error ? err.message : 'Erro ao alterar caminho do torrent');
     }
   };
 
@@ -1341,26 +1332,26 @@ export default function TorrentsPage() {
     try {
       const task = originalTasks.find(t => t.id === torrentId);
       if (!task || !task.agent?.uuid) {
-        showError('Agent ID não encontrado para este torrent');
+        toast.error('Agent ID não encontrado para este torrent');
         return;
       }
 
       const response = await torrentService.deleteTask(task.agent.uuid, torrentId, purge);
       
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
         return;
       }
       
       // Fechar modal e recarregar lista
       handleCloseModal();
       await loadTorrents();
-      showSuccess(purge 
+      toast.success(purge 
         ? t('torrents.notifications.deleteWithFilesSuccess') 
         : t('torrents.notifications.deleteSuccess')
       );
     } catch (err) {
-      showError(err instanceof Error ? err.message : t('torrents.notifications.deleteError'));
+      toast.error(err instanceof Error ? err.message : t('torrents.notifications.deleteError'));
     }
   };
 
@@ -1372,7 +1363,7 @@ export default function TorrentsPage() {
       if (response.error) {
         // Fechar o modal e exibir toast com erro
         setIsAddModalOpen(false);
-        showError(t('torrents.notifications.addError', { error: response.error }));
+        toast.error(t('torrents.notifications.addError', { error: response.error }));
         return;
       }
       
@@ -1380,12 +1371,12 @@ export default function TorrentsPage() {
       await loadTorrents();
       
       // Exibir mensagem de sucesso
-      showSuccess(t('torrents.notifications.addSuccess'));
+      toast.success(t('torrents.notifications.addSuccess'));
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : t('torrents.error');
       // Fechar o modal e exibir toast com erro
       setIsAddModalOpen(false);
-      showError(t('torrents.notifications.addError', { error: errorMessage }));
+      toast.error(t('torrents.notifications.addError', { error: errorMessage }));
     }
   };
 
@@ -2131,6 +2122,7 @@ export default function TorrentsPage() {
                     onForceReannounce={handleForceReannounceTorrent}
                     onForceRecheck={handleForceRecheckTorrent}
                     onMetrics={handleShowMetrics}
+                    onLimits={handleShowLimits}
                   />
                 ))}
               </tbody>
@@ -2180,6 +2172,7 @@ export default function TorrentsPage() {
                 onForceDownload={handleForceDownloadTorrent}
                 onForceReannounce={handleForceReannounceTorrent}
                 onForceRecheck={handleForceRecheckTorrent}
+                onLimits={handleShowLimits}
               />
             ))}
           </div>
@@ -2235,8 +2228,18 @@ export default function TorrentsPage() {
         />
       )}
 
-      {/* Toast notifications */}
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
+      {/* Modal de limites do torrent - só renderiza quando aberto */}
+      {isLimitsModalOpen && limitsTaskId && limitsAgentId && (
+        <TorrentLimitModal
+          isOpen={isLimitsModalOpen}
+          onClose={handleCloseLimitsModal}
+          agentId={limitsAgentId}
+          taskId={limitsTaskId}
+          taskName={limitsTaskName}
+          taskStatus={limitsTaskStatus}
+        />
+      )}
+
 
       {/* Filter Sidebar - só renderiza quando aberto */}
       {isFilterSidebarOpen && (

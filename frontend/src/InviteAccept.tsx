@@ -8,8 +8,7 @@ import { Link2, Loader2, CheckCircle, XCircle, Mail, Lock } from "lucide-react";
 import { inviteService } from "./services/invites";
 import { signupService } from "./services/signup";
 import type { Invite } from "./types/invite";
-import { useToast } from "./hooks/useToast";
-import { ToastContainer } from "./components/ui/toast-container";
+import { toast, Toaster } from "sonner";
 import logoImage from "@/assets/img/logo/logo_64x64.png";
 
 function InviteAccept() {
@@ -23,7 +22,6 @@ function InviteAccept() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [setupChecked, setSetupChecked] = useState(false);
-  const { toasts, showSuccess, showError, removeToast } = useToast();
 
   // Check if system needs setup (only once)
   useEffect(() => {
@@ -54,7 +52,7 @@ function InviteAccept() {
       const response = await inviteService.validateInvite(code);
 
       if (response.error || !response.data) {
-        showError(response.error || "Invalid invite code");
+        toast.error(response.error || "Invalid invite code");
         setValid(false);
       } else if (response.data.valid && response.data.invite) {
         setValid(true);
@@ -64,16 +62,16 @@ function InviteAccept() {
           setEmail(response.data.invite.email);
         }
       } else {
-        showError("This invite is no longer valid");
+        toast.error("This invite is no longer valid");
         setValid(false);
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : "Failed to validate invite");
+      toast.error(err instanceof Error ? err.message : "Failed to validate invite");
       setValid(false);
     } finally {
       setLoading(false);
     }
-  }, [code, showError]);
+  }, [code]);
 
   useEffect(() => {
     if (code) {
@@ -88,17 +86,17 @@ function InviteAccept() {
 
     // Validate form
     if (!email || !password) {
-      showError("Please fill in all fields");
+      toast.error("Please fill in all fields");
       return;
     }
 
     if (password.length < 8) {
-      showError("Password must be at least 8 characters");
+      toast.error("Password must be at least 8 characters");
       return;
     }
 
     if (password !== confirmPassword) {
-      showError("Passwords do not match");
+      toast.error("Passwords do not match");
       return;
     }
 
@@ -111,15 +109,15 @@ function InviteAccept() {
       });
 
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
       } else {
-        showSuccess("Account created successfully! Redirecting to login...");
+        toast.success("Account created successfully! Redirecting to login...");
         setTimeout(() => {
           navigate("/login");
         }, 2000);
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : "Failed to create account");
+      toast.error(err instanceof Error ? err.message : "Failed to create account");
     } finally {
       setSubmitting(false);
     }
@@ -141,7 +139,6 @@ function InviteAccept() {
   if (!valid || !invite) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <ToastContainer toasts={toasts} onRemove={removeToast} />
         <Card className="w-full max-w-md">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <XCircle className="h-16 w-16 text-destructive mb-4" />
@@ -160,7 +157,7 @@ function InviteAccept() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
+      <Toaster richColors />
       
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-4">

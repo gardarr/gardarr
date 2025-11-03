@@ -41,8 +41,7 @@ import { signupService } from "./services/signup";
 import { authService } from "./services/auth";
 import type { User as UserManagementUser, UpdateUserRequest } from "./types/user";
 import type { SignupToken, CreateSignupTokenRequest } from "./types/signup";
-import { useToast } from "./hooks/useToast";
-import { ToastContainer } from "./components/ui/toast-container";
+import { toast } from "sonner";
 import { useAuth } from "./contexts/auth-hooks";
 
 type SortType = "email" | "created_at" | "role";
@@ -82,7 +81,6 @@ function Users() {
     expires_in: 168 // 7 days default (in hours)
   });
   
-  const { toasts, showSuccess, showError, removeToast } = useToast();
 
   // Check if current user is admin
   const isAdmin = currentUser?.role === 'admin';
@@ -93,16 +91,16 @@ function Users() {
       const response = await userService.listUsers();
       
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
       } else if (response.data) {
         setUsers(response.data.users || []);
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to load users');
+      toast.error(err instanceof Error ? err.message : 'Failed to load users');
     } finally {
       setLoading(false);
     }
-  }, [showError]);
+  }, []);
 
   // Redirect non-admin users to dashboard
   useEffect(() => {
@@ -125,12 +123,12 @@ function Users() {
       const response = await signupService.listMagicLinks();
       
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
       } else if (response.data) {
         setMagicLinks(response.data);
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to load magic links');
+      toast.error(err instanceof Error ? err.message : 'Failed to load magic links');
     } finally {
       setLoadingMagicLinks(false);
     }
@@ -150,7 +148,7 @@ function Users() {
 
       const response = await signupService.createMagicLink(data);
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
       } else if (response.data) {
         // Convert response to SignupToken format
         const newToken: SignupToken = {
@@ -162,7 +160,7 @@ function Users() {
           used: false
         };
         setMagicLinks([newToken, ...magicLinks]);
-        showSuccess('Magic link created successfully');
+        toast.success('Magic link created successfully');
         setCreateMagicLinkForm({ 
           email: "", 
           role: "user", 
@@ -171,7 +169,7 @@ function Users() {
         setShowCreateMagicLinkForm(false);
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to create magic link');
+      toast.error(err instanceof Error ? err.message : 'Failed to create magic link');
     }
   };
 
@@ -179,13 +177,13 @@ function Users() {
     try {
       const response = await signupService.revokeMagicLink(magicLink.token);
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
       } else {
         setMagicLinks(magicLinks.filter(link => link.token !== magicLink.token));
-        showSuccess('Magic link revoked successfully');
+        toast.success('Magic link revoked successfully');
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to revoke magic link');
+      toast.error(err instanceof Error ? err.message : 'Failed to revoke magic link');
     }
   };
 
@@ -193,9 +191,9 @@ function Users() {
     const url = signupService.getSignupUrl(magicLink.token);
     try {
       await navigator.clipboard.writeText(url);
-      showSuccess('Magic link copied to clipboard');
+      toast.success('Magic link copied to clipboard');
     } catch {
-      showError('Failed to copy link');
+      toast.error('Failed to copy link');
     }
   };
 
@@ -210,16 +208,16 @@ function Users() {
     try {
       const response = await authService.requestPasswordReset(userToEdit.uuid);
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
       } else if (response.data) {
         // Generate the password reset URL
         const resetUrl = `${window.location.origin}/reset-password?token=${response.data.token}`;
         setPasswordResetLink(resetUrl);
         setShowPasswordResetLink(true);
-        showSuccess('Password reset link generated successfully');
+        toast.success('Password reset link generated successfully');
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to generate password reset link');
+      toast.error(err instanceof Error ? err.message : 'Failed to generate password reset link');
     }
   };
 
@@ -228,9 +226,9 @@ function Users() {
     
     try {
       await navigator.clipboard.writeText(passwordResetLink);
-      showSuccess('Password reset link copied to clipboard');
+      toast.success('Password reset link copied to clipboard');
     } catch {
-      showError('Failed to copy link');
+      toast.error('Failed to copy link');
     }
   };
 
@@ -245,17 +243,17 @@ function Users() {
     try {
       const response = await userService.deleteUser(userToDelete.uuid);
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
       } else {
         setUsers(users.filter(user => user.uuid !== userToDelete.uuid));
-        showSuccess('User deleted successfully');
+        toast.success('User deleted successfully');
         setShowDeleteModal(false);
         setShowDetailsModal(false);
         setUserToDelete(null);
         setSelectedUser(null);
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to delete user');
+      toast.error(err instanceof Error ? err.message : 'Failed to delete user');
     }
   };
 
@@ -295,27 +293,27 @@ function Users() {
 
     // If no changes, show message and return
     if (Object.keys(updateData).length === 0) {
-      showError('No changes detected');
+      toast.error('No changes detected');
       return;
     }
 
     try {
       const response = await userService.updateUser(userToEdit.uuid, updateData);
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
       } else if (response.data) {
         // Update the user in the list
         setUsers(users.map(user => 
           user.uuid === userToEdit.uuid ? response.data! : user
         ));
-        showSuccess('User updated successfully');
+        toast.success('User updated successfully');
         setShowEditModal(false);
         setShowDetailsModal(false);
         setUserToEdit(null);
         setSelectedUser(null);
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to update user');
+      toast.error(err instanceof Error ? err.message : 'Failed to update user');
     }
   };
 
@@ -371,7 +369,6 @@ function Users() {
 
   return (
     <div className="space-y-6">
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
       
       {/* Header */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">

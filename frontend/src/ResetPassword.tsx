@@ -14,14 +14,12 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import { authService } from './services/auth';
-import { useToast } from './hooks/useToast';
-import { ToastContainer } from './components/ui/toast-container';
+import { toast, Toaster } from "sonner";
 
 export default function ResetPasswordPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { toasts, showSuccess, showError, removeToast } = useToast();
   
   const [token, setToken] = useState<string>('');
   const [newPassword, setNewPassword] = useState('');
@@ -43,17 +41,17 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     
     if (!token) {
-      showError(t('resetPassword.errors.tokenRequired'));
+      toast.error(t('resetPassword.errors.tokenRequired'));
       return;
     }
 
     if (newPassword.length < 8) {
-      showError(t('resetPassword.errors.passwordTooShort'));
+      toast.error(t('resetPassword.errors.passwordTooShort'));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      showError(t('resetPassword.errors.passwordsMismatch'));
+      toast.error(t('resetPassword.errors.passwordsMismatch'));
       return;
     }
 
@@ -63,10 +61,10 @@ export default function ResetPasswordPage() {
       const response = await authService.resetPassword(token, newPassword);
       
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
       } else {
         setIsSuccess(true);
-        showSuccess(t('resetPassword.success.message'));
+        toast.success(t('resetPassword.success.message'));
         
         // Redirect to login after 3 seconds
         setTimeout(() => {
@@ -74,7 +72,7 @@ export default function ResetPasswordPage() {
         }, 3000);
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : t('resetPassword.errors.resetFailed'));
+      toast.error(err instanceof Error ? err.message : t('resetPassword.errors.resetFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -95,7 +93,6 @@ export default function ResetPasswordPage() {
   if (isSuccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
-        <ToastContainer toasts={toasts} onRemove={removeToast} />
         
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
@@ -133,7 +130,7 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
+      <Toaster richColors />
       
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
