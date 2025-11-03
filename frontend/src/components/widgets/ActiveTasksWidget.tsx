@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Activity, AlertTriangle, Download, Upload, PauseCircle, CheckCircle2 } from 'lucide-react';
 import type { Task } from '@/types/torrent';
+import { normalizeTaskStatus, isActiveStatus, isDownloadStatus, isInactiveStatus } from '@/utils/statusUtils';
 
 interface ActiveTasksWidgetProps {
   tasks: Task[];
@@ -11,40 +12,18 @@ interface ActiveTasksWidgetProps {
 
 const ActiveTasksWidget: React.FC<ActiveTasksWidgetProps> = ({ tasks, title = 'Active Tasks' }) => {
   const statusToCount = tasks.reduce<Record<string, number>>((acc, task) => {
-    const status = (task.state || 'UNKNOWN').toUpperCase();
+    const status = normalizeTaskStatus(task.state || 'UNKNOWN');
     acc[status] = (acc[status] || 0) + 1;
     return acc;
   }, {});
 
   const entries = Object.entries(statusToCount);
-  const isDownloadingStatus = (status: string) => {
-    const s = (status || 'UNKNOWN').toUpperCase();
-    return (
-      s === 'DOWNLOADING' ||
-      s === 'FORCED_DOWNLOAD' ||
-      s === 'FORCED_METADATA_DOWNLOAD' ||
-      s === 'METADATA_DOWNLOAD'
-    );
-  };
-
-  const isPausedOrUnknownStatus = (status: string) => {
-    const s = (status || 'UNKNOWN').toUpperCase();
-    return (
-      s === 'PAUSED_DOWNLOAD' ||
-      s === 'PAUSED_UPLOAD' ||
-      s === 'STOPPED_DOWNLOAD' ||
-      s === 'STOPPED_UPLOAD' ||
-      s === 'STALLED_DOWNLOAD' ||
-      s === 'STALLED_UPLOAD' ||
-      s === 'UNKNOWN'
-    );
-  };
 
   const getStatusRank = (status: string) => {
-    const s = (status || 'UNKNOWN').toUpperCase();
-    if (s === 'ERROR') return 0;
-    if (isDownloadingStatus(s)) return 1;
-    if (isPausedOrUnknownStatus(s)) return 3;
+    const normalizedStatus = normalizeTaskStatus(status);
+    if (normalizedStatus === 'ERROR') return 0;
+    if (isDownloadStatus(normalizedStatus)) return 1;
+    if (isInactiveStatus(normalizedStatus) || normalizedStatus === 'UNKNOWN') return 3;
     return 2;
   };
 
@@ -60,8 +39,10 @@ const ActiveTasksWidget: React.FC<ActiveTasksWidgetProps> = ({ tasks, title = 'A
   const top3 = entries.slice(0, 3);
 
   const getIcon = (status: string) => {
-    switch (status) {
+    const normalizedStatus = normalizeTaskStatus(status);
+    switch (normalizedStatus) {
       case 'ERROR':
+      case 'MISSING_FILES':
         return <AlertTriangle className="h-4 w-4 text-red-500" />;
       case 'DOWNLOADING':
       case 'FORCED_DOWNLOAD':
@@ -69,10 +50,8 @@ const ActiveTasksWidget: React.FC<ActiveTasksWidgetProps> = ({ tasks, title = 'A
       case 'METADATA_DOWNLOAD':
         return <Download className="h-4 w-4 text-green-500" />;
       case 'UPLOADING':
-      case 'SEEDING':
       case 'FORCED_UPLOAD':
       case 'CHECKING_UPLOAD':
-      case 'FORCED_UPLOAD_METADATA':
         return <Upload className="h-4 w-4 text-purple-500" />;
       case 'PAUSED_DOWNLOAD':
       case 'PAUSED_UPLOAD':
@@ -83,7 +62,6 @@ const ActiveTasksWidget: React.FC<ActiveTasksWidgetProps> = ({ tasks, title = 'A
       case 'QUEUED_DOWNLOAD':
       case 'STALLED_DOWNLOAD':
         return <PauseCircle className="h-4 w-4 text-muted-foreground" />;
-      case 'COMPLETED':
       case 'CHECKING_RESUME_DATA':
       case 'MOVING':
         return <CheckCircle2 className="h-4 w-4 text-lime-500" />;
@@ -93,19 +71,7 @@ const ActiveTasksWidget: React.FC<ActiveTasksWidgetProps> = ({ tasks, title = 'A
   };
 
   const total = tasks.length;
-  const isActiveStatus = (status: string) => {
-    const s = status.toUpperCase();
-    return !(
-      s === 'PAUSED_DOWNLOAD' ||
-      s === 'PAUSED_UPLOAD' ||
-      s === 'STALLED_DOWNLOAD' ||
-      s === 'STALLED_UPLOAD' ||
-      s === 'STOPPED_DOWNLOAD' ||
-      s === 'STOPPED_UPLOAD' ||
-      s === 'UNKNOWN'
-    );
-  };
-  const active = tasks.filter(t => isActiveStatus(t.state || 'UNKNOWN')).length;
+  const active = tasks.filter(t => isActiveStatus(normalizeTaskStatus(t.state || 'UNKNOWN'))).length;
 
 
   return (

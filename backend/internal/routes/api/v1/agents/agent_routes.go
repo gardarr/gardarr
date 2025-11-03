@@ -46,7 +46,7 @@ func (m Module) Register() {
 	m.agentRouter.POST("/:id/task/:task_id/start", m.startAgentTask)
 	m.agentRouter.POST("/:id/task/:task_id/force_download", m.forceDownloadAgentTask)
 	m.agentRouter.POST("/:id/task/:task_id/force_resume", m.forceResumeAgentTask)
-	m.agentRouter.POST("/:id/task/:task_id/share_limit", m.setAgentTaskShareLimit)
+	m.agentRouter.PUT("/:id/task/:task_id/share_limit", m.setAgentTaskShareLimit)
 	m.agentRouter.POST("/:id/task/:task_id/location", m.setAgentTaskLocation)
 	m.agentRouter.POST("/:id/task/:task_id/rename", m.renameAgentTask)
 	m.agentRouter.GET("/:id/task/:task_id/limits", m.getAgentTaskLimits)
@@ -291,8 +291,6 @@ func (m *Module) setAgentTaskShareLimit(c *gin.Context) {
 		c.JSON(respErr.StatusCode, respErr)
 		return
 	}
-
-	body.Hash = taskID
 
 	if err := m.service.SetAgentTaskShareLimit(c.Request.Context(), agentID, taskID, body); err != nil {
 		errors.HandleError(c, err)

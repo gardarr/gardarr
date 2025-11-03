@@ -63,7 +63,6 @@ func ToTaskResponse(e *entities.Task) models.TaskResponseModel {
 
 	return models.TaskResponseModel{
 		ID:          e.ID,
-		Agent:       ToAgentResponse(e.Agent),
 		Name:        e.Name,
 		Hash:        e.Hash,
 		CreatedAt:   e.CreatedAt,

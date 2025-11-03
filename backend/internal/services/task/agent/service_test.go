@@ -120,8 +120,8 @@ func (m *mockRepository) SetCategory(hash string, category string) error {
 	return errors.New("task not found")
 }
 
-func (m *mockRepository) SetShareLimit(schema schemas.TaskSetShareLimitSchema) error {
-	if _, exists := m.tasks[schema.Hash]; exists {
+func (m *mockRepository) SetShareLimit(hash string, limits entities.TaskShareLimit) error {
+	if _, exists := m.tasks[hash]; exists {
 		// Simulate setting share limit (in real implementation, this would be handled by qBittorrent)
 		return nil
 	}
@@ -467,20 +467,19 @@ func TestService_SetTaskShareLimit(t *testing.T) {
 	mockRepo.tasks["test-hash"] = task
 
 	schema := schemas.TaskSetShareLimitSchema{
-		Hash:             "test-hash",
-		RatioLimit:       2.0,
-		SeedingTimeLimit: 3600,
+		RatioLimit:               2.0,
+		SeedingTimeLimit:         3600,
+		InactiveSeedingTimeLimit: -2,
 	}
 
 	// Test successful share limit setting
-	err := service.SetTaskShareLimit(ctx, schema)
+	err := service.SetTaskShareLimit(ctx, "test-hash", schema)
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
 
 	// Test with non-existent task
-	schema.Hash = "non-existent-hash"
-	err = service.SetTaskShareLimit(ctx, schema)
+	err = service.SetTaskShareLimit(ctx, "non-existent-hash", schema)
 	if err == nil {
 		t.Error("Expected error for non-existent task, got nil")
 	}

@@ -31,14 +31,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { agentService } from "./services/agents";
 import type { Agent, CreateAgentRequest, UpdateAgentRequest } from "./types/agent";
-import { useToast } from "./hooks/useToast";
-import { ToastContainer } from "./components/ui/toast-container";
+import { toast } from "sonner";
 import { AgentIcon } from "./components/ui/AgentIcon";
 import { availableIcons, availableColors } from "./utils/agentUtils";
 import { QBittorrentIcon } from "./components/ui/QBittorrentIcon";
 import { AgentDetailsModal } from "./components/AgentDetailsModal";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./components/ui/tooltip";
-
 
 function Agents() {
   const { t } = useTranslation();
@@ -70,7 +68,6 @@ function Agents() {
   const [showCreateToken, setShowCreateToken] = useState(false);
   const [showEditToken, setShowEditToken] = useState(false);
   
-  const { toasts, showSuccess, showError, removeToast } = useToast();
 
   const loadAgents = useCallback(async () => {
     try {
@@ -78,16 +75,16 @@ function Agents() {
       const response = await agentService.listAgents();
       
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
       } else if (response.data) {
         setAgents(response.data);
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : t('agents.errors.failedToLoad'));
+      toast.error(err instanceof Error ? err.message : t('agents.errors.failedToLoad'));
     } finally {
       setLoading(false);
     }
-  }, [showError, t]);
+  }, [t]);
 
   // Load agents on component mount
   useEffect(() => {
@@ -106,33 +103,33 @@ function Agents() {
     try {
       const response = await agentService.deleteAgent(agentToDelete.uuid);
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
       } else {
         setAgents(agents.filter(agent => agent.uuid !== agentToDelete.uuid));
-        showSuccess(t('agents.success.deleted'));
+        toast.success(t('agents.success.deleted'));
         setShowDeleteModal(false);
         setShowDetailsModal(false);
         setAgentToDelete(null);
         setSelectedAgentId(null);
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : t('agents.errors.failedToDelete'));
+      toast.error(err instanceof Error ? err.message : t('agents.errors.failedToDelete'));
     }
   };
 
   const handleCreateAgent = async () => {
     if (!createForm.name || !createForm.address || !createForm.token) {
-      showError(t('agents.errors.fillRequiredFields'));
+      toast.error(t('agents.errors.fillRequiredFields'));
       return;
     }
 
     try {
       const response = await agentService.createAgent(createForm);
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
       } else if (response.data) {
         setAgents([...agents, response.data]);
-        showSuccess(t('agents.success.created'));
+        toast.success(t('agents.success.created'));
         // Reset form
         setCreateForm({ 
           name: "", 
@@ -146,7 +143,7 @@ function Agents() {
         setShowCreateForm(false);
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : t('agents.errors.failedToCreate'));
+      toast.error(err instanceof Error ? err.message : t('agents.errors.failedToCreate'));
     }
   };
 
@@ -190,14 +187,14 @@ function Agents() {
 
     // If no changes, show message and return
     if (Object.keys(updateData).length === 0) {
-      showError(t('agents.errors.noChangesDetected'));
+      toast.error(t('agents.errors.noChangesDetected'));
       return;
     }
 
     try {
       const response = await agentService.updateAgent(agentToEdit.uuid, updateData);
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
       } else if (response.data) {
         // Update the agent in the list
         const updatedAgents = agents.map(agent => 
@@ -210,7 +207,7 @@ function Agents() {
           // The modal will reload the agent data automatically
         }
         
-        showSuccess(t('agents.success.updated'));
+        toast.success(t('agents.success.updated'));
         setShowEditModal(false);
         setShowDetailsModal(false);
         setShowEditToken(false);
@@ -218,7 +215,7 @@ function Agents() {
         setSelectedAgentId(null);
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : t('agents.errors.failedToUpdate'));
+      toast.error(err instanceof Error ? err.message : t('agents.errors.failedToUpdate'));
     }
   };
 
@@ -240,7 +237,6 @@ function Agents() {
 
   return (
     <div className="space-y-6">
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
       
       {/* Header */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">

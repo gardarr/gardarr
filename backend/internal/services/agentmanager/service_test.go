@@ -44,7 +44,6 @@ func (r *TestRepository) ListAgentTasks(agent *entities.Agent) ([]*entities.Task
 	return []*entities.Task{
 		{
 			ID:    "task-" + agent.Name,
-			Agent: agent,
 			Name:  "Task from " + agent.Name,
 			State: "downloading",
 		},

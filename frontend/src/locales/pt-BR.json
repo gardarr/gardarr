@@ -524,7 +524,8 @@
         "play": "Iniciar/Retomar",
         "pause": "Pausar",
         "delete": "Remover"
-      }
+      },
+      "limits": "Limites"
     },
     "categories": {
       "title": "Categorias",

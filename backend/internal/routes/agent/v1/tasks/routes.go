@@ -40,8 +40,8 @@ func (m Module) Register() {
 	m.taskRouter.POST("/:id/stop", m.stopTask)
 	m.taskRouter.POST("/:id/start", m.startTask)
 	m.taskRouter.GET("/:id/limits", m.getTaskLimits)
+	m.taskRouter.PUT("/:id/share_limit", m.setTaskShareLimit)
 	m.taskRouter.POST("/:id/force_resume", m.forceResumeTask)
-	m.taskRouter.POST("/:id/share_limit", m.setTaskShareLimit)
 	m.taskRouter.POST("/:id/location", m.setTaskLocation)
 	m.taskRouter.POST("/:id/rename", m.renameTask)
 	m.taskRouter.POST("/:id/super_seeding", m.setTaskSuperSeeding)
@@ -165,30 +165,6 @@ func (m *Module) forceResumeTask(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "task force resumed successfully"})
-}
-
-func (m *Module) setTaskShareLimit(c *gin.Context) {
-	taskID := c.Param("id")
-	if taskID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "task ID is required"})
-		return
-	}
-
-	var body schemas.TaskSetShareLimitSchema
-	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Set the hash from the URL parameter
-	body.Hash = taskID
-
-	if err := m.controller.SetTaskShareLimit(c.Request.Context(), body); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "task share limit set successfully"})
 }
 
 func (m *Module) setTaskLocation(c *gin.Context) {
@@ -408,4 +384,25 @@ func (m *Module) setTaskCategory(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "task category updated successfully"})
+}
+
+func (m *Module) setTaskShareLimit(c *gin.Context) {
+	taskID := c.Param("id")
+	if taskID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "task ID is required"})
+		return
+	}
+
+	var body schemas.TaskSetShareLimitSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := m.controller.SetTaskShareLimit(c.Request.Context(), taskID, body); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "task ratio limit set successfully"})
 }

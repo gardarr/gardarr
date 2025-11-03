@@ -6,8 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Mail, Lock, UserPlus, Sparkles, Shield, Server } from "lucide-react";
 import { signupService } from "./services/signup";
-import { useToast } from "./hooks/useToast";
-import { ToastContainer } from "./components/ui/toast-container";
+import { toast } from "sonner";
 import logoImage from "@/assets/img/logo/logo_64x64.png";
 
 export default function InitialSetupPage() {
@@ -18,7 +17,6 @@ export default function InitialSetupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const { toasts, showSuccess, showError, showInfo, removeToast } = useToast();
 
   // Set dark theme as default on mount
   useEffect(() => {
@@ -37,21 +35,21 @@ export default function InitialSetupPage() {
       const response = await signupService.needsSetup();
 
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
         setNeedsSetup(false);
       } else if (response.data?.needs_setup) {
         setNeedsSetup(true);
       } else {
-        showInfo("System is already configured. Redirecting to login...");
+        toast.info("System is already configured. Redirecting to login...");
         setTimeout(() => navigate("/login"), 2000);
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : "Failed to check setup status");
+      toast.error(err instanceof Error ? err.message : "Failed to check setup status");
       setNeedsSetup(false);
     } finally {
       setLoading(false);
     }
-  }, [showError, showInfo, navigate]);
+  }, [navigate]);
 
   // Check if system needs setup
   useEffect(() => {
@@ -63,17 +61,17 @@ export default function InitialSetupPage() {
 
     // Validate form
     if (!email || !password) {
-      showError("Please fill in all fields");
+      toast.error("Please fill in all fields");
       return;
     }
 
     if (password.length < 8) {
-      showError("Password must be at least 8 characters");
+      toast.error("Password must be at least 8 characters");
       return;
     }
 
     if (password !== confirmPassword) {
-      showError("Passwords do not match");
+      toast.error("Passwords do not match");
       return;
     }
 
@@ -85,15 +83,15 @@ export default function InitialSetupPage() {
       });
 
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
       } else {
-        showSuccess("Admin account created successfully! Redirecting to login...");
+        toast.success("Admin account created successfully! Redirecting to login...");
         setTimeout(() => {
           navigate("/login");
         }, 2000);
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : "Failed to create admin account");
+      toast.error(err instanceof Error ? err.message : "Failed to create admin account");
     } finally {
       setSubmitting(false);
     }
@@ -115,7 +113,6 @@ export default function InitialSetupPage() {
   if (!needsSetup) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 flex items-center justify-center p-4">
-        <ToastContainer toasts={toasts} onRemove={removeToast} />
         <Card className="w-full max-w-md">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Server className="h-16 w-16 text-muted-foreground mb-4" />

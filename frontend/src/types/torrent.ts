@@ -87,3 +87,12 @@ export interface TaskFile {
   piece_range: [number, number];
   availability: number;
 }
+
+export interface TaskLimits {
+  download_limit: number;
+  upload_limit: number;
+  share_limit: number; // Deprecated: use specific limits below
+  ratio_limit: number;
+  seeding_time_limit: number;
+  inactive_seeding_time_limit: number;
+}

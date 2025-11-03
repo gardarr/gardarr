@@ -15,7 +15,6 @@ type TaskService interface {
 	StopTask(context.Context, string) error
 	StartTask(context.Context, string) error
 	ForceResumeTask(context.Context, string) error
-	SetTaskShareLimit(context.Context, schemas.TaskSetShareLimitSchema) error
 	SetTaskLocation(context.Context, string, schemas.TaskSetLocationSchema) error
 	RenameTask(context.Context, string, schemas.TaskRenameSchema) error
 	SetTaskSuperSeeding(context.Context, string, schemas.TaskSuperSeedingSchema) error
@@ -28,6 +27,7 @@ type TaskService interface {
 	ListTaskFiles(context.Context, string) ([]*entities.TaskFile, error)
 	GetTasksStats(context.Context) (*entities.TaskStats, error)
 	GetTaskLimits(context.Context, string) (*entities.TaskLimits, error)
+	SetTaskShareLimit(context.Context, string, schemas.TaskSetShareLimitSchema) error
 }
 
 type InstanceService interface {
@@ -50,7 +50,7 @@ type TaskRepositoryInterface interface {
 	Delete(id string, deleteFiles bool) error
 	SetTags(hash string, tags []string) error
 	SetCategory(hash string, category string) error
-	SetShareLimit(schema schemas.TaskSetShareLimitSchema) error
+	SetShareLimit(hash string, limits entities.TaskShareLimit) error
 	SetLocation(hash string, schema schemas.TaskSetLocationSchema) error
 	Rename(hash string, schema schemas.TaskRenameSchema) error
 	SetSuperSeeding(hash string, schema schemas.TaskSuperSeedingSchema) error

@@ -19,8 +19,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { categoryService } from "./services/categories";
 import type { Category, CreateCategoryRequest, UpdateCategoryRequest } from "./types/category";
-import { useToast } from "./hooks/useToast";
-import { ToastContainer } from "./components/ui/toast-container";
+import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { AddCategoryModal } from "./components/AddCategoryModal";
 import { TagBadge } from "./components/ui/TagBadge";
@@ -36,7 +35,6 @@ function Categories() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   
-  const { toasts, showSuccess, showError, removeToast } = useToast();
 
   const loadCategories = useCallback(async () => {
     try {
@@ -44,16 +42,16 @@ function Categories() {
       const response = await categoryService.listCategories();
       
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
       } else if (response.data) {
         setCategories(response.data);
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : t('categories.errors.loadFailed'));
+      toast.error(err instanceof Error ? err.message : t('categories.errors.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [showError, t]);
+  }, [t]);
 
   // Load categories on component mount
   useEffect(() => {
@@ -67,16 +65,16 @@ function Categories() {
     try {
       const response = await categoryService.deleteCategory(categoryToDelete.id);
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
       } else {
         setCategories(categories.filter(cat => cat.id !== categoryToDelete.id));
-        showSuccess(t('categories.notifications.deleteSuccess'));
+        toast.success(t('categories.notifications.deleteSuccess'));
         setShowDeleteModal(false);
         setCategoryToDelete(null);
         setEditingCategory(null);
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : t('categories.errors.deleteFailed'));
+      toast.error(err instanceof Error ? err.message : t('categories.errors.deleteFailed'));
     }
   };
 
@@ -84,15 +82,15 @@ function Categories() {
     try {
       const response = await categoryService.createCategory(createForm);
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
         throw new Error(response.error);
       } else if (response.data) {
         setCategories([...categories, response.data]);
-        showSuccess(t('categories.notifications.createSuccess'));
+        toast.success(t('categories.notifications.createSuccess'));
         return response.data;
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : t('categories.errors.createFailed'));
+      toast.error(err instanceof Error ? err.message : t('categories.errors.createFailed'));
       throw err;
     }
   };
@@ -101,7 +99,7 @@ function Categories() {
     try {
       const response = await categoryService.updateCategory(categoryId, updateData);
       if (response.error) {
-        showError(response.error);
+        toast.error(response.error);
         throw new Error(response.error);
       } else if (response.data) {
         // Update the categories list
@@ -113,10 +111,10 @@ function Categories() {
           setEditingCategory(response.data);
         }
         
-        showSuccess(t('categories.notifications.updateSuccess'));
+        toast.success(t('categories.notifications.updateSuccess'));
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : t('categories.errors.updateFailed'));
+      toast.error(err instanceof Error ? err.message : t('categories.errors.updateFailed'));
       throw err;
     }
   };
@@ -142,7 +140,6 @@ function Categories() {
 
   return (
     <div className="space-y-6">
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
       
       {/* Header */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">

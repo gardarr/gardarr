@@ -83,10 +83,6 @@ func (s *service) ForceResumeTask(ctx context.Context, hash string) error {
 	return s.repository.ForceResume(hash)
 }
 
-func (s *service) SetTaskShareLimit(ctx context.Context, schema schemas.TaskSetShareLimitSchema) error {
-	return s.repository.SetShareLimit(schema)
-}
-
 func (s *service) SetTaskLocation(ctx context.Context, hash string, schema schemas.TaskSetLocationSchema) error {
 	return s.repository.SetLocation(hash, schema)
 }
@@ -219,6 +215,14 @@ func (s *service) GetTasksStats(ctx context.Context) (*entities.TaskStats, error
 	stats.CurrentDownloadSpeed = totalDownloadSpeed
 
 	return stats, nil
+}
+
+func (s *service) SetTaskShareLimit(ctx context.Context, id string, schema schemas.TaskSetShareLimitSchema) error {
+	return s.repository.SetShareLimit(id, entities.TaskShareLimit{
+		RatioLimit:               schema.RatioLimit,
+		SeedingTimeLimit:         schema.SeedingTimeLimit,
+		InactiveSeedingTimeLimit: schema.InactiveSeedingTimeLimit,
+	})
 }
 
 // calculateWordCloud extracts and counts the top 25 most used terms in task names

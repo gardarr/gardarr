@@ -157,14 +157,14 @@ func (s *Repository) SetCategory(hash string, category string) error {
 	return nil
 }
 
-func (s *Repository) SetShareLimit(schema schemas.TaskSetShareLimitSchema) error {
+func (s *Repository) SetShareLimit(hash string, limits entities.TaskShareLimit) error {
 	// Default to -2 (use global limit) if InactiveSeedingTimeLimit is not provided (zero value)
-	inactiveSeedingTimeLimit := schema.InactiveSeedingTimeLimit
+	inactiveSeedingTimeLimit := limits.InactiveSeedingTimeLimit
 	if inactiveSeedingTimeLimit == 0 {
 		inactiveSeedingTimeLimit = -2 // Use global limit by default
 	}
 
-	if err := s.client.SetTorrentShareLimit(schema.Hash, schema.RatioLimit, schema.SeedingTimeLimit, inactiveSeedingTimeLimit); err != nil {
+	if err := s.client.SetTorrentShareLimit(hash, limits.RatioLimit, limits.SeedingTimeLimit, inactiveSeedingTimeLimit); err != nil {
 		return errors.Wrap(err, "failed to set torrent share limit")
 	}
 

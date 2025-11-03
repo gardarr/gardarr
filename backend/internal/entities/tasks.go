@@ -6,7 +6,6 @@ type Task struct {
 	ID           string
 	CreatedAt    time.Time
 	CompletedAt  *time.Time
-	Agent        *Agent
 	Name         string
 	Hash         string
 	State        string
@@ -144,4 +143,10 @@ type TaskLimits struct {
 	RatioLimit               float64 // -2 = use global, -1 = no limit
 	SeedingTimeLimit         int     // in minutes, -2 = use global, -1 = no limit
 	InactiveSeedingTimeLimit int     // in minutes, -2 = use global, -1 = no limit
+}
+
+type TaskShareLimit struct {
+	RatioLimit               float64
+	SeedingTimeLimit         int
+	InactiveSeedingTimeLimit int
 }
