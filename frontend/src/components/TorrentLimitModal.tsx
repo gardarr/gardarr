@@ -158,8 +158,8 @@ export function TorrentLimitModal({
   };
 
   const handleInputChange = (field: keyof TaskLimits, value: string) => {
-    const numValue = value === "" ? 0 : parseFloat(value);
-    const newValue = isNaN(numValue) ? limits[field] : numValue;
+    const numValue = value === "" ? 0 : Number.parseFloat(value);
+    const newValue = Number.isNaN(numValue) ? limits[field] : numValue;
     
     setLimits(prev => ({
       ...prev,
@@ -189,6 +189,13 @@ export function TorrentLimitModal({
     handleLimitModeChange(mode, "inactive_seeding_time_limit", setInactiveSeedingTimeLimitMode);
   };
 
+  const handleBackdropKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onClose();
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -197,6 +204,10 @@ export function TorrentLimitModal({
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
+        onKeyDown={handleBackdropKeyDown}
+        role="button"
+        tabIndex={0}
+        aria-label="Close modal"
       />
 
       {/* Modal */}
