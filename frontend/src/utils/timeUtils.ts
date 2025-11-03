@@ -14,3 +14,15 @@ export function formatTimeAgo(input: Date | string): string {
   return `${diffDays}d`;
 }
 
+export function formatMinutes(minutes: number): string {
+  if (minutes < 0) {
+    if (minutes === -2) return "Use global limit";
+    if (minutes === -1) return "No limit";
+    return `${minutes} minutes`;
+  }
+  if (minutes < 60) return `${minutes} minutes`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (mins === 0) return `${hours} hour${hours > 1 ? "s" : ""}`;
+  return `${hours}h ${mins}m`;
+}

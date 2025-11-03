@@ -137,15 +137,12 @@ export function TorrentLimitModal({
 
     try {
       if (!(await saveDownloadLimit())) {
-        setIsSaving(false);
         return;
       }
       if (!(await saveUploadLimit())) {
-        setIsSaving(false);
         return;
       }
       if (!(await saveShareLimits())) {
-        setIsSaving(false);
         return;
       }
 
@@ -153,6 +150,7 @@ export function TorrentLimitModal({
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save limits");
+    } finally {
       setIsSaving(false);
     }
   };

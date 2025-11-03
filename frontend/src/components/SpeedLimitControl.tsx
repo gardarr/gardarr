@@ -35,7 +35,7 @@ export function SpeedLimitControl({
         <h3 className="text-lg font-semibold">Speed Limits</h3>
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Auto</span>
-          <Switch checked={!isAutoMode} onCheckedChange={(checked) => onAutoModeChange(!checked)} />
+          <Switch checked={isAutoMode} onCheckedChange={(checked) => onAutoModeChange(checked)} />
         </div>
       </div>
 

@@ -3,24 +3,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { ModeButtonGroup } from "@/components/ModeButtonGroup";
 import type { LimitMode } from "@/utils/limitUtils";
-import { getLimitValue } from "@/utils/limitUtils";
 import type { TaskLimits } from "@/types/torrent";
-
-/**
- * Format minutes to human readable format
- */
-function formatMinutes(minutes: number): string {
-  if (minutes < 0) {
-    if (minutes === -2) return "Use global limit";
-    if (minutes === -1) return "No limit";
-    return `${minutes} minutes`;
-  }
-  if (minutes < 60) return `${minutes} minutes`;
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  if (mins === 0) return `${hours} hour${hours > 1 ? "s" : ""}`;
-  return `${hours}h ${mins}m`;
-}
+import { formatMinutes } from "@/utils/timeUtils";
 
 interface ShareLimitControlProps {
   limits: TaskLimits;
