@@ -10,18 +10,18 @@ import { isDownloadStatus, isUploadStatus } from "@/utils/statusUtils";
 
 interface SpeedLimitControlProps {
   limits: TaskLimits;
-  isAutoMode: boolean;
+  isAdvancedMode: boolean;
   taskStatus: TaskStatus | null;
   onLimitChange: (field: keyof TaskLimits, value: string) => void;
-  onAutoModeChange: (enabled: boolean) => void;
+  onAdvancedModeChange: (enabled: boolean) => void;
 }
 
 export function SpeedLimitControl({
   limits,
-  isAutoMode,
+  isAdvancedMode,
   taskStatus,
   onLimitChange,
-  onAutoModeChange,
+  onAdvancedModeChange,
 }: SpeedLimitControlProps) {
   const shouldShowSpeedLimits = taskStatus === null || isDownloadStatus(taskStatus) || isUploadStatus(taskStatus);
   
@@ -34,8 +34,8 @@ export function SpeedLimitControl({
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Speed Limits</h3>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Auto</span>
-          <Switch checked={isAutoMode} onCheckedChange={(checked) => onAutoModeChange(checked)} />
+          <span className="text-sm text-muted-foreground">Advanced</span>
+          <Switch checked={isAdvancedMode} onCheckedChange={(checked) => onAdvancedModeChange(checked)} />
         </div>
       </div>
 
@@ -45,7 +45,7 @@ export function SpeedLimitControl({
           label="Download Limit"
           icon={<Download className="h-4 w-4" />}
           limit={limits.download_limit}
-          isAutoMode={isAutoMode}
+          isAdvancedMode={isAdvancedMode}
           onLimitChange={(value) => onLimitChange("download_limit", value)}
           helpText="Move slider to maximum for unlimited download speed"
         />
@@ -57,7 +57,7 @@ export function SpeedLimitControl({
           label="Upload Limit"
           icon={<Upload className="h-4 w-4" />}
           limit={limits.upload_limit}
-          isAutoMode={isAutoMode}
+          isAdvancedMode={isAdvancedMode}
           onLimitChange={(value) => onLimitChange("upload_limit", value)}
           helpText="Move slider to maximum for unlimited upload speed"
         />
@@ -71,7 +71,7 @@ interface SpeedLimitFieldProps {
   label: string;
   icon: React.ReactNode;
   limit: number;
-  isAutoMode: boolean;
+  isAdvancedMode: boolean;
   onLimitChange: (value: string) => void;
   helpText: string;
 }
@@ -81,7 +81,7 @@ function SpeedLimitField({
   label,
   icon,
   limit,
-  isAutoMode,
+  isAdvancedMode,
   onLimitChange,
   helpText,
 }: SpeedLimitFieldProps) {
@@ -117,7 +117,7 @@ function SpeedLimitField({
           <span>Unlimited</span>
         </div>
       </div>
-      {isAutoMode && (
+      {isAdvancedMode && (
         <div className="flex items-center gap-2">
           <Input
             id={id}
@@ -125,7 +125,19 @@ function SpeedLimitField({
             min="0"
             step="1"
             value={limit === 0 ? "" : limit}
-            onChange={(e) => onLimitChange(e.target.value)}
+            onChange={(e) => {
+              const raw = e.target.value;
+              if (raw === "") {
+                onLimitChange("");
+                return;
+              }
+              const parsed = Number(raw);
+              if (!Number.isFinite(parsed)) {
+                return;
+              }
+              const clamped = Math.max(0, Math.floor(parsed));
+              onLimitChange(String(clamped));
+            }}
             placeholder="0 = unlimited"
             className="flex-1"
           />

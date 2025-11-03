@@ -8,7 +8,7 @@ import { Link2, Loader2, CheckCircle, XCircle, Mail, Lock } from "lucide-react";
 import { inviteService } from "./services/invites";
 import { signupService } from "./services/signup";
 import type { Invite } from "./types/invite";
-import { toast } from "sonner";
+import { toast, Toaster } from "sonner";
 import logoImage from "@/assets/img/logo/logo_64x64.png";
 
 function InviteAccept() {
@@ -157,7 +157,7 @@ function InviteAccept() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
+      <Toaster richColors />
       
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-4">

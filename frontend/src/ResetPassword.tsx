@@ -14,7 +14,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import { authService } from './services/auth';
-import { toast } from "sonner";
+import { toast, Toaster } from "sonner";
 
 export default function ResetPasswordPage() {
   const { t } = useTranslation();
@@ -130,7 +130,7 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
+      <Toaster richColors />
       
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">

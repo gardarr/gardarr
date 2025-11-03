@@ -39,7 +39,7 @@ export function TorrentLimitModal({
     seeding_time_limit: 0,
     inactive_seeding_time_limit: 0
   });
-  const [isAutoMode, setIsAutoMode] = useState(false);
+  const [isAdvancedMode, setIsAdvancedMode] = useState(false);
   const [ratioLimitMode, setRatioLimitMode] = useState<LimitMode>("custom");
   const [seedingTimeLimitMode, setSeedingTimeLimitMode] = useState<LimitMode>("custom");
   const [inactiveSeedingTimeLimitMode, setInactiveSeedingTimeLimitMode] = useState<LimitMode>("custom");
@@ -252,10 +252,10 @@ export function TorrentLimitModal({
             <>
               <SpeedLimitControl
                 limits={limits}
-                isAutoMode={isAutoMode}
+                isAdvancedMode={isAdvancedMode}
                 taskStatus={taskStatus}
                 onLimitChange={handleInputChange}
-                onAutoModeChange={setIsAutoMode}
+                onAdvancedModeChange={setIsAdvancedMode}
               />
 
               <ShareLimitControl

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, CheckCircle, XCircle, Mail, Lock, UserPlus, Sparkles } from "lucide-react";
 import { signupService } from "./services/signup";
-import { toast } from "sonner";
+import { toast, Toaster } from "sonner";
 import { useAuth } from "./contexts/auth-hooks";
 import logoImage from "@/assets/img/logo/logo_64x64.png";
 
@@ -161,7 +161,7 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 flex items-center justify-center p-4">
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
+      <Toaster richColors />
       
       <Card className="w-full max-w-md border-border/50 shadow-lg">
         <CardHeader className="space-y-4 pb-6">

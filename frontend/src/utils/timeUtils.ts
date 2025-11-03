@@ -20,9 +20,9 @@ export function formatMinutes(minutes: number): string {
     if (minutes === -1) return "No limit";
     return `${minutes} minutes`;
   }
-  if (minutes < 60) return `${minutes} minutes`;
+  if (minutes < 60) return `${minutes}m`;
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
-  if (mins === 0) return `${hours} hour${hours > 1 ? "s" : ""}`;
+  if (mins === 0) return `${hours}h`;
   return `${hours}h ${mins}m`;
 }
