@@ -10,6 +10,11 @@ import (
 	"gorm.io/gorm"
 )
 
+// Repository error variables
+var (
+	ErrSettingsNotFound = errors.New("settings not found")
+)
+
 type Repository struct {
 	db *database.Database
 }
@@ -25,7 +30,7 @@ func (r *Repository) GetSettings(ctx context.Context) (*entities.Settings, error
 	var model models.Settings
 	if err := r.db.DB.WithContext(ctx).Where("id = ?", "system").First(&model).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("settings not found")
+			return nil, ErrSettingsNotFound
 		}
 		return nil, err
 	}
@@ -49,7 +54,16 @@ func (r *Repository) CreateSettings(ctx context.Context, timezone, theme, langua
 
 // UpdateTimezone updates the system timezone
 func (r *Repository) UpdateTimezone(ctx context.Context, timezone string) error {
-	// Try to update existing settings
+	// Check if settings record exists
+	var model models.Settings
+	if err := r.db.DB.WithContext(ctx).Where("id = ?", "system").First(&model).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrSettingsNotFound
+		}
+		return err
+	}
+
+	// Perform update (ignore RowsAffected == 0 as it may mean no change)
 	result := r.db.DB.WithContext(ctx).Model(&models.Settings{}).
 		Where("id = ?", "system").
 		Update("timezone", timezone)
@@ -58,15 +72,21 @@ func (r *Repository) UpdateTimezone(ctx context.Context, timezone string) error 
 		return result.Error
 	}
 
-	if result.RowsAffected == 0 {
-		return errors.New("settings not found")
-	}
-
 	return nil
 }
 
 // UpdateTheme updates the system default theme
 func (r *Repository) UpdateTheme(ctx context.Context, theme string) error {
+	// Check if settings record exists
+	var model models.Settings
+	if err := r.db.DB.WithContext(ctx).Where("id = ?", "system").First(&model).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrSettingsNotFound
+		}
+		return err
+	}
+
+	// Perform update (ignore RowsAffected == 0 as it may mean no change)
 	result := r.db.DB.WithContext(ctx).Model(&models.Settings{}).
 		Where("id = ?", "system").
 		Update("default_theme", theme)
@@ -75,25 +95,27 @@ func (r *Repository) UpdateTheme(ctx context.Context, theme string) error {
 		return result.Error
 	}
 
-	if result.RowsAffected == 0 {
-		return errors.New("settings not found")
-	}
-
 	return nil
 }
 
 // UpdateLanguage updates the system default language
 func (r *Repository) UpdateLanguage(ctx context.Context, language string) error {
+	// Check if settings record exists
+	var model models.Settings
+	if err := r.db.DB.WithContext(ctx).Where("id = ?", "system").First(&model).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrSettingsNotFound
+		}
+		return err
+	}
+
+	// Perform update (ignore RowsAffected == 0 as it may mean no change)
 	result := r.db.DB.WithContext(ctx).Model(&models.Settings{}).
 		Where("id = ?", "system").
 		Update("default_language", language)
 
 	if result.Error != nil {
 		return result.Error
-	}
-
-	if result.RowsAffected == 0 {
-		return errors.New("settings not found")
 	}
 
 	return nil

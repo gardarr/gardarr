@@ -2,8 +2,6 @@ package models
 
 import (
 	"time"
-
-	"gorm.io/gorm"
 )
 
 type Settings struct {
@@ -13,19 +11,6 @@ type Settings struct {
 	DefaultLanguage string    `gorm:"size:10;not null;default:'en-US'"`
 	CreatedAt       time.Time `gorm:"autoCreateTime"`
 	UpdatedAt       time.Time `gorm:"autoUpdateTime"`
-}
-
-func (s *Settings) BeforeCreate(tx *gorm.DB) (err error) {
-	s.CreatedAt = time.Now()
-	if s.ID == "" {
-		s.ID = "system"
-	}
-	return
-}
-
-func (s *Settings) BeforeUpdate(tx *gorm.DB) (err error) {
-	s.UpdatedAt = time.Now()
-	return
 }
 
 // SettingsResponse represents the response body for settings operations

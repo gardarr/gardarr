@@ -8,7 +8,7 @@ import (
 	"github.com/gardarr/gardarr/internal/entities"
 	"github.com/gardarr/gardarr/internal/infra/database"
 	"github.com/gardarr/gardarr/internal/models"
-	"github.com/gardarr/gardarr/internal/repository/settings"
+	repositorySettings "github.com/gardarr/gardarr/internal/repository/settings"
 )
 
 var (
@@ -16,16 +16,25 @@ var (
 	validLanguages = []string{"en-US", "pt-BR"}
 )
 
+// Service error variables
+var (
+	ErrInvalidTimezone         = errors.New("invalid timezone")
+	ErrInvalidTimezoneLocation = errors.New("invalid timezone location")
+	ErrInvalidTheme            = errors.New("invalid theme")
+	ErrInvalidLanguage         = errors.New("invalid language")
+	ErrSettingsNotFound        = errors.New("settings not found")
+)
+
 // Service handles settings business logic
 type Service struct {
-	repository *settings.Repository
+	repository *repositorySettings.Repository
 	timezones  []models.TimezoneInfo
 }
 
 // NewService creates a new settings service
 func NewService(db *database.Database) *Service {
 	return &Service{
-		repository: settings.NewRepository(db),
+		repository: repositorySettings.NewRepository(db),
 		timezones:  getAvailableTimezones(),
 	}
 }
@@ -48,13 +57,13 @@ func (s *Service) GetSettings(ctx context.Context) (*entities.Settings, error) {
 func (s *Service) UpdateTimezone(ctx context.Context, timezone string) error {
 	// Validate timezone
 	if !s.isValidTimezone(timezone) {
-		return errors.New("invalid timezone")
+		return ErrInvalidTimezone
 	}
 
 	// Validate timezone by attempting to load it
 	_, err := time.LoadLocation(timezone)
 	if err != nil {
-		return errors.New("invalid timezone location")
+		return ErrInvalidTimezoneLocation
 	}
 
 	return s.repository.UpdateTimezone(ctx, timezone)
@@ -68,7 +77,7 @@ func (s *Service) GetAvailableTimezones() []models.TimezoneInfo {
 // UpdateTheme updates the system default theme
 func (s *Service) UpdateTheme(ctx context.Context, theme string) error {
 	if !isValidValue(theme, validThemes) {
-		return errors.New("invalid theme")
+		return ErrInvalidTheme
 	}
 	return s.repository.UpdateTheme(ctx, theme)
 }
@@ -76,7 +85,7 @@ func (s *Service) UpdateTheme(ctx context.Context, theme string) error {
 // UpdateLanguage updates the system default language
 func (s *Service) UpdateLanguage(ctx context.Context, language string) error {
 	if !isValidValue(language, validLanguages) {
-		return errors.New("invalid language")
+		return ErrInvalidLanguage
 	}
 	return s.repository.UpdateLanguage(ctx, language)
 }
@@ -101,11 +110,11 @@ func (s *Service) Initialize(ctx context.Context) error {
 	}
 
 	// Only proceed if error is "settings not found", otherwise return the error
-	if err.Error() != "settings not found" {
+	if !errors.Is(err, repositorySettings.ErrSettingsNotFound) {
 		return err
 	}
 
-	// Create default settings with UTC timezone, light theme, and en-US language
+	// Create default settings with UTC timezone, dark theme, and en-US language
 	_, err = s.repository.CreateSettings(ctx, "UTC", "dark", "en-US")
 	return err
 }

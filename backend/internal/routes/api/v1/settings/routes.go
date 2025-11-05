@@ -1,20 +1,21 @@
 package settings
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gardarr/gardarr/internal/infra/database"
 	"github.com/gardarr/gardarr/internal/middlewares"
 	"github.com/gardarr/gardarr/internal/models"
 	"github.com/gardarr/gardarr/internal/schemas"
-	"github.com/gardarr/gardarr/internal/services/settings"
+	settingsService "github.com/gardarr/gardarr/internal/services/settings"
 	"github.com/gin-gonic/gin"
 )
 
 // Module holds settings routes configuration
 type Module struct {
 	group           *gin.RouterGroup
-	settingsService *settings.Service
+	settingsService *settingsService.Service
 	db              *database.Database
 }
 
@@ -22,7 +23,7 @@ type Module struct {
 func NewModule(router *gin.RouterGroup, db *database.Database) *Module {
 	return &Module{
 		group:           router.Group("/settings"),
-		settingsService: settings.NewService(db),
+		settingsService: settingsService.NewService(db),
 		db:              db,
 	}
 }
@@ -76,7 +77,7 @@ func (m *Module) updateTimezone(c *gin.Context) {
 
 	if err := m.settingsService.UpdateTimezone(c.Request.Context(), body.Timezone); err != nil {
 		statusCode := http.StatusInternalServerError
-		if err.Error() == "invalid timezone" || err.Error() == "invalid timezone location" {
+		if errors.Is(err, settingsService.ErrInvalidTimezone) || errors.Is(err, settingsService.ErrInvalidTimezoneLocation) {
 			statusCode = http.StatusBadRequest
 		}
 		c.JSON(statusCode, gin.H{
@@ -132,7 +133,7 @@ func (m *Module) updateTheme(c *gin.Context) {
 
 	if err := m.settingsService.UpdateTheme(c.Request.Context(), body.Theme); err != nil {
 		statusCode := http.StatusInternalServerError
-		if err.Error() == "invalid theme" {
+		if errors.Is(err, settingsService.ErrInvalidTheme) {
 			statusCode = http.StatusBadRequest
 		}
 		c.JSON(statusCode, gin.H{
@@ -177,7 +178,7 @@ func (m *Module) updateLanguage(c *gin.Context) {
 
 	if err := m.settingsService.UpdateLanguage(c.Request.Context(), body.Language); err != nil {
 		statusCode := http.StatusInternalServerError
-		if err.Error() == "invalid language" {
+		if errors.Is(err, settingsService.ErrInvalidLanguage) {
 			statusCode = http.StatusBadRequest
 		}
 		c.JSON(statusCode, gin.H{
