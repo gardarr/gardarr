@@ -22,8 +22,9 @@ var (
 	ErrInvalidTimezoneLocation = errors.New("invalid timezone location")
 	ErrInvalidTheme            = errors.New("invalid theme")
 	ErrInvalidLanguage         = errors.New("invalid language")
-	ErrSettingsNotFound        = errors.New("settings not found")
 )
+
+var ErrSettingsNotFound = repositorySettings.ErrSettingsNotFound
 
 // Service handles settings business logic
 type Service struct {

@@ -54,11 +54,9 @@ func (m *Module) getTimezone(c *gin.Context) {
 		return
 	}
 
-	resp := models.SettingsResponse{
-		Timezone:        settings.Timezone,
-		DefaultTheme:    settings.DefaultTheme,
-		DefaultLanguage: settings.DefaultLanguage,
-		UpdatedAt:       settings.UpdatedAt,
+	resp := gin.H{
+		"timezone":   settings.Timezone,
+		"updated_at": settings.UpdatedAt,
 	}
 
 	c.JSON(http.StatusOK, resp)
@@ -112,12 +110,10 @@ func (m *Module) getTheme(c *gin.Context) {
 		return
 	}
 
-	resp := models.SettingsResponse{
-		DefaultTheme: settings.DefaultTheme,
-		UpdatedAt:    settings.UpdatedAt,
-	}
-
-	c.JSON(http.StatusOK, resp)
+	c.JSON(http.StatusOK, gin.H{
+		"default_theme": settings.DefaultTheme,
+		"updated_at":    settings.UpdatedAt,
+	})
 }
 
 // updateTheme updates the system default theme
