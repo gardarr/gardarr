@@ -3,6 +3,7 @@ package settings
 import (
 	"context"
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/gardarr/gardarr/internal/entities"
@@ -77,28 +78,19 @@ func (s *Service) GetAvailableTimezones() []models.TimezoneInfo {
 
 // UpdateTheme updates the system default theme
 func (s *Service) UpdateTheme(ctx context.Context, theme string) error {
-	if !isValidValue(theme, validThemes) {
+	if !slices.Contains(validThemes, theme) {
 		return ErrInvalidTheme
 	}
+
 	return s.repository.UpdateTheme(ctx, theme)
 }
 
 // UpdateLanguage updates the system default language
 func (s *Service) UpdateLanguage(ctx context.Context, language string) error {
-	if !isValidValue(language, validLanguages) {
+	if !slices.Contains(validLanguages, language) {
 		return ErrInvalidLanguage
 	}
 	return s.repository.UpdateLanguage(ctx, language)
-}
-
-// isValidValue checks if a value exists in a slice of valid values
-func isValidValue(value string, validValues []string) bool {
-	for _, v := range validValues {
-		if v == value {
-			return true
-		}
-	}
-	return false
 }
 
 // Initialize initializes the default system settings if they don't exist

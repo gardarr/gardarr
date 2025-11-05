@@ -153,9 +153,9 @@ func (m *Module) getLanguage(c *gin.Context) {
 		return
 	}
 
-	resp := models.SettingsResponse{
-		DefaultLanguage: settings.DefaultLanguage,
-		UpdatedAt:       settings.UpdatedAt,
+	resp := gin.H{
+		"default_language": settings.DefaultLanguage,
+		"updated_at":       settings.UpdatedAt,
 	}
 
 	c.JSON(http.StatusOK, resp)
