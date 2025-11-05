@@ -19,6 +19,7 @@ import (
 	"github.com/gardarr/gardarr/internal/routes/api/v1/auth"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/category"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/health"
+	"github.com/gardarr/gardarr/internal/routes/api/v1/settings"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/setup"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/signup"
 	statsroutes "github.com/gardarr/gardarr/internal/routes/api/v1/statistics"
@@ -27,6 +28,7 @@ import (
 	"github.com/gardarr/gardarr/internal/schemas"
 	"github.com/gardarr/gardarr/internal/services/agentmanager"
 	"github.com/gardarr/gardarr/internal/services/crypto"
+	settingsService "github.com/gardarr/gardarr/internal/services/settings"
 	"github.com/gardarr/gardarr/internal/services/statistics"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -75,6 +77,12 @@ func Run(cmd *cobra.Command, args []string) error {
 
 	if err := database.RunMigrations(db); err != nil {
 		panic(fmt.Sprintf("erro ao rodar migrations: %v", err))
+	}
+
+	// Initialize settings service and bootstrap default settings
+	settingsSvc := settingsService.NewService(db)
+	if err := settingsSvc.Initialize(context.Background()); err != nil {
+		panic(fmt.Sprintf("erro ao inicializar configurações: %v", err))
 	}
 
 	setRouter()
@@ -261,6 +269,7 @@ func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statist
 	users.NewModule(v1, db).Register()
 	signup.NewModule(v1, db).Register()
 	setup.NewModule(v1, db).Register()
+	settings.NewModule(v1, db).Register()
 	version.NewModule(v1, db).Register()
 	statsroutes.NewModule(v1, db, statsSvc).Register()
 

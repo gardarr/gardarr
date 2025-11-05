@@ -92,5 +92,15 @@ func Register(m *migration.Migrator) {
 				return nil
 			},
 		},
+		{
+			Version:     "008_create_settings_table",
+			Description: "Cria a tabela de configurações do sistema",
+			Up: func(db *gorm.DB) error {
+				return db.AutoMigrate(&models.Settings{})
+			},
+			Down: func(db *gorm.DB) error {
+				return db.Migrator().DropTable(&models.Settings{})
+			},
+		},
 	})
 }
