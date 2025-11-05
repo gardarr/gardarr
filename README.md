@@ -4,19 +4,20 @@
   <img src="assets/logo.png" alt="Gardarr Logo" width="20%" />
 </p>
 
-![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/gardarr/gardarr?filename=backend%2Fgo.mod)
-[![React](https://img.shields.io/badge/React-%2320232a.svg?logo=react&logoColor=%2361DAFB)](#)
-[![shadcn/ui](https://img.shields.io/badge/shadcn%2Fui-000?logo=shadcnui&logoColor=fff)](#)
-![GitHub License](https://img.shields.io/github/license/gardarr/gardarr)
-![GitHub Release](https://img.shields.io/github/v/release/gardarr/gardarr)
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/gardarr/gardarr/.github%2Fworkflows%2Fbuild.yml)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=gardarr_gardarr&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=gardarr_gardarr)
-[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=gardarr_gardarr&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=gardarr_gardarr)
-[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=gardarr_gardarr&metric=bugs)](https://sonarcloud.io/summary/new_code?id=gardarr_gardarr)
-[![Duplicated Lines (%)](https://sonarcloud.io/api/project_badges/measure?project=gardarr_gardarr&metric=duplicated_lines_density)](https://sonarcloud.io/summary/new_code?id=gardarr_gardarr)
-[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=gardarr_gardarr&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=gardarr_gardarr)
-[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=gardarr_gardarr&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=gardarr_gardarr)
-[![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=gardarr_gardarr&metric=ncloc)](https://sonarcloud.io/summary/new_code?id=gardarr_gardarr)
+<p align="center">
+  <img src="https://img.shields.io/github/license/gardarr/gardarr" alt="License" />
+  <img src="https://img.shields.io/github/v/release/gardarr/gardarr" alt="Release" />
+  <img src="https://img.shields.io/github/actions/workflow/status/gardarr/gardarr/.github%2Fworkflows%2Fbuild.yml" alt="GitHub Actions" />
+  <img src="https://img.shields.io/coderabbit/prs/github/gardarr/gardarr?utm_source=oss&utm_medium=github&utm_campaign=gardarr%2Fgardarr&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews" alt="CodeRabbit Reviews" />
+  <br />
+  <a href="https://sonarcloud.io/summary/new_code?id=gardarr_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=gardarr_gardarr&metric=alert_status" alt="Quality Gate Status" /></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=gardarr_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=gardarr_gardarr&metric=vulnerabilities" alt="Vulnerabilities" /></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=gardarr_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=gardarr_gardarr&metric=bugs" alt="Bugs" /></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=gardarr_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=gardarr_gardarr&metric=duplicated_lines_density" alt="Duplicated Lines" /></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=gardarr_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=gardarr_gardarr&metric=sqale_rating" alt="Maintainability Rating" /></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=gardarr_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=gardarr_gardarr&metric=security_rating" alt="Security Rating" /></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=gardarr_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=gardarr_gardarr&metric=ncloc" alt="Lines of Code" /></a>
+</p>
 
 Lightweight qBittorrent management and analytics tool, optimized for mobile
 
