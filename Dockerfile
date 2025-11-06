@@ -8,8 +8,9 @@ ARG VERSION=0.0.0
 ARG COMMIT=unknown
 ARG DATE=unknown
 
-# Stage 1: Build the frontend
-FROM ${NODE_IMAGE} AS frontend-build
+# Stage 1: Build the frontend (platform-agnostic, built only once)
+# This stage is built only once for linux/amd64 since frontend output is platform-independent
+FROM --platform=linux/amd64 ${NODE_IMAGE} AS frontend-build
 
 # Set the working directory for frontend
 WORKDIR /app/frontend
@@ -39,6 +40,11 @@ RUN npm run build && \
 # Stage 2: Copy pre-compiled Go binary
 FROM alpine:3.20 AS build
 
+# BuildKit automatically provides these variables for multi-platform builds
+ARG TARGETPLATFORM
+ARG TARGETARCH
+ARG TARGETOS
+
 # Install necessary dependencies
 RUN apk add --no-cache ca-certificates && \
     rm -rf /var/cache/apk/*
@@ -49,14 +55,14 @@ WORKDIR /app
 # Copy all pre-compiled Go binaries
 COPY backend/dist/ ./binaries/
 
-# Select the correct binary based on architecture
-RUN ARCH=$(uname -m) && \
-    if [ "$ARCH" = "x86_64" ]; then \
+# Select the correct binary based on target architecture
+# TARGETARCH is automatically set by BuildKit (amd64, arm64, etc.)
+RUN if [ "$TARGETARCH" = "amd64" ]; then \
         cp binaries/gardarr-amd64 ./main; \
-    elif [ "$ARCH" = "aarch64" ]; then \
+    elif [ "$TARGETARCH" = "arm64" ]; then \
         cp binaries/gardarr-arm64 ./main; \
     else \
-        echo "Unsupported architecture: $ARCH" && exit 1; \
+        echo "Unsupported architecture: $TARGETARCH" && exit 1; \
     fi && \
     chmod +x ./main && \
     rm -rf ./binaries
