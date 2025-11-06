@@ -105,7 +105,8 @@ RUN chmod +x /app/entrypoint.sh && \
 
 # Copy the built binary from the builder stage
 COPY --from=build /app/main .
-RUN chmod +x ./main
+RUN chmod +x ./main && \
+    chown nonroot:nonroot ./main
 
 # Copy the built frontend files
 COPY --from=build /app/web ./web
