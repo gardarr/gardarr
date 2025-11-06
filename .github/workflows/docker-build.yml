@@ -9,6 +9,37 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  build-frontend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24.10.0'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install frontend dependencies
+      working-directory: ./frontend
+      run: npm ci
+
+    - name: Build frontend
+      working-directory: ./frontend
+      run: npm run build
+
+    - name: Upload frontend artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-dist
+        path: frontend/dist
+        retention-days: 3
+
   build-binaries:
     runs-on: ubuntu-latest
     permissions:
@@ -114,7 +145,6 @@ jobs:
             
             # Verify the binary was built
             ls -lh /dist/${{ matrix.output }}
-            file /dist/${{ matrix.output }}
           "
 
     - name: Upload binary artifact
@@ -125,7 +155,7 @@ jobs:
         retention-days: 3
 
   build-and-push:
-    needs: build-binaries
+    needs: [build-frontend, build-binaries]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -146,6 +176,12 @@ jobs:
         merge-multiple: true
         path: backend/dist
 
+    - name: Download frontend artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: frontend-dist
+        path: frontend/dist
+
     - name: Verify binary artifacts
       run: |
         for arch in amd64 arm64; do
@@ -156,6 +192,19 @@ jobs:
           fi
           echo "✅ Found binary: $binary"
         done
+
+    - name: Verify frontend artifact
+      run: |
+        if [ ! -d "frontend/dist" ]; then
+          echo "❌ Missing frontend dist directory"
+          exit 1
+        fi
+        if [ ! -f "frontend/dist/index.html" ]; then
+          echo "❌ Missing frontend/dist/index.html"
+          exit 1
+        fi
+        echo "✅ Found frontend artifacts"
+        ls -lh frontend/dist/
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -195,8 +244,6 @@ jobs:
         cache-to: type=gha,mode=max
         platforms: linux/amd64,linux/arm64
         build-args: |
-          GO_IMAGE=golang:1.25.3-alpine
-          NODE_IMAGE=node:24.10.0-alpine
           APP_PORT=3000
         provenance: true
 

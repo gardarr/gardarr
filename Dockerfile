@@ -1,6 +1,4 @@
 # Define build arguments for image tags and port
-ARG GO_IMAGE=golang:1.25.3-alpine
-ARG NODE_IMAGE=node:24.10.0-alpine
 ARG APP_PORT=3000
 
 # Version build arguments
@@ -8,37 +6,7 @@ ARG VERSION=0.0.0
 ARG COMMIT=unknown
 ARG DATE=unknown
 
-# Stage 1: Build the frontend (platform-agnostic, built only once)
-# This stage is built only once for linux/amd64 since frontend output is platform-independent
-# Constant platform is intentional: frontend assets are platform-independent
-FROM --platform=linux/amd64 ${NODE_IMAGE} AS frontend-build
-
-# Set the working directory for frontend
-WORKDIR /app/frontend
-
-# Copy frontend package files
-COPY frontend/package*.json ./
-
-# Install all frontend dependencies (including dev dependencies for build)
-# Note: We need dev dependencies like TypeScript and Vite for the build process
-RUN npm ci && \
-    npm cache clean --force
-
-# Copy frontend source code
-COPY frontend/ .
-
-# Build the frontend and clean up
-RUN npm run build && \
-    rm -rf node_modules && \
-    rm -rf src && \
-    rm -rf public && \
-    rm -f package*.json && \
-    rm -f tsconfig.json && \
-    rm -f vite.config.ts && \
-    rm -f tailwind.config.js && \
-    rm -f postcss.config.js
-
-# Stage 2: Copy pre-compiled Go binary
+# Stage 1: Copy pre-compiled Go binary
 FROM alpine:3.20 AS build
 
 # BuildKit automatically provides these variables for multi-platform builds
@@ -68,10 +36,10 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
     chmod +x ./main && \
     rm -rf ./binaries
 
-# Copy built frontend from frontend-build stage
-COPY --from=frontend-build /app/frontend/dist ./web
+# Copy pre-built frontend from GitHub Actions
+COPY frontend/dist ./web
 
-# Stage 3: Create a minimal runtime image with curl for healthchecks
+# Stage 2: Create a minimal runtime image with curl for healthchecks
 FROM alpine:3.20
 
 # Install curl and ca-certificates for healthchecks and HTTPS
