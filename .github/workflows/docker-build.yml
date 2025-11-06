@@ -75,39 +75,47 @@ jobs:
           ${{ runner.os }}-go-${{ matrix.goarch }}-
           ${{ runner.os }}-go-
 
-    - name: Install CGO dependencies for SQLite
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc libc6-dev
-        if [ "${{ matrix.arch }}" = "arm64" ]; then
-          sudo apt-get install -y gcc-aarch64-linux-gnu libc6-dev-arm64-cross
-        fi
-
     - name: Download Go dependencies
       working-directory: ./backend
       run: go mod download
 
-    - name: Build Go binary for ${{ matrix.arch }}
-      working-directory: ./backend
+    - name: Set up QEMU for cross-compilation
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: linux/amd64,linux/arm64
+
+    - name: Build Go binary for ${{ matrix.arch }} using Alpine
       run: |
         # Create dist directory
-        mkdir -p ../dist
+        mkdir -p dist
         
-        # Set build environment
-        export CGO_ENABLED=1
-        export GOOS=linux
-        export GOARCH=${{ matrix.goarch }}
-        if [ -n "${{ matrix.cc }}" ]; then
-          export CC=${{ matrix.cc }}
-        fi
-
-        echo "Building for linux/${{ matrix.goarch }}..."
-        go build \
-          -ldflags="-X github.com/gardarr/gardarr/pkg/version.Version=${{ steps.version.outputs.version }} \
-                    -X github.com/gardarr/gardarr/pkg/version.Commit=${{ steps.version.outputs.commit }} \
-                    -X github.com/gardarr/gardarr/pkg/version.Date=${{ steps.version.outputs.date }} \
-                    -w -s" \
-          -o ../dist/${{ matrix.output }} .
+        # Build using Alpine-based Go container to ensure musl libc compatibility
+        # This ensures the binary will run on Alpine Linux in the final image
+        docker run --rm --platform linux/${{ matrix.arch }} \
+          -v "$(pwd)/backend:/src" \
+          -v "$(pwd)/dist:/dist" \
+          -w /src \
+          golang:1.25.3-alpine \
+          sh -c "
+            # Install build dependencies for CGO
+            apk add --no-cache gcc musl-dev sqlite-dev
+            
+            echo 'Building static binary for linux/${{ matrix.goarch }}...'
+            CGO_ENABLED=1 \
+            GOOS=linux \
+            GOARCH=${{ matrix.goarch }} \
+            go build \
+              -ldflags='-X github.com/gardarr/gardarr/pkg/version.Version=${{ steps.version.outputs.version }} \
+                        -X github.com/gardarr/gardarr/pkg/version.Commit=${{ steps.version.outputs.commit }} \
+                        -X github.com/gardarr/gardarr/pkg/version.Date=${{ steps.version.outputs.date }} \
+                        -w -s -linkmode external -extldflags \"-static\"' \
+              -tags 'osusergo netgo sqlite_omit_load_extension' \
+              -o /dist/${{ matrix.output }} .
+            
+            # Verify the binary was built
+            ls -lh /dist/${{ matrix.output }}
+            file /dist/${{ matrix.output }}
+          "
 
     - name: Upload binary artifact
       uses: actions/upload-artifact@v4

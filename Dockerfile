@@ -10,6 +10,7 @@ ARG DATE=unknown
 
 # Stage 1: Build the frontend (platform-agnostic, built only once)
 # This stage is built only once for linux/amd64 since frontend output is platform-independent
+# Constant platform is intentional: frontend assets are platform-independent
 FROM --platform=linux/amd64 ${NODE_IMAGE} AS frontend-build
 
 # Set the working directory for frontend
@@ -73,9 +74,9 @@ COPY --from=frontend-build /app/frontend/dist ./web
 # Stage 3: Create a minimal runtime image with curl for healthchecks
 FROM alpine:3.20
 
-# Install curl, ca-certificates, and SQLite runtime library
-# SQLite runtime library is needed for the CGO-linked binary to work
-RUN apk add --no-cache curl ca-certificates sqlite && \
+# Install curl and ca-certificates for healthchecks and HTTPS
+# Note: The binary is statically linked, so no runtime libraries are needed
+RUN apk add --no-cache curl ca-certificates && \
     rm -rf /var/cache/apk/*
 
 # Create a non-root user
