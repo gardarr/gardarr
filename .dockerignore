@@ -32,8 +32,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # Build artifacts
-backend/web/
-frontend/dist/
+# Note: backend/dist/ and frontend/dist/ are now included (pre-built from GitHub Actions artifacts)
 *.log
 
 # Environment files

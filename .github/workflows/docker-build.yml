@@ -205,6 +205,11 @@ jobs:
         fi
         echo "✅ Found frontend artifacts"
         ls -lh frontend/dist/
+        
+        # Debug: Verify structure
+        echo "📁 Working directory: $(pwd)"
+        echo "📁 Frontend dist contents:"
+        find frontend/dist -type f | head -10
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
