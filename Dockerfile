@@ -98,8 +98,14 @@ ARG APP_PORT=3000
 # Set the working directory
 WORKDIR /app
 
+# Copy entrypoint script (before changing user)
+COPY docker-entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh && \
+    chown nonroot:nonroot /app/entrypoint.sh
+
 # Copy the built binary from the builder stage
 COPY --from=build /app/main .
+RUN chmod +x ./main
 
 # Copy the built frontend files
 COPY --from=build /app/web ./web
@@ -110,11 +116,15 @@ ENV PORT=${APP_PORT}
 # Create volumes for persistent data
 VOLUME ["/data", "/media"]
 
-# Expose the application port
+# Expose the application port (default service port)
+# Agent port (3100) should be exposed separately when running in agent mode
 EXPOSE ${APP_PORT}
 
 # Run the Go application as non-root user
 USER nonroot:nonroot
 
-# Run the Go application
-CMD ["./main"]
+# Use entrypoint script to allow agent mode
+ENTRYPOINT ["/app/entrypoint.sh"]
+
+# Default command runs the service (no arguments = service mode)
+CMD []
