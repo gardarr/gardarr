@@ -5,6 +5,7 @@ import (
 
 	"github.com/gardarr/gardarr/internal/infra/database"
 	"github.com/gardarr/gardarr/internal/middlewares"
+	"github.com/gardarr/gardarr/pkg/env"
 	"github.com/gardarr/gardarr/pkg/version"
 	"github.com/gin-gonic/gin"
 )
@@ -32,8 +33,13 @@ func (m *Module) Register() {
 
 // getVersion retrieves the version of the application
 func (m *Module) getVersion(c *gin.Context) {
+	versionStr := version.Version
+	if value := env.Get("OVERRIDE_VERSION").Value(); value != "" {
+		versionStr = value
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"version": version.Version,
+		"version": versionStr,
 		"commit":  version.Commit,
 		"date":    version.Date,
 	})

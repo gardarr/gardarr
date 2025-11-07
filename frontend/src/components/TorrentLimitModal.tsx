@@ -18,6 +18,7 @@ interface TorrentLimitModalProps {
   taskId: string;
   taskName?: string;
   taskStatus?: string;
+  selectedCount?: number;
 }
 
 export function TorrentLimitModal({
@@ -26,7 +27,8 @@ export function TorrentLimitModal({
   agentId,
   taskId,
   taskName,
-  taskStatus: taskStatusProp
+  taskStatus: taskStatusProp,
+  selectedCount = 1
 }: TorrentLimitModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -146,7 +148,10 @@ export function TorrentLimitModal({
         return;
       }
 
-      toast.success("Torrent limits updated successfully");
+      const successMessage = selectedCount > 1 
+        ? `Limits updated for ${selectedCount} torrents`
+        : "Torrent limits updated successfully";
+      toast.success(successMessage);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save limits");
@@ -217,10 +222,17 @@ export function TorrentLimitModal({
               <Share2 className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold">Torrent Limits</h2>
-              {taskName && (
+              <h2 className="text-2xl font-bold">
+                {selectedCount > 1 ? `Torrent Limits (${selectedCount} selected)` : "Torrent Limits"}
+              </h2>
+              {taskName && selectedCount === 1 && (
                 <p className="text-sm text-muted-foreground mt-1 truncate max-w-md">
                   {taskName}
+                </p>
+              )}
+              {selectedCount > 1 && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Changes will be applied to all selected torrents
                 </p>
               )}
             </div>

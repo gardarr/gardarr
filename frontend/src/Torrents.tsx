@@ -1,10 +1,10 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+ 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { ArrowDown, ArrowUp, Search, Loader2, ChevronDown, SortAsc, SortDesc, Plus, SlidersHorizontal, Download, Upload, Clock, Server, Activity, Folder, Tag, FileUp, AlertTriangle, Star } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Search, Loader2, ChevronDown, SortAsc, SortDesc, Plus, SlidersHorizontal, Download, Clock, Server, Activity, Folder, Tag, FileUp, AlertTriangle, Star, List, CheckSquare, Square, X } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -26,20 +26,18 @@ import StatusFilter from "@/components/ui/StatusFilter";
 import { ListFilter } from "@/components/ui/ListFilter";
 import { FilterSidebar } from "@/components/ui/FilterSidebar";
 import { TorrentDetailsModal } from "@/components/TorrentDetailsModal";
+import { TorrentDeleteModal } from "@/components/TorrentDeleteModal";
 import { AddTorrentModal } from "@/components/AddTorrentModal";
 import { TorrentMetricsModal } from "@/components/TorrentMetricsModal";
 import { TorrentLimitModal } from "@/components/TorrentLimitModal";
-import { ProgressBar } from "@/components/ui/ProgressBar";
-import TorrentContextMenu from "@/components/TorrentContextMenu";
+import TorrentListMobile from "@/components/TorrentListMobile";
+import TorrentsTable from "@/components/TorrentsTable";
 import { RatioBadge } from "@/components/RatioBadge";
 import { toast } from "sonner";
-import { AgentIcon } from "@/components/ui/AgentIcon";
-import { getStatusIcon, getStatusColor, getStatusBackgroundColor, type TorrentStatus } from "@/components/TorrentStatusIcon";
+import { getStatusIcon, getStatusColor, type TorrentStatus } from "@/components/TorrentStatusIcon";
 import { normalizeTaskStatus } from "@/utils/statusUtils";
 import { getRatioGrade } from "@/utils/ratioUtils";
-import { formatBytes, formatBytesPerSecond } from "@/utils/bytes";
-import { truncateText, isTextTruncated } from "@/utils/textUtils";
-import taskDefaultBg from "@/assets/img/common/task-default-background.png";
+ 
 
 type SortType = "priority" | "alphabetical" | "size" | "progress" | "download_speed" | "upload_speed" | "downloaded" | "uploaded";
 
@@ -170,294 +168,9 @@ function getStatusPriority(status: TorrentStatus): number {
   }
 }
 
-function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits }: Readonly<{ 
-  torrent: Torrent; 
-  onShowDetails: (id: string) => void;
-  onStart: (id: string) => void;
-  onStop: (id: string) => void;
-  onRemove: (id: string) => void;
-  onForceDownload: (id: string) => void;
-  onForceReannounce: (id: string) => void;
-  onForceRecheck: (id: string) => void;
-  onMetrics?: (taskId: string, agentId?: string) => void;
-  onLimits?: (taskId: string, agentId?: string) => void;
-}>) {
-  const StatusIcon = getStatusIcon(torrent.status);
+// Desktop table moved to components/TorrentsTable
 
-  return (
-    <TorrentContextMenu 
-      taskId={torrent.id}
-      agentId={torrent.agentUUID}
-      onStart={onStart}
-      onStop={onStop}
-      onRemove={onRemove}
-      onForceDownload={onForceDownload}
-      onForceReannounce={onForceReannounce}
-      onForceRecheck={onForceRecheck}
-      onMetrics={onMetrics}
-      onLimits={onLimits}
-    >
-      <Card 
-        className="hover:shadow-lg transition-shadow overflow-hidden p-0 gap-2 cursor-pointer relative"
-        onClick={() => onShowDetails(torrent.id)}
-      >
-      <CardHeader className={`flex flex-row items-center justify-between space-y-0 pt-3 pb-3 px-4 ${getStatusBackgroundColor(torrent.status)}`}>
-        <div className="flex items-center gap-3 min-w-0 flex-1">
-          <div className="flex-shrink-0">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <StatusIcon 
-                  className={`h-5 w-5 ${getStatusColor(torrent.status)}`} 
-                />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{torrent.status}</p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
-          <CardTitle 
-            className="text-sm font-medium text-muted-foreground truncate" 
-            title={isTextTruncated(torrent.name) ? `${torrent.name} (truncado)` : torrent.name}
-          >
-            {truncateText(torrent.name)}
-          </CardTitle>
-        </div>
-        {torrent.agentName && (
-          <div className="flex-shrink-0 ml-2 flex items-center gap-2">
-            <RatioBadge ratio={torrent.ratio} showValue={false} />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="inline-flex items-center justify-center rounded-full border p-1">
-                  <AgentIcon 
-                    iconName={torrent.agentIcon}
-                    color={torrent.agentColor}
-                    size="sm"
-                  />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{torrent.agentName}</p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
-        )}
-      </CardHeader>
-      <CardContent className="px-4 pt-1 pb-6 relative">
-        {/* Background image only for the body (not header), very low opacity */}
-        <div
-          className="absolute inset-0 bg-center bg-cover pointer-events-none opacity-[0.12] dark:opacity-[0.03]"
-          style={{ backgroundImage: `url(${taskDefaultBg})` }}
-          aria-hidden
-        />
-        <div className="flex items-center gap-2 mt-0 mb-3">
-          <div className="flex-1">
-            <ProgressBar progress={torrent.progress} height="md" className="mb-0 opacity-60" showLabel={false} />
-          </div>
-          <span className="text-xs text-muted-foreground">{torrent.progress.toFixed(0)}%</span>
-        </div>
-        <div className="grid grid-cols-1 gap-3 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <Download className="h-3.5 w-3.5 text-green-600 dark:text-green-400" aria-hidden="true" />
-            <span className={torrent.downloadRateBps > 0 ? 'text-green-600 dark:text-green-400' : ''}>
-              {formatBytesPerSecond(torrent.downloadRateBps)}
-            </span>
-            <span className="text-muted-foreground">•</span>
-            <span className="text-xs text-muted-foreground">
-              {formatBytes(torrent.downloadedBytes)}
-            </span>
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <Upload className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" aria-hidden="true" />
-              <span className={torrent.uploadRateBps > 0 ? 'text-purple-600 dark:text-purple-400' : ''}>
-                {formatBytesPerSecond(torrent.uploadRateBps)}
-              </span>
-              <span className="text-muted-foreground">•</span>
-              <span className="text-xs text-muted-foreground">
-                {formatBytes(torrent.uploadedBytes)}
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1">
-                <ArrowUp className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-                <span className="text-xs">{torrent.numSeeds}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <ArrowDown className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                <span className="text-xs">{torrent.numLeechs}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-      </Card>
-    </TorrentContextMenu>
-  );
-}
-
-function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits }: Readonly<{ 
-  torrent: Torrent; 
-  onShowDetails: (id: string) => void;
-  onStart: (id: string) => void;
-  onStop: (id: string) => void;
-  onRemove: (id: string) => void;
-  onForceDownload: (id: string) => void;
-  onForceReannounce: (id: string) => void;
-  onForceRecheck: (id: string) => void;
-  onMetrics?: (taskId: string, agentId?: string) => void;
-  onLimits?: (taskId: string, agentId?: string) => void;
-}>) {
-  const StatusIcon = getStatusIcon(torrent.status);
-
-  return (
-    <TorrentContextMenu 
-      taskId={torrent.id}
-      agentId={torrent.agentUUID}
-      onStart={onStart}
-      onStop={onStop}
-      onRemove={onRemove}
-      onForceDownload={onForceDownload}
-      onForceReannounce={onForceReannounce}
-      onForceRecheck={onForceRecheck}
-      onMetrics={onMetrics}
-      onLimits={onLimits}
-    >
-      <tr 
-        className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
-        onClick={() => onShowDetails(torrent.id)}
-      >
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <StatusIcon 
-                className={`h-4 w-4 flex-shrink-0 ${getStatusColor(torrent.status)}`} 
-              />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{torrent.status}</p>
-            </TooltipContent>
-          </Tooltip>
-          <span 
-            className="text-sm font-medium truncate" 
-            title={isTextTruncated(torrent.name) ? `${torrent.name} (truncado)` : torrent.name}
-          >
-            {truncateText(torrent.name)}
-          </span>
-        </div>
-      </td>
-      <td className="px-4 py-3 text-sm">
-        {formatBytes(torrent.totalSizeBytes)}
-      </td>
-      <td className="px-4 py-3 text-sm">
-        <div className="flex items-center gap-2">
-          <div className="w-16 bg-secondary rounded-full h-1.5">
-            <div 
-              className="bg-primary h-1.5 rounded-full transition-all duration-300" 
-              style={{ width: `${torrent.progress}%` }}
-            ></div>
-          </div>
-          <span className="text-xs text-muted-foreground">{torrent.progress.toFixed(0)}%</span>
-        </div>
-      </td>
-      <td className="px-4 py-3 text-sm">
-        <div className="flex flex-col">
-          <span className={torrent.downloadRateBps > 0 ? 'text-green-600 dark:text-green-400' : ''}>
-            {formatBytesPerSecond(torrent.downloadRateBps)}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            ({formatBytes(torrent.downloadedBytes)})
-          </span>
-        </div>
-      </td>
-      <td className="px-4 py-3 text-sm">
-        <div className="flex flex-col">
-          <span className={torrent.uploadRateBps > 0 ? 'text-purple-600 dark:text-purple-400' : ''}>
-            {formatBytesPerSecond(torrent.uploadRateBps)}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            ({formatBytes(torrent.uploadedBytes)})
-          </span>
-        </div>
-      </td>
-      <td className="px-4 py-3 text-sm">
-        <RatioBadge ratio={torrent.ratio} />
-      </td>
-      <td className="px-4 py-3 text-sm">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1">
-            <ArrowUp className="h-3.5 w-3.5 text-green-600 dark:text-green-400 flex-shrink-0" />
-            <span className="text-xs">{torrent.numSeeds}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <ArrowDown className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-            <span className="text-xs">{torrent.numLeechs}</span>
-          </div>
-        </div>
-      </td>
-      <td className="px-4 py-3 text-sm">
-        {torrent.agentName ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="flex items-center justify-center">
-                <AgentIcon 
-                  iconName={torrent.agentIcon}
-                  color={torrent.agentColor}
-                  size="md"
-                />
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{torrent.agentName}</p>
-            </TooltipContent>
-          </Tooltip>
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        )}
-      </td>
-      </tr>
-    </TorrentContextMenu>
-  );
-}
-
-// Componente para botão de ordenação
-function SortButton({ 
-  sortType: currentSortType, 
-  currentSortType: activeSortType,
-  currentSortDirection,
-  onSort, 
-  children 
-}: { 
-  sortType: SortType; 
-  currentSortType: SortType;
-  currentSortDirection: "asc" | "desc";
-  onSort: (type: SortType) => void; 
-  children: React.ReactNode; 
-}) {
-  return (
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={() => onSort(currentSortType)}
-      className={`h-6 w-6 p-0 hover:bg-muted ${
-        activeSortType === currentSortType 
-          ? "bg-muted text-foreground" 
-          : "text-muted-foreground"
-      }`}
-      title={`Ordenar por ${children}`}
-    >
-      {activeSortType === currentSortType ? (
-        currentSortDirection === "asc" ? (
-          <SortAsc className="h-3 w-3" />
-        ) : (
-          <SortDesc className="h-3 w-3" />
-        )
-      ) : (
-        <SortAsc className="h-3 w-3 opacity-50" />
-      )}
-    </Button>
-  );
-}
+ 
 
 // Componente dropdown para seleção de itens por página
 function ItemsPerPageDropdown({ 
@@ -744,13 +457,55 @@ export default function TorrentsPage() {
   const [isMetricsModalOpen, setIsMetricsModalOpen] = useState(false);
   const [metricsTaskId, setMetricsTaskId] = useState<string>("");
   const [metricsAgentId, setMetricsAgentId] = useState<string>("");
+  const [metricsTaskName, setMetricsTaskName] = useState<string>("");
+  const [metricsSelectedCount, setMetricsSelectedCount] = useState<number>(1);
+  const [metricsTaskIds, setMetricsTaskIds] = useState<string[]>([]);
   const [isLimitsModalOpen, setIsLimitsModalOpen] = useState(false);
   const [limitsTaskId, setLimitsTaskId] = useState<string>("");
   const [limitsAgentId, setLimitsAgentId] = useState<string>("");
   const [limitsTaskName, setLimitsTaskName] = useState<string>("");
   const [limitsTaskStatus, setLimitsTaskStatus] = useState<string>("");
+  const [limitsSelectedCount, setLimitsSelectedCount] = useState<number>(1);
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false);
   const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
+  const [compact, setCompact] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [lastNonEmptyTorrents, setLastNonEmptyTorrents] = useState<Torrent[]>([]);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteIds, setDeleteIds] = useState<string[]>([]);
+  const [deleteMode, setDeleteMode] = useState<"single" | "bulk">("single");
+  const [deleteSingleName, setDeleteSingleName] = useState<string>("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Toggle single selection
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  // Tri-state select-all button behavior
+  const handleToggleSelectAll = () => {
+    // Phase 0 -> 1: enable selection with none selected
+    if (!selectionMode) {
+      setSelectionMode(true);
+      setSelectedIds(new Set());
+      return;
+    }
+    // Phase 1 -> 2: select all visible
+    const visibleIdsLocal = paginatedTorrents.map(t => t.id);
+    const allSelectedLocal = visibleIdsLocal.length > 0 && visibleIdsLocal.every(id => selectedIds.has(id));
+    if (!allSelectedLocal) {
+      setSelectedIds(new Set(visibleIdsLocal));
+      return;
+    }
+    // Phase 2 -> 0: disable selection mode
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  };
   
   // Refs para rastrear valores anteriores de status/categorias/tags disponíveis
   const prevAvailableStatusesRef = useRef<TorrentStatus[]>([]);
@@ -1040,6 +795,67 @@ export default function TorrentsPage() {
     }
   }, []);
 
+  // Abrir modal de deleção (single/bulk) a partir do contexto (tabela/cards/menu)
+  const openDeleteModal = (ids: string[]) => {
+    setDeleteIds(ids);
+    const isBulk = selectionMode && ids.length > 1;
+    setDeleteMode(isBulk ? "bulk" : "single");
+    if (!isBulk) {
+      const t = (torrents.find(x => x.id === ids[0]) || lastNonEmptyTorrents.find(x => x.id === ids[0]));
+      setDeleteSingleName(t?.name || "");
+    } else {
+      setDeleteSingleName("");
+    }
+    setIsDeleteModalOpen(true);
+  };
+
+  // Confirma deleção de 1..N torrents selecionados
+  const handleConfirmDelete = async (purge: boolean) => {
+    try {
+      const ids = deleteIds;
+      const source = torrents.length > 0 ? torrents : lastNonEmptyTorrents;
+      const isBulk = ids.length > 1;
+      
+      // Marcar que estamos fazendo refresh para manter cache ativo
+      setIsRefreshing(true);
+      
+      await Promise.allSettled(ids.map(async (id) => {
+        const t = source.find(x => x.id === id);
+        if (t?.agentUUID) {
+          await torrentService.deleteTask(t.agentUUID, id, purge);
+        }
+      }));
+      
+      // Recarregar lista
+      await loadTorrents();
+      
+      // Exibir mensagem de sucesso
+      const message = isBulk 
+        ? `${ids.length} ${ids.length === 1 ? 'torrent removido' : 'torrents removidos'} com sucesso`
+        : 'Torrent removido com sucesso';
+      toast.success(message, {
+        position: 'top-center',
+        className: 'toast-success-icon-only',
+      });
+      
+      // Limpar seleção apenas após recarga completa
+      if (isBulk) {
+        setSelectedIds(new Set());
+        setSelectionMode(false);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao remover torrent(s)', {
+        position: 'top-center',
+        className: 'toast-error-icon-only',
+      });
+    } finally {
+      setIsRefreshing(false);
+      setIsDeleteModalOpen(false);
+      setDeleteIds([]);
+    }
+  };
+
   // Abrir modal de detalhes
   const handleShowDetails = (torrentId: string) => {
     const task = originalTasks.find(t => t.id === torrentId);
@@ -1057,8 +873,18 @@ export default function TorrentsPage() {
 
   // Abrir modal de métricas
   const handleShowMetrics = (taskId: string, agentId?: string) => {
+    const task = originalTasks.find(t => t.id === taskId);
+    
+    // Se está em modo de seleção e há múltiplos torrents selecionados, usar a seleção
+    const isBulkView = selectionMode && selectedIds.size > 1;
+    const count = isBulkView ? selectedIds.size : 1;
+    const taskIds = isBulkView ? Array.from(selectedIds) : [taskId];
+    
     setMetricsTaskId(taskId);
     setMetricsAgentId(agentId || "");
+    setMetricsTaskName(task?.name || "");
+    setMetricsSelectedCount(count);
+    setMetricsTaskIds(taskIds);
     setIsMetricsModalOpen(true);
   };
 
@@ -1067,15 +893,24 @@ export default function TorrentsPage() {
     setIsMetricsModalOpen(false);
     setMetricsTaskId("");
     setMetricsAgentId("");
+    setMetricsTaskName("");
+    setMetricsSelectedCount(1);
+    setMetricsTaskIds([]);
   };
 
   // Abrir modal de limites
   const handleShowLimits = (taskId: string, agentId?: string) => {
     const task = originalTasks.find(t => t.id === taskId);
+    
+    // Se está em modo de seleção e há múltiplos torrents selecionados, usar a seleção
+    const isBulkEdit = selectionMode && selectedIds.size > 1;
+    const count = isBulkEdit ? selectedIds.size : 1;
+    
     setLimitsTaskId(taskId);
     setLimitsAgentId(agentId || "");
     setLimitsTaskName(task?.name || "");
     setLimitsTaskStatus(task?.state || "");
+    setLimitsSelectedCount(count);
     setIsLimitsModalOpen(true);
   };
 
@@ -1086,6 +921,7 @@ export default function TorrentsPage() {
     setLimitsAgentId("");
     setLimitsTaskName("");
     setLimitsTaskStatus("");
+    setLimitsSelectedCount(1);
   };
 
   // Controles de torrent
@@ -1385,6 +1221,13 @@ export default function TorrentsPage() {
     loadAgents();
   }, [loadAgents]);
 
+  // Cache da última lista não vazia para evitar flicker quando em seleção múltipla
+  useEffect(() => {
+    if (torrents.length > 0) {
+      setLastNonEmptyTorrents(torrents);
+    }
+  }, [torrents]);
+
   // Carregar torrents quando agents mudarem (para detectar mudanças de status)
   useEffect(() => {
     if (!agentsLoading) {
@@ -1456,7 +1299,9 @@ export default function TorrentsPage() {
 
   // Filtrar e ordenar torrents com otimização para evitar re-renderizações
   const filteredTorrents = useMemo(() => {
-    let filtered = torrents;
+    // Evita tabela vazia temporária mantendo última lista não vazia durante refresh ou seleção múltipla
+    const source = torrents.length > 0 ? torrents : ((isRefreshing || selectionMode) ? lastNonEmptyTorrents : torrents);
+    let filtered = source;
 
     // Filtrar por agentes selecionados (se houver agentes carregados)
     if (agents.length > 0 && selectedAgentIds.size === 0) {
@@ -1596,13 +1441,15 @@ export default function TorrentsPage() {
       // Aplicar direção da ordenação
       return sortDirection === "asc" ? comparison : -comparison;
     });
-  }, [torrents, searchTerm, sortType, sortDirection, agents, selectedAgentIds, availableStatuses, selectedStatuses, availableCategories, selectedCategories, availableTags, selectedTags, availableGrades, selectedGrades]);
+  }, [torrents, lastNonEmptyTorrents, isRefreshing, selectionMode, searchTerm, sortType, sortDirection, agents, selectedAgentIds, availableStatuses, selectedStatuses, availableCategories, selectedCategories, availableTags, selectedTags, availableGrades, selectedGrades]);
 
   // Calcular dados de paginação
   const totalPages = Math.ceil(filteredTorrents.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedTorrents = filteredTorrents.slice(startIndex, endIndex);
+  const visibleIds = useMemo(() => paginatedTorrents.map(t => t.id), [paginatedTorrents]);
+  const allSelected = selectionMode && visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
 
   // Resetar página quando o filtro, itens por página ou tipo de ordenação mudarem
   useEffect(() => {
@@ -1852,6 +1699,23 @@ export default function TorrentsPage() {
         
           {/* Controles */}
           <div className="flex items-center gap-4 flex-shrink-0">
+            {/* Select All (left of refresh) */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={selectionMode ? "default" : "outline"}
+                  size="icon"
+                  className="h-9 w-9"
+                  onClick={handleToggleSelectAll}
+                  aria-label={!selectionMode ? 'Habilitar seleção' : (!allSelected ? 'Selecionar todos' : 'Desabilitar seleção múltipla')}
+                >
+                  {allSelected ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{!selectionMode ? 'Habilitar seleção' : (!allSelected ? 'Selecionar todos' : 'Desabilitar seleção múltipla')}</p>
+              </TooltipContent>
+            </Tooltip>
             <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">{t('torrents.update')}:</span>
             <UpdateIntervalDropdown
@@ -1866,6 +1730,22 @@ export default function TorrentsPage() {
                 onChange={handleItemsPerPageChange} 
               />
             </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={compact ? "default" : "outline"}
+                  onClick={() => setCompact((v) => !v)}
+                  size="icon"
+                  className="h-9 w-9"
+                  aria-label={compact ? "Desativar modo compacto" : "Ativar modo compacto"}
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{compact ? "Desativar modo compacto" : "Ativar modo compacto"}</p>
+              </TooltipContent>
+            </Tooltip>
             <Button
               variant="outline"
               onClick={() => setIsFilterSidebarOpen(true)}
@@ -1921,6 +1801,23 @@ export default function TorrentsPage() {
         {/* Controles mobile */}
         <div className="sm:hidden mb-1">
           <div className="flex items-stretch gap-1.5">
+            {/* Select All (left of refresh) */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={selectionMode ? "default" : "outline"}
+                  size="icon"
+                  className="flex-shrink-0 h-8 w-8"
+                  onClick={handleToggleSelectAll}
+                  aria-label={!selectionMode ? 'Habilitar seleção' : (!allSelected ? 'Selecionar todos' : 'Desabilitar seleção múltipla')}
+                >
+                  {allSelected ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{!selectionMode ? 'Habilitar seleção' : (!allSelected ? 'Selecionar todos' : 'Desabilitar seleção múltipla')}</p>
+              </TooltipContent>
+            </Tooltip>
             <div className="flex items-center gap-1 flex-shrink-0">
               <Clock className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
               <UpdateIntervalDropdown
@@ -1936,6 +1833,23 @@ export default function TorrentsPage() {
                 onChange={handleItemsPerPageChange} 
               />
             </div>
+            <div className="w-px bg-border self-stretch flex-shrink-0" />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={compact ? "default" : "outline"}
+                  onClick={() => setCompact((v) => !v)}
+                  size="icon"
+                  className="flex-shrink-0 h-8 w-8"
+                  aria-label={compact ? "Desativar modo compacto" : "Ativar modo compacto"}
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{compact ? "Desativar modo compacto" : "Ativar modo compacto"}</p>
+              </TooltipContent>
+            </Tooltip>
             <div className="w-px bg-border self-stretch flex-shrink-0" />
             <Button
               variant="outline"
@@ -2024,122 +1938,33 @@ export default function TorrentsPage() {
       {/* Conteúdo principal - apenas quando há agentes funcionais e torrents */}
       {!agentsLoading && agents.length > 0 && agents.some(agent => agent.status !== 'ERRORED') && torrents.length > 0 && (
         <>
-      {/* Layout para desktop - Tabela */}
+      {/* Layout para desktop - Tabela via componente */}
       <div className="hidden md:block">
-        <div className="rounded-md border">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="sticky top-0 bg-background z-10">
-                <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <span>{t('torrents.name')}</span>
-                      <SortButton
-                        sortType="priority"
-                        currentSortType={sortType}
-                        currentSortDirection={sortDirection}
-                        onSort={handleSortChange}
-                      >
-                        {t('torrents.sortBy.priority')}
-                      </SortButton>
-                    </div>
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <span>{t('torrents.size')}</span>
-                      <SortButton
-                        sortType="size"
-                        currentSortType={sortType}
-                        currentSortDirection={sortDirection}
-                        onSort={handleSortChange}
-                      >
-                        {t('torrents.sortBy.size')}
-                      </SortButton>
-                    </div>
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <span>{t('torrents.progress')}</span>
-                      <SortButton
-                        sortType="progress"
-                        currentSortType={sortType}
-                        currentSortDirection={sortDirection}
-                        onSort={handleSortChange}
-                      >
-                        {t('torrents.sortBy.progress')}
-                      </SortButton>
-                    </div>
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <span>{t('torrents.download')}</span>
-                      <SortButton
-                        sortType="download_speed"
-                        currentSortType={sortType}
-                        currentSortDirection={sortDirection}
-                        onSort={handleSortChange}
-                      >
-                        {t('torrents.sortBy.downloadSpeed')}
-                      </SortButton>
-                    </div>
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <span>{t('torrents.upload')}</span>
-                      <SortButton
-                        sortType="upload_speed"
-                        currentSortType={sortType}
-                        currentSortDirection={sortDirection}
-                        onSort={handleSortChange}
-                      >
-                        {t('torrents.sortBy.uploadSpeed')}
-                      </SortButton>
-                    </div>
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                    {t('torrents.ratio')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <span>Seeds/Peers</span>
-                    </div>
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                    {t('torrents.agent')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedTorrents.map((t) => (
-                  <TorrentRow 
-                    key={t.id} 
-                    torrent={t} 
-                    onShowDetails={handleShowDetails}
-                    onStart={handlePlayTorrent}
-                    onStop={handlePauseTorrent}
-                    onRemove={(id) => handleDeleteTorrent(id, false)}
-                    onForceDownload={handleForceDownloadTorrent}
-                    onForceReannounce={handleForceReannounceTorrent}
-                    onForceRecheck={handleForceRecheckTorrent}
-                    onMetrics={handleShowMetrics}
-                    onLimits={handleShowLimits}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-        
-        {/* Controles de paginação para desktop */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center px-4 py-3 border-t bg-background">
-            <TorrentPagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
-            />
-          </div>
-        )}
+        <TorrentsTable
+          torrents={paginatedTorrents}
+          sortType={sortType}
+          sortDirection={sortDirection}
+          onSortChange={handleSortChange}
+          onShowDetails={handleShowDetails}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          filteredTorrentsLength={filteredTorrents.length}
+          onPreviousPage={() => currentPage > 1 ? setCurrentPage(currentPage - 1) : undefined}
+          onNextPage={() => currentPage < totalPages ? setCurrentPage(currentPage + 1) : undefined}
+          onStart={handlePlayTorrent}
+          onStop={handlePauseTorrent}
+          onRemove={(id) => handleDeleteTorrent(id, false)}
+          onForceDownload={handleForceDownloadTorrent}
+          onForceReannounce={handleForceReannounceTorrent}
+          onForceRecheck={handleForceRecheckTorrent}
+          onMetrics={handleShowMetrics}
+          onLimits={handleShowLimits}
+          compact={compact}
+          selectionMode={selectionMode}
+          selectedIds={selectedIds}
+          onToggleSelect={handleToggleSelect}
+          onRequestDelete={openDeleteModal}
+        />
       </div>
 
       {/* Layout para mobile - Cards em coluna única */}
@@ -2159,23 +1984,23 @@ export default function TorrentsPage() {
             </div>
           </div>
           
-          <div className="space-y-4 w-full">
-            {paginatedTorrents.map((t) => (
-              <TorrentCard 
-                key={t.id} 
-                torrent={t} 
-                onShowDetails={handleShowDetails}
-                onStart={handlePlayTorrent}
-                onStop={handlePauseTorrent}
-                onMetrics={handleShowMetrics}
-                onRemove={(id) => handleDeleteTorrent(id, false)}
-                onForceDownload={handleForceDownloadTorrent}
-                onForceReannounce={handleForceReannounceTorrent}
-                onForceRecheck={handleForceRecheckTorrent}
-                onLimits={handleShowLimits}
-              />
-            ))}
-          </div>
+          <TorrentListMobile
+            torrents={paginatedTorrents}
+            onShowDetails={handleShowDetails}
+            onStart={handlePlayTorrent}
+            onStop={handlePauseTorrent}
+            onMetrics={handleShowMetrics}
+            onRemove={(id) => handleDeleteTorrent(id, false)}
+            onForceDownload={handleForceDownloadTorrent}
+            onForceReannounce={handleForceReannounceTorrent}
+            onForceRecheck={handleForceRecheckTorrent}
+            onLimits={handleShowLimits}
+            compact={compact}
+            selectionMode={selectionMode}
+            selectedIds={selectedIds}
+            onToggleSelect={handleToggleSelect}
+            onRequestDelete={openDeleteModal}
+          />
           
           {/* Controles de paginação para mobile */}
           {totalPages > 1 && (
@@ -2225,6 +2050,9 @@ export default function TorrentsPage() {
           onClose={handleCloseMetricsModal}
           taskId={metricsTaskId}
           agentId={metricsAgentId}
+          taskName={metricsTaskName}
+          selectedCount={metricsSelectedCount}
+          taskIds={metricsTaskIds}
         />
       )}
 
@@ -2237,9 +2065,43 @@ export default function TorrentsPage() {
           taskId={limitsTaskId}
           taskName={limitsTaskName}
           taskStatus={limitsTaskStatus}
+          selectedCount={limitsSelectedCount}
         />
       )}
 
+      {/* Modal de deleção (single/bulk) */}
+      {isDeleteModalOpen && (
+        <TorrentDeleteModal
+          isOpen={isDeleteModalOpen}
+          mode={deleteMode}
+          torrentName={deleteSingleName}
+          selectedCount={deleteMode === 'bulk' ? deleteIds.length : undefined}
+          onClose={() => setIsDeleteModalOpen(false)}
+          onConfirm={handleConfirmDelete}
+        />
+      )}
+
+      {/* Floating selection counter - shows when selection mode is active */}
+      {selectionMode && (
+        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-5 duration-300">
+          <div className="bg-primary text-primary-foreground border border-primary/20 rounded-full px-5 py-2.5 shadow-lg flex items-center gap-3">
+            <CheckSquare className="h-4 w-4" />
+            <span className="text-sm font-medium">
+              <span className="font-semibold">{selectedIds.size}</span>
+              <span className="opacity-90"> selected</span>
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 rounded-full hover:bg-primary-foreground/20 ml-1"
+              onClick={handleToggleSelectAll}
+              aria-label="Desativar seleção múltipla"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Filter Sidebar - só renderiza quando aberto */}
       {isFilterSidebarOpen && (

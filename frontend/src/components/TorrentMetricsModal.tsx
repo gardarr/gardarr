@@ -17,6 +17,9 @@ interface TorrentMetricsModalProps {
   onClose: () => void;
   taskId: string;
   agentId?: string;
+  selectedCount?: number;
+  taskName?: string;
+  taskIds?: string[]; // Multiple task IDs for multi-series charts
 }
 
 interface SpeedPoint {
@@ -28,6 +31,8 @@ interface SpeedPoint {
   avgRatio: number;
   totalDownloadBytes: number;
   totalUploadBytes: number;
+  // For multi-series support: dynamic task properties
+  [key: string]: string | number; // e.g., download_taskHash, upload_taskHash
 }
 
 interface WindowTaskData {
@@ -233,13 +238,18 @@ export function TorrentMetricsModal({
   isOpen,
   onClose,
   taskId,
-  agentId
+  agentId,
+  selectedCount = 1,
+  taskName,
+  taskIds = []
 }: TorrentMetricsModalProps) {
   const [chartData, setChartData] = useState<SpeedPoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [taskHash, setTaskHash] = useState<string>(taskId);
+  const [taskHashes, setTaskHashes] = useState<string[]>([]); // Multiple hashes for multi-select
   const [taskData, setTaskData] = useState<Task | null>(null);
+  const [aggregatedTaskData, setAggregatedTaskData] = useState<Task | null>(null); // Aggregated data for multiple tasks
   const fetchingKeyRef = useRef<string>(""); // Track the key currently being fetched
   const metricsFetchedRef = useRef<string>(""); // Track what was already fetched
   
@@ -275,6 +285,56 @@ export function TorrentMetricsModal({
       try {
         const response = await torrentService.listAgentTasks(agentId);
         if (response.data) {
+          // If multiple tasks selected, fetch hashes and aggregate data for all
+          if (selectedCount > 1 && taskIds.length > 0) {
+            const hashes: string[] = [];
+            const tasks: Task[] = [];
+            
+            for (const id of taskIds) {
+              const task = response.data.find((t: Task) => t.id === id);
+              if (task) {
+                tasks.push(task);
+                if (task.hash) {
+                  hashes.push(task.hash);
+                } else {
+                  // If no hash, use ID directly
+                  hashes.push(id);
+                }
+              }
+            }
+            
+            setTaskHashes(hashes);
+            
+            // Aggregate task data from all selected tasks
+            if (tasks.length > 0) {
+              const aggregated: Task = {
+                ...tasks[0], // Use first task as base
+                name: `${tasks.length} torrents selected`,
+                network: {
+                  download: {
+                    speed: tasks.reduce((sum, t) => sum + (t.network?.download?.speed || 0), 0),
+                    amount: tasks.reduce((sum, t) => sum + (t.network?.download?.amount || 0), 0),
+                  },
+                  upload: {
+                    speed: tasks.reduce((sum, t) => sum + (t.network?.upload?.speed || 0), 0),
+                    amount: tasks.reduce((sum, t) => sum + (t.network?.upload?.amount || 0), 0),
+                  },
+                },
+                pairs: {
+                  seeders: tasks.reduce((sum, t) => sum + (t.pairs?.seeders || 0), 0),
+                  leechers: tasks.reduce((sum, t) => sum + (t.pairs?.leechers || 0), 0),
+                  swarm_seeders: tasks.reduce((sum, t) => sum + (t.pairs?.swarm_seeders || 0), 0),
+                  swarm_leechers: tasks.reduce((sum, t) => sum + (t.pairs?.swarm_leechers || 0), 0),
+                },
+              };
+              setAggregatedTaskData(aggregated);
+            }
+          } else {
+            // Single task - clear aggregated data
+            setAggregatedTaskData(null);
+          }
+          
+          // Also get primary task data for display
           const task = response.data.find((t: Task) => t.id === taskId);
           if (task) {
             setTaskData(task);
@@ -293,7 +353,7 @@ export function TorrentMetricsModal({
 
     fetchTask();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, agentId, taskId]);
+  }, [isOpen, agentId, taskId, taskIds, selectedCount]);
 
   // Fetch metrics data
   useEffect(() => {
@@ -479,7 +539,21 @@ export function TorrentMetricsModal({
             <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
               <BarChart3 className="h-4 w-4 text-primary" />
             </div>
-            <DialogTitle>Métricas</DialogTitle>
+            <div>
+              <DialogTitle>
+                {selectedCount > 1 ? `Métricas (${selectedCount} selected)` : "Métricas"}
+              </DialogTitle>
+              {taskName && selectedCount === 1 && (
+                <p className="text-sm text-muted-foreground mt-1 truncate max-w-md">
+                  {taskName}
+                </p>
+              )}
+              {selectedCount > 1 && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Showing aggregated stats for all selected torrents
+                </p>
+              )}
+            </div>
           </div>
         </DialogHeader>
         
@@ -495,60 +569,72 @@ export function TorrentMetricsModal({
           </div>
 
           {/* Network & Peers Section */}
-          {taskData && (
+          {(aggregatedTaskData || taskData) && (
             <div className="space-y-4">
-              <h3 className="text-sm font-medium text-muted-foreground">Rede e Pares</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">
+                {selectedCount > 1 ? `Rede e Pares (${selectedCount} torrents)` : "Rede e Pares"}
+              </h3>
               
-              {/* Barra de Progresso de Seeding */}
-              <TorrentContributionWidget taskData={taskData} />
+              {/* Barra de Progresso de Seeding - show aggregated or single data */}
+              <TorrentContributionWidget taskData={aggregatedTaskData || taskData!} />
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-                {/* Card Download e Upload */}
-                <div className="col-span-2 p-3 container-content-background/50 rounded-lg border">
-                  <div className="flex gap-4 items-stretch">
-                    <MetricSection
-                      title="Download"
-                      icon={ArrowDown}
-                      iconColor="text-blue-500"
-                      items={[
-                        { icon: Gauge, label: "Velocidade", value: `${formatBytes(taskData.network.download.speed)}/s` },
-                        { icon: Database, label: "Total", value: formatBytes(taskData.network.download.amount) },
-                      ]}
-                    />
-                    <div className="w-px bg-border self-stretch mx-2" />
-                    <MetricSection
-                      title="Upload"
-                      icon={ArrowUp}
-                      iconColor="text-green-500"
-                      items={[
-                        { icon: Gauge, label: "Velocidade", value: `${formatBytes(taskData.network.upload.speed)}/s` },
-                        { icon: Database, label: "Total", value: formatBytes(taskData.network.upload.amount) },
-                      ]}
-                    />
-                  </div>
-                </div>
+                {(() => {
+                  // Use aggregated data if multiple torrents selected, otherwise use single task data
+                  const displayData = aggregatedTaskData || taskData;
+                  if (!displayData) return null;
+                  
+                  return (
+                    <>
+                      {/* Card Download e Upload */}
+                      <div className="col-span-2 p-3 container-content-background/50 rounded-lg border">
+                        <div className="flex gap-4 items-stretch">
+                          <MetricSection
+                            title="Download"
+                            icon={ArrowDown}
+                            iconColor="text-blue-500"
+                            items={[
+                              { icon: Gauge, label: "Velocidade", value: `${formatBytes(displayData.network.download.speed)}/s` },
+                              { icon: Database, label: "Total", value: formatBytes(displayData.network.download.amount) },
+                            ]}
+                          />
+                          <div className="w-px bg-border self-stretch mx-2" />
+                          <MetricSection
+                            title="Upload"
+                            icon={ArrowUp}
+                            iconColor="text-green-500"
+                            items={[
+                              { icon: Gauge, label: "Velocidade", value: `${formatBytes(displayData.network.upload.speed)}/s` },
+                              { icon: Database, label: "Total", value: formatBytes(displayData.network.upload.amount) },
+                            ]}
+                          />
+                        </div>
+                      </div>
 
-                {/* Card Conectados e Swarm */}
-                <div className="col-span-2 p-3 container-content-background/50 rounded-lg border">
-                  <div className="flex gap-4 items-stretch">
-                    <MetricSection
-                      title="Conectados"
-                      icon={Users}
-                      items={[
-                        { icon: UserPlus, label: "Seeders", value: taskData.pairs.seeders, iconClassName: "text-green-600" },
-                        { icon: UserMinus, label: "Leechers", value: taskData.pairs.leechers, iconClassName: "text-orange-600" },
-                      ]}
-                    />
-                    <div className="w-px bg-border self-stretch mx-2" />
-                    <MetricSection
-                      title="Swarm"
-                      icon={Globe}
-                      items={[
-                        { icon: Users2, label: "Swarm Seeders", value: taskData.pairs.swarm_seeders, iconClassName: "text-green-600" },
-                        { icon: Users2, label: "Swarm Leechers", value: taskData.pairs.swarm_leechers, iconClassName: "text-orange-600" },
-                      ]}
-                    />
-                  </div>
-                </div>
+                      {/* Card Conectados e Swarm */}
+                      <div className="col-span-2 p-3 container-content-background/50 rounded-lg border">
+                        <div className="flex gap-4 items-stretch">
+                          <MetricSection
+                            title="Conectados"
+                            icon={Users}
+                            items={[
+                              { icon: UserPlus, label: "Seeders", value: displayData.pairs.seeders, iconClassName: "text-green-600" },
+                              { icon: UserMinus, label: "Leechers", value: displayData.pairs.leechers, iconClassName: "text-orange-600" },
+                            ]}
+                          />
+                          <div className="w-px bg-border self-stretch mx-2" />
+                          <MetricSection
+                            title="Swarm"
+                            icon={Globe}
+                            items={[
+                              { icon: Users2, label: "Swarm Seeders", value: displayData.pairs.swarm_seeders, iconClassName: "text-green-600" },
+                              { icon: Users2, label: "Swarm Leechers", value: displayData.pairs.swarm_leechers, iconClassName: "text-orange-600" },
+                            ]}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           )}

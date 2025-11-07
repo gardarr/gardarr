@@ -21,11 +21,14 @@ type TorrentContextMenuProps = {
   onForceRecheck?: (taskId: string) => void;
   onMetrics?: (taskId: string, agentId?: string) => void;
   onLimits?: (taskId: string, agentId?: string) => void;
+  selectionMode?: boolean;
+  selectedIds?: Set<string>;
+  onRequestDelete?: (ids: string[]) => void;
 };
 
 export default function TorrentContextMenu(props: TorrentContextMenuProps) {
   const { t } = useTranslation();
-  const { taskId, agentId, children, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits } = props;
+  const { taskId, agentId, children, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits, selectionMode, selectedIds, onRequestDelete } = props;
 
   const handleStart = React.useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -46,10 +49,17 @@ export default function TorrentContextMenu(props: TorrentContextMenuProps) {
   const handleRemove = React.useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (onRequestDelete) {
+      const ids = selectionMode && selectedIds && selectedIds.size > 0
+        ? Array.from(selectedIds)
+        : [taskId];
+      onRequestDelete(ids);
+      return;
+    }
     if (onRemove) {
       onRemove(taskId);
     }
-  }, [onRemove, taskId]);
+  }, [onRequestDelete, selectionMode, selectedIds, onRemove, taskId]);
 
   const handleForceDownload = React.useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -122,7 +132,7 @@ export default function TorrentContextMenu(props: TorrentContextMenuProps) {
           <BarChart3 />
           Métricas
         </ContextMenuItem>
-        <ContextMenuItem onSelect={handleLimits} disabled={!onLimits}>
+        <ContextMenuItem onSelect={handleLimits}>
           <Settings />
           {t("torrents.limits")}
         </ContextMenuItem>

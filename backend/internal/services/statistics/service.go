@@ -641,21 +641,30 @@ type WindowedAggregation struct {
 }
 
 // GetWindowedAggregation computes aggregated statistics in fixed time windows
-func (s *Service) GetWindowedAggregation(ctx context.Context, agentID string, from, to time.Time, step time.Duration, groupBy, filterTask string) (interface{}, error) {
+// filterTasks can be empty, a single task hash, or multiple task hashes
+func (s *Service) GetWindowedAggregation(ctx context.Context, agentID string, from, to time.Time, step time.Duration, groupBy string, filterTasks []string) (interface{}, error) {
 	files, err := s.DiscoverFiles(ctx, agentID, from, to)
 	if err != nil {
 		return nil, err
 	}
 
 	if groupBy == "task" {
-		return s.aggregateByTask(files, from, to, step, filterTask)
+		return s.aggregateByTask(files, from, to, step, filterTasks)
 	}
 
-	return s.aggregateByAgent(files, from, to, step, filterTask)
+	return s.aggregateByAgent(files, from, to, step, filterTasks)
 }
 
 // aggregateByTask aggregates statistics grouped by task
-func (s *Service) aggregateByTask(files []string, from, to time.Time, step time.Duration, filterTask string) (map[string]map[string]WindowedAggregation, error) {
+// filterTasks is a list of task hashes to filter by. Empty list means no filter.
+func (s *Service) aggregateByTask(files []string, from, to time.Time, step time.Duration, filterTasks []string) (map[string]map[string]WindowedAggregation, error) {
+	// Create a map for O(1) lookup if filtering
+	filterMap := make(map[string]bool)
+	for _, task := range filterTasks {
+		if task != "" {
+			filterMap[task] = true
+		}
+	}
 	type fileResult struct {
 		data map[string]map[string]WindowedAggregation
 	}
@@ -676,7 +685,8 @@ func (s *Service) aggregateByTask(files []string, from, to time.Time, step time.
 				if ts.Before(from.UTC()) || ts.After(to.UTC()) {
 					return
 				}
-				if filterTask != "" && sl.Task != filterTask {
+				// Filter by task hashes if specified
+				if len(filterMap) > 0 && !filterMap[sl.Task] {
 					return
 				}
 
@@ -723,7 +733,15 @@ func (s *Service) aggregateByTask(files []string, from, to time.Time, step time.
 }
 
 // aggregateByAgent aggregates statistics for the entire agent
-func (s *Service) aggregateByAgent(files []string, from, to time.Time, step time.Duration, filterTask string) (map[string]WindowedAggregation, error) {
+// filterTasks is a list of task hashes to filter by. Empty list means no filter.
+func (s *Service) aggregateByAgent(files []string, from, to time.Time, step time.Duration, filterTasks []string) (map[string]WindowedAggregation, error) {
+	// Create a map for O(1) lookup if filtering
+	filterMap := make(map[string]bool)
+	for _, task := range filterTasks {
+		if task != "" {
+			filterMap[task] = true
+		}
+	}
 	type fileResult struct {
 		timestampAggs map[time.Time]*WindowedAggregation
 	}
@@ -744,7 +762,8 @@ func (s *Service) aggregateByAgent(files []string, from, to time.Time, step time
 				if ts.Before(from.UTC()) || ts.After(to.UTC()) {
 					return
 				}
-				if filterTask != "" && sl.Task != filterTask {
+				// Filter by task hashes if specified
+				if len(filterMap) > 0 && !filterMap[sl.Task] {
 					return
 				}
 

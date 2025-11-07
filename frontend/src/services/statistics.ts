@@ -38,7 +38,7 @@ export interface UploadDiffsResponse {
 
 export interface TaskWindowedRequest {
   agentId: string;
-  taskHash: string;
+  taskHash: string | string[]; // Single hash or array of hashes
   from: string; // RFC3339
   to?: string; // RFC3339
   step?: string; // e.g., '5m'
@@ -57,8 +57,8 @@ class StatisticsService {
   }
 
   /**
-   * Get windowed metrics for a specific task (hash)
-   * Filters statistics by task_hash and groups by task
+   * Get windowed metrics for specific task(s) (hash)
+   * Filters statistics by task_hash (single or multiple comma-separated) and groups by task
    */
   async getWindowedByTask<T = unknown>(params: TaskWindowedRequest): Promise<ApiResponse<WindowedResponse<T>>> {
     const { agentId, taskHash, from, to, step = '5m' } = params;
@@ -67,7 +67,9 @@ class StatisticsService {
     if (to) query.set('to', to);
     if (step) query.set('step', step);
     query.set('group_by', 'task');
-    query.set('task_hash', taskHash);
+    // Support single hash or multiple hashes (comma-separated)
+    const hashString = Array.isArray(taskHash) ? taskHash.join(',') : taskHash;
+    query.set('task_hash', hashString);
     return api.get<WindowedResponse<T>>(`/statistics/agents/${encodeURIComponent(agentId)}/range/windowed?${query.toString()}`);
   }
 

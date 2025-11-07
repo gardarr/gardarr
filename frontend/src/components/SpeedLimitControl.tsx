@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { Download, Upload, Infinity as InfinityIcon } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -41,7 +42,6 @@ export function SpeedLimitControl({
 
       {(taskStatus === null || isDownloadStatus(taskStatus)) && (
         <SpeedLimitField
-          id="download_limit"
           label="Download Limit"
           icon={<Download className="h-4 w-4" />}
           limit={limits.download_limit}
@@ -53,7 +53,6 @@ export function SpeedLimitControl({
 
       {(taskStatus === null || isUploadStatus(taskStatus)) && (
         <SpeedLimitField
-          id="upload_limit"
           label="Upload Limit"
           icon={<Upload className="h-4 w-4" />}
           limit={limits.upload_limit}
@@ -67,7 +66,6 @@ export function SpeedLimitControl({
 }
 
 interface SpeedLimitFieldProps {
-  id: string;
   label: string;
   icon: React.ReactNode;
   limit: number;
@@ -77,7 +75,6 @@ interface SpeedLimitFieldProps {
 }
 
 function SpeedLimitField({
-  id,
   label,
   icon,
   limit,
@@ -85,9 +82,10 @@ function SpeedLimitField({
   onLimitChange,
   helpText,
 }: SpeedLimitFieldProps) {
+  const inputId = useId();
   return (
     <div className="space-y-3">
-      <Label htmlFor={id} className="flex items-center gap-2">
+      <Label htmlFor={inputId} className="flex items-center gap-2">
         {icon}
         <span>{label}</span>
         <span className="h-1 w-1 rounded-full bg-muted-foreground"></span>
@@ -120,7 +118,7 @@ function SpeedLimitField({
       {isAdvancedMode && (
         <div className="flex items-center gap-2">
           <Input
-            id={id}
+            id={inputId}
             type="number"
             min="0"
             step="1"

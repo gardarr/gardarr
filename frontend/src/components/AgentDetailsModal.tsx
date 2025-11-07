@@ -23,6 +23,7 @@ import type { Agent, Version, TaskStats } from "../types/agent";
 import { AgentIcon } from "./ui/AgentIcon";
 import { QBittorrentIcon } from "./ui/QBittorrentIcon";
 import { agentService } from "../services/agents";
+import { versionService } from "../services/version";
 
 interface AgentDetailsModalProps {
   isOpen: boolean;
@@ -46,6 +47,7 @@ export function AgentDetailsModal({
   const [loading, setLoading] = useState(false);
   const [agentVersions, setAgentVersions] = useState<Record<string, Version>>({});
   const [agentTaskStats, setAgentTaskStats] = useState<Record<string, TaskStats>>({});
+  const [systemVersion, setSystemVersion] = useState<Version | null>(null);
 
   // Load agent details
   const loadAgentDetails = useCallback(async (id: string) => {
@@ -82,14 +84,29 @@ export function AgentDetailsModal({
     }
   }, []);
 
+  // Load backend system version
+  const loadSystemVersion = useCallback(async () => {
+    try {
+      const response = await versionService.getVersion();
+      if (response.error) {
+        console.warn("Failed to load system version:", response.error);
+      } else if (response.data) {
+        setSystemVersion(response.data);
+      }
+    } catch (err) {
+      console.warn("Failed to load system version:", err);
+    }
+  }, []);
+
 
   // Load data when modal opens and agentId changes
   useEffect(() => {
     if (isOpen && agentId) {
       loadAgentDetails(agentId);
       loadAgentVersion(agentId);
+      loadSystemVersion();
     }
-  }, [isOpen, agentId, loadAgentDetails, loadAgentVersion]);
+  }, [isOpen, agentId, loadAgentDetails, loadAgentVersion, loadSystemVersion]);
 
   // Reset state when modal closes
   useEffect(() => {
@@ -97,6 +114,7 @@ export function AgentDetailsModal({
       setAgent(null);
       setAgentVersions({});
       setAgentTaskStats({});
+      setSystemVersion(null);
     }
   }, [isOpen]);
 
@@ -106,6 +124,20 @@ export function AgentDetailsModal({
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const compareVersions = (a: string, b: string) => {
+    const norm = (v: string) => v.replace(/^v/i, '').split('.').map(s => parseInt(s, 10) || 0);
+    const pa = norm(a);
+    const pb = norm(b);
+    const len = Math.max(pa.length, pb.length);
+    for (let i = 0; i < len; i++) {
+      const da = pa[i] ?? 0;
+      const db = pb[i] ?? 0;
+      if (da < db) return -1;
+      if (da > db) return 1;
+    }
+    return 0;
   };
 
 
@@ -200,6 +232,15 @@ export function AgentDetailsModal({
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground">{agent?.address}</p>
+                      {agent && systemVersion && agentVersions[agent.uuid] && compareVersions(agentVersions[agent.uuid].version, systemVersion.version) < 0 && (
+                        <div className="mt-1 flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                          <AlertTriangle className="h-4 w-4" />
+                          <span>
+                            {t('agents.versionMismatch', 'Agent version differs from system. Please update the agent to match system version')} {" "}
+                            <span className="font-mono">{systemVersion.version}</span>.
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Lock Icon for Standalone Agents */}

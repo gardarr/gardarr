@@ -151,7 +151,7 @@ func TestService_WindowedAggregation(t *testing.T) {
 	step := 5 * time.Minute
 
 	t.Run("Group by agent with no files", func(t *testing.T) {
-		result, err := svc.GetWindowedAggregation(ctx, agentID, from, to, step, "agent", "")
+		result, err := svc.GetWindowedAggregation(ctx, agentID, from, to, step, "agent", []string{})
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
 
@@ -162,7 +162,7 @@ func TestService_WindowedAggregation(t *testing.T) {
 	})
 
 	t.Run("Group by task with no files", func(t *testing.T) {
-		result, err := svc.GetWindowedAggregation(ctx, agentID, from, to, step, "task", "")
+		result, err := svc.GetWindowedAggregation(ctx, agentID, from, to, step, "task", []string{})
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
 
