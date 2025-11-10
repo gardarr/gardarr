@@ -17,12 +17,14 @@ import (
 	"github.com/gardarr/gardarr/internal/infra/database"
 	"github.com/gardarr/gardarr/internal/models"
 	agentmanager "github.com/gardarr/gardarr/internal/services/agentmanager"
+	"github.com/gardarr/gardarr/internal/services/events"
 	"github.com/gardarr/gardarr/pkg/env"
 )
 
 type Service struct {
 	db            *database.Database
 	agents        *agentmanager.Service
+	eventService  *events.Service
 	baseDir       string
 	interval      time.Duration
 	enabled       bool
@@ -37,6 +39,7 @@ func NewService(db *database.Database, agents *agentmanager.Service) *Service {
 	return &Service{
 		db:            db,
 		agents:        agents,
+		eventService:  events.NewService(db),
 		baseDir:       env.Get("STATISTICS_DIR").Default("./data/statistics").Value(),
 		interval:      env.Get("STATISTICS_INTERVAL").Default("30s").ValueDuration(),
 		enabled:       env.Get("STATISTICS_ENABLED").Default(true).ValueBool(),
@@ -127,6 +130,12 @@ func (s *Service) collectAgentData(ctx context.Context, a *entities.Agent, now t
 	tasks, err := s.agents.ListTasks([]*entities.Agent{a})
 	if err != nil || len(tasks) == 0 {
 		return
+	}
+
+	// Track task state changes for events
+	if s.eventService != nil {
+		_ = s.eventService.TrackTasks(ctx, tasks, a.UUID, now)
+		_ = s.eventService.DetectRemovedTasks(ctx, tasks, a.UUID, now)
 	}
 
 	// Open writer per agent/day

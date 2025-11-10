@@ -18,11 +18,14 @@ import (
 	"github.com/gardarr/gardarr/internal/routes/api/v1/agents"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/auth"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/category"
+	"github.com/gardarr/gardarr/internal/routes/api/v1/events"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/health"
+	"github.com/gardarr/gardarr/internal/routes/api/v1/profile"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/settings"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/setup"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/signup"
 	statsroutes "github.com/gardarr/gardarr/internal/routes/api/v1/statistics"
+	"github.com/gardarr/gardarr/internal/routes/api/v1/task_metadata"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/users"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/version"
 	"github.com/gardarr/gardarr/internal/schemas"
@@ -85,9 +88,15 @@ func Run(cmd *cobra.Command, args []string) error {
 		panic(fmt.Sprintf("erro ao inicializar configurações: %v", err))
 	}
 
+	// Get base URL for building image URLs
+	baseURL := fmt.Sprintf("http://localhost:%s", env.Get(constants.AppPortEnv).Default("3000").Value())
+	if customURL := os.Getenv("BASE_URL"); customURL != "" {
+		baseURL = customURL
+	}
+
 	setRouter()
 
-	agentSvc, err := agentmanager.NewService(db, cryptoSvc)
+	agentSvc, err := agentmanager.NewService(db, cryptoSvc, baseURL)
 	if err != nil {
 		return err
 	}
@@ -213,10 +222,18 @@ func securityHeadersMiddleware() gin.HandlerFunc {
 		}
 		c.Header("Permissions-Policy", strings.Join(permissions, ", "))
 
-		// Cross-Origin policies
-		c.Header("Cross-Origin-Embedder-Policy", "require-corp")
+		// Cross-Origin policies - relaxed for media resources
+		if strings.HasPrefix(c.Request.URL.Path, "/media/") {
+			// Allow media to be loaded cross-origin
+			c.Header("Cross-Origin-Resource-Policy", "cross-origin")
+			// Don't require CORP for media embedder policy
+			c.Header("Cross-Origin-Embedder-Policy", "unsafe-none")
+		} else {
+			// Strict policies for API routes
+			c.Header("Cross-Origin-Embedder-Policy", "require-corp")
+			c.Header("Cross-Origin-Resource-Policy", "same-origin")
+		}
 		c.Header("Cross-Origin-Opener-Policy", "same-origin")
-		c.Header("Cross-Origin-Resource-Policy", "same-origin")
 
 		c.Next()
 	}
@@ -258,8 +275,18 @@ func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statist
 	// Serve static files from the web directory FIRST
 	router.Static("/assets", assetsPath)
 	router.StaticFile("/logo.ico", filepath.Join(webPath, "logo.ico"))
+	
+	// Serve uploaded media files
+	mediaPath := filepath.Join(wd, "uploads", "task_images")
+	router.Static("/media", mediaPath)
 
 	// API routes
+
+	// Get base URL for building image URLs (reuse from Run function)
+	baseURL := fmt.Sprintf("http://localhost:%s", env.Get(constants.AppPortEnv).Default("3000").Value())
+	if customURL := os.Getenv("BASE_URL"); customURL != "" {
+		baseURL = customURL
+	}
 
 	v1 := router.Group("/v1")
 	health.NewModule(v1, db).Register()
@@ -267,11 +294,14 @@ func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statist
 	agents.NewModule(v1, a).Register()
 	category.NewModule(v1, db).Register()
 	users.NewModule(v1, db).Register()
+	profile.NewModule(v1, db).Register()
 	signup.NewModule(v1, db).Register()
 	setup.NewModule(v1, db).Register()
 	settings.NewModule(v1, db).Register()
 	version.NewModule(v1, db).Register()
+	events.NewModule(v1, db).Register()
 	statsroutes.NewModule(v1, db, statsSvc).Register()
+	task_metadata.NewModule(v1, db, baseURL).Register()
 
 	// Serve the main index.html for all non-API routes (SPA fallback)
 	router.NoRoute(func(c *gin.Context) {

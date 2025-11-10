@@ -1,5 +1,4 @@
 import { Clock, CheckCircle2, Calendar } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { Task } from "@/types/torrent";
 import { useTranslation } from "react-i18next";
@@ -51,21 +50,16 @@ export function TorrentLifetimeWidget({ task }: TorrentLifetimeWidgetProps) {
   const totalDuration = now.getTime() - createdAt.getTime();
   const completedDuration = completedAt ? completedAt.getTime() - createdAt.getTime() : null;
 
+  // Calculate progress for the progressbar
+  // Progressbar always goes from Created (0%) to Now (100%)
+  // Progressbar always goes to 100% (Now is always the last point)
+  const progressPercentage = 100;
+
   const formatDate = (date: Date) => {
     return date.toLocaleDateString(i18n.language, {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
-    });
-  };
-
-  const formatDateTime = (date: Date) => {
-    return date.toLocaleString(i18n.language, {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
     });
   };
 
@@ -95,11 +89,28 @@ export function TorrentLifetimeWidget({ task }: TorrentLifetimeWidgetProps) {
       </div>
 
       <div className="relative">
-        {/* Timeline line */}
-        <div className="absolute left-0 right-0 top-6 h-0.5 bg-border" />
-
         {/* Timeline points */}
         <div className="relative flex items-start justify-between gap-4">
+          {/* Timeline progressbar background - positioned absolutely to span from first to last icon center */}
+          <div 
+            className="absolute h-1.5 bg-secondary rounded-full pointer-events-none"
+            style={{
+              top: '1.25rem', // Center of 2.5rem (h-10) circles
+              left: `calc(${100 / (points.length * 2)}%)`,
+              right: `calc(${100 / (points.length * 2)}%)`,
+            }}
+          />
+          
+          {/* Timeline progressbar fill */}
+          <div 
+            className="absolute h-1.5 bg-primary rounded-full transition-all duration-300 pointer-events-none"
+            style={{
+              top: '1.25rem', // Center of 2.5rem (h-10) circles
+              left: `calc(${100 / (points.length * 2)}%)`,
+              width: `calc((100% - ${100 / points.length}%) * ${progressPercentage} / 100)`,
+            }}
+          />
+
           {points.map((point, index) => {
 
             return (
@@ -111,41 +122,25 @@ export function TorrentLifetimeWidget({ task }: TorrentLifetimeWidgetProps) {
                 }}
               >
                 {/* Timeline dot */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div
-                      className={cn(
-                        "relative z-10 flex items-center justify-center transition-all",
-                        point.status === "completed" && "text-primary",
-                        point.status === "current" && "text-green-600 animate-pulse",
-                        point.status === "future" && "text-muted-foreground"
-                      )}
-                    >
-                      {point.icon}
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-xs">
-                    <div className="space-y-1">
-                      <p className="font-semibold">{point.label}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDateTime(point.date)}
-                      </p>
-                      {index > 0 && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {formatDuration(point.date.getTime() - points[index - 1].date.getTime())}{" "}
-                          {t("torrent.after")}
-                        </p>
-                      )}
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
+                <div
+                  className={cn(
+                    "relative z-10 flex items-center justify-center w-10 h-10 rounded-full transition-all",
+                    point.status === "completed" && "bg-primary text-primary-foreground",
+                    point.status === "current" && "bg-primary text-primary-foreground",
+                    point.status === "future" && "bg-muted text-muted-foreground"
+                  )}
+                >
+                  <span className={cn(point.status === "current" && "animate-pulse")}>
+                    {point.icon}
+                  </span>
+                </div>
 
                 {/* Label */}
                 <div className="mt-2 text-center min-w-0">
                   <p
                     className={cn(
                       "text-xs font-medium truncate",
-                      point.status === "current" && "text-green-600",
+                      point.status === "current" && "text-primary",
                       point.status === "completed" && "text-primary",
                       point.status === "future" && "text-muted-foreground"
                     )}
@@ -163,10 +158,6 @@ export function TorrentLifetimeWidget({ task }: TorrentLifetimeWidgetProps) {
 
         {/* Duration info */}
         <div className="mt-4 pt-3 border-t flex justify-between items-center text-xs text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <span>{t("torrent.total")}:</span>
-            <span className="font-mono font-medium">{formatDuration(totalDuration)}</span>
-          </div>
           {completedAt && completedDuration && (
             <div className="flex items-center gap-1">
               <span>{t("torrent.download")}:</span>
@@ -175,6 +166,10 @@ export function TorrentLifetimeWidget({ task }: TorrentLifetimeWidgetProps) {
               </span>
             </div>
           )}
+          <div className="flex items-center gap-1">
+            <span>{t("torrent.total")}:</span>
+            <span className="font-mono font-medium">{formatDuration(totalDuration)}</span>
+          </div>
         </div>
       </div>
     </div>

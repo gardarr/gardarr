@@ -102,5 +102,53 @@ func Register(m *migration.Migrator) {
 				return db.Migrator().DropTable(&models.Settings{})
 			},
 		},
+		{
+			Version:     "009_create_events_table",
+			Description: "Cria a tabela de eventos para histórico de mudanças de estado",
+			Up: func(db *gorm.DB) error {
+				return db.AutoMigrate(&models.Event{})
+			},
+			Down: func(db *gorm.DB) error {
+				return db.Migrator().DropTable(&models.Event{})
+			},
+		},
+		{
+			Version:     "010_create_task_metadata_table",
+			Description: "Cria a tabela de metadados de tasks com suporte a imagens",
+			Up: func(db *gorm.DB) error {
+				return db.AutoMigrate(&models.TaskMetadata{})
+			},
+			Down: func(db *gorm.DB) error {
+				return db.Migrator().DropTable(&models.TaskMetadata{})
+			},
+		},
+		{
+			Version:     "011_add_image_position_to_task_metadata",
+			Description: "Adiciona coluna image_position_y para controlar posicionamento vertical da imagem",
+			Up: func(db *gorm.DB) error {
+				// Add column if it doesn't exist
+				if !db.Migrator().HasColumn(&models.TaskMetadata{}, "image_position_y") {
+					return db.Migrator().AddColumn(&models.TaskMetadata{}, "image_position_y")
+				}
+				return nil
+			},
+			Down: func(db *gorm.DB) error {
+				return db.Migrator().DropColumn(&models.TaskMetadata{}, "image_position_y")
+			},
+		},
+		{
+			Version:     "012_add_image_opacity_to_task_metadata",
+			Description: "Adiciona coluna image_opacity para controlar opacidade da imagem",
+			Up: func(db *gorm.DB) error {
+				// Add column if it doesn't exist
+				if !db.Migrator().HasColumn(&models.TaskMetadata{}, "image_opacity") {
+					return db.Migrator().AddColumn(&models.TaskMetadata{}, "image_opacity")
+				}
+				return nil
+			},
+			Down: func(db *gorm.DB) error {
+				return db.Migrator().DropColumn(&models.TaskMetadata{}, "image_opacity")
+			},
+		},
 	})
 }

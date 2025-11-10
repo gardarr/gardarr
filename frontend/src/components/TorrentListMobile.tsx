@@ -5,16 +5,20 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import TorrentContextMenu from "@/components/TorrentContextMenu";
 import { RatioBadge } from "@/components/RatioBadge";
 import { AgentIcon } from "@/components/ui/AgentIcon";
-import { getStatusIcon, getStatusColor, getStatusBackgroundColor, type TorrentStatus } from "@/components/TorrentStatusIcon";
+import { getStatusBackgroundColor, type TorrentStatus } from "@/components/TorrentStatusIcon";
+import { StatusBadge } from "@/components/StatusBadge";
 import { formatBytes, formatBytesPerSecond } from "@/utils/bytes";
 import { truncateText, isTextTruncated } from "@/utils/textUtils";
 import taskDefaultBg from "@/assets/img/common/task-default-background.png";
-import { ArrowDown, ArrowUp, Download, Upload } from "lucide-react";
+import { Download, Upload } from "lucide-react";
+import SeedersAndPeersBadge from "@/components/SeedersAndPeersBadge";
+import type { TaskMetadata } from "@/types/torrent";
 
 // Local minimal type to match TorrentsPage expectations
 // Keep in sync with the shape used in Torrents.tsx
 export type MobileTorrent = {
   id: string;
+  hash: string;
   name: string;
   totalSizeBytes: number;
   downloadRateBps: number;
@@ -34,9 +38,10 @@ export type MobileTorrent = {
   agentColor?: string;
   category: string;
   tags: string[];
+  metadata?: TaskMetadata | null;
 };
 
-function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits, compact, selectionMode, selected, onToggleSelect, selectedIds, onRequestDelete }: Readonly<{ 
+function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits, onMetadataUpdate, compact, selectionMode, selected, onToggleSelect, selectedIds, onRequestDelete }: Readonly<{ 
   torrent: MobileTorrent; 
   onShowDetails: (id: string) => void;
   onStart: (id: string) => void;
@@ -47,6 +52,7 @@ function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForc
   onForceRecheck: (id: string) => void;
   onMetrics?: (taskId: string, agentId?: string) => void;
   onLimits?: (taskId: string, agentId?: string) => void;
+  onMetadataUpdate?: () => void;
   compact?: boolean;
   selectionMode?: boolean;
   selected?: boolean;
@@ -54,8 +60,6 @@ function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForc
   selectedIds?: Set<string>;
   onRequestDelete?: (ids: string[]) => void;
 }>) {
-  const StatusIcon = getStatusIcon(torrent.status);
-
   const handleCardClick = () => {
     if (selectionMode && onToggleSelect) {
       onToggleSelect(torrent.id);
@@ -67,7 +71,10 @@ function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForc
   return (
     <TorrentContextMenu 
       taskId={torrent.id}
+      taskHash={torrent.hash}
+      taskName={torrent.name}
       agentId={torrent.agentUUID}
+      metadata={torrent.metadata}
       selectionMode={selectionMode}
       selectedIds={selectedIds}
       onRequestDelete={onRequestDelete}
@@ -79,14 +86,32 @@ function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForc
       onForceRecheck={onForceRecheck}
       onMetrics={onMetrics}
       onLimits={onLimits}
+      onMetadataUpdate={onMetadataUpdate}
     >
       <Card 
         className={`hover:shadow-lg transition-shadow overflow-hidden p-0 gap-2 cursor-pointer relative ${compact ? '' : ''}`}
         onClick={handleCardClick}
       >
+        {/* Background image for entire card when metadata image exists */}
+        {torrent.metadata?.image_url && (
+          <div
+            className="absolute inset-0 bg-cover pointer-events-none z-0"
+            style={{ 
+              backgroundImage: `url(${torrent.metadata.image_url})`,
+              backgroundPosition: `center ${torrent.metadata.image_position_y ?? 50}%`,
+              opacity: Math.max(0.15, Math.min(0.85, (torrent.metadata.image_opacity ?? 65) / 100))
+            }}
+            aria-hidden
+          />
+        )}
+        
         {compact ? (
           <>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 py-1.5 px-2.5">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 py-1.5 px-2.5 relative z-10">
+              {/* Blur overlay for header when custom image exists */}
+              {torrent.metadata?.image_url && (
+                <div className="absolute inset-0 backdrop-blur-md bg-background/20 -z-10" aria-hidden />
+              )}
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
                 {selectionMode && (
                   <Checkbox
@@ -96,18 +121,18 @@ function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForc
                     onClick={(e) => e.stopPropagation()}
                   />
                 )}
-                <StatusIcon className={`h-3 w-3 flex-shrink-0 ${getStatusColor(torrent.status)}`} />
+                <StatusBadge status={torrent.status} size="sm" showTooltip={false} />
                 <CardTitle className="text-[11px] font-medium text-muted-foreground truncate" title={isTextTruncated(torrent.name) ? `${torrent.name} (truncado)` : torrent.name}>
                   {truncateText(torrent.name)}
                 </CardTitle>
               </div>
               {torrent.agentName && (
                 <div className="flex-shrink-0 ml-2 inline-flex items-center gap-1">
-                  <RatioBadge ratio={torrent.ratio} showValue={false} />
+                  <RatioBadge ratio={torrent.ratio} showValue={false} showIcon={true} />
                 </div>
               )}
             </CardHeader>
-            <CardContent className="px-3 pt-0 pb-3">
+            <CardContent className="px-3 pt-0 pb-3 relative z-10">
               <div className="flex items-center gap-2">
                 <div className="flex-1">
                   <ProgressBar progress={torrent.progress} height="sm" className="mb-0 opacity-70" showLabel={false} />
@@ -116,35 +141,36 @@ function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForc
               </div>
               <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
                 <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 relative px-1.5 py-0.5">
+                    {torrent.metadata?.image_url && (
+                      <div className="absolute inset-0 backdrop-blur-md bg-background/20 -z-10 rounded-md" aria-hidden />
+                    )}
                     <Download className="h-3 w-3 text-green-600 dark:text-green-400" aria-hidden="true" />
                     <span className={torrent.downloadRateBps > 0 ? 'text-green-600 dark:text-green-400' : ''}>
                       {formatBytesPerSecond(torrent.downloadRateBps)}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 relative px-1.5 py-0.5">
+                    {torrent.metadata?.image_url && (
+                      <div className="absolute inset-0 backdrop-blur-md bg-background/20 -z-10 rounded-md" aria-hidden />
+                    )}
                     <Upload className="h-3 w-3 text-purple-600 dark:text-purple-400" aria-hidden="true" />
                     <span className={torrent.uploadRateBps > 0 ? 'text-purple-600 dark:text-purple-400' : ''}>
                       {formatBytesPerSecond(torrent.uploadRateBps)}
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1">
-                    <ArrowUp className="h-3 w-3 text-green-600 dark:text-green-400" />
-                    <span className="text-[11px]">{torrent.numSeeds}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <ArrowDown className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                    <span className="text-[11px]">{torrent.numLeechs}</span>
-                  </div>
-                </div>
+                <SeedersAndPeersBadge seeders={torrent.numSeeds} leechers={torrent.numLeechs} />
               </div>
             </CardContent>
           </>
         ) : (
           <>
-            <CardHeader className={`flex flex-row items-center justify-between space-y-0 pt-3 pb-3 px-4 ${getStatusBackgroundColor(torrent.status)}`}>
+            <CardHeader className={`flex flex-row items-center justify-between space-y-0 pt-3 pb-3 px-4 relative z-10 ${!torrent.metadata?.image_url ? getStatusBackgroundColor(torrent.status) : ''}`}>
+              {/* Blur overlay for header when custom image exists */}
+              {torrent.metadata?.image_url && (
+                <div className="absolute inset-0 backdrop-blur-md bg-background/20 -z-10" aria-hidden />
+              )}
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                 {selectionMode && (
                   <Checkbox
@@ -154,19 +180,10 @@ function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForc
                   />
                 )}
                 <div className="flex-shrink-0">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <StatusIcon 
-                        className={`h-5 w-5 ${getStatusColor(torrent.status)}`} 
-                      />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{torrent.status}</p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <StatusBadge status={torrent.status} size="lg" />
                 </div>
                 <CardTitle 
-                  className="text-sm font-medium text-muted-foreground truncate" 
+                  className="text-sm font-medium text-muted-foreground truncate"
                   title={isTextTruncated(torrent.name) ? `${torrent.name} (truncado)` : torrent.name}
                 >
                   {truncateText(torrent.name)}
@@ -174,7 +191,7 @@ function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForc
               </div>
               {torrent.agentName && (
                 <div className="flex-shrink-0 ml-2 flex items-center gap-2">
-                  <RatioBadge ratio={torrent.ratio} showValue={false} />
+                  <RatioBadge ratio={torrent.ratio} showValue={false} showIcon={true} />
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="inline-flex items-center justify-center rounded-full border p-1">
@@ -192,13 +209,15 @@ function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForc
                 </div>
               )}
             </CardHeader>
-            <CardContent className="px-4 pt-1 pb-6 relative">
-              {/* Background image only for the body (not header), very low opacity */}
-              <div
-                className="absolute inset-0 bg-center bg-cover pointer-events-none opacity-[0.12] dark:opacity-[0.03]"
-                style={{ backgroundImage: `url(${taskDefaultBg})` }}
-                aria-hidden
-              />
+            <CardContent className="px-4 pt-1 pb-6 relative z-10">
+              {/* Default background image when no custom metadata image */}
+              {!torrent.metadata?.image_url && (
+                <div
+                  className="absolute inset-0 bg-cover pointer-events-none opacity-[0.12] dark:opacity-[0.03] z-0"
+                  style={{ backgroundImage: `url(${taskDefaultBg})` }}
+                  aria-hidden
+                />
+              )}
               <div className="flex items-center gap-2 mt-0 mb-3">
                 <div className="flex-1">
                   <ProgressBar progress={torrent.progress} height="md" className="mb-0 opacity-60" showLabel={false} />
@@ -206,7 +225,10 @@ function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForc
                 <span className="text-xs text-muted-foreground">{torrent.progress.toFixed(0)}%</span>
               </div>
               <div className="grid grid-cols-1 gap-3 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 relative px-2 py-1 w-fit">
+                  {torrent.metadata?.image_url && (
+                    <div className="absolute inset-0 backdrop-blur-md bg-background/20 -z-10 rounded-md" aria-hidden />
+                  )}
                   <Download className="h-3.5 w-3.5 text-green-600 dark:text-green-400" aria-hidden="true" />
                   <span className={torrent.downloadRateBps > 0 ? 'text-green-600 dark:text-green-400' : ''}>
                     {formatBytesPerSecond(torrent.downloadRateBps)}
@@ -217,7 +239,10 @@ function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForc
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 relative px-2 py-1 w-fit">
+                    {torrent.metadata?.image_url && (
+                      <div className="absolute inset-0 backdrop-blur-md bg-background/20 -z-10 rounded-md" aria-hidden />
+                    )}
                     <Upload className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" aria-hidden="true" />
                     <span className={torrent.uploadRateBps > 0 ? 'text-purple-600 dark:text-purple-400' : ''}>
                       {formatBytesPerSecond(torrent.uploadRateBps)}
@@ -227,16 +252,7 @@ function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForc
                       {formatBytes(torrent.uploadedBytes)}
                     </span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1">
-                      <ArrowUp className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-                      <span className="text-xs">{torrent.numSeeds}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <ArrowDown className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                      <span className="text-xs">{torrent.numLeechs}</span>
-                    </div>
-                  </div>
+                  <SeedersAndPeersBadge seeders={torrent.numSeeds} leechers={torrent.numLeechs} />
                 </div>
               </div>
             </CardContent>
@@ -258,6 +274,7 @@ export default function TorrentListMobile({
   onForceRecheck,
   onMetrics,
   onLimits,
+  onMetadataUpdate,
   compact,
   selectionMode,
   selectedIds,
@@ -274,6 +291,7 @@ export default function TorrentListMobile({
   onForceRecheck: (id: string) => void;
   onMetrics?: (taskId: string, agentId?: string) => void;
   onLimits?: (taskId: string, agentId?: string) => void;
+  onMetadataUpdate?: () => void;
   compact?: boolean;
   selectionMode?: boolean;
   selectedIds?: Set<string>;
@@ -295,6 +313,7 @@ export default function TorrentListMobile({
           onForceReannounce={onForceReannounce}
           onForceRecheck={onForceRecheck}
           onLimits={onLimits}
+          onMetadataUpdate={onMetadataUpdate}
           compact={compact}
           selectionMode={selectionMode}
           selected={!!selectedIds?.has(t.id)}

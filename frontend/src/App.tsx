@@ -6,11 +6,12 @@ import AppLayout from './AppLayout'
 import TorrentsPage from './Torrents'
 import AgentsPage from './Agents'
 import CategoriesPage from './Categories'
-import AnalyticsPage from './Analytics'
+import DashboardPage from './Dashboard'
 import IntegrationsPage from './Integrations'
 import SettingsPage from './Settings'
 import AboutPage from './About'
 import ProfilePage from './Profile'
+import HistoryPage from './History'
 import UsersPage from './Users'
 import LoginPage from './Login'
 import SignupPage from './Signup'
@@ -42,16 +43,16 @@ function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<TorrentsPage />} />
+            <Route index element={<DashboardPage />} />
+            <Route path="agent/:agent_uuid" element={<DashboardPage />} />
+            <Route path="agent/:agent_uuid/task/:uuid" element={<DashboardPage />} />
+            <Route path="torrents" element={<TorrentsPage />} />
             <Route path="agents" element={<AgentsPage />} />
             <Route path="categories" element={<CategoriesPage />} />
-            <Route path="analytics" element={<AnalyticsPage />} />
-            <Route path="analytics/tasks" element={<AnalyticsPage />} />
-            <Route path="analytics/agent/:agent_uuid" element={<AnalyticsPage />} />
-            <Route path="analytics/agent/:agent_uuid/task/:uuid" element={<AnalyticsPage />} />
             <Route path="integrations" element={<IntegrationsPage />} />
             <Route path="users" element={<UsersPage />} />
-            <Route path="settings" element={<SettingsPage />} />
+            <Route path="history" element={<HistoryPage />} />
+            <Route path="settings" element={<ProtectedRoute adminOnly><SettingsPage /></ProtectedRoute>} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="about" element={<AboutPage />} />
           </Route>

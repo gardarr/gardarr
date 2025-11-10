@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Activity, AlertTriangle, Download, Upload, PauseCircle, CheckCircle2 } from 'lucide-react';
 import type { Task } from '@/types/torrent';
-import { normalizeTaskStatus, isActiveStatus, isDownloadStatus, isInactiveStatus } from '@/utils/statusUtils';
+import { normalizeTaskStatus, isDownloadStatus, isInactiveStatus } from '@/utils/statusUtils';
 
 interface ActiveTasksWidgetProps {
   tasks: Task[];
@@ -71,7 +71,6 @@ const ActiveTasksWidget: React.FC<ActiveTasksWidgetProps> = ({ tasks, title = 'A
   };
 
   const total = tasks.length;
-  const active = tasks.filter(t => isActiveStatus(normalizeTaskStatus(t.state || 'UNKNOWN'))).length;
 
 
   return (
@@ -83,28 +82,34 @@ const ActiveTasksWidget: React.FC<ActiveTasksWidgetProps> = ({ tasks, title = 'A
         <Activity className="h-4 w-4 text-purple-500" />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{active.toString()}</div>
-        <p className="text-xs text-muted-foreground mt-1">{`${total} total tasks`}</p>
-        {top3.length > 0 && (
+        {top3.length > 0 ? (
           <TooltipProvider>
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              {top3.map(([status, count]) => (
-                <Tooltip key={status}>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center gap-2 cursor-help">
-                      {getIcon(status)}
-                      <span className="text-sm">{count}</span>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{status}</p>
-                  </TooltipContent>
-                </Tooltip>
-              ))}
+            <div className="text-2xl font-bold">
+              <div className="grid grid-cols-3 gap-2">
+                {top3.map(([status, count]) => (
+                  <Tooltip key={status}>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center justify-center gap-2 cursor-help">
+                        {getIcon(status)}
+                        <span>{count}</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{status}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                ))}
+              </div>
             </div>
           </TooltipProvider>
+        ) : (
+          <div className="text-2xl font-bold">0</div>
         )}
-
+        {total > 0 && (
+          <p className="text-xs text-muted-foreground mt-1">
+            {`${total} total tasks`}
+          </p>
+        )}
       </CardContent>
     </Card>
   );

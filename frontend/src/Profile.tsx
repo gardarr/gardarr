@@ -3,8 +3,10 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/auth-hooks";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { User, Monitor, Globe, Moon, Sun, LogOut } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { User, Monitor, Globe, Moon, Sun, LogOut, Lock, Eye, EyeOff, Settings } from "lucide-react";
 import { api } from "@/lib/api";
 
 interface Session {
@@ -24,9 +26,39 @@ export default function ProfilePage() {
   const [isDark, setIsDark] = useState(() => {
     return document.documentElement.classList.contains('dark');
   });
+  
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState("");
 
   useEffect(() => {
     loadSessions();
+  }, []);
+
+  // Observe theme changes from external sources (like header menu)
+  useEffect(() => {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'class') {
+          const hasDark = document.documentElement.classList.contains('dark');
+          setIsDark(hasDark);
+        }
+      });
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+
+    return () => observer.disconnect();
   }, []);
 
 
@@ -62,6 +94,47 @@ export default function ProfilePage() {
   const changeLanguage = (lng: string) => {
     i18n.changeLanguage(lng);
     localStorage.setItem("app_language", lng);
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError("");
+    setPasswordSuccess("");
+
+    // Validation
+    if (newPassword.length < 8) {
+      setPasswordError(t("profile.security.passwordTooShort"));
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError(t("profile.security.passwordMismatch"));
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      const response = await api.put("/profile/password", {
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+
+      if (response.data) {
+        setPasswordSuccess(t("profile.security.passwordChanged"));
+        // Clear form
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+      }
+    } catch (error: any) {
+      if (error.response?.data?.error) {
+        setPasswordError(error.response.data.error);
+      } else {
+        setPasswordError(t("profile.security.passwordChangeFailed"));
+      }
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
 
@@ -102,7 +175,22 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Personal Information */}
+      {/* Tabs */}
+      <Tabs defaultValue="general" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="general" className="gap-2">
+            <Settings className="h-4 w-4" />
+            {t("profile.tabs.general")}
+          </TabsTrigger>
+          <TabsTrigger value="security" className="gap-2">
+            <Lock className="h-4 w-4" />
+            {t("profile.tabs.security")}
+          </TabsTrigger>
+        </TabsList>
+
+        {/* General Tab */}
+        <TabsContent value="general" className="space-y-6">
+          {/* Personal Information */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
@@ -205,6 +293,141 @@ export default function ProfilePage() {
 
         </CardContent>
       </Card>
+        </TabsContent>
+
+        {/* Security Tab */}
+        <TabsContent value="security" className="space-y-6">
+          {/* Security - Password Change */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <Lock className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle>{t("profile.security.title")}</CardTitle>
+              <CardDescription>{t("profile.security.description")}</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handlePasswordChange} className="space-y-4">
+            {/* Current Password */}
+            <div className="space-y-2">
+              <label htmlFor="current-password" className="text-sm font-medium">
+                {t("profile.security.currentPassword")}
+              </label>
+              <div className="relative">
+                <Input
+                  id="current-password"
+                  type={showCurrentPassword ? "text" : "password"}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  required
+                  className="pr-10"
+                  placeholder={t("profile.security.enterCurrentPassword")}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* New Password */}
+            <div className="space-y-2">
+              <label htmlFor="new-password" className="text-sm font-medium">
+                {t("profile.security.newPassword")}
+              </label>
+              <div className="relative">
+                <Input
+                  id="new-password"
+                  type={showNewPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  minLength={8}
+                  className="pr-10"
+                  placeholder={t("profile.security.enterNewPassword")}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {t("profile.security.passwordRequirements")}
+              </p>
+            </div>
+
+            {/* Confirm Password */}
+            <div className="space-y-2">
+              <label htmlFor="confirm-password" className="text-sm font-medium">
+                {t("profile.security.confirmPassword")}
+              </label>
+              <div className="relative">
+                <Input
+                  id="confirm-password"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  className="pr-10"
+                  placeholder={t("profile.security.enterConfirmPassword")}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Error Message */}
+            {passwordError && (
+              <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+                {passwordError}
+              </div>
+            )}
+
+            {/* Success Message */}
+            {passwordSuccess && (
+              <div className="p-3 rounded-md bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400 text-sm">
+                {passwordSuccess}
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              disabled={isChangingPassword}
+              className="w-full"
+            >
+              {isChangingPassword ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  {t("profile.security.changingPassword")}
+                </>
+              ) : (
+                <>
+                  <Lock className="h-4 w-4 mr-2" />
+                  {t("profile.security.changePassword")}
+                </>
+              )}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
       {/* Active Sessions */}
       <Card>
@@ -264,6 +487,8 @@ export default function ProfilePage() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

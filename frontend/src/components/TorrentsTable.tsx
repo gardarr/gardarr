@@ -3,18 +3,21 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ChevronLeft, ChevronRight, SortAsc, SortDesc, ArrowUp, ArrowDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { RatioBadge } from "@/components/ui/RatioBadge";
+import { RatioBadge } from "@/components/RatioBadge";
 import { AgentIcon } from "@/components/ui/AgentIcon";
-import { getStatusIcon, getStatusColor, type TorrentStatus } from "@/components/TorrentStatusIcon";
+import { type TorrentStatus } from "@/components/TorrentStatusIcon";
+import { StatusBadge } from "@/components/StatusBadge";
 import TorrentContextMenu from "@/components/TorrentContextMenu";
 import SeedersAndPeersBadge from "@/components/SeedersAndPeersBadge";
 import { formatBytes, formatBytesPerSecond } from "@/utils/bytes";
 import { truncateText, isTextTruncated } from "@/utils/textUtils";
+import type { TaskMetadata } from "@/types/torrent";
 
 type SortType = "priority" | "alphabetical" | "size" | "progress" | "download_speed" | "upload_speed" | "downloaded" | "uploaded";
 
 type Torrent = {
   id: string;
+  hash: string;
   name: string;
   totalSizeBytes: number;
   downloadRateBps: number;
@@ -34,6 +37,7 @@ type Torrent = {
   agentColor?: string;
   category: string;
   tags: string[];
+  metadata?: TaskMetadata | null;
 };
 
 interface TorrentsTableProps {
@@ -55,6 +59,7 @@ interface TorrentsTableProps {
   onForceRecheck: (id: string) => void;
   onMetrics?: (taskId: string, agentId?: string) => void;
   onLimits?: (taskId: string, agentId?: string) => void;
+  onMetadataUpdate?: () => void;
   compact?: boolean;
   selectionMode?: boolean;
   selectedIds?: Set<string>;
@@ -62,7 +67,7 @@ interface TorrentsTableProps {
   onRequestDelete?: (ids: string[]) => void;
 }
 
-function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits, selectionMode, selected, onToggleSelect, selectedIds, onRequestDelete }: { 
+function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits, onMetadataUpdate, selectionMode, selected, onToggleSelect, selectedIds, onRequestDelete, compact }: { 
   torrent: Torrent; 
   onShowDetails: (id: string) => void;
   onStart: (id: string) => void;
@@ -73,14 +78,14 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
   onForceRecheck: (id: string) => void;
   onMetrics?: (taskId: string, agentId?: string) => void;
   onLimits?: (taskId: string, agentId?: string) => void;
+  onMetadataUpdate?: () => void;
   selectionMode?: boolean;
   selected?: boolean;
   onToggleSelect?: (id: string) => void;
   selectedIds?: Set<string>;
   onRequestDelete?: (ids: string[]) => void;
+  compact?: boolean;
 }) {
-  const StatusIcon = getStatusIcon(torrent.status);
-
   const handleRowClick = () => {
     if (selectionMode && onToggleSelect) {
       onToggleSelect(torrent.id);
@@ -92,7 +97,10 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
   return (
     <TorrentContextMenu 
       taskId={torrent.id}
+      taskHash={torrent.hash}
+      taskName={torrent.name}
       agentId={torrent.agentUUID}
+      metadata={torrent.metadata}
       selectionMode={selectionMode}
       selectedIds={selectedIds}
       onRequestDelete={onRequestDelete}
@@ -104,32 +112,28 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
       onForceRecheck={onForceRecheck}
       onMetrics={onMetrics}
       onLimits={onLimits}
+      onMetadataUpdate={onMetadataUpdate}
     >
       <tr 
         className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
         onClick={handleRowClick}
       >
       {selectionMode && (
-        <td className="px-3 py-3">
+        <td className={`px-3 ${compact ? 'py-1' : 'py-3'}`}>
           <Checkbox
             checked={!!selected}
             onCheckedChange={() => onToggleSelect && onToggleSelect(torrent.id)}
             onClick={(e) => e.stopPropagation()}
+            className={compact ? 'h-3.5 w-3.5' : ''}
           />
         </td>
       )}
-      <td className="px-4 py-3">
+      <td className={`px-4 ${compact ? 'py-1' : 'py-3'}`}>
         <div className="flex items-center gap-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <StatusIcon 
-                className={`h-4 w-4 flex-shrink-0 ${getStatusColor(torrent.status)}`} 
-              />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{torrent.status}</p>
-            </TooltipContent>
-          </Tooltip>
+          <StatusBadge 
+            status={torrent.status} 
+            size={compact ? "sm" : "md"}
+          />
           <span 
             className="text-sm font-medium truncate" 
             title={isTextTruncated(torrent.name) ? `${torrent.name} (truncado)` : torrent.name}
@@ -138,26 +142,26 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
           </span>
         </div>
       </td>
-      <td className="px-4 py-3 text-xs text-muted-foreground">
+      <td className={`px-4 ${compact ? 'py-1' : 'py-3'} text-xs text-muted-foreground`}>
         {formatBytes(torrent.totalSizeBytes)}
       </td>
-      <td className="px-4 py-3 text-sm">
+      <td className={`px-4 ${compact ? 'py-1' : 'py-3'} ${compact ? 'text-xs' : 'text-sm'}`}>
         <div className="flex items-center gap-2">
-          <div className="w-16 bg-secondary rounded-full h-1.5">
+          <div className={`w-16 bg-secondary rounded-full ${compact ? 'h-1' : 'h-1.5'}`}>
             <div 
-              className="bg-primary h-1.5 rounded-full transition-all duration-300" 
+              className={`bg-primary ${compact ? 'h-1' : 'h-1.5'} rounded-full transition-all duration-300`} 
               style={{ width: `${torrent.progress}%` }}
             ></div>
           </div>
           <span className="text-xs text-muted-foreground">{torrent.progress.toFixed(0)}%</span>
         </div>
       </td>
-      <td className="px-4 py-3 text-sm">
+      <td className={`px-4 ${compact ? 'py-1' : 'py-3'} ${compact ? 'text-xs' : 'text-sm'}`}>
         <div className="flex items-center gap-1.5 whitespace-nowrap flex-nowrap">
           {torrent.downloadRateBps > 0 && (
-            <ArrowDown className="h-3.5 w-3.5 text-green-600 dark:text-green-400 flex-shrink-0" />
+            <ArrowDown className={`${compact ? 'h-3 w-3' : 'h-3.5 w-3.5'} text-green-600 dark:text-green-400 flex-shrink-0`} />
           )}
-          <span className={torrent.downloadRateBps > 0 ? 'text-green-600 dark:text-green-400' : ''}>
+          <span className={`${compact ? 'text-xs' : ''} ${torrent.downloadRateBps > 0 ? 'text-green-600 dark:text-green-400' : ''}`}>
             {formatBytesPerSecond(torrent.downloadRateBps)}
           </span>
           <span className="text-xs text-muted-foreground">•</span>
@@ -166,12 +170,12 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
           </span>
         </div>
       </td>
-      <td className="px-4 py-3 text-sm">
+      <td className={`px-4 ${compact ? 'py-1' : 'py-3'} ${compact ? 'text-xs' : 'text-sm'}`}>
         <div className="flex items-center gap-1.5 whitespace-nowrap flex-nowrap">
           {torrent.uploadRateBps > 0 && (
-            <ArrowUp className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+            <ArrowUp className={`${compact ? 'h-3 w-3' : 'h-3.5 w-3.5'} text-purple-600 dark:text-purple-400 flex-shrink-0`} />
           )}
-          <span className={torrent.uploadRateBps > 0 ? 'text-purple-600 dark:text-purple-400' : ''}>
+          <span className={`${compact ? 'text-xs' : ''} ${torrent.uploadRateBps > 0 ? 'text-purple-600 dark:text-purple-400' : ''}`}>
             {formatBytesPerSecond(torrent.uploadRateBps)}
           </span>
           <span className="text-xs text-muted-foreground">•</span>
@@ -180,16 +184,16 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
           </span>
         </div>
       </td>
-      <td className="px-4 py-3 text-sm">
-        <RatioBadge ratio={torrent.ratio} />
+      <td className={`px-4 ${compact ? 'py-1' : 'py-3'} ${compact ? 'text-xs' : 'text-sm'}`}>
+        <RatioBadge ratio={torrent.ratio} showIcon={false} />
       </td>
-      <td className="px-2 py-3 text-sm w-20">
+      <td className={`px-2 ${compact ? 'py-1' : 'py-3'} ${compact ? 'text-xs' : 'text-sm'} w-20`}>
         <SeedersAndPeersBadge 
           seeders={torrent.numSeeds} 
           leechers={torrent.numLeechs} 
         />
       </td>
-      <td className="px-4 py-3 text-sm">
+      <td className={`px-4 ${compact ? 'py-1' : 'py-3'} ${compact ? 'text-xs' : 'text-sm'}`}>
         {torrent.agentName ? (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -197,7 +201,7 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
                 <AgentIcon 
                   iconName={torrent.agentIcon}
                   color={torrent.agentColor}
-                  size="md"
+                  size={compact ? "sm" : "md"}
                 />
               </div>
             </TooltipTrigger>
@@ -206,7 +210,7 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
             </TooltipContent>
           </Tooltip>
         ) : (
-          <span className="text-muted-foreground">—</span>
+          <span className={`${compact ? 'text-xs' : ''} text-muted-foreground`}>—</span>
         )}
       </td>
       </tr>
@@ -271,6 +275,7 @@ export default function TorrentsTable({
   onForceRecheck,
   onMetrics,
   onLimits,
+  onMetadataUpdate,
   compact,
   selectionMode,
   selectedIds,
@@ -287,11 +292,11 @@ export default function TorrentsTable({
             <thead className="sticky top-0 bg-background z-10">
               <tr className="border-b bg-muted/50">
                 {selectionMode && (
-                  <th className={`px-3 ${compact ? 'py-2' : 'py-3'} text-left text-sm font-medium text-muted-foreground w-8`}>
+                  <th className={`px-3 ${compact ? 'py-1' : 'py-3'} text-left text-sm font-medium text-muted-foreground w-8`}>
                     {/* empty header for checkbox column */}
                   </th>
                 )}
-                <th className={`px-4 ${compact ? 'py-2' : 'py-3'} text-left text-sm font-medium text-muted-foreground`}>
+                <th className={`px-4 ${compact ? 'py-1' : 'py-3'} text-left text-sm font-medium text-muted-foreground`}>
                   <div className="flex items-center gap-1">
                     <span>{t('torrents.name')}</span>
                     <SortButton
@@ -304,7 +309,7 @@ export default function TorrentsTable({
                     </SortButton>
                   </div>
                 </th>
-                <th className={`px-4 ${compact ? 'py-2' : 'py-3'} text-left text-sm font-medium text-muted-foreground`}>
+                <th className={`px-4 ${compact ? 'py-1' : 'py-3'} text-left text-sm font-medium text-muted-foreground`}>
                   <div className="flex items-center gap-1">
                     <span>{t('torrents.size')}</span>
                     <SortButton
@@ -317,7 +322,7 @@ export default function TorrentsTable({
                     </SortButton>
                   </div>
                 </th>
-                <th className={`px-4 ${compact ? 'py-2' : 'py-3'} text-left text-sm font-medium text-muted-foreground`}>
+                <th className={`px-4 ${compact ? 'py-1' : 'py-3'} text-left text-sm font-medium text-muted-foreground`}>
                   <div className="flex items-center gap-1">
                     <span>{t('torrents.progress')}</span>
                     <SortButton
@@ -330,7 +335,7 @@ export default function TorrentsTable({
                     </SortButton>
                   </div>
                 </th>
-                <th className={`px-4 ${compact ? 'py-2' : 'py-3'} text-left text-sm font-medium text-muted-foreground`}>
+                <th className={`px-4 ${compact ? 'py-1' : 'py-3'} text-left text-sm font-medium text-muted-foreground`}>
                   <div className="flex items-center gap-1">
                     <span>{t('torrents.download')}</span>
                     <SortButton
@@ -343,7 +348,7 @@ export default function TorrentsTable({
                     </SortButton>
                   </div>
                 </th>
-                <th className={`px-4 ${compact ? 'py-2' : 'py-3'} text-left text-sm font-medium text-muted-foreground`}>
+                <th className={`px-4 ${compact ? 'py-1' : 'py-3'} text-left text-sm font-medium text-muted-foreground`}>
                   <div className="flex items-center gap-1">
                     <span>{t('torrents.upload')}</span>
                     <SortButton
@@ -356,15 +361,15 @@ export default function TorrentsTable({
                     </SortButton>
                   </div>
                 </th>
-                <th className={`px-4 ${compact ? 'py-2' : 'py-3'} text-left text-sm font-medium text-muted-foreground`}>
+                <th className={`px-4 ${compact ? 'py-1' : 'py-3'} text-left text-sm font-medium text-muted-foreground`}>
                   {t('torrents.ratio')}
                 </th>
-                <th className={`px-2 ${compact ? 'py-2' : 'py-3'} text-left text-sm font-medium text-muted-foreground w-20`}>
+                <th className={`px-2 ${compact ? 'py-1' : 'py-3'} text-left text-sm font-medium text-muted-foreground w-20`}>
                   <div className="flex items-center gap-1">
                     <span>S/P</span>
                   </div>
                 </th>
-                <th className={`px-4 ${compact ? 'py-2' : 'py-3'} text-left text-sm font-medium text-muted-foreground`}>
+                <th className={`px-4 ${compact ? 'py-1' : 'py-3'} text-left text-sm font-medium text-muted-foreground`}>
                   {t('torrents.agent')}
                 </th>
               </tr>
@@ -383,11 +388,13 @@ export default function TorrentsTable({
                   onForceRecheck={onForceRecheck}
                   onMetrics={onMetrics}
                   onLimits={onLimits}
+                  onMetadataUpdate={onMetadataUpdate}
                   selectionMode={selectionMode}
                   selected={!!selectedIds?.has(t.id)}
                   onToggleSelect={onToggleSelect}
                   selectedIds={selectedIds}
                   onRequestDelete={onRequestDelete}
+                  compact={compact}
                 />
               ))}
             </tbody>
@@ -397,14 +404,14 @@ export default function TorrentsTable({
       
       {/* Controles de paginação para desktop */}
       {totalPages > 1 && (
-        <div className={`flex items-center justify-between px-4 ${compact ? 'py-2' : 'py-3'} border-t`}>
+        <div className="flex items-center justify-between px-4 py-3 border-t">
           <div className="text-sm text-muted-foreground">
             {t('torrents.page')} {currentPage} {t('torrents.of')} {totalPages} ({filteredTorrentsLength} {t('torrents.torrents')})
           </div>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
-              size={compact ? 'xs' as any : 'sm'}
+              size="sm"
               onClick={onPreviousPage}
               disabled={currentPage === 1}
             >
@@ -413,7 +420,7 @@ export default function TorrentsTable({
             </Button>
             <Button
               variant="outline"
-              size={compact ? 'xs' as any : 'sm'}
+              size="sm"
               onClick={onNextPage}
               disabled={currentPage === totalPages}
             >

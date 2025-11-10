@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   BarChart3, 
-  Download, 
-  Upload, 
   TrendingUp, 
   Server
 } from 'lucide-react';
@@ -20,8 +17,9 @@ import AgentTotalDownloadedSize from '@/components/widgets/AgentTotalDownloadedS
 import AgentTotalUploadedSize from '@/components/widgets/AgentTotalUploadedSize';
 import TotalStorageWidget from '@/components/widgets/TotalStorageWidget';
 import ActiveTasksWidget from '@/components/widgets/ActiveTasksWidget';
+import DownloadSpeedWidget from '@/components/widgets/DownloadSpeedWidget';
+import UploadSpeedWidget from '@/components/widgets/UploadSpeedWidget';
 import { torrentService } from '../../services/torrents';
-import { SelectAgent } from '@/components/SelectAgent';
 
 // Mock data for analytics
 const mockTaskStats: TaskStats = {
@@ -121,11 +119,6 @@ const formatBytes = (bytes: number): string => {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
-
-const formatSpeed = (bytesPerSecond: number): string => {
-  return formatBytes(bytesPerSecond) + '/s';
-};
-
 
 // Metric Card Component
 interface MetricCardProps {
@@ -248,9 +241,10 @@ interface AgentMetricsProps {
   selectedAgentId?: string | null;
   topUploaded?: Array<{ task: string; diff: number }>;
   taskNameById?: Record<string, string>;
+  onAgentChange?: (agentId: string) => void;
 }
 
-const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedAgentId, topUploaded, taskNameById }) => {
+const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedAgentId, topUploaded, taskNameById, onAgentChange }) => {
   const [stats, setStats] = useState<TaskStats | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -258,7 +252,6 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
   const [activeDownloadAmount, setActiveDownloadAmount] = useState<number>(0);
   const [activeUploadAmount, setActiveUploadAmount] = useState<number>(0);
   const [currentSelectedAgentId, setCurrentSelectedAgentId] = useState<string | null>(selectedAgentId ?? null);
-  const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
 
   // Keep internal selection in sync with prop (URL param)
@@ -515,80 +508,142 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
 
   return (
     <div className="space-y-6">
-      {/* Agent Selector */}
-      <SelectAgent
-        selectedAgentId={currentSelectedAgentId}
-        onAgentChange={(id) => {
-          setCurrentSelectedAgentId(id || null);
-          if (id && id.trim() !== '') {
-            navigate(`/analytics/agent/${id}`);
-          } else {
-            navigate('/analytics');
-          }
-        }}
-      />
+      {/* Speed Widgets - Same line on mobile only */}
+      <div className="grid grid-cols-2 gap-6 md:hidden">
+        <DownloadSpeedWidget
+          speedBytesPerSecond={stats.current_download_speed}
+          subtitle={`${stats.active_seeds} seeders • Swarm: ${stats.swarm_seeders ?? 0}`}
+        />
+        <UploadSpeedWidget
+          speedBytesPerSecond={stats.current_upload_speed}
+          subtitle={`${stats.active_peers} peers • Swarm: ${stats.swarm_leechers ?? 0}`}
+        />
+      </div>
+
       {/* All Information Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <MetricCard
-          title="Ratio"
-          value={
-            <TooltipProvider>
-              <div className="flex items-baseline gap-2">
-                {selectedAgent && (
+        {/* Speed Widgets - Desktop: part of normal grid */}
+        <div className="hidden md:block">
+          <DownloadSpeedWidget
+            speedBytesPerSecond={stats.current_download_speed}
+            subtitle={`${stats.active_seeds} seeders • Swarm: ${stats.swarm_seeders ?? 0}`}
+          />
+        </div>
+        <div className="hidden md:block">
+          <UploadSpeedWidget
+            speedBytesPerSecond={stats.current_upload_speed}
+            subtitle={`${stats.active_peers} peers • Swarm: ${stats.swarm_leechers ?? 0}`}
+          />
+        </div>
+        {/* Ratio and Active Tasks - Same line on mobile only */}
+        <div className="grid grid-cols-2 gap-6 md:hidden">
+          <MetricCard
+            title="Ratio"
+            value={
+              <TooltipProvider>
+                <div className="flex items-baseline gap-2">
+                  {selectedAgent && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="cursor-help">{selectedAgent.instance.transfer.global_ratio.toFixed(2)}</span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Global Ratio</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                  {selectedAgent && <span>/</span>}
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <span className="cursor-help">{selectedAgent.instance.transfer.global_ratio.toFixed(2)}</span>
+                      <span className="cursor-help">~{stats.average_ratio.toFixed(2)}</span>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Global Ratio</p>
+                      <p>Average Ratio</p>
                     </TooltipContent>
                   </Tooltip>
-                )}
-                {selectedAgent && <span>/</span>}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="cursor-help">~{stats.average_ratio.toFixed(2)}</span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Average Ratio</p>
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-            </TooltipProvider>
-          }
-          subtitle={`${stats.highest_ratio.toFixed(2)} highest / ${stats.lowest_ratio.toFixed(2)} lowest`}
-          icon={TrendingUp}
-          color="text-lime-500"
-        />
-        <MetricCard
-          title="Download Speed"
-          value={formatSpeed(stats.current_download_speed)}
-          subtitle={`${stats.active_seeds} seeders • Swarm: ${stats.swarm_seeders ?? 0}`}
-          icon={Download}
-          color="text-green-500"
-        />
-        <MetricCard
-          title="Upload Speed"
-          value={formatSpeed(stats.current_upload_speed)}
-          subtitle={`${stats.active_peers} peers • Swarm: ${stats.swarm_leechers ?? 0}`}
-          icon={Upload}
-          color="text-purple-500"
-        />
-        <AgentTotalDownloadedSize
-          bytes={activeDownloadAmount}
-          totalBytes={selectedAgent
-            ? selectedAgent.instance.transfer.all_time_downloaded
-            : agents.filter(a => a.status === 'ACTIVE').reduce((sum, agent) => sum + (agent.instance.transfer.all_time_downloaded || 0), 0)
-          }
-        />
-        <AgentTotalUploadedSize
-          bytes={activeUploadAmount}
-          totalBytes={selectedAgent
-            ? selectedAgent.instance.transfer.all_time_uploaded
-            : agents.filter(a => a.status === 'ACTIVE').reduce((sum, agent) => sum + (agent.instance.transfer.all_time_uploaded || 0), 0)
-          }
-        />
-        <ActiveTasksWidget tasks={tasks} />
+                </div>
+              </TooltipProvider>
+            }
+            subtitle={`${stats.highest_ratio.toFixed(2)} highest / ${stats.lowest_ratio.toFixed(2)} lowest`}
+            icon={TrendingUp}
+            color="text-lime-500"
+          />
+          <ActiveTasksWidget tasks={tasks} />
+        </div>
+
+        {/* Ratio and Active Tasks - Desktop: part of normal grid */}
+        <div className="hidden md:block">
+          <MetricCard
+            title="Ratio"
+            value={
+              <TooltipProvider>
+                <div className="flex items-baseline gap-2">
+                  {selectedAgent && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="cursor-help">{selectedAgent.instance.transfer.global_ratio.toFixed(2)}</span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Global Ratio</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                  {selectedAgent && <span>/</span>}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="cursor-help">~{stats.average_ratio.toFixed(2)}</span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Average Ratio</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </TooltipProvider>
+            }
+            subtitle={`${stats.highest_ratio.toFixed(2)} highest / ${stats.lowest_ratio.toFixed(2)} lowest`}
+            icon={TrendingUp}
+            color="text-lime-500"
+          />
+        </div>
+        <div className="hidden md:block">
+          <ActiveTasksWidget tasks={tasks} />
+        </div>
+        {/* Total Downloaded and Uploaded - Same line on mobile only */}
+        <div className="grid grid-cols-2 gap-6 md:hidden">
+          <AgentTotalDownloadedSize
+            bytes={activeDownloadAmount}
+            totalBytes={selectedAgent
+              ? selectedAgent.instance.transfer.all_time_downloaded
+              : agents.filter(a => a.status === 'ACTIVE').reduce((sum, agent) => sum + (agent.instance.transfer.all_time_downloaded || 0), 0)
+            }
+          />
+          <AgentTotalUploadedSize
+            bytes={activeUploadAmount}
+            totalBytes={selectedAgent
+              ? selectedAgent.instance.transfer.all_time_uploaded
+              : agents.filter(a => a.status === 'ACTIVE').reduce((sum, agent) => sum + (agent.instance.transfer.all_time_uploaded || 0), 0)
+            }
+          />
+        </div>
+        {/* Total Downloaded and Uploaded - Desktop: part of normal grid */}
+        <div className="hidden md:block">
+          <AgentTotalDownloadedSize
+            bytes={activeDownloadAmount}
+            totalBytes={selectedAgent
+              ? selectedAgent.instance.transfer.all_time_downloaded
+              : agents.filter(a => a.status === 'ACTIVE').reduce((sum, agent) => sum + (agent.instance.transfer.all_time_downloaded || 0), 0)
+            }
+          />
+        </div>
+        <div className="hidden md:block">
+          <AgentTotalUploadedSize
+            bytes={activeUploadAmount}
+            totalBytes={selectedAgent
+              ? selectedAgent.instance.transfer.all_time_uploaded
+              : agents.filter(a => a.status === 'ACTIVE').reduce((sum, agent) => sum + (agent.instance.transfer.all_time_uploaded || 0), 0)
+            }
+          />
+        </div>
         <TotalStorageWidget
           totalBytes={stats.total_disk_size}
           subtitle={selectedAgent 
@@ -597,14 +652,6 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
           }
         />
       </div>
-
-
-      {/* Word Cloud Section */}
-      <WordCloud
-        wordCloud={stats.word_cloud || {}}
-        title="Task Terms Cloud"
-      />
-
 
       {/* Activities Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -656,6 +703,12 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
           </CardContent>
         </Card>
       )}
+
+      {/* Task Terms Cloud - Last section */}
+      <WordCloud
+        wordCloud={stats.word_cloud || {}}
+        title="Task Terms Cloud"
+      />
 
     </div>
   );

@@ -19,7 +19,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { torrentService } from "./services/torrents";
 import { agentService } from "./services/agents";
-import type { Task, CreateTaskRequest } from "./types/torrent";
+import type { Task, CreateTaskRequest, TaskMetadata } from "./types/torrent";
 import type { Agent, AgentStatus } from "./types/agent";
 import AgentFilter from "@/components/ui/AgentFilter";
 import StatusFilter from "@/components/ui/StatusFilter";
@@ -44,6 +44,7 @@ type SortType = "priority" | "alphabetical" | "size" | "progress" | "download_sp
 
 type Torrent = {
   id: string;
+  hash: string;
   name: string;
   totalSizeBytes: number;
   downloadRateBps: number;
@@ -63,6 +64,7 @@ type Torrent = {
   agentColor?: string;
   category: string;
   tags: string[];
+  metadata?: TaskMetadata | null;
 };
 
 // Função para mapear Task (backend) para Torrent (frontend)
@@ -76,6 +78,7 @@ function mapTaskToTorrent(task: Task): Torrent {
 
   return {
     id: task.id,
+    hash: task.hash,
     name: task.name,
     totalSizeBytes: task.size,
     downloadRateBps: task.network?.download?.speed || 0,
@@ -95,6 +98,7 @@ function mapTaskToTorrent(task: Task): Torrent {
     agentColor: task.agent?.color,
     category: task.category || "",
     tags: task.tags || [],
+    metadata: task.metadata,
   };
 }
 
@@ -923,6 +927,12 @@ export default function TorrentsPage() {
     setLimitsTaskStatus("");
     setLimitsSelectedCount(1);
   };
+
+  // Handler para atualização de metadados
+  const handleMetadataUpdate = useCallback(async () => {
+    // Recarregar torrents silenciosamente para obter metadados atualizados
+    await refreshTorrentsSilently();
+  }, [refreshTorrentsSilently]);
 
   // Controles de torrent
   const handlePlayTorrent = async (torrentId: string) => {
@@ -1959,6 +1969,7 @@ export default function TorrentsPage() {
           onForceRecheck={handleForceRecheckTorrent}
           onMetrics={handleShowMetrics}
           onLimits={handleShowLimits}
+          onMetadataUpdate={handleMetadataUpdate}
           compact={compact}
           selectionMode={selectionMode}
           selectedIds={selectedIds}
@@ -1995,6 +2006,7 @@ export default function TorrentsPage() {
             onForceReannounce={handleForceReannounceTorrent}
             onForceRecheck={handleForceRecheckTorrent}
             onLimits={handleShowLimits}
+            onMetadataUpdate={handleMetadataUpdate}
             compact={compact}
             selectionMode={selectionMode}
             selectedIds={selectedIds}

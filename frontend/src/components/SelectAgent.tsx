@@ -90,10 +90,12 @@ export function SelectAgent({
 
   return (
     <div className={`space-y-2 ${className}`}>
-      <Label className="flex items-center gap-2">
-        <Server className="h-4 w-4" />
-        {label} {required && <span className="text-destructive">*</span>}
-      </Label>
+      {label && (
+        <Label className="flex items-center gap-2">
+          <Server className="h-4 w-4" />
+          {label} {required && <span className="text-destructive">*</span>}
+        </Label>
+      )}
 
       <div className="relative" ref={dropdownRef}>
         <Button

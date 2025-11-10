@@ -24,6 +24,7 @@ type Task struct {
 	NumSeeds     int
 	SuperSeeding bool
 	Network      TaskNetwork
+	Metadata     *TaskMetadata // Optional task metadata
 }
 
 type TaskMagnetLink struct {

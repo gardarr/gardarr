@@ -11,21 +11,24 @@ import (
 	"github.com/gardarr/gardarr/internal/repository/agent"
 	"github.com/gardarr/gardarr/internal/schemas"
 	"github.com/gardarr/gardarr/internal/services/crypto"
+	metadata "github.com/gardarr/gardarr/internal/services/task_metadata"
 	"github.com/google/uuid"
 )
 
 type Service struct {
-	repository agent.RepositoryInterface
+	repository      agent.RepositoryInterface
+	metadataService *metadata.Service
 }
 
-func NewService(db *database.Database, c *crypto.CryptoService) (*Service, error) {
+func NewService(db *database.Database, c *crypto.CryptoService, baseURL string) (*Service, error) {
 	repository, err := agent.NewRepository(db, c)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Service{
-		repository: repository,
+		repository:      repository,
+		metadataService: metadata.NewService(db, baseURL),
 	}, nil
 }
 
@@ -100,6 +103,35 @@ func (s *Service) ListAgents() ([]*entities.Agent, error) {
 	return result, nil
 }
 
+// enrichTasksWithMetadata loads metadata for a list of tasks
+func (s *Service) enrichTasksWithMetadata(ctx context.Context, tasks []*entities.Task) error {
+	if len(tasks) == 0 {
+		return nil
+	}
+
+	// Collect all task hashes
+	taskHashes := make([]string, 0, len(tasks))
+	for _, task := range tasks {
+		taskHashes = append(taskHashes, task.Hash)
+	}
+
+	// Load metadata in batch
+	metadataMap, err := s.metadataService.GetByTaskHashes(ctx, taskHashes)
+	if err != nil {
+		// Log error but don't fail - metadata is optional
+		return nil
+	}
+
+	// Attach metadata to tasks
+	for _, task := range tasks {
+		if metadata, exists := metadataMap[task.Hash]; exists {
+			task.Metadata = metadata
+		}
+	}
+
+	return nil
+}
+
 func (s *Service) ListTasks(agents []*entities.Agent) ([]*entities.Task, error) {
 	if len(agents) == 0 {
 		return []*entities.Task{}, nil
@@ -155,6 +187,9 @@ func (s *Service) ListTasks(agents []*entities.Agent) ([]*entities.Task, error) 
 		}
 		return result, fmt.Errorf("%s", errorMsg.String())
 	}
+
+	// Enrich tasks with metadata
+	_ = s.enrichTasksWithMetadata(context.Background(), result)
 
 	return result, nil
 }
@@ -341,6 +376,9 @@ func (s *Service) ListAgentTasks(ctx context.Context, id string) ([]*entities.Ta
 		return nil, fmt.Errorf("failed to list tasks: %w", err)
 	}
 
+	// Enrich tasks with metadata
+	_ = s.enrichTasksWithMetadata(ctx, tasks)
+
 	return tasks, nil
 }
 
@@ -410,6 +448,9 @@ func (s *Service) GetAgentTask(ctx context.Context, agentID, taskID string) (*en
 	if err != nil {
 		return nil, fmt.Errorf("failed to get task: %w", err)
 	}
+
+	// Enrich task with metadata
+	_ = s.enrichTasksWithMetadata(ctx, []*entities.Task{task})
 
 	return task, nil
 }

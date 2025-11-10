@@ -1,32 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useParams, useNavigate } from 'react-router-dom';
 import { 
-  BarChart3, 
-  Server,
-  Monitor
+  Activity
 } from 'lucide-react';
 import DateRangePicker from '@/components/DateRangePicker';
 import AgentMetrics from '@/components/analytics/AgentMetrics';
-import TaskMetrics from '@/components/analytics/TaskMetrics';
 import { statisticsService } from '@/services/statistics';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import { agentService } from '@/services/agents';
+import { SelectAgent } from '@/components/SelectAgent';
 
 
-// Main Analytics Component
-const Analytics: React.FC = () => {
+// Main Dashboard Component
+const Dashboard: React.FC = () => {
   const { t } = useTranslation();
-  const { hash, agent_uuid, uuid } = useParams<{ hash?: string; agent_uuid?: string; uuid?: string }>();
+  const { hash, agent_uuid } = useParams<{ hash?: string; agent_uuid?: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
   
-  const [selectedTaskId, setSelectedTaskId] = useState<string>('1');
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<string>('agents');
-  const [fromDate, setFromDate] = useState<Date | undefined>(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)); // 7 days ago
+  const [fromDate, setFromDate] = useState<Date | undefined>(new Date(Date.now() - 24 * 60 * 60 * 1000)); // 1 day ago
   const [toDate, setToDate] = useState<Date | undefined>(new Date());
   type AgentTask = { task: string; diff: number };
   const [topUploaded, setTopUploaded] = useState<AgentTask[]>([]);
@@ -42,44 +36,30 @@ const Analytics: React.FC = () => {
     setFromDate(new Date(now.getTime() - (durationMs || 24 * 60 * 60 * 1000)));
   };
 
-  // Handle URL parameters and sync with component state
-  useEffect(() => {
-    if (agent_uuid && uuid) {
-      // Both agent and task in URL - open tasks tab with selected agent and task
-      setActiveTab('tasks');
-      setSelectedAgentId(agent_uuid);
-      setSelectedTaskId(uuid);
-    } else if (agent_uuid) {
-      // Only agent in URL - open agents tab with selected agent
-      setActiveTab('agents');
-      setSelectedAgentId(agent_uuid);
-    } else if (hash) {
-      // Legacy task hash in URL - open tasks tab with selected task
-      setActiveTab('tasks');
-      // TODO: Find task by hash and set selectedTaskId
-    } else if (location.pathname.includes('/analytics/tasks')) {
-      // Explicit tasks path
-      setActiveTab('tasks');
-      setSelectedAgentId('');
+  // Handle agent selection changes
+  const handleAgentChange = (agentId: string) => {
+    setSelectedAgentId(agentId);
+    // Update URL without reloading page
+    if (agentId && agentId.trim() !== '') {
+      navigate(`/agent/${agentId}`, { replace: true });
     } else {
-      // No specific ID in URL, default to agents tab
-      setActiveTab('agents');
-      setSelectedAgentId('');
-    }
-  }, [agent_uuid, uuid, hash, navigate, location.pathname]);
-
-  // Handle tab changes
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
-    if (value === 'agents') {
-      // Navigate to base analytics URL when switching to agents tab
-      navigate('/analytics');
-      setSelectedAgentId('');
-    } else if (value === 'tasks') {
-      // Navigate to tasks URL when switching to tasks tab
-      navigate('/analytics/tasks');
+      navigate('/', { replace: true });
     }
   };
+
+  // Handle URL parameters and sync with component state
+  useEffect(() => {
+    if (agent_uuid) {
+      // Agent in URL
+      setSelectedAgentId(agent_uuid);
+    } else if (hash) {
+      // Legacy task hash in URL
+      // TODO: Find task by hash
+    } else {
+      // No specific ID in URL
+      setSelectedAgentId('');
+    }
+  }, [agent_uuid, hash]);
 
   // Fetch Top Uploaded Torrents using upload-diffs endpoint
   useEffect(() => {
@@ -183,85 +163,59 @@ const Analytics: React.FC = () => {
     loadTasks();
   }, [selectedAgentId]);
 
-  // Handle task selection changes
-  const handleTaskChange = (taskId: string) => {
-    setSelectedTaskId(taskId);
-    if (selectedAgentId && taskId) {
-      // Update URL to include both agent UUID and task UUID
-      navigate(`/analytics/agent/${selectedAgentId}/task/${taskId}`);
-    } else if (taskId) {
-      // If no agent selected, just navigate to tasks tab
-      navigate('/analytics');
-    }
-  };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
-            <BarChart3 className="h-6 w-6 text-primary" />
+            <Activity className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{t("navigation.analytics")}</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{t("navigation.dashboard")}</h1>
             <p className="text-muted-foreground">
-              Monitor your torrent activity and performance metrics
+              Real-time analytics and insights for your torrent agents and tasks
             </p>
           </div>
         </div>
         
-        {/* Date Range Selector + Refresh */}
-        <div className="flex items-center gap-2">
+        {/* Agent Selector + Date Range Selector + Refresh */}
+        <div className="flex flex-row items-center gap-2 flex-wrap">
+          <div className="w-48 flex-shrink-0">
+            <SelectAgent
+              selectedAgentId={selectedAgentId || null}
+              onAgentChange={(id) => handleAgentChange(id || '')}
+              label=""
+              className="space-y-0"
+            />
+          </div>
           <DateRangePicker
             fromDate={fromDate}
             toDate={toDate}
             onFromDateChange={setFromDate}
             onToDateChange={setToDate}
           />
-          <Button variant="outline" size="icon" aria-label="Refresh now" onClick={handleRefreshNow}>
+          <Button variant="outline" size="icon" aria-label="Refresh now" onClick={handleRefreshNow} className="flex-shrink-0">
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="agents" className="flex items-center gap-2">
-            <Server className="h-4 w-4" />
-            Agent Metrics
-          </TabsTrigger>
-          <TabsTrigger value="tasks" className="flex items-center gap-2">
-            <Monitor className="h-4 w-4" />
-            Task Metrics
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Agent Metrics Tab */}
-        <TabsContent value="agents" className="space-y-6">
-          <AgentMetrics 
-            fromDate={fromDate}
-            toDate={toDate}
-            selectedAgentId={selectedAgentId || ''}
-            topUploaded={topUploaded}
-            taskNameById={taskNameById}
-          />
-        </TabsContent>
-
-        {/* Task Metrics Tab */}
-        <TabsContent value="tasks" className="space-y-6">
-          <TaskMetrics 
-            fromDate={fromDate}
-            toDate={toDate}
-            selectedTaskId={selectedTaskId}
-            selectedAgentId={selectedAgentId}
-            onTaskChange={handleTaskChange}
-          />
-        </TabsContent>
-      </Tabs>
+      {/* Agent Metrics */}
+      <div className="space-y-6">
+        <AgentMetrics 
+          fromDate={fromDate}
+          toDate={toDate}
+          selectedAgentId={selectedAgentId || ''}
+          topUploaded={topUploaded}
+          taskNameById={taskNameById}
+          onAgentChange={handleAgentChange}
+        />
+      </div>
     </div>
   );
 };
 
-export default Analytics;
+export default Dashboard;
+
