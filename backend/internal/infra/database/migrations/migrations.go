@@ -150,5 +150,43 @@ func Register(m *migration.Migrator) {
 				return db.Migrator().DropColumn(&models.TaskMetadata{}, "image_opacity")
 			},
 		},
+		{
+			Version:     "013_create_user_preferences_table",
+			Description: "Cria a tabela de preferências de usuário",
+			Up: func(db *gorm.DB) error {
+				return db.AutoMigrate(&models.UserPreferences{})
+			},
+			Down: func(db *gorm.DB) error {
+				return db.Migrator().DropTable(&models.UserPreferences{})
+			},
+		},
+		{
+			Version:     "014_add_compact_to_user_preferences",
+			Description: "Adiciona coluna compact para controlar visualização compacta",
+			Up: func(db *gorm.DB) error {
+				// Add column if it doesn't exist
+				if !db.Migrator().HasColumn(&models.UserPreferences{}, "compact") {
+					return db.Migrator().AddColumn(&models.UserPreferences{}, "compact")
+				}
+				return nil
+			},
+			Down: func(db *gorm.DB) error {
+				return db.Migrator().DropColumn(&models.UserPreferences{}, "compact")
+			},
+		},
+		{
+			Version:     "015_add_background_image_blur_intensity",
+			Description: "Adiciona coluna background_image_blur_intensity para controlar intensidade do blur",
+			Up: func(db *gorm.DB) error {
+				// Add column if it doesn't exist
+				if !db.Migrator().HasColumn(&models.UserPreferences{}, "background_image_blur_intensity") {
+					return db.Migrator().AddColumn(&models.UserPreferences{}, "background_image_blur_intensity")
+				}
+				return nil
+			},
+			Down: func(db *gorm.DB) error {
+				return db.Migrator().DropColumn(&models.UserPreferences{}, "background_image_blur_intensity")
+			},
+		},
 	})
 }

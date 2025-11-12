@@ -4,5 +4,6 @@ const (
 	AppDomainsEnv  = "APP_DOMAINS"
 	AppPortEnv     = "APP_PORT"
 	AppModeEnv     = "APP_MODE"
+	AppURLEnv      = "APP_URL"
 	StandaloneMode = "standalone"
 )

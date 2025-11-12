@@ -28,6 +28,7 @@
       "subtitle": "Gerencie sua conta e preferências",
       "tabs": {
         "general": "Geral",
+        "display": "Exibição",
         "security": "Segurança"
       },
       "personalInfo": {
@@ -47,6 +48,16 @@
         "switchToDark": "Mudar para Escuro",
         "switchToLight": "Mudar para Claro",
         "language": "Idioma"
+      },
+      "display": {
+        "title": "Exibição",
+        "description": "Personalize como o conteúdo é exibido",
+        "torrentDisplayMode": "Modo de Visualização de Torrents",
+        "torrentDisplayModeDesc": "Escolha como os torrents são exibidos na interface",
+        "compactMode": "Modo Compacto",
+        "compactModeDesc": "Reduz o espaçamento e mostra mais conteúdo na tela",
+        "blurIntensity": "Desfoque da Imagem de Fundo",
+        "blurIntensityDesc": "Ajuste a intensidade do desfoque nas imagens de fundo (0-100)"
       },
       "security": {
         "title": "Segurança",

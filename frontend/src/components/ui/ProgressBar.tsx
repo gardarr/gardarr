@@ -3,25 +3,32 @@ interface ProgressBarProps {
     showLabel?: boolean;
     height?: "sm" | "md" | "lg";
     className?: string;
+    variant?: "primary" | "gray";
   }
   
   export function ProgressBar({ 
     progress, 
     showLabel = false, 
     height = "md",
-    className = "" 
+    className = "",
+    variant = "primary"
   }: ProgressBarProps) {
     const heightClasses = {
       sm: "h-1.5",
       md: "h-2",
       lg: "h-3"
     };
+
+    const colorClasses = {
+      primary: "bg-primary",
+      gray: "bg-gray-400 dark:bg-gray-500"
+    };
   
     return (
       <div className={className}>
         <div className={`w-full bg-secondary rounded-full ${heightClasses[height]}`}>
           <div 
-            className={`bg-primary ${heightClasses[height]} rounded-full transition-all duration-300`}
+            className={`${colorClasses[variant]} ${heightClasses[height]} rounded-full transition-all duration-300`}
             style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
           ></div>
         </div>

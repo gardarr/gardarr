@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Monitor, Globe, Moon, Sun, LogOut, Lock, Eye, EyeOff, Settings } from "lucide-react";
+import { User, Monitor, Globe, Moon, Sun, LogOut, Lock, Eye, EyeOff, Settings, Palette, Minimize2 } from "lucide-react";
 import { api } from "@/lib/api";
+import { preferencesService } from "@/services/preferences";
 
 interface Session {
   id: string;
@@ -37,9 +38,16 @@ export default function ProfilePage() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
+  
+  // Preferences state
+  const [displayMode, setDisplayMode] = useState<"default" | "card">("default");
+  const [compact, setCompact] = useState(false);
+  const [blurIntensity, setBlurIntensity] = useState(50);
+  const [isLoadingPreferences, setIsLoadingPreferences] = useState(false);
 
   useEffect(() => {
     loadSessions();
+    loadPreferences();
   }, []);
 
   // Observe theme changes from external sources (like header menu)
@@ -69,6 +77,110 @@ export default function ProfilePage() {
       setSessions(response.data);
     }
     setIsLoading(false);
+  };
+
+  const loadPreferences = async () => {
+    // First try to load from localStorage
+    const cached = preferencesService.load();
+    if (cached) {
+      setDisplayMode(cached.torrent_display_mode);
+      setCompact(cached.compact);
+      setBlurIntensity(cached.background_image_blur_intensity);
+    }
+
+    // Then fetch from API to ensure data is up to date
+    try {
+      const response = await api.get<{ torrent_display_mode: string; compact: boolean; background_image_blur_intensity: number }>("/profile/preferences");
+      if (response.data) {
+        const displayMode = response.data.torrent_display_mode as "default" | "card";
+        setDisplayMode(displayMode);
+        setCompact(response.data.compact);
+        setBlurIntensity(response.data.background_image_blur_intensity);
+        // Save to localStorage
+        preferencesService.save({
+          torrent_display_mode: displayMode,
+          compact: response.data.compact,
+          background_image_blur_intensity: response.data.background_image_blur_intensity
+        });
+      }
+    } catch (error) {
+      console.error("Failed to load preferences:", error);
+    }
+  };
+
+  const updateDisplayMode = async (mode: "default" | "card") => {
+    setIsLoadingPreferences(true);
+    try {
+      const response = await api.put<{ torrent_display_mode: string; compact: boolean; background_image_blur_intensity: number }>("/profile/preferences", {
+        torrent_display_mode: mode
+      });
+      if (response.data) {
+        const displayMode = response.data.torrent_display_mode as "default" | "card";
+        setDisplayMode(displayMode);
+        setCompact(response.data.compact);
+        setBlurIntensity(response.data.background_image_blur_intensity);
+        // Save to localStorage
+        preferencesService.save({
+          torrent_display_mode: displayMode,
+          compact: response.data.compact,
+          background_image_blur_intensity: response.data.background_image_blur_intensity
+        });
+      }
+    } catch (error) {
+      console.error("Failed to update display mode:", error);
+    } finally {
+      setIsLoadingPreferences(false);
+    }
+  };
+
+  const updateCompact = async (value: boolean) => {
+    setIsLoadingPreferences(true);
+    try {
+      const response = await api.put<{ torrent_display_mode: string; compact: boolean; background_image_blur_intensity: number }>("/profile/preferences", {
+        compact: value
+      });
+      if (response.data) {
+        const displayMode = response.data.torrent_display_mode as "default" | "card";
+        setDisplayMode(displayMode);
+        setCompact(response.data.compact);
+        setBlurIntensity(response.data.background_image_blur_intensity);
+        // Save to localStorage
+        preferencesService.save({
+          torrent_display_mode: displayMode,
+          compact: response.data.compact,
+          background_image_blur_intensity: response.data.background_image_blur_intensity
+        });
+      }
+    } catch (error) {
+      console.error("Failed to update compact mode:", error);
+    } finally {
+      setIsLoadingPreferences(false);
+    }
+  };
+
+  const updateBlurIntensity = async (value: number) => {
+    setIsLoadingPreferences(true);
+    try {
+      const response = await api.put<{ torrent_display_mode: string; compact: boolean; background_image_blur_intensity: number }>("/profile/preferences", {
+        background_image_blur_intensity: value
+      });
+      if (response.data) {
+        const displayMode = response.data.torrent_display_mode as "default" | "card";
+        setDisplayMode(displayMode);
+        setCompact(response.data.compact);
+        setBlurIntensity(response.data.background_image_blur_intensity);
+        // Save to localStorage
+        preferencesService.save({
+          torrent_display_mode: displayMode,
+          compact: response.data.compact,
+          background_image_blur_intensity: response.data.background_image_blur_intensity
+        });
+      }
+    } catch (error) {
+      console.error("Failed to update blur intensity:", error);
+    } finally {
+      setIsLoadingPreferences(false);
+    }
   };
 
   const handleLogoutAll = async () => {
@@ -177,10 +289,14 @@ export default function ProfilePage() {
 
       {/* Tabs */}
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="general" className="gap-2">
             <Settings className="h-4 w-4" />
             {t("profile.tabs.general")}
+          </TabsTrigger>
+          <TabsTrigger value="display" className="gap-2">
+            <Palette className="h-4 w-4" />
+            {t("profile.tabs.display")}
           </TabsTrigger>
           <TabsTrigger value="security" className="gap-2">
             <Lock className="h-4 w-4" />
@@ -293,6 +409,163 @@ export default function ProfilePage() {
 
         </CardContent>
       </Card>
+        </TabsContent>
+
+        {/* Display Tab */}
+        <TabsContent value="display" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Palette className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <CardTitle>{t("profile.display.title")}</CardTitle>
+                  <CardDescription>{t("profile.display.description")}</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Torrent Display Mode */}
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">
+                    {t("profile.display.torrentDisplayMode")}
+                  </label>
+                  <p className="text-sm text-muted-foreground">
+                    {t("profile.display.torrentDisplayModeDesc")}
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Default Mode */}
+                  <button
+                    onClick={() => updateDisplayMode("default")}
+                    disabled={isLoadingPreferences}
+                    className={`relative p-4 rounded-lg border-2 transition-all hover:border-primary/50 ${
+                      displayMode === "default" 
+                        ? "border-primary bg-primary/5" 
+                        : "border-border"
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    <div className="space-y-2">
+                      <div className="font-medium text-sm">Default</div>
+                      <div className="space-y-1.5">
+                        <div className="h-2 bg-primary/20 rounded w-full"></div>
+                        <div className="h-2 bg-primary/20 rounded w-full"></div>
+                        <div className="h-2 bg-primary/20 rounded w-full"></div>
+                      </div>
+                    </div>
+                    {displayMode === "default" && (
+                      <div className="absolute top-2 right-2 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
+                        <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+
+                  {/* Card Mode */}
+                  <button
+                    onClick={() => updateDisplayMode("card")}
+                    disabled={isLoadingPreferences}
+                    className={`relative p-4 rounded-lg border-2 transition-all hover:border-primary/50 ${
+                      displayMode === "card" 
+                        ? "border-primary bg-primary/5" 
+                        : "border-border"
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    <div className="space-y-2">
+                      <div className="font-medium text-sm">Card</div>
+                      <div className="space-y-2">
+                        <div className="h-6 bg-primary/20 rounded w-full"></div>
+                        <div className="h-6 bg-primary/20 rounded w-full"></div>
+                      </div>
+                    </div>
+                    {displayMode === "card" && (
+                      <div className="absolute top-2 right-2 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
+                        <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Compact Mode Toggle */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Minimize2 className="h-4 w-4 text-muted-foreground" />
+                    <label className="text-sm font-medium">
+                      {t("profile.display.compactMode")}
+                    </label>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {t("profile.display.compactModeDesc")}
+                  </p>
+                </div>
+                <button
+                  onClick={() => updateCompact(!compact)}
+                  disabled={isLoadingPreferences}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                    compact ? "bg-primary" : "bg-muted"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      compact ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <Separator />
+
+              {/* Background Image Blur Intensity */}
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Palette className="h-4 w-4 text-muted-foreground" />
+                    <label className="text-sm font-medium">
+                      {t("profile.display.blurIntensity")}
+                    </label>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {t("profile.display.blurIntensityDesc")}
+                  </p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={blurIntensity}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value);
+                      setBlurIntensity(value);
+                    }}
+                    onMouseUp={(e) => {
+                      const value = parseInt((e.target as HTMLInputElement).value);
+                      updateBlurIntensity(value);
+                    }}
+                    onTouchEnd={(e) => {
+                      const value = parseInt((e.target as HTMLInputElement).value);
+                      updateBlurIntensity(value);
+                    }}
+                    disabled={isLoadingPreferences}
+                    className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-0"
+                  />
+                  <span className="text-sm font-medium text-muted-foreground min-w-[3ch]">
+                    {blurIntensity}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Security Tab */}

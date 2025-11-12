@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import { authService } from "@/services/auth";
 import type { User } from "@/types/auth";
 import { AuthContext } from "./auth-context";
+import { api } from "@/lib/api";
+import { preferencesService, type UserPreferences } from "@/services/preferences";
 
 // Re-export AuthContext for backward compatibility
 export { AuthContext };
@@ -11,17 +13,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const loadPreferences = async () => {
+    try {
+      const response = await api.get<UserPreferences>("/profile/preferences");
+      if (response.data) {
+        preferencesService.save(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to load preferences:', error);
+    }
+  };
+
   const checkAuth = async () => {
     try {
       const { user: currentUser, error } = await authService.getCurrentUser();
       if (currentUser && !error) {
         setUser(currentUser);
+        // Load preferences after successful auth check
+        await loadPreferences();
       } else {
         setUser(null);
+        preferencesService.clear();
       }
     } catch (error) {
       console.error('Authentication check failed:', error);
       setUser(null);
+      preferencesService.clear();
     } finally {
       setLoading(false);
     }
@@ -40,6 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     if (loggedInUser) {
       setUser(loggedInUser);
+      // Load preferences after successful login
+      await loadPreferences();
     }
     
     return {};
@@ -54,6 +73,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     if (registeredUser) {
       setUser(registeredUser);
+      // Load preferences after successful registration
+      await loadPreferences();
     }
     
     return {};
@@ -62,6 +83,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     await authService.logout();
     setUser(null);
+    // Clear preferences from localStorage on logout
+    preferencesService.clear();
   };
 
   return (

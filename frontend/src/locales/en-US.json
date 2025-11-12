@@ -59,6 +59,7 @@
     "subtitle": "Manage your account and preferences",
     "tabs": {
       "general": "General",
+      "display": "Display",
       "security": "Security"
     },
     "personalInfo": {
@@ -78,6 +79,16 @@
       "switchToDark": "Switch to Dark",
       "switchToLight": "Switch to Light",
       "language": "Language"
+    },
+    "display": {
+      "title": "Display",
+      "description": "Customize how content is displayed",
+      "torrentDisplayMode": "Torrent Display Mode",
+      "torrentDisplayModeDesc": "Choose how torrents are displayed in the interface",
+      "compactMode": "Compact Mode",
+      "compactModeDesc": "Reduce spacing and show more content on screen",
+      "blurIntensity": "Background Image Blur",
+      "blurIntensityDesc": "Adjust the blur intensity for background images (0-100)"
     },
     "security": {
       "title": "Security",

@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Search, Loader2, ChevronDown, SortAsc, SortDesc, Plus, SlidersHorizontal, Download, Clock, Server, Activity, Folder, Tag, FileUp, AlertTriangle, Star, List, CheckSquare, Square, X } from "lucide-react";
+import { Search, Loader2, ChevronDown, SortAsc, SortDesc, Plus, SlidersHorizontal, Download, Clock, Server, Activity, Folder, Tag, FileUp, AlertTriangle, Star, CheckSquare, Square, X } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -19,6 +19,8 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { torrentService } from "./services/torrents";
 import { agentService } from "./services/agents";
+import { preferencesService } from "@/services/preferences";
+import { useTorrentFilters } from "@/components/TorrentFilters";
 import type { Task, CreateTaskRequest, TaskMetadata } from "./types/torrent";
 import type { Agent, AgentStatus } from "./types/agent";
 import AgentFilter from "@/components/ui/AgentFilter";
@@ -114,61 +116,6 @@ function getSortTypeKey(sortType: SortType): string {
     case "downloaded": return "downloaded";
     case "uploaded": return "uploaded";
     default: return "alphabetical";
-  }
-}
-
-// Função para determinar prioridade de ordenação dos status
-function getStatusPriority(status: TorrentStatus): number {
-  switch (status) {
-    // Error states - highest priority (1-2)
-    case "ERROR":
-      return 1;
-    case "MISSING_FILES":
-      return 2;
-    
-    // Download states - second priority (3-9)
-    case "DOWNLOADING":
-      return 3;
-    case "METADATA_DOWNLOAD":
-      return 4;
-    case "FORCED_METADATA_DOWNLOAD":
-      return 5;
-    case "FORCED_DOWNLOAD":
-      return 6;
-    case "QUEUED_DOWNLOAD":
-      return 7;
-    case "CHECKING_DOWNLOAD":
-    case "CHECKING_RESUME_DATA":
-      return 8;
-    case "STALLED_DOWNLOAD":
-      return 9;
-    case "PAUSED_DOWNLOAD":
-    case "STOPPED_DOWNLOAD":
-      return 10;
-    
-    // Upload states - third priority (11-17)
-    case "UPLOADING":
-      return 11;
-    case "FORCED_UPLOAD":
-      return 12;
-    case "QUEUED_UPLOAD":
-      return 13;
-    case "CHECKING_UPLOAD":
-      return 14;
-    case "STALLED_UPLOAD":
-      return 15;
-    case "PAUSED_UPLOAD":
-    case "STOPPED_UPLOAD":
-      return 16;
-    
-    // Other states - lowest priority (17+)
-    case "ALLOCATING":
-      return 17;
-    case "MOVING":
-      return 18;
-    case "UNKNOWN":
-    default:
-      return 19;
   }
 }
 
@@ -473,6 +420,7 @@ export default function TorrentsPage() {
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false);
   const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
   const [compact, setCompact] = useState(false);
+  const [displayMode, setDisplayMode] = useState<"default" | "card">("default");
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [lastNonEmptyTorrents, setLastNonEmptyTorrents] = useState<Torrent[]>([]);
@@ -481,6 +429,11 @@ export default function TorrentsPage() {
   const [deleteMode, setDeleteMode] = useState<"single" | "bulk">("single");
   const [deleteSingleName, setDeleteSingleName] = useState<string>("");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Lazy loading states for card view
+  const [displayedItemsCount, setDisplayedItemsCount] = useState(30); // Initial load: 30 items (3x10 rows)
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const ITEMS_PER_LOAD = 30; // Load 30 more items each time
   
   // Toggle single selection
   const handleToggleSelect = (id: string) => {
@@ -1226,6 +1179,15 @@ export default function TorrentsPage() {
     }
   };
 
+  // Load preferences from localStorage
+  useEffect(() => {
+    const prefs = preferencesService.load();
+    if (prefs) {
+      setCompact(prefs.compact);
+      setDisplayMode(prefs.torrent_display_mode);
+    }
+  }, []);
+
   // Carregar dados na inicialização
   useEffect(() => {
     loadAgents();
@@ -1307,164 +1269,65 @@ export default function TorrentsPage() {
     };
   }, [isAddDropdownOpen]);
 
-  // Filtrar e ordenar torrents com otimização para evitar re-renderizações
-  const filteredTorrents = useMemo(() => {
-    // Evita tabela vazia temporária mantendo última lista não vazia durante refresh ou seleção múltipla
-    const source = torrents.length > 0 ? torrents : ((isRefreshing || selectionMode) ? lastNonEmptyTorrents : torrents);
-    let filtered = source;
+  // Filtrar e ordenar torrents usando hook customizado
+  const filteredTorrents = useTorrentFilters({
+    torrents,
+    lastNonEmptyTorrents,
+    isRefreshing,
+    selectionMode,
+    searchTerm,
+    sortType,
+    sortDirection,
+    agents,
+    selectedAgentIds,
+    availableStatuses,
+    selectedStatuses,
+    availableCategories,
+    selectedCategories,
+    availableTags,
+    selectedTags,
+    availableGrades,
+    selectedGrades,
+  });
 
-    // Filtrar por agentes selecionados (se houver agentes carregados)
-    if (agents.length > 0 && selectedAgentIds.size === 0) {
-      // Nenhum agent selecionado -> não exibe torrents
-      return [] as Torrent[];
-    }
-
-    // Filtrar por ratio grades selecionados (se houver grades disponíveis)
-    if (availableGrades.length > 0 && selectedGrades.size === 0) {
-      // Nenhum grade selecionado -> não exibe torrents
-      return [] as Torrent[];
-    }
-    if (availableGrades.length > 0 && selectedGrades.size > 0) {
-      filtered = filtered.filter((t) => {
-        const grade = getRatioGrade(t.ratio);
-        return selectedGrades.has(grade);
-      });
-    }
-    if (agents.length > 0 && selectedAgentIds.size > 0) {
-      filtered = filtered.filter((t) => {
-        // Só exibe torrents que pertencem aos agentes selecionados
-        return t.agentUUID && selectedAgentIds.has(t.agentUUID);
-      });
-    }
-
-    // Filtrar por status selecionados (se houver status disponíveis)
-    if (availableStatuses.length > 0 && selectedStatuses.size === 0) {
-      // Nenhum status selecionado -> não exibe torrents
-      return [] as Torrent[];
-    }
-    if (availableStatuses.length > 0 && selectedStatuses.size > 0) {
-      filtered = filtered.filter((t) => {
-        // Só exibe torrents que pertencem aos status selecionados
-        return selectedStatuses.has(t.status);
-      });
-    }
-
-    // Filtrar por categorias selecionadas (se houver categorias disponíveis)
-    if (availableCategories.length > 0 && selectedCategories.size > 0) {
-      filtered = filtered.filter((t) => {
-        // Verifica se o torrent não tem categoria (sempre exibe)
-        const hasNoCategory = !t.category || t.category.trim() === '';
-        if (hasNoCategory) return true;
-        
-        // Se tem categoria, verifica se está selecionada
-        return selectedCategories.has(t.category);
-      });
-    } else if (availableCategories.length > 0 && selectedCategories.size === 0) {
-      // Nenhuma categoria selecionada -> exibe apenas torrents sem categoria
-      filtered = filtered.filter((t) => !t.category || t.category.trim() === '');
-    }
-
-    // Filtrar por tags selecionadas (se houver tags disponíveis)
-    if (availableTags.length > 0 && selectedTags.size > 0) {
-      filtered = filtered.filter((t) => {
-        // Filtrar tags válidas (não vazias)
-        const validTags = t.tags.filter(tag => tag && tag.trim() !== '');
-        
-        // Torrents sem tags válidas são sempre exibidos
-        if (validTags.length === 0) {
-          return true;
-        }
-        
-        // Se tem tags válidas, verifica se pelo menos uma está selecionada
-        return validTags.some(tag => selectedTags.has(tag));
-      });
-    } else if (availableTags.length > 0 && selectedTags.size === 0) {
-      // Nenhuma tag selecionada -> exibe apenas torrents sem tags
-      filtered = filtered.filter((t) => {
-        const validTags = t.tags.filter(tag => tag && tag.trim() !== '');
-        return validTags.length === 0;
-      });
-    }
-    
-    // Aplicar filtro de busca se houver termo
-    if (searchTerm.trim()) {
-      filtered = filtered.filter(torrent =>
-        torrent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        torrent.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        torrent.id.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-    
-    // Aplicar ordenação baseada no tipo selecionado
-    return filtered.sort((a, b) => {
-      let comparison = 0;
-      
-      switch (sortType) {
-        case "priority": {
-          // Ordenar por prioridade de status (downloading e error primeiro)
-          const priorityA = getStatusPriority(a.status);
-          const priorityB = getStatusPriority(b.status);
-          comparison = priorityA - priorityB;
-          // Se as prioridades forem iguais, ordenar por nome
-          if (comparison === 0) {
-            comparison = a.name.localeCompare(b.name);
-          }
-          break;
-        }
-          
-        case "alphabetical":
-          // Ordenar alfabeticamente por status, depois por nome
-          comparison = a.status.localeCompare(b.status);
-          if (comparison === 0) {
-            comparison = a.name.localeCompare(b.name);
-          }
-          break;
-          
-        case "size":
-          comparison = a.totalSizeBytes - b.totalSizeBytes;
-          break;
-          
-        case "progress":
-          comparison = a.progress - b.progress;
-          break;
-          
-        case "download_speed":
-          comparison = a.downloadRateBps - b.downloadRateBps;
-          break;
-          
-        case "upload_speed":
-          comparison = a.uploadRateBps - b.uploadRateBps;
-          break;
-          
-        case "downloaded":
-          comparison = a.downloadedBytes - b.downloadedBytes;
-          break;
-          
-        case "uploaded":
-          comparison = a.uploadedBytes - b.uploadedBytes;
-          break;
-          
-        default:
-          comparison = a.name.localeCompare(b.name);
-      }
-      
-      // Aplicar direção da ordenação
-      return sortDirection === "asc" ? comparison : -comparison;
-    });
-  }, [torrents, lastNonEmptyTorrents, isRefreshing, selectionMode, searchTerm, sortType, sortDirection, agents, selectedAgentIds, availableStatuses, selectedStatuses, availableCategories, selectedCategories, availableTags, selectedTags, availableGrades, selectedGrades]);
-
-  // Calcular dados de paginação
-  const totalPages = Math.ceil(filteredTorrents.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedTorrents = filteredTorrents.slice(startIndex, endIndex);
+  // Calcular dados de paginação ou lazy loading baseado no displayMode
+  const useCardLazyLoading = displayMode === "card";
+  
+  // Para card view: usar lazy loading
+  // Para table view: usar paginação tradicional
+  const displayedTorrents = useCardLazyLoading 
+    ? filteredTorrents.slice(0, displayedItemsCount)
+    : filteredTorrents.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  
+  const totalPages = useCardLazyLoading ? 1 : Math.ceil(filteredTorrents.length / itemsPerPage);
+  const paginatedTorrents = displayedTorrents;
   const visibleIds = useMemo(() => paginatedTorrents.map(t => t.id), [paginatedTorrents]);
   const allSelected = selectionMode && visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
 
-  // Resetar página quando o filtro, itens por página ou tipo de ordenação mudarem
+  // Resetar página/contador quando o filtro, itens por página ou tipo de ordenação mudarem
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, itemsPerPage, sortType, sortDirection]);
+    setDisplayedItemsCount(30); // Reset lazy loading counter
+  }, [searchTerm, itemsPerPage, sortType, sortDirection, displayMode]);
+  
+  // Intersection Observer para lazy loading (apenas para card view)
+  useEffect(() => {
+    if (!useCardLazyLoading || !sentinelRef.current) return;
+    
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const target = entries[0];
+        if (target.isIntersecting && displayedItemsCount < filteredTorrents.length) {
+          setDisplayedItemsCount(prev => Math.min(prev + ITEMS_PER_LOAD, filteredTorrents.length));
+        }
+      },
+      { threshold: 0.1, rootMargin: '200px' }
+    );
+    
+    observer.observe(sentinelRef.current);
+    
+    return () => observer.disconnect();
+  }, [useCardLazyLoading, displayedItemsCount, filteredTorrents.length, ITEMS_PER_LOAD]);
 
   // Função para lidar com mudança de itens por página
   const handleItemsPerPageChange = (newItemsPerPage: number) => {
@@ -1740,22 +1603,6 @@ export default function TorrentsPage() {
                 onChange={handleItemsPerPageChange} 
               />
             </div>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={compact ? "default" : "outline"}
-                  onClick={() => setCompact((v) => !v)}
-                  size="icon"
-                  className="h-9 w-9"
-                  aria-label={compact ? "Desativar modo compacto" : "Ativar modo compacto"}
-                >
-                  <List className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{compact ? "Desativar modo compacto" : "Ativar modo compacto"}</p>
-              </TooltipContent>
-            </Tooltip>
             <Button
               variant="outline"
               onClick={() => setIsFilterSidebarOpen(true)}
@@ -1844,23 +1691,6 @@ export default function TorrentsPage() {
               />
             </div>
             <div className="w-px bg-border self-stretch flex-shrink-0" />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={compact ? "default" : "outline"}
-                  onClick={() => setCompact((v) => !v)}
-                  size="icon"
-                  className="flex-shrink-0 h-8 w-8"
-                  aria-label={compact ? "Desativar modo compacto" : "Ativar modo compacto"}
-                >
-                  <List className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{compact ? "Desativar modo compacto" : "Ativar modo compacto"}</p>
-              </TooltipContent>
-            </Tooltip>
-            <div className="w-px bg-border self-stretch flex-shrink-0" />
             <Button
               variant="outline"
               onClick={() => setIsFilterSidebarOpen(true)}
@@ -1948,9 +1778,10 @@ export default function TorrentsPage() {
       {/* Conteúdo principal - apenas quando há agentes funcionais e torrents */}
       {!agentsLoading && agents.length > 0 && agents.some(agent => agent.status !== 'ERRORED') && torrents.length > 0 && (
         <>
-      {/* Layout para desktop - Tabela via componente */}
-      <div className="hidden md:block">
-        <TorrentsTable
+      {/* Layout para desktop - Tabela ou Cards baseado na preferência */}
+      <div className="hidden md:block w-full">
+        {displayMode === "default" ? (
+          <TorrentsTable
           torrents={paginatedTorrents}
           sortType={sortType}
           sortDirection={sortDirection}
@@ -1976,6 +1807,51 @@ export default function TorrentsPage() {
           onToggleSelect={handleToggleSelect}
           onRequestDelete={openDeleteModal}
         />
+        ) : (
+          // Card view for desktop
+          <>
+            {/* Desktop sorting controls for card view */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-muted-foreground">{t('torrents.sortedBy')}:</span>
+                  <span className="text-sm text-muted-foreground">
+                    {t(`torrents.sortBy.${getSortTypeKey(sortType)}`)} {sortDirection === "asc" ? "↑" : "↓"}
+                  </span>
+                </div>
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  {filteredTorrents.length} {t('torrents.of')} {torrents.length}
+                </span>
+              </div>
+            </div>
+            
+            <TorrentListMobile
+              torrents={paginatedTorrents}
+              onShowDetails={handleShowDetails}
+              onStart={handlePlayTorrent}
+              onStop={handlePauseTorrent}
+              onMetrics={handleShowMetrics}
+              onRemove={(id) => handleDeleteTorrent(id, false)}
+              onForceDownload={handleForceDownloadTorrent}
+              onForceReannounce={handleForceReannounceTorrent}
+              onForceRecheck={handleForceRecheckTorrent}
+              onLimits={handleShowLimits}
+              onMetadataUpdate={handleMetadataUpdate}
+              compact={compact}
+              selectionMode={selectionMode}
+              selectedIds={selectedIds}
+              onToggleSelect={handleToggleSelect}
+              onRequestDelete={openDeleteModal}
+            />
+            
+            {/* Lazy loading sentinel for card view */}
+            {useCardLazyLoading && displayedItemsCount < filteredTorrents.length && (
+              <div ref={sentinelRef} className="flex items-center justify-center py-4">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Layout para mobile - Cards em coluna única */}

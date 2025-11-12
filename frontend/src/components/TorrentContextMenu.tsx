@@ -37,6 +37,7 @@ export default function TorrentContextMenu(props: TorrentContextMenuProps) {
   const { taskId, agentId, taskHash, taskName, metadata, children, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits, onMetadataUpdate, selectionMode, selectedIds, onRequestDelete } = props;
   
   const [isMetadataModalOpen, setIsMetadataModalOpen] = React.useState(false);
+  const [isMenuReady, setIsMenuReady] = React.useState(false);
 
   const handleStart = React.useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -101,7 +102,9 @@ export default function TorrentContextMenu(props: TorrentContextMenuProps) {
     }
   }, [onMetrics, taskId, agentId]);
 
-  const handleLimits = React.useCallback(() => {
+  const handleLimits = React.useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (onLimits) {
       onLimits(taskId, agentId);
     }
@@ -125,51 +128,77 @@ export default function TorrentContextMenu(props: TorrentContextMenuProps) {
 
   const isMultipleSelection = selectionMode && selectedIds && selectedIds.size > 1;
 
+  const handleOpenChange = React.useCallback((open: boolean) => {
+    if (open) {
+      setIsMenuReady(false);
+      // Small delay to allow menu positioning to stabilize
+      setTimeout(() => setIsMenuReady(true), 100);
+    } else {
+      setIsMenuReady(false);
+    }
+  }, []);
+
+  const createProtectedHandler = React.useCallback(
+    (handler: (e: React.MouseEvent) => void) => {
+      return (e: React.MouseEvent) => {
+        if (!isMenuReady) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        handler(e);
+      };
+    },
+    [isMenuReady]
+  );
+
   return (
-    <ContextMenu modal={false}>
+    <ContextMenu modal={false} onOpenChange={handleOpenChange}>
       <ContextMenuTrigger asChild>
         {children}
       </ContextMenuTrigger>
       <ContextMenuContent 
         className="w-48"
         onCloseAutoFocus={(e) => e.preventDefault()}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        collisionPadding={10}
       >
-        <ContextMenuItem onClick={handleStart}>
+        <ContextMenuItem onClick={createProtectedHandler(handleStart)}>
           <Play />
           Start
         </ContextMenuItem>
-        <ContextMenuItem onClick={handleStop}>
+        <ContextMenuItem onClick={createProtectedHandler(handleStop)}>
           <Pause />
           Stop
         </ContextMenuItem>
-        <ContextMenuItem onClick={handleForceDownload} disabled={!onForceDownload}>
+        <ContextMenuItem onClick={createProtectedHandler(handleForceDownload)} disabled={!onForceDownload}>
           <Zap />
           Force download
         </ContextMenuItem>
-        <ContextMenuItem onClick={handleForceReannounce} disabled={!onForceReannounce}>
+        <ContextMenuItem onClick={createProtectedHandler(handleForceReannounce)} disabled={!onForceReannounce}>
           <Radio />
           Force reannounce
         </ContextMenuItem>
-        <ContextMenuItem onClick={handleForceRecheck} disabled={!onForceRecheck}>
+        <ContextMenuItem onClick={createProtectedHandler(handleForceRecheck)} disabled={!onForceRecheck}>
           <CheckCircle />
           Force recheck
         </ContextMenuItem>
-        <ContextMenuItem onClick={handleMetrics} disabled={!onMetrics}>
+        <ContextMenuItem onClick={createProtectedHandler(handleMetrics)} disabled={!onMetrics}>
           <BarChart3 />
           Métricas
         </ContextMenuItem>
-        <ContextMenuItem onSelect={handleLimits}>
+        <ContextMenuItem onClick={createProtectedHandler(handleLimits)}>
           <Settings />
           {t("torrents.limits")}
         </ContextMenuItem>
         <ContextMenuItem 
-          onClick={handleMetadata} 
+          onClick={createProtectedHandler(handleMetadata)} 
           disabled={isMultipleSelection}
         >
           <FileText />
           Metadados
         </ContextMenuItem>
-        <ContextMenuItem onClick={handleRemove} variant="destructive">
+        <ContextMenuItem onClick={createProtectedHandler(handleRemove)} variant="destructive">
           <Trash2 />
           Remove
         </ContextMenuItem>

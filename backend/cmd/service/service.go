@@ -33,6 +33,7 @@ import (
 	"github.com/gardarr/gardarr/internal/services/crypto"
 	settingsService "github.com/gardarr/gardarr/internal/services/settings"
 	"github.com/gardarr/gardarr/internal/services/statistics"
+	"github.com/gardarr/gardarr/internal/middlewares"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -47,6 +48,24 @@ import (
 var (
 	router *gin.Engine
 )
+
+// getBaseURL returns the base URL from APP_URL env var or constructs it from APP_PORT
+// Falls back to BASE_URL for backward compatibility
+func getBaseURL() string {
+	// Check APP_URL first
+	if appURL := env.Get(constants.AppURLEnv).Value(); appURL != "" {
+		return appURL
+	}
+	
+	// Fall back to BASE_URL for backward compatibility
+	if customURL := os.Getenv("BASE_URL"); customURL != "" {
+		return customURL
+	}
+	
+	// Default: construct from APP_PORT
+	port := env.Get(constants.AppPortEnv).Default("3000").Value()
+	return fmt.Sprintf("http://localhost:%s", port)
+}
 
 func Run(cmd *cobra.Command, args []string) error {
 	// Check if APP_MODE is set to standalone
@@ -89,10 +108,7 @@ func Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get base URL for building image URLs
-	baseURL := fmt.Sprintf("http://localhost:%s", env.Get(constants.AppPortEnv).Default("3000").Value())
-	if customURL := os.Getenv("BASE_URL"); customURL != "" {
-		baseURL = customURL
-	}
+	baseURL := getBaseURL()
 
 	setRouter()
 
@@ -222,18 +238,18 @@ func securityHeadersMiddleware() gin.HandlerFunc {
 		}
 		c.Header("Permissions-Policy", strings.Join(permissions, ", "))
 
-		// Cross-Origin policies - relaxed for media resources
+		// Cross-Origin policies - different handling for media vs other routes
 		if strings.HasPrefix(c.Request.URL.Path, "/media/") {
-			// Allow media to be loaded cross-origin
-			c.Header("Cross-Origin-Resource-Policy", "cross-origin")
-			// Don't require CORP for media embedder policy
+			// For authenticated media: allow cross-origin since frontend might be on different port
 			c.Header("Cross-Origin-Embedder-Policy", "unsafe-none")
+			c.Header("Cross-Origin-Resource-Policy", "cross-origin")
+			c.Header("Cross-Origin-Opener-Policy", "same-origin-allow-popups")
 		} else {
-			// Strict policies for API routes
+			// Strict policies for API and other routes
 			c.Header("Cross-Origin-Embedder-Policy", "require-corp")
 			c.Header("Cross-Origin-Resource-Policy", "same-origin")
+			c.Header("Cross-Origin-Opener-Policy", "same-origin")
 		}
-		c.Header("Cross-Origin-Opener-Policy", "same-origin")
 
 		c.Next()
 	}
@@ -246,16 +262,26 @@ func setRouter() {
 		schemas.RegisterCustomValidators(v)
 	}
 
-	// CORS configuration for development
+	// Get APP_URL from environment variable (default: http://localhost:3000)
+	appURL := env.Get(constants.AppURLEnv).Default("http://localhost:3000").Value()
+	
+	// CORS configuration
+	allowedOrigins := []string{appURL}
+	
+	// Also allow common development URLs if not explicitly set
+	if appURL == "http://localhost:3000" {
+		allowedOrigins = append(allowedOrigins, "http://localhost:5173")
+	}
+	
 	corsConfig := cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:3000"},
+		AllowOrigins:     allowedOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}
 
-	// Override with environment variables if set
+	// Override with environment variables if set (APP_DOMAINS takes precedence)
 	if domains := os.Getenv(constants.AppDomainsEnv); domains != "" {
 		corsConfig.AllowOrigins = strings.Split(domains, ",")
 	}
@@ -276,17 +302,48 @@ func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statist
 	router.Static("/assets", assetsPath)
 	router.StaticFile("/logo.ico", filepath.Join(webPath, "logo.ico"))
 	
-	// Serve uploaded media files
+	// Serve uploaded media files with authentication required
 	mediaPath := filepath.Join(wd, "uploads", "task_images")
-	router.Static("/media", mediaPath)
+	router.GET("/media/*filepath", middlewares.SessionMiddleware(db), func(c *gin.Context) {
+		// Get the requested file path
+		requestedFile := c.Param("filepath")
+		
+		// Security: prevent path traversal attacks
+		requestedFile = filepath.Clean(requestedFile)
+		if strings.Contains(requestedFile, "..") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file path"})
+			return
+		}
+		
+		// Build full file path
+		fullPath := filepath.Join(mediaPath, requestedFile)
+		
+		// Check if file exists
+		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+			return
+		}
+		
+		// Set CORS headers explicitly for cross-origin requests
+		origin := c.GetHeader("Origin")
+		if origin != "" {
+			c.Header("Access-Control-Allow-Origin", origin)
+			c.Header("Access-Control-Allow-Credentials", "true")
+		}
+		
+		// Set headers to prevent caching - force browser to always check authentication
+		c.Header("Cache-Control", "no-cache, no-store, must-revalidate, private")
+		c.Header("Pragma", "no-cache")
+		c.Header("Expires", "0")
+		
+		// Serve the file
+		c.File(fullPath)
+	})
 
 	// API routes
 
-	// Get base URL for building image URLs (reuse from Run function)
-	baseURL := fmt.Sprintf("http://localhost:%s", env.Get(constants.AppPortEnv).Default("3000").Value())
-	if customURL := os.Getenv("BASE_URL"); customURL != "" {
-		baseURL = customURL
-	}
+	// Get base URL for building image URLs
+	baseURL := getBaseURL()
 
 	v1 := router.Group("/v1")
 	health.NewModule(v1, db).Register()
