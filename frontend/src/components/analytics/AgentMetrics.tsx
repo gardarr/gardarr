@@ -244,7 +244,7 @@ interface AgentMetricsProps {
   onAgentChange?: (agentId: string) => void;
 }
 
-const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedAgentId, topUploaded, taskNameById, onAgentChange }) => {
+const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedAgentId, topUploaded, taskNameById }) => {
   const [stats, setStats] = useState<TaskStats | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [isLoading, setIsLoading] = useState(true);

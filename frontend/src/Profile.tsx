@@ -238,12 +238,11 @@ export default function ProfilePage() {
         setNewPassword("");
         setConfirmPassword("");
       }
-    } catch (error: any) {
-      if (error.response?.data?.error) {
-        setPasswordError(error.response.data.error);
-      } else {
-        setPasswordError(t("profile.security.passwordChangeFailed"));
-      }
+    } catch (error: unknown) {
+      const errorMessage = error && typeof error === 'object' && 'response' in error
+        ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
+        : undefined;
+      setPasswordError(errorMessage || t("profile.security.passwordChangeFailed"));
     } finally {
       setIsChangingPassword(false);
     }

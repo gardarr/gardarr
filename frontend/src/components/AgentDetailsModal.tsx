@@ -28,7 +28,8 @@ import { versionService } from "../services/version";
 interface AgentDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  agentId: string | null;
+  agentId?: string | null;
+  agent?: Agent | null;
   onEdit: (agent: Agent) => void;
   onDelete: (agent: Agent) => void;
 }
@@ -37,33 +38,115 @@ export function AgentDetailsModal({
   isOpen,
   onClose,
   agentId,
+  agent: initialAgent,
   onEdit,
   onDelete
 }: AgentDetailsModalProps) {
   const { t } = useTranslation();
   
   // Internal state management
-  const [agent, setAgent] = useState<Agent | null>(null);
+  const [agent, setAgent] = useState<Agent | null>(initialAgent || null);
   const [loading, setLoading] = useState(false);
   const [agentVersions, setAgentVersions] = useState<Record<string, Version>>({});
   const [agentTaskStats, setAgentTaskStats] = useState<Record<string, TaskStats>>({});
   const [systemVersion, setSystemVersion] = useState<Version | null>(null);
 
   // Load agent details
-  const loadAgentDetails = useCallback(async (id: string) => {
+  const loadAgentDetails = useCallback(async (id: string, agentToPreserve?: Agent | null) => {
     try {
       setLoading(true);
       const response = await agentService.getAgent(id);
       
       if (response.error) {
         console.error('Failed to load agent:', response.error);
-        setAgent(null);
+        
+        // Extract error message from errorDetails if available, otherwise use error string
+        const errorMessage = response.errorDetails?.error || response.error || 'An unexpected error occurred';
+        
+        // If we have an agent to preserve (e.g., when initialAgent was provided), 
+        // update only the status and error message while keeping all other data
+        if (agentToPreserve && agentToPreserve.uuid === id) {
+          setAgent({
+            ...agentToPreserve,
+            status: 'ERRORED' as const,
+            error: errorMessage,
+            instance: agentToPreserve.instance || {
+              application: {
+                version: '',
+                api_version: ''
+              },
+              server: {
+                free_space_on_disk: 0
+              },
+              transfer: {
+                all_time_downloaded: 0,
+                all_time_uploaded: 0,
+                global_ratio: 0,
+                last_external_address_v4: '',
+                last_external_address_v6: ''
+              }
+            }
+          });
+        } else {
+          // Fallback: try to preserve current agent from state
+          setAgent(prevAgent => {
+            if (prevAgent && prevAgent.uuid === id) {
+              return {
+                ...prevAgent,
+                status: 'ERRORED' as const,
+                error: errorMessage,
+                instance: prevAgent.instance || {
+                  application: {
+                    version: '',
+                    api_version: ''
+                  },
+                  server: {
+                    free_space_on_disk: 0
+                  },
+                  transfer: {
+                    all_time_downloaded: 0,
+                    all_time_uploaded: 0,
+                    global_ratio: 0,
+                    last_external_address_v4: '',
+                    last_external_address_v6: ''
+                  }
+                }
+              };
+            }
+            // Create a minimal Agent object with error status if no agent to preserve
+            return {
+              uuid: id,
+              name: '',
+              address: '',
+              status: 'ERRORED' as const,
+              error: errorMessage,
+              instance: {
+                application: {
+                  version: '',
+                  api_version: ''
+                },
+                server: {
+                  free_space_on_disk: 0
+                },
+                transfer: {
+                  all_time_downloaded: 0,
+                  all_time_uploaded: 0,
+                  global_ratio: 0,
+                  last_external_address_v4: '',
+                  last_external_address_v6: ''
+                }
+              }
+            };
+          });
+        }
       } else if (response.data) {
         setAgent(response.data);
       }
     } catch (err) {
       console.error('Failed to load agent:', err);
-      setAgent(null);
+      if (!agentToPreserve) {
+        setAgent(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -99,14 +182,28 @@ export function AgentDetailsModal({
   }, []);
 
 
-  // Load data when modal opens and agentId changes
+  // Load data when modal opens and agentId or initialAgent changes
   useEffect(() => {
-    if (isOpen && agentId) {
-      loadAgentDetails(agentId);
-      loadAgentVersion(agentId);
-      loadSystemVersion();
+    if (isOpen) {
+      // If initial agent is provided, use it immediately and refresh in background
+      if (initialAgent) {
+        setAgent(initialAgent);
+        const id = initialAgent.uuid;
+        loadAgentVersion(id);
+        loadSystemVersion();
+        // Refresh agent details in background to get latest status
+        // Pass the initial agent to preserve its data if there's an error
+        if (id) {
+          loadAgentDetails(id, initialAgent);
+        }
+      } else if (agentId) {
+        // Fallback to loading by ID if no initial agent provided
+        loadAgentDetails(agentId);
+        loadAgentVersion(agentId);
+        loadSystemVersion();
+      }
     }
-  }, [isOpen, agentId, loadAgentDetails, loadAgentVersion, loadSystemVersion]);
+  }, [isOpen, agentId, initialAgent, loadAgentDetails, loadAgentVersion, loadSystemVersion]);
 
   // Reset state when modal closes
   useEffect(() => {
@@ -154,7 +251,7 @@ export function AgentDetailsModal({
         <DialogHeader>
           <DialogTitle>
             {loading ? t('agents.loadingAgentDetails') : 
-             agent ? `${t('agents.agentDetails')} - ${agent.name}` : 
+             agent ? (agent.name ? `${t('agents.agentDetails')} - ${agent.name}` : t('agents.agentDetails')) : 
              t('agents.agentDetails')}
           </DialogTitle>
         </DialogHeader>

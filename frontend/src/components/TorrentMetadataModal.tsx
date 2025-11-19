@@ -49,7 +49,6 @@ export function TorrentMetadataModal({
   });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartY, setDragStartY] = useState(0);
-  const [isSavingPosition, setIsSavingPosition] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
 
@@ -105,8 +104,11 @@ export function TorrentMetadataModal({
       setSelectedFile(null);
       event.target.value = ""; // Reset input to allow re-selection
       onUpdate();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || "Erro ao enviar imagem");
+    } catch (error: unknown) {
+      const errorMessage = error && typeof error === 'object' && 'response' in error
+        ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
+        : undefined;
+      toast.error(errorMessage || "Erro ao enviar imagem");
       // Revert preview on error
       setImagePreview(metadata?.image_url || null);
       setSelectedFile(null);
@@ -127,8 +129,11 @@ export function TorrentMetadataModal({
       setImagePreview(null);
       setSelectedFile(null);
       onUpdate();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || "Erro ao remover imagem");
+    } catch (error: unknown) {
+      const errorMessage = error && typeof error === 'object' && 'response' in error
+        ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
+        : undefined;
+      toast.error(errorMessage || "Erro ao remover imagem");
     } finally {
       setIsDeleting(false);
     }
@@ -143,8 +148,11 @@ export function TorrentMetadataModal({
       toast.success("Descrição atualizada com sucesso");
 
       onUpdate();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || "Erro ao salvar descrição");
+    } catch (error: unknown) {
+      const errorMessage = error && typeof error === 'object' && 'response' in error
+        ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
+        : undefined;
+      toast.error(errorMessage || "Erro ao salvar descrição");
     }
   };
 
@@ -155,7 +163,7 @@ export function TorrentMetadataModal({
         setIsCopied(true);
         toast.success("URL copiada para a área de transferência");
         setTimeout(() => setIsCopied(false), 2000);
-      } catch (error) {
+      } catch {
         toast.error("Erro ao copiar URL");
       }
     }
@@ -213,17 +221,17 @@ export function TorrentMetadataModal({
   const handleSaveImagePosition = async () => {
     if (!metadata?.image_url) return;
     
-    setIsSavingPosition(true);
     try {
       await api.put(`/tasks/metadata/${taskHash}/position`, {
         image_position_y: imagePositionY,
       });
       toast.success("Posição da imagem atualizada");
       onUpdate();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || "Erro ao salvar posição");
-    } finally {
-      setIsSavingPosition(false);
+    } catch (error: unknown) {
+      const errorMessage = error && typeof error === 'object' && 'response' in error
+        ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
+        : undefined;
+      toast.error(errorMessage || "Erro ao salvar posição");
     }
   };
 
@@ -238,8 +246,11 @@ export function TorrentMetadataModal({
         image_opacity: newOpacity,
       });
       onUpdate();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || "Erro ao salvar opacidade");
+    } catch (error: unknown) {
+      const errorMessage = error && typeof error === 'object' && 'response' in error
+        ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
+        : undefined;
+      toast.error(errorMessage || "Erro ao salvar opacidade");
     }
   };
 

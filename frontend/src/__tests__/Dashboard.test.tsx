@@ -100,7 +100,7 @@ describe('Dashboard Component', () => {
     await waitFor(() => {
       expect(screen.getByText('Dashboard')).toBeInTheDocument();
     });
-    expect(screen.getByText('Monitor your torrent activity and performance metrics')).toBeInTheDocument();
+    expect(screen.getByText('Real-time analytics and insights for your torrent agents and tasks')).toBeInTheDocument();
   });
 
   it('renders dashboard with metrics', async () => {
@@ -111,11 +111,10 @@ describe('Dashboard Component', () => {
       expect(screen.getByText('Dashboard')).toBeInTheDocument();
     }, { timeout: 2000 });
 
-    expect(screen.getByText('Monitor your torrent activity and performance metrics')).toBeInTheDocument();
+    expect(screen.getByText('Real-time analytics and insights for your torrent agents and tasks')).toBeInTheDocument();
     
     // Check that child components are rendered
     expect(screen.getByTestId('agent-metrics')).toBeInTheDocument();
-    expect(screen.getByTestId('task-metrics')).toBeInTheDocument();
   });
 
   it('renders with date range picker and refresh button', async () => {

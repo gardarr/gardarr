@@ -261,7 +261,6 @@ export function TorrentMetricsModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [taskHash, setTaskHash] = useState<string>(taskId);
-  const [taskHashes, setTaskHashes] = useState<string[]>([]); // Multiple hashes for multi-select
   const [taskData, setTaskData] = useState<Task | null>(null);
   const [aggregatedTaskData, setAggregatedTaskData] = useState<Task | null>(null); // Aggregated data for multiple tasks
   const fetchingKeyRef = useRef<string>(""); // Track the key currently being fetched
@@ -316,8 +315,6 @@ export function TorrentMetricsModal({
                 }
               }
             }
-            
-            setTaskHashes(hashes);
             
             // Aggregate task data from all selected tasks
             if (tasks.length > 0) {

@@ -164,7 +164,7 @@ export default function TorrentContextMenu(props: TorrentContextMenuProps) {
         collisionPadding={10}
       >
         <ContextMenuItem onClick={createProtectedHandler(handleStart)}>
-          <Play />
+          <Play className="text-green-500" />
           Start
         </ContextMenuItem>
         <ContextMenuItem onClick={createProtectedHandler(handleStop)}>

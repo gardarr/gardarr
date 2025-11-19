@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -66,11 +66,7 @@ export default function HistoryPage() {
   const [limit] = useState(50);
   const [filterType, setFilterType] = useState<string>("all");
 
-  useEffect(() => {
-    loadEvents();
-  }, [page, filterType]);
-
-  const loadEvents = async () => {
+  const loadEvents = useCallback(async () => {
     setIsLoading(true);
     try {
       const offset = page * limit;
@@ -92,7 +88,11 @@ export default function HistoryPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [page, limit, filterType]);
+
+  useEffect(() => {
+    loadEvents();
+  }, [loadEvents]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString(i18n.language, {

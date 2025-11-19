@@ -44,7 +44,7 @@ function Agents() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [agentToDelete, setAgentToDelete] = useState<Agent | null>(null);
@@ -110,7 +110,7 @@ function Agents() {
         setShowDeleteModal(false);
         setShowDetailsModal(false);
         setAgentToDelete(null);
-        setSelectedAgentId(null);
+        setSelectedAgent(null);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('agents.errors.failedToDelete'));
@@ -148,7 +148,7 @@ function Agents() {
   };
 
   const showAgentDetails = (agent: Agent) => {
-    setSelectedAgentId(agent.uuid);
+    setSelectedAgent(agent);
     setShowDetailsModal(true);
   };
 
@@ -203,8 +203,8 @@ function Agents() {
         setAgents(updatedAgents);
         
         // Update the selected agent if it's the same one being edited
-        if (selectedAgentId === agentToEdit.uuid) {
-          // The modal will reload the agent data automatically
+        if (selectedAgent?.uuid === agentToEdit.uuid) {
+          setSelectedAgent(response.data!);
         }
         
         toast.success(t('agents.success.updated'));
@@ -212,7 +212,7 @@ function Agents() {
         setShowDetailsModal(false);
         setShowEditToken(false);
         setAgentToEdit(null);
-        setSelectedAgentId(null);
+        setSelectedAgent(null);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('agents.errors.failedToUpdate'));
@@ -566,7 +566,7 @@ function Agents() {
           <AgentDetailsModal
             isOpen={showDetailsModal}
             onClose={() => setShowDetailsModal(false)}
-            agentId={selectedAgentId}
+            agent={selectedAgent}
             onEdit={showEditAgent}
             onDelete={confirmDeleteAgent}
           />

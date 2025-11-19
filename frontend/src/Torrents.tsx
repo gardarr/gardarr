@@ -5,15 +5,6 @@ import { Separator } from "@/components/ui/separator";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Search, Loader2, ChevronDown, SortAsc, SortDesc, Plus, SlidersHorizontal, Download, Clock, Server, Activity, Folder, Tag, FileUp, AlertTriangle, Star, CheckSquare, Square, X } from "lucide-react";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -276,113 +267,6 @@ function UpdateIntervalDropdown({
   );
 }
 
-// Componente de paginação usando shadcn/ui
-function TorrentPagination({
-  currentPage,
-  totalPages,
-  onPageChange,
-  className
-}: {
-  currentPage: number;
-  totalPages: number;
-  onPageChange: (page: number) => void;
-  className?: string;
-}) {
-  // Função para gerar os números das páginas
-  const generatePageNumbers = () => {
-    const pages: (number | 'ellipsis')[] = [];
-    const maxVisiblePages = 5;
-    
-    if (totalPages <= maxVisiblePages) {
-      // Se temos poucas páginas, mostrar todas
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      // Lógica para mostrar páginas com ellipsis
-      if (currentPage <= 3) {
-        // Mostrar primeiras páginas
-        for (let i = 1; i <= 4; i++) {
-          pages.push(i);
-        }
-        pages.push('ellipsis');
-        pages.push(totalPages);
-      } else if (currentPage >= totalPages - 2) {
-        // Mostrar últimas páginas
-        pages.push(1);
-        pages.push('ellipsis');
-        for (let i = totalPages - 3; i <= totalPages; i++) {
-          pages.push(i);
-        }
-      } else {
-        // Mostrar páginas do meio
-        pages.push(1);
-        pages.push('ellipsis');
-        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
-          pages.push(i);
-        }
-        pages.push('ellipsis');
-        pages.push(totalPages);
-      }
-    }
-    
-    return pages;
-  };
-
-  if (totalPages <= 1) return null;
-
-  return (
-    <Pagination className={className}>
-      <PaginationContent>
-        <PaginationItem>
-          <PaginationPrevious 
-            href="#"
-            size="default"
-            onClick={(e) => {
-              e.preventDefault();
-              if (currentPage > 1) onPageChange(currentPage - 1);
-            }}
-            className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-          />
-        </PaginationItem>
-        
-        {generatePageNumbers().map((page, index) => (
-          <PaginationItem key={index}>
-            {page === 'ellipsis' ? (
-              <PaginationEllipsis />
-            ) : (
-              <PaginationLink
-                href="#"
-                size="icon"
-                onClick={(e) => {
-                  e.preventDefault();
-                  onPageChange(page);
-                }}
-                isActive={page === currentPage}
-                className="cursor-pointer"
-              >
-                {page}
-              </PaginationLink>
-            )}
-          </PaginationItem>
-        ))}
-        
-        <PaginationItem>
-          <PaginationNext 
-            href="#"
-            size="default"
-            onClick={(e) => {
-              e.preventDefault();
-              if (currentPage < totalPages) onPageChange(currentPage + 1);
-            }}
-            className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-          />
-        </PaginationItem>
-      </PaginationContent>
-    </Pagination>
-  );
-}
-
 export default function TorrentsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -433,7 +317,21 @@ export default function TorrentsPage() {
   // Lazy loading states for card view
   const [displayedItemsCount, setDisplayedItemsCount] = useState(30); // Initial load: 30 items (3x10 rows)
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const mobileSentinelRef = useRef<HTMLDivElement>(null);
   const ITEMS_PER_LOAD = 30; // Load 30 more items each time
+  
+  // Detect mobile viewport
+  const [isMobile, setIsMobile] = useState(false);
+  
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768); // md breakpoint
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   
   // Toggle single selection
   const handleToggleSelect = (id: string) => {
@@ -685,7 +583,7 @@ export default function TorrentsPage() {
   }, [t, agents]);
 
   // Atualização silenciosa para não afetar UI (sem spinner)
-  const refreshTorrentsSilently = useCallback(async () => {
+  const refreshTorrentsSilently = useCallback(async (): Promise<Task[]> => {
     try {
       // Verificar se há pelo menos um agente funcional (não erro) antes de tentar carregar tasks
       const functionalAgents = agents.filter(agent => agent.status !== 'ERRORED');
@@ -693,7 +591,7 @@ export default function TorrentsPage() {
         // Se não há agentes funcionais, limpar tasks e retornar
         setOriginalTasks([]);
         setTorrents([]);
-        return;
+        return [];
       }
       
       // Buscar tasks de cada agente funcional individualmente
@@ -718,8 +616,10 @@ export default function TorrentsPage() {
       setOriginalTasks(allTasks);
       const mappedTorrents = allTasks.map(mapTaskToTorrent);
       setTorrents(mappedTorrents);
+      return allTasks;
     } catch {
       // silencioso
+      return [];
     }
   }, [agents]);
 
@@ -904,18 +804,13 @@ export default function TorrentsPage() {
 
       toast.success('Torrent retomado com sucesso');
       
-      // Recarregar dados sem fechar o modal
-      const refreshResponse = await torrentService.listTasks();
-      if (refreshResponse?.data) {
-        setOriginalTasks(refreshResponse.data);
-        const mappedTorrents = refreshResponse.data.map(mapTaskToTorrent);
-        setTorrents(mappedTorrents);
-        
-        // Atualizar o torrent selecionado para refletir mudanças
-        const updatedTask = refreshResponse.data.find(t => t.id === torrentId);
-        if (updatedTask) {
-          setSelectedTorrent(updatedTask);
-        }
+      // Recarregar dados de todos os agentes sem fechar o modal
+      const updatedTasks = await refreshTorrentsSilently();
+      
+      // Atualizar o torrent selecionado para refletir mudanças
+      const updatedTask = updatedTasks.find(t => t.id === torrentId);
+      if (updatedTask) {
+        setSelectedTorrent(updatedTask);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao retomar torrent');
@@ -938,18 +833,13 @@ export default function TorrentsPage() {
 
       toast.success('Torrent pausado com sucesso');
       
-      // Recarregar dados sem fechar o modal
-      const refreshResponse = await torrentService.listTasks();
-      if (refreshResponse?.data) {
-        setOriginalTasks(refreshResponse.data);
-        const mappedTorrents = refreshResponse.data.map(mapTaskToTorrent);
-        setTorrents(mappedTorrents);
-        
-        // Atualizar o torrent selecionado para refletir mudanças
-        const updatedTask = refreshResponse.data.find(t => t.id === torrentId);
-        if (updatedTask) {
-          setSelectedTorrent(updatedTask);
-        }
+      // Recarregar dados de todos os agentes sem fechar o modal
+      const updatedTasks = await refreshTorrentsSilently();
+      
+      // Atualizar o torrent selecionado para refletir mudanças
+      const updatedTask = updatedTasks.find(t => t.id === torrentId);
+      if (updatedTask) {
+        setSelectedTorrent(updatedTask);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao pausar torrent');
@@ -972,18 +862,13 @@ export default function TorrentsPage() {
 
       toast.success('Force download iniciado com sucesso');
       
-      // Recarregar dados sem fechar o modal
-      const refreshResponse = await torrentService.listTasks();
-      if (refreshResponse?.data) {
-        setOriginalTasks(refreshResponse.data);
-        const mappedTorrents = refreshResponse.data.map(mapTaskToTorrent);
-        setTorrents(mappedTorrents);
-        
-        // Atualizar o torrent selecionado para refletir mudanças
-        const updatedTask = refreshResponse.data.find(t => t.id === torrentId);
-        if (updatedTask) {
-          setSelectedTorrent(updatedTask);
-        }
+      // Recarregar dados de todos os agentes sem fechar o modal
+      const updatedTasks = await refreshTorrentsSilently();
+      
+      // Atualizar o torrent selecionado para refletir mudanças
+      const updatedTask = updatedTasks.find(t => t.id === torrentId);
+      if (updatedTask) {
+        setSelectedTorrent(updatedTask);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao forçar download do torrent');
@@ -1006,18 +891,13 @@ export default function TorrentsPage() {
 
       toast.success('Force reannounce iniciado com sucesso');
       
-      // Recarregar dados sem fechar o modal
-      const refreshResponse = await torrentService.listTasks();
-      if (refreshResponse?.data) {
-        setOriginalTasks(refreshResponse.data);
-        const mappedTorrents = refreshResponse.data.map(mapTaskToTorrent);
-        setTorrents(mappedTorrents);
-        
-        // Atualizar o torrent selecionado para refletir mudanças
-        const updatedTask = refreshResponse.data.find(t => t.id === torrentId);
-        if (updatedTask) {
-          setSelectedTorrent(updatedTask);
-        }
+      // Recarregar dados de todos os agentes sem fechar o modal
+      const updatedTasks = await refreshTorrentsSilently();
+      
+      // Atualizar o torrent selecionado para refletir mudanças
+      const updatedTask = updatedTasks.find(t => t.id === torrentId);
+      if (updatedTask) {
+        setSelectedTorrent(updatedTask);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao forçar reannounce do torrent');
@@ -1040,18 +920,13 @@ export default function TorrentsPage() {
 
       toast.success('Force recheck iniciado com sucesso');
       
-      // Recarregar dados sem fechar o modal
-      const refreshResponse = await torrentService.listTasks();
-      if (refreshResponse?.data) {
-        setOriginalTasks(refreshResponse.data);
-        const mappedTorrents = refreshResponse.data.map(mapTaskToTorrent);
-        setTorrents(mappedTorrents);
-        
-        // Atualizar o torrent selecionado para refletir mudanças
-        const updatedTask = refreshResponse.data.find(t => t.id === torrentId);
-        if (updatedTask) {
-          setSelectedTorrent(updatedTask);
-        }
+      // Recarregar dados de todos os agentes sem fechar o modal
+      const updatedTasks = await refreshTorrentsSilently();
+      
+      // Atualizar o torrent selecionado para refletir mudanças
+      const updatedTask = updatedTasks.find(t => t.id === torrentId);
+      if (updatedTask) {
+        setSelectedTorrent(updatedTask);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao forçar recheck do torrent');
@@ -1075,18 +950,13 @@ export default function TorrentsPage() {
 
       toast.success('Torrent renomeado com sucesso');
       
-      // Recarregar dados sem fechar o modal
-      const refreshResponse = await torrentService.listTasks();
-      if (refreshResponse?.data) {
-        setOriginalTasks(refreshResponse.data);
-        const mappedTorrents = refreshResponse.data.map(mapTaskToTorrent);
-        setTorrents(mappedTorrents);
-        
-        // Atualizar o torrent selecionado para refletir mudanças
-        const updatedTask = refreshResponse.data.find(t => t.id === torrentId);
-        if (updatedTask) {
-          setSelectedTorrent(updatedTask);
-        }
+      // Recarregar dados de todos os agentes sem fechar o modal
+      const updatedTasks = await refreshTorrentsSilently();
+      
+      // Atualizar o torrent selecionado para refletir mudanças
+      const updatedTask = updatedTasks.find(t => t.id === torrentId);
+      if (updatedTask) {
+        setSelectedTorrent(updatedTask);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao renomear torrent');
@@ -1109,18 +979,13 @@ export default function TorrentsPage() {
 
       toast.success('Caminho alterado com sucesso');
       
-      // Recarregar dados sem fechar o modal
-      const refreshResponse = await torrentService.listTasks();
-      if (refreshResponse?.data) {
-        setOriginalTasks(refreshResponse.data);
-        const mappedTorrents = refreshResponse.data.map(mapTaskToTorrent);
-        setTorrents(mappedTorrents);
-        
-        // Atualizar o torrent selecionado para refletir mudanças
-        const updatedTask = refreshResponse.data.find(t => t.id === torrentId);
-        if (updatedTask) {
-          setSelectedTorrent(updatedTask);
-        }
+      // Recarregar dados de todos os agentes sem fechar o modal
+      const updatedTasks = await refreshTorrentsSilently();
+      
+      // Atualizar o torrent selecionado para refletir mudanças
+      const updatedTask = updatedTasks.find(t => t.id === torrentId);
+      if (updatedTask) {
+        setSelectedTorrent(updatedTask);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao alterar caminho do torrent');
@@ -1293,13 +1158,13 @@ export default function TorrentsPage() {
   // Calcular dados de paginação ou lazy loading baseado no displayMode
   const useCardLazyLoading = displayMode === "card";
   
-  // Para card view: usar lazy loading
-  // Para table view: usar paginação tradicional
-  const displayedTorrents = useCardLazyLoading 
+  // Para card view (desktop) e mobile: usar lazy loading
+  // Para table view (desktop): usar paginação tradicional
+  const displayedTorrents = (useCardLazyLoading || isMobile)
     ? filteredTorrents.slice(0, displayedItemsCount)
     : filteredTorrents.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   
-  const totalPages = useCardLazyLoading ? 1 : Math.ceil(filteredTorrents.length / itemsPerPage);
+  const totalPages = (useCardLazyLoading || isMobile) ? 1 : Math.ceil(filteredTorrents.length / itemsPerPage);
   const paginatedTorrents = displayedTorrents;
   const visibleIds = useMemo(() => paginatedTorrents.map(t => t.id), [paginatedTorrents]);
   const allSelected = selectionMode && visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
@@ -1308,9 +1173,9 @@ export default function TorrentsPage() {
   useEffect(() => {
     setCurrentPage(1);
     setDisplayedItemsCount(30); // Reset lazy loading counter
-  }, [searchTerm, itemsPerPage, sortType, sortDirection, displayMode]);
+  }, [searchTerm, itemsPerPage, sortType, sortDirection, displayMode, isMobile]);
   
-  // Intersection Observer para lazy loading (apenas para card view)
+  // Intersection Observer para lazy loading (card view desktop)
   useEffect(() => {
     if (!useCardLazyLoading || !sentinelRef.current) return;
     
@@ -1328,6 +1193,25 @@ export default function TorrentsPage() {
     
     return () => observer.disconnect();
   }, [useCardLazyLoading, displayedItemsCount, filteredTorrents.length, ITEMS_PER_LOAD]);
+
+  // Intersection Observer para lazy loading (mobile)
+  useEffect(() => {
+    if (!isMobile || !mobileSentinelRef.current) return;
+    
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const target = entries[0];
+        if (target.isIntersecting && displayedItemsCount < filteredTorrents.length) {
+          setDisplayedItemsCount(prev => Math.min(prev + ITEMS_PER_LOAD, filteredTorrents.length));
+        }
+      },
+      { threshold: 0.1, rootMargin: '200px' }
+    );
+    
+    observer.observe(mobileSentinelRef.current);
+    
+    return () => observer.disconnect();
+  }, [isMobile, displayedItemsCount, filteredTorrents.length, ITEMS_PER_LOAD]);
 
   // Função para lidar com mudança de itens por página
   const handleItemsPerPageChange = (newItemsPerPage: number) => {
@@ -1436,10 +1320,6 @@ export default function TorrentsPage() {
     }
   };
 
-  // Função para mudar de página
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
 
   // Mostrar estado de carregamento
   if (loading || agentsLoading) {
@@ -1559,50 +1439,53 @@ export default function TorrentsPage() {
         <div className="flex flex-col gap-4 w-full sm:gap-4 gap-0">
         {/* Busca e controles - desktop na mesma linha */}
         <div className="hidden sm:flex items-center gap-4 w-full">
-        {/* Busca */}
+          {/* Select All (left of search) */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={selectionMode ? "default" : "outline"}
+                size="icon"
+                className="h-9 w-9 flex-shrink-0"
+                onClick={handleToggleSelectAll}
+                aria-label={!selectionMode ? 'Habilitar seleção' : (!allSelected ? 'Selecionar todos' : 'Desabilitar seleção múltipla')}
+              >
+                {allSelected ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{!selectionMode ? 'Habilitar seleção' : (!allSelected ? 'Selecionar todos' : 'Desabilitar seleção múltipla')}</p>
+            </TooltipContent>
+          </Tooltip>
+          
+          {/* Busca */}
           <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder={t('torrents.search')}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder={t('torrents.search')}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
         
           {/* Controles */}
           <div className="flex items-center gap-4 flex-shrink-0">
-            {/* Select All (left of refresh) */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={selectionMode ? "default" : "outline"}
-                  size="icon"
-                  className="h-9 w-9"
-                  onClick={handleToggleSelectAll}
-                  aria-label={!selectionMode ? 'Habilitar seleção' : (!allSelected ? 'Selecionar todos' : 'Desabilitar seleção múltipla')}
-                >
-                  {allSelected ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{!selectionMode ? 'Habilitar seleção' : (!allSelected ? 'Selecionar todos' : 'Desabilitar seleção múltipla')}</p>
-              </TooltipContent>
-            </Tooltip>
             <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">{t('torrents.update')}:</span>
-            <UpdateIntervalDropdown
-              value={refreshIntervalSec}
-              onChange={setRefreshIntervalSec}
-            />
-          </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">{t('torrents.itemsPerPage')}:</span>
-              <ItemsPerPageDropdown 
-                value={itemsPerPage} 
-                onChange={handleItemsPerPageChange} 
+              <span className="text-sm text-muted-foreground">{t('torrents.update')}:</span>
+              <UpdateIntervalDropdown
+                value={refreshIntervalSec}
+                onChange={setRefreshIntervalSec}
               />
             </div>
+            {displayMode !== "card" && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">{t('torrents.itemsPerPage')}:</span>
+                <ItemsPerPageDropdown 
+                  value={itemsPerPage} 
+                  onChange={handleItemsPerPageChange} 
+                />
+              </div>
+            )}
             <Button
               variant="outline"
               onClick={() => setIsFilterSidebarOpen(true)}
@@ -1618,11 +1501,11 @@ export default function TorrentsPage() {
                 <span className="ml-auto h-2 w-2 rounded-full bg-primary flex-shrink-0" />
               )}
             </Button>
-          <div className="text-sm text-muted-foreground">
-            {filteredTorrents.length} {t('torrents.of')} {torrents.length} {t('torrents.torrents')}
-            <span className="ml-2 text-xs">
-              ({t('torrents.sortedBy')} {t(`torrents.sortBy.${getSortTypeKey(sortType)}`)} {sortDirection === "asc" ? "↑" : "↓"})
-            </span>
+            <div className="text-sm text-muted-foreground">
+              {filteredTorrents.length} {t('torrents.of')} {torrents.length} {t('torrents.torrents')}
+              <span className="ml-2 text-xs">
+                ({t('torrents.sortedBy')} {t(`torrents.sortBy.${getSortTypeKey(sortType)}`)} {sortDirection === "asc" ? "↑" : "↓"})
+              </span>
             </div>
           </div>
         </div>
@@ -1682,15 +1565,19 @@ export default function TorrentsPage() {
                 onChange={setRefreshIntervalSec}
               />
             </div>
-            <div className="w-px bg-border self-stretch flex-shrink-0" />
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              <span className="text-xs text-muted-foreground">{t('torrents.itemsPerPage').split(' ')[0]}:</span>
-              <ItemsPerPageDropdown 
-                value={itemsPerPage} 
-                onChange={handleItemsPerPageChange} 
-              />
-            </div>
-            <div className="w-px bg-border self-stretch flex-shrink-0" />
+            {displayMode !== "card" && (
+              <>
+                <div className="w-px bg-border self-stretch flex-shrink-0" />
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <span className="text-xs text-muted-foreground">{t('torrents.itemsPerPage').split(' ')[0]}:</span>
+                  <ItemsPerPageDropdown 
+                    value={itemsPerPage} 
+                    onChange={handleItemsPerPageChange} 
+                  />
+                </div>
+                <div className="w-px bg-border self-stretch flex-shrink-0" />
+              </>
+            )}
             <Button
               variant="outline"
               onClick={() => setIsFilterSidebarOpen(true)}
@@ -1890,14 +1777,10 @@ export default function TorrentsPage() {
             onRequestDelete={openDeleteModal}
           />
           
-          {/* Controles de paginação para mobile */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center px-4 py-3 border-t bg-background mt-4">
-              <TorrentPagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={handlePageChange}
-              />
+          {/* Lazy loading sentinel for mobile */}
+          {displayedItemsCount < filteredTorrents.length && (
+            <div ref={mobileSentinelRef} className="flex items-center justify-center py-4">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
           )}
         </div>
