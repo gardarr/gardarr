@@ -20,6 +20,11 @@ func NewModule(router *gin.RouterGroup, svc interfaces.InstanceService) *Module 
 }
 
 func (m Module) Register() {
+	m.group.GET("/liveness", func(c *gin.Context) {
+		status := m.svc.GetStatus(c.Request.Context())
+		c.JSON(http.StatusOK, gin.H{"status": status})
+	})
+
 	m.group.GET("/", func(c *gin.Context) {
 		if err := m.svc.Ping(c.Request.Context()); err != nil {
 			c.JSON(http.StatusInternalServerError, err.Error())

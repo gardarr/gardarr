@@ -95,7 +95,7 @@ func (m *Module) listAgents(c *gin.Context) {
 func (m *Module) getAgent(c *gin.Context) {
 	id := c.Param("id")
 
-	result, err := m.service.Get(c.Request.Context(), id)
+	result, err := m.service.GetAgent(c.Request.Context(), id)
 	if err != nil {
 		errors.HandleError(c, err)
 		return
@@ -108,7 +108,7 @@ func (m *Module) getAgentPreferences(c *gin.Context) {
 	id := c.Param("id")
 
 	// First get the agent to ensure it exists
-	agent, err := m.service.Get(c.Request.Context(), id)
+	agent, err := m.service.GetAgent(c.Request.Context(), id)
 	if err != nil {
 		errors.HandleError(c, err)
 		return
@@ -509,7 +509,7 @@ func (m *Module) getAgentTaskLimits(c *gin.Context) {
 	agentID := c.Param("id")
 	taskID := c.Param("task_id")
 
-	agent, err := m.service.Get(c.Request.Context(), agentID)
+	agent, err := m.service.GetAgent(c.Request.Context(), agentID)
 	if err != nil {
 		errors.HandleError(c, err)
 		return

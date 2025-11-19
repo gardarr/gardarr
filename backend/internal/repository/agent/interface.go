@@ -15,6 +15,7 @@ type RepositoryInterface interface {
 	GetAgentByUUID(uid uuid.UUID) (*entities.Agent, error)
 	UpdateAgent(ctx context.Context, uid uuid.UUID, updates map[string]interface{}) (*entities.Agent, error)
 	DeleteAgent(uid uuid.UUID) error
+	CheckAgentAvailability(agent *entities.Agent) error
 	GetInstance(agent *entities.Agent) (*entities.Instance, error)
 	GetInstanceWithoutDecrypt(agent *entities.Agent) (*entities.Instance, error)
 	GetAgentPreferences(agent *entities.Agent) (*entities.InstancePreferences, error)

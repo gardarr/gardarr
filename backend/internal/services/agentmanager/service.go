@@ -8,7 +8,7 @@ import (
 
 	"github.com/gardarr/gardarr/internal/entities"
 	"github.com/gardarr/gardarr/internal/infra/database"
-	"github.com/gardarr/gardarr/internal/repository/agent"
+	repository "github.com/gardarr/gardarr/internal/repository/agent"
 	"github.com/gardarr/gardarr/internal/schemas"
 	"github.com/gardarr/gardarr/internal/services/crypto"
 	metadata "github.com/gardarr/gardarr/internal/services/task_metadata"
@@ -16,12 +16,12 @@ import (
 )
 
 type Service struct {
-	repository      agent.RepositoryInterface
+	repository      repository.RepositoryInterface
 	metadataService *metadata.Service
 }
 
 func NewService(db *database.Database, c *crypto.CryptoService, baseURL string) (*Service, error) {
-	repository, err := agent.NewRepository(db, c)
+	repository, err := repository.NewRepository(db, c)
 	if err != nil {
 		return nil, err
 	}
@@ -72,18 +72,23 @@ func (s *Service) ListAgents() ([]*entities.Agent, error) {
 	// Process each agent concurrently
 	for _, agent := range agents {
 		go func(a *entities.Agent) {
-			// Set default status to ACTIVE
 			a.Status = entities.AgentStatusActive
 
-			// Try to get instance, if it fails, set status to ERRORED
+			// Try to get instance
+			// GetInstance internally calls isAvailable first - if that fails, it aborts and returns error
+			// If error occurs (including isAvailable failure), abort and return agent with error status
 			instance, err := s.repository.GetInstance(a)
 			if err != nil {
+				// isAvailable failed or GetInstance failed - abort execution
 				a.Status = entities.AgentStatusErrored
 				a.Error = err.Error()
 				a.Instance = nil
-			} else {
-				a.Instance = instance
+				agentChan <- a
+				return
 			}
+
+			// Success - set instance
+			a.Instance = instance
 
 			// Send the processed agent to the channel
 			agentChan <- a
@@ -92,7 +97,7 @@ func (s *Service) ListAgents() ([]*entities.Agent, error) {
 
 	// Collect all processed agents from the channel
 	result := make([]*entities.Agent, 0, len(agents))
-	for i := 0; i < len(agents); i++ {
+	for range len(agents) {
 		processedAgent := <-agentChan
 		result = append(result, processedAgent)
 	}
@@ -194,10 +199,17 @@ func (s *Service) ListTasks(agents []*entities.Agent) ([]*entities.Task, error) 
 	return result, nil
 }
 
-func (s *Service) Get(ctx context.Context, id string) (*entities.Agent, error) {
+func (s *Service) GetAgent(ctx context.Context, id string) (*entities.Agent, error) {
 	parsedID, err := uuid.Parse(id)
 	if err != nil {
 		return nil, fmt.Errorf("invalid UUID format: %w", err)
+	}
+
+	// Check if context is already cancelled
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
 	}
 
 	agent, err := s.repository.GetAgentByUUID(parsedID)
@@ -208,41 +220,49 @@ func (s *Service) Get(ctx context.Context, id string) (*entities.Agent, error) {
 	// Set default status to ACTIVE
 	agent.Status = entities.AgentStatusActive
 
-	// Try to get instance, if it fails, set status to ERRORED
+	// Check agent availability first - if it fails, abort immediately without trying to get instance
+	if err := s.repository.CheckAgentAvailability(agent); err != nil {
+		// Check if context was cancelled during the call
+		select {
+		case <-ctx.Done():
+			agent.Status = entities.AgentStatusErrored
+			agent.Instance = nil
+			agent.Error = "request cancelled or timeout"
+			return agent, nil
+		default:
+			// Agent is not available - abort execution and return agent with error status
+			agent.Status = entities.AgentStatusErrored
+			agent.Instance = nil
+			agent.Error = err.Error()
+			return agent, nil
+		}
+	}
+
+	// Agent is available, now try to get instance
+	// GetInstance internally calls isAvailable again as a safety check
+	// If it fails, abort and return agent with error
 	instance, err := s.repository.GetInstance(agent)
 	if err != nil {
-		agent.Status = entities.AgentStatusErrored
-		agent.Instance = nil
-	} else {
-		agent.Instance = instance
+		// Check if context was cancelled during the call
+		select {
+		case <-ctx.Done():
+			// Context was cancelled - abort execution
+			agent.Status = entities.AgentStatusErrored
+			agent.Instance = nil
+			agent.Error = "request cancelled or timeout"
+			return agent, nil
+		default:
+			// Error from GetInstance (could be from isAvailable or instance fetch)
+			// Abort execution and return agent with error status and instance = nil
+			agent.Status = entities.AgentStatusErrored
+			agent.Instance = nil
+			agent.Error = err.Error()
+			return agent, nil
+		}
 	}
 
-	return agent, nil
-}
-
-func (s *Service) GetAgent(ctx context.Context, id string) (*entities.Agent, error) {
-	parsedID, err := uuid.Parse(id)
-	if err != nil {
-		return nil, err
-	}
-
-	agent, err := s.repository.GetAgentByUUID(parsedID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Set default status to ACTIVE
-	agent.Status = entities.AgentStatusActive
-
-	// Try to get instance, if it fails, set status to ERRORED
-	instance, err := s.repository.GetInstance(agent)
-	if err != nil {
-		agent.Status = entities.AgentStatusErrored
-		agent.Error = err.Error()
-		agent.Instance = nil
-	} else {
-		agent.Instance = instance
-	}
+	// Success - set instance
+	agent.Instance = instance
 
 	return agent, nil
 }

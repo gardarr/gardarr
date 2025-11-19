@@ -16,6 +16,7 @@ type mockInstanceRepository struct {
 	pingError     error
 	downloadError error
 	uploadError   error
+	status        string
 }
 
 func newMockInstanceRepository() *mockInstanceRepository {
@@ -49,6 +50,10 @@ func newMockInstanceRepository() *mockInstanceRepository {
 
 func (m *mockInstanceRepository) GetInstance() (*entities.Instance, error) {
 	return m.instance, nil
+}
+
+func (m *mockInstanceRepository) GetStatus() string {
+	return m.status
 }
 
 func (m *mockInstanceRepository) GetPreferences(ctx context.Context) (*entities.InstancePreferences, error) {

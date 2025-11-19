@@ -57,9 +57,9 @@ RUN mkdir -p /data && \
     chown -R nonroot:nonroot /data && \
     chmod 755 /data
 
-RUN mkdir -p /media && \
+RUN mkdir -p /media/uploads/images && \
     chown -R nonroot:nonroot /media && \
-    chmod 755 /media
+    chmod 755 -R /media
 
 # Set build argument for port
 ARG APP_PORT=3000

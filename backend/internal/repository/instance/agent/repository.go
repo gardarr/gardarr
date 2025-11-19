@@ -107,6 +107,10 @@ func (s *Repository) Ping() error {
 	return nil
 }
 
+func (s *Repository) GetStatus() string {
+	return s.client.GetStatus()
+}
+
 func (s *Repository) SetDownloadSpeedLimit(limit int) error {
 	if err := s.client.SetDownloadSpeedLimit(limit); err != nil {
 		return errors.Wrap(err, "failed to set download speed limit")

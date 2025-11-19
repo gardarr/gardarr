@@ -23,6 +23,7 @@ import (
 	"github.com/gardarr/gardarr/pkg/env"
 	"github.com/gardarr/gardarr/pkg/version"
 	"github.com/google/uuid"
+	"github.com/jfxdev/go-qbt"
 	"gorm.io/gorm"
 )
 
@@ -32,6 +33,12 @@ type Repository struct {
 	http            *http.Client
 	standaloneAgent *entities.Agent
 }
+
+const (
+	StatusConnected    = qbt.StatusConnected
+	StatusUnauthorized = qbt.StatusUnauthorized
+	StatusUnaccessible = qbt.StatusUnaccessible
+)
 
 func NewRepository(db *database.Database, crypto *crypto.CryptoService) (*Repository, error) {
 	var standaloneAgent *entities.Agent
@@ -136,8 +143,55 @@ func (r *Repository) GetAgentByUUID(uid uuid.UUID) (*entities.Agent, error) {
 	return toAgent(handler), nil
 }
 
+func (r *Repository) isAvailable(agent *entities.Agent) error {
+	return r.CheckAgentAvailability(agent)
+}
+
+// CheckAgentAvailability checks if the agent is available and accessible
+func (r *Repository) CheckAgentAvailability(agent *entities.Agent) error {
+	url := fmt.Sprintf("%s/v1/health/liveness", agent.Address)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+
+	response, err := r.http.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if response.StatusCode != http.StatusOK {
+		return fmt.Errorf("invalid status code - %d", response.StatusCode)
+	}
+
+	var handler models.AgentLivenessResponse
+	body, err := io.ReadAll(response.Body)
+	defer response.Body.Close()
+	if err != nil {
+		return err
+	}
+
+	if err := json.Unmarshal(body, &handler); err != nil {
+		return err
+	}
+
+	switch handler.Status {
+	case qbt.StatusUnauthorized:
+		return errors.New("invalid username or password")
+	case qbt.StatusUnaccessible:
+		return errors.New("instance is not accessible")
+	}
+
+	return nil
+}
+
 // GetByUUID retrieves a single instance by its UUID
 func (r *Repository) GetInstance(agent *entities.Agent) (*entities.Instance, error) {
+	if err := r.isAvailable(agent); err != nil {
+		return nil, err
+	}
+
 	url := fmt.Sprintf("%s/v1/instance", agent.Address)
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -220,6 +274,10 @@ func (r *Repository) GetAgentVersion(agent *entities.Agent) (*entities.AgentVers
 			Commit:  version.Commit,
 			Date:    version.Date,
 		}, nil
+	}
+
+	if err := r.isAvailable(agent); err != nil {
+		return nil, err
 	}
 
 	url := fmt.Sprintf("%s/v1/version", agent.Address)

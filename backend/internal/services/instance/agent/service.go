@@ -32,6 +32,10 @@ func (s *service) GetInstance(ctx context.Context) (*entities.Instance, error) {
 	return info, nil
 }
 
+func (s *service) GetStatus(ctx context.Context) string {
+	return s.repository.GetStatus()
+}
+
 func (s *service) Ping(ctx context.Context) error {
 	return s.repository.Ping()
 }

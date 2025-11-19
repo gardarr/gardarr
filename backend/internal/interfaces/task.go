@@ -32,6 +32,7 @@ type TaskService interface {
 
 type InstanceService interface {
 	GetInstance(context.Context) (*entities.Instance, error)
+	GetStatus(context.Context) string
 	Ping(context.Context) error
 	GetPreferences(context.Context) (*entities.InstancePreferences, error)
 	SetDownloadSpeedLimit(context.Context, schemas.InstanceSetDownloadSpeedLimitSchema) error
