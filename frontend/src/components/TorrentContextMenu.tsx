@@ -159,9 +159,7 @@ export default function TorrentContextMenu(props: TorrentContextMenuProps) {
       </ContextMenuTrigger>
       <ContextMenuContent 
         className="w-48"
-        onCloseAutoFocus={(e) => e.preventDefault()}
-        onOpenAutoFocus={(e) => e.preventDefault()}
-        collisionPadding={10}
+        onCloseAutoFocus={(e: Event) => e.preventDefault()}
       >
         <ContextMenuItem onClick={createProtectedHandler(handleStart)}>
           <Play className="text-green-500" />
