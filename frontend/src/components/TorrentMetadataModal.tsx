@@ -389,8 +389,16 @@ export function TorrentMetadataModal({
               </div>
             ) : (
               <div
-                className="border-2 border-dashed rounded-lg p-12 text-center cursor-pointer hover:bg-accent/50 transition-colors"
+                role="button"
+                tabIndex={0}
+                className="border-2 border-dashed rounded-lg p-12 text-center cursor-pointer hover:bg-accent/50 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                 onClick={() => fileInputRef.current?.click()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    fileInputRef.current?.click();
+                  }
+                }}
               >
                 <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
                 <p className="text-sm text-muted-foreground mb-1">

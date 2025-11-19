@@ -103,7 +103,7 @@ export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove,
       onMetadataUpdate={onMetadataUpdate}
     >
       <Card 
-        className={`hover:shadow-lg transition-shadow overflow-hidden p-0 gap-2 cursor-pointer relative ${compact ? '' : ''}`}
+        className={`hover:shadow-lg transition-shadow overflow-hidden p-0 gap-2 cursor-pointer relative`}
         onClick={handleCardClick}
       >
         {/* Background image for entire card */}

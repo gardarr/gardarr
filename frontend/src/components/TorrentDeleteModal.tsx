@@ -96,7 +96,7 @@ export function TorrentDeleteModal({
             Cancelar
           </Button>
           <Button variant="destructive" onClick={handleConfirm}>
-            {purge ? (isBulk ? "Remover Tudo" : "Remover Tudo") : (isBulk ? "Remover Selecionados" : "Remover Torrent")}
+            {(isBulk ? "Remover Torrents" : "Remover Torrent")}
           </Button>
         </DialogFooter>
       </DialogContent>
