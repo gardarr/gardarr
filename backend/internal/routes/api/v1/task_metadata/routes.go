@@ -3,6 +3,7 @@ package task_metadata
 import (
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/gardarr/gardarr/internal/infra/database"
 	"github.com/gardarr/gardarr/internal/mappers"
@@ -209,7 +210,15 @@ func (m *Module) getTaskImage(c *gin.Context) {
 		return
 	}
 
-	// Get image path
+	// Validate task hash to prevent path traversal in URL parameter
+	if strings.Contains(taskHash, "..") || strings.Contains(taskHash, "/") || strings.Contains(taskHash, "\\") {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid task_hash",
+		})
+		return
+	}
+
+	// Get image path (service validates path is within upload directory)
 	imagePath, err := m.service.GetImagePath(c.Request.Context(), taskHash)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -226,7 +235,7 @@ func (m *Module) getTaskImage(c *gin.Context) {
 		return
 	}
 
-	// Serve file
+	// Serve file (path is validated to be within upload directory)
 	c.File(imagePath)
 }
 
@@ -240,7 +249,15 @@ func (m *Module) getTaskThumbnail(c *gin.Context) {
 		return
 	}
 
-	// Get image path (for now, serve full image - TODO: implement actual thumbnail generation)
+	// Validate task hash to prevent path traversal in URL parameter
+	if strings.Contains(taskHash, "..") || strings.Contains(taskHash, "/") || strings.Contains(taskHash, "\\") {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid task_hash",
+		})
+		return
+	}
+
+	// Get image path (service validates path is within upload directory)
 	imagePath, err := m.service.GetImagePath(c.Request.Context(), taskHash)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -258,6 +275,6 @@ func (m *Module) getTaskThumbnail(c *gin.Context) {
 	}
 
 	// TODO: Generate and serve actual thumbnail
-	// For now, serve the full image
+	// For now, serve the full image (path is validated to be within upload directory)
 	c.File(imagePath)
 }

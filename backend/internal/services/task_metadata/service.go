@@ -112,9 +112,11 @@ func (s *Service) UploadImage(ctx context.Context, taskHash string, file multipa
 	}
 
 	if existing != nil {
-		// Delete old image if exists
+		// Delete old image if exists (validate path to prevent path traversal)
 		if existing.ImagePath != "" {
-			os.Remove(existing.ImagePath)
+			if err := s.validateImagePath(existing.ImagePath); err == nil {
+				os.Remove(existing.ImagePath)
+			}
 		}
 
 		// Update existing metadata
@@ -234,9 +236,11 @@ func (s *Service) DeleteImage(ctx context.Context, taskHash string) error {
 		return fmt.Errorf("metadata not found")
 	}
 
-	// Delete file if exists
+	// Delete file if exists (validate path to prevent path traversal)
 	if metadata.ImagePath != "" {
-		os.Remove(metadata.ImagePath)
+		if err := s.validateImagePath(metadata.ImagePath); err == nil {
+			os.Remove(metadata.ImagePath)
+		}
 	}
 
 	// If no description, delete entire metadata, otherwise just clear image path
@@ -259,9 +263,11 @@ func (s *Service) Delete(ctx context.Context, taskHash string) error {
 		return nil
 	}
 
-	// Delete file if exists
+	// Delete file if exists (validate path to prevent path traversal)
 	if metadata.ImagePath != "" {
-		os.Remove(metadata.ImagePath)
+		if err := s.validateImagePath(metadata.ImagePath); err == nil {
+			os.Remove(metadata.ImagePath)
+		}
 	}
 
 	return s.repo.DeleteByTaskHash(ctx, taskHash)
@@ -277,7 +283,40 @@ func (s *Service) GetImagePath(ctx context.Context, taskHash string) (string, er
 		return "", fmt.Errorf("image not found")
 	}
 
+	// Validate path is within upload directory to prevent path traversal
+	if err := s.validateImagePath(metadata.ImagePath); err != nil {
+		return "", fmt.Errorf("invalid image path: %w", err)
+	}
+
 	return metadata.ImagePath, nil
+}
+
+// validateImagePath ensures the path is within the upload directory to prevent path traversal attacks
+func (s *Service) validateImagePath(imagePath string) error {
+	// Clean and resolve the absolute path
+	absPath, err := filepath.Abs(imagePath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve absolute path: %w", err)
+	}
+
+	// Clean and resolve the absolute upload directory
+	absUploadDir, err := filepath.Abs(s.uploadDir)
+	if err != nil {
+		return fmt.Errorf("failed to resolve upload directory: %w", err)
+	}
+
+	// Ensure the path is within the upload directory
+	relPath, err := filepath.Rel(absUploadDir, absPath)
+	if err != nil {
+		return fmt.Errorf("path validation failed: %w", err)
+	}
+
+	// Check for path traversal (if relPath starts with "..", it's outside the directory)
+	if strings.HasPrefix(relPath, "..") {
+		return fmt.Errorf("path traversal detected")
+	}
+
+	return nil
 }
 
 // Helper functions
