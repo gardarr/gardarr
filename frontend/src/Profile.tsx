@@ -19,6 +19,83 @@ interface Session {
 }
 
 
+interface SectionHeaderProps {
+  icon: React.ElementType;
+  title: string;
+  description: string;
+}
+
+function SectionHeader({ icon: Icon, title, description }: SectionHeaderProps) {
+  return (
+    <CardHeader>
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+          <Icon className="h-5 w-5 text-primary" />
+        </div>
+        <div>
+          <CardTitle>{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </div>
+      </div>
+    </CardHeader>
+  );
+}
+
+interface PasswordInputProps {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  required?: boolean;
+  minLength?: number;
+  requirements?: string;
+}
+
+function PasswordInput({
+  id,
+  label,
+  value,
+  onChange,
+  placeholder,
+  required = false,
+  minLength,
+  requirements
+}: PasswordInputProps) {
+  const [show, setShow] = useState(false);
+
+  return (
+    <div className="space-y-2">
+      <label htmlFor={id} className="text-sm font-medium">
+        {label}
+      </label>
+      <div className="relative">
+        <Input
+          id={id}
+          type={show ? "text" : "password"}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required={required}
+          minLength={minLength}
+          className="pr-10"
+          placeholder={placeholder}
+        />
+        <button
+          type="button"
+          onClick={() => setShow(!show)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+        >
+          {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
+      </div>
+      {requirements && (
+        <p className="text-xs text-muted-foreground">
+          {requirements}
+        </p>
+      )}
+    </div>
+  );
+}
 export default function ProfilePage() {
   const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
@@ -27,18 +104,15 @@ export default function ProfilePage() {
   const [isDark, setIsDark] = useState(() => {
     return document.documentElement.classList.contains('dark');
   });
-  
+
   // Password change state
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
-  
+
   // Preferences state
   const [displayMode, setDisplayMode] = useState<"default" | "card">("default");
   const [compact, setCompact] = useState(false);
@@ -108,68 +182,18 @@ export default function ProfilePage() {
     }
   };
 
-  const updateDisplayMode = async (mode: "default" | "card") => {
+  const updatePreference = async (key: string, value: any) => {
     setIsLoadingPreferences(true);
     try {
-      const response = await api.put<{ torrent_display_mode: string; compact: boolean; background_image_blur_intensity: number }>("/profile/preferences", {
-        torrent_display_mode: mode
-      });
-      if (response.data) {
-        const displayMode = response.data.torrent_display_mode as "default" | "card";
-        setDisplayMode(displayMode);
-        setCompact(response.data.compact);
-        setBlurIntensity(response.data.background_image_blur_intensity);
-        // Save to localStorage
-        preferencesService.save({
-          torrent_display_mode: displayMode,
-          compact: response.data.compact,
-          background_image_blur_intensity: response.data.background_image_blur_intensity
-        });
-      }
-    } catch (error) {
-      console.error("Failed to update display mode:", error);
-    } finally {
-      setIsLoadingPreferences(false);
-    }
-  };
+      const payload = { [key]: value };
+      const response = await api.put<{ torrent_display_mode: string; compact: boolean; background_image_blur_intensity: number }>("/profile/preferences", payload);
 
-  const updateCompact = async (value: boolean) => {
-    setIsLoadingPreferences(true);
-    try {
-      const response = await api.put<{ torrent_display_mode: string; compact: boolean; background_image_blur_intensity: number }>("/profile/preferences", {
-        compact: value
-      });
       if (response.data) {
         const displayMode = response.data.torrent_display_mode as "default" | "card";
         setDisplayMode(displayMode);
         setCompact(response.data.compact);
         setBlurIntensity(response.data.background_image_blur_intensity);
-        // Save to localStorage
-        preferencesService.save({
-          torrent_display_mode: displayMode,
-          compact: response.data.compact,
-          background_image_blur_intensity: response.data.background_image_blur_intensity
-        });
-      }
-    } catch (error) {
-      console.error("Failed to update compact mode:", error);
-    } finally {
-      setIsLoadingPreferences(false);
-    }
-  };
 
-  const updateBlurIntensity = async (value: number) => {
-    setIsLoadingPreferences(true);
-    try {
-      const response = await api.put<{ torrent_display_mode: string; compact: boolean; background_image_blur_intensity: number }>("/profile/preferences", {
-        background_image_blur_intensity: value
-      });
-      if (response.data) {
-        const displayMode = response.data.torrent_display_mode as "default" | "card";
-        setDisplayMode(displayMode);
-        setCompact(response.data.compact);
-        setBlurIntensity(response.data.background_image_blur_intensity);
-        // Save to localStorage
         preferencesService.save({
           torrent_display_mode: displayMode,
           compact: response.data.compact,
@@ -177,7 +201,7 @@ export default function ProfilePage() {
         });
       }
     } catch (error) {
-      console.error("Failed to update blur intensity:", error);
+      console.error(`Failed to update ${key}:`, error);
     } finally {
       setIsLoadingPreferences(false);
     }
@@ -306,124 +330,106 @@ export default function ProfilePage() {
         {/* General Tab */}
         <TabsContent value="general" className="space-y-6">
           {/* Personal Information */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <User className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <CardTitle>{t("profile.personalInfo.title")}</CardTitle>
-              <CardDescription>{t("profile.personalInfo.description")}</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-muted-foreground">
-              {t("profile.personalInfo.email")}
-            </label>
-            <p className="text-base">{user?.email}</p>
-          </div>
-          <Separator />
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-muted-foreground">
-              {t("profile.personalInfo.memberSince")}
-            </label>
-            <p className="text-base">
-              {user?.created_at && formatDate(user.created_at)}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+          <Card>
+            <SectionHeader
+              icon={User}
+              title={t("profile.personalInfo.title")}
+              description={t("profile.personalInfo.description")}
+            />
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">
+                  {t("profile.personalInfo.email")}
+                </label>
+                <p className="text-base">{user?.email}</p>
+              </div>
+              <Separator />
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">
+                  {t("profile.personalInfo.memberSince")}
+                </label>
+                <p className="text-base">
+                  {user?.created_at && formatDate(user.created_at)}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* Preferences */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <Globe className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <CardTitle>{t("profile.preferences.title")}</CardTitle>
-              <CardDescription>{t("profile.preferences.description")}</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Theme Preference */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <label className="text-sm font-medium">
-                {t("profile.preferences.theme")}
-              </label>
-              <p className="text-sm text-muted-foreground">
-                {isDark ? t("profile.preferences.dark") : t("profile.preferences.light")}
-              </p>
-            </div>
-            <Button variant="outline" size="sm" onClick={toggleTheme}>
-              {isDark ? (
-                <>
-                  <Sun className="h-4 w-4 mr-2" />
-                  {t("profile.preferences.switchToLight")}
-                </>
-              ) : (
-                <>
-                  <Moon className="h-4 w-4 mr-2" />
-                  {t("profile.preferences.switchToDark")}
-                </>
-              )}
-            </Button>
-          </div>
+          {/* Preferences */}
+          <Card>
+            <SectionHeader
+              icon={Globe}
+              title={t("profile.preferences.title")}
+              description={t("profile.preferences.description")}
+            />
+            <CardContent className="space-y-6">
+              {/* Theme Preference */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">
+                    {t("profile.preferences.theme")}
+                  </label>
+                  <p className="text-sm text-muted-foreground">
+                    {isDark ? t("profile.preferences.dark") : t("profile.preferences.light")}
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={toggleTheme}>
+                  {isDark ? (
+                    <>
+                      <Sun className="h-4 w-4 mr-2" />
+                      {t("profile.preferences.switchToLight")}
+                    </>
+                  ) : (
+                    <>
+                      <Moon className="h-4 w-4 mr-2" />
+                      {t("profile.preferences.switchToDark")}
+                    </>
+                  )}
+                </Button>
+              </div>
 
-          <Separator />
+              <Separator />
 
-          {/* Language Preference */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <label className="text-sm font-medium">
-                {t("profile.preferences.language")}
-              </label>
-              <p className="text-sm text-muted-foreground">
-                {i18n.language === 'pt-BR' ? 'Português (Brasil)' : 'English (US)'}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant={i18n.language === 'en-US' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => changeLanguage('en-US')}
-              >
-                English
-              </Button>
-              <Button
-                variant={i18n.language === 'pt-BR' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => changeLanguage('pt-BR')}
-              >
-                Português
-              </Button>
-            </div>
-          </div>
+              {/* Language Preference */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">
+                    {t("profile.preferences.language")}
+                  </label>
+                  <p className="text-sm text-muted-foreground">
+                    {i18n.language === 'pt-BR' ? 'Português (Brasil)' : 'English (US)'}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant={i18n.language === 'en-US' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => changeLanguage('en-US')}
+                  >
+                    English
+                  </Button>
+                  <Button
+                    variant={i18n.language === 'pt-BR' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => changeLanguage('pt-BR')}
+                  >
+                    Português
+                  </Button>
+                </div>
+              </div>
 
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Display Tab */}
         <TabsContent value="display" className="space-y-6">
           <Card>
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Palette className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <CardTitle>{t("profile.display.title")}</CardTitle>
-                  <CardDescription>{t("profile.display.description")}</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
+            <SectionHeader
+              icon={Palette}
+              title={t("profile.display.title")}
+              description={t("profile.display.description")}
+            />
             <CardContent className="space-y-6">
               {/* Torrent Display Mode */}
               <div className="space-y-4">
@@ -435,17 +441,16 @@ export default function ProfilePage() {
                     {t("profile.display.torrentDisplayModeDesc")}
                   </p>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-3">
                   {/* Default Mode */}
                   <button
-                    onClick={() => updateDisplayMode("default")}
+                    onClick={() => updatePreference("torrent_display_mode", "default")}
                     disabled={isLoadingPreferences}
-                    className={`relative p-4 rounded-lg border-2 transition-all hover:border-primary/50 ${
-                      displayMode === "default" 
-                        ? "border-primary bg-primary/5" 
+                    className={`relative p-4 rounded-lg border-2 transition-all hover:border-primary/50 ${displayMode === "default"
+                        ? "border-primary bg-primary/5"
                         : "border-border"
-                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
                     <div className="space-y-2">
                       <div className="font-medium text-sm">Default</div>
@@ -466,13 +471,12 @@ export default function ProfilePage() {
 
                   {/* Card Mode */}
                   <button
-                    onClick={() => updateDisplayMode("card")}
+                    onClick={() => updatePreference("torrent_display_mode", "card")}
                     disabled={isLoadingPreferences}
-                    className={`relative p-4 rounded-lg border-2 transition-all hover:border-primary/50 ${
-                      displayMode === "card" 
-                        ? "border-primary bg-primary/5" 
+                    className={`relative p-4 rounded-lg border-2 transition-all hover:border-primary/50 ${displayMode === "card"
+                        ? "border-primary bg-primary/5"
                         : "border-border"
-                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
                     <div className="space-y-2">
                       <div className="font-medium text-sm">Card</div>
@@ -508,16 +512,14 @@ export default function ProfilePage() {
                   </p>
                 </div>
                 <button
-                  onClick={() => updateCompact(!compact)}
+                  onClick={() => updatePreference("compact", !compact)}
                   disabled={isLoadingPreferences}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-                    compact ? "bg-primary" : "bg-muted"
-                  }`}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${compact ? "bg-primary" : "bg-muted"
+                    }`}
                 >
                   <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      compact ? "translate-x-6" : "translate-x-1"
-                    }`}
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${compact ? "translate-x-6" : "translate-x-1"
+                      }`}
                   />
                 </button>
               </div>
@@ -549,11 +551,11 @@ export default function ProfilePage() {
                     }}
                     onMouseUp={(e) => {
                       const value = parseInt((e.target as HTMLInputElement).value);
-                      updateBlurIntensity(value);
+                      updatePreference("background_image_blur_intensity", value);
                     }}
                     onTouchEnd={(e) => {
                       const value = parseInt((e.target as HTMLInputElement).value);
-                      updateBlurIntensity(value);
+                      updatePreference("background_image_blur_intensity", value);
                     }}
                     disabled={isLoadingPreferences}
                     className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-0"
@@ -570,195 +572,140 @@ export default function ProfilePage() {
         {/* Security Tab */}
         <TabsContent value="security" className="space-y-6">
           {/* Security - Password Change */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <Lock className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <CardTitle>{t("profile.security.title")}</CardTitle>
-              <CardDescription>{t("profile.security.description")}</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handlePasswordChange} className="space-y-4">
-            {/* Current Password */}
-            <div className="space-y-2">
-              <label htmlFor="current-password" className="text-sm font-medium">
-                {t("profile.security.currentPassword")}
-              </label>
-              <div className="relative">
-                <Input
+          <Card>
+            <SectionHeader
+              icon={Lock}
+              title={t("profile.security.title")}
+              description={t("profile.security.description")}
+            />
+            <CardContent>
+              <form onSubmit={handlePasswordChange} className="space-y-4">
+                {/* Current Password */}
+                <PasswordInput
                   id="current-password"
-                  type={showCurrentPassword ? "text" : "password"}
+                  label={t("profile.security.currentPassword")}
                   value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  onChange={setCurrentPassword}
                   required
-                  className="pr-10"
                   placeholder={t("profile.security.enterCurrentPassword")}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
 
-            <Separator />
+                <Separator />
 
-            {/* New Password */}
-            <div className="space-y-2">
-              <label htmlFor="new-password" className="text-sm font-medium">
-                {t("profile.security.newPassword")}
-              </label>
-              <div className="relative">
-                <Input
+                <PasswordInput
                   id="new-password"
-                  type={showNewPassword ? "text" : "password"}
+                  label={t("profile.security.newPassword")}
                   value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
+                  onChange={setNewPassword}
                   required
                   minLength={8}
-                  className="pr-10"
                   placeholder={t("profile.security.enterNewPassword")}
+                  requirements={t("profile.security.passwordRequirements")}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {t("profile.security.passwordRequirements")}
-              </p>
-            </div>
 
-            {/* Confirm Password */}
-            <div className="space-y-2">
-              <label htmlFor="confirm-password" className="text-sm font-medium">
-                {t("profile.security.confirmPassword")}
-              </label>
-              <div className="relative">
-                <Input
+                <PasswordInput
                   id="confirm-password"
-                  type={showConfirmPassword ? "text" : "password"}
+                  label={t("profile.security.confirmPassword")}
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={setConfirmPassword}
                   required
-                  className="pr-10"
                   placeholder={t("profile.security.enterConfirmPassword")}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
 
-            {/* Error Message */}
-            {passwordError && (
-              <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-                {passwordError}
-              </div>
-            )}
-
-            {/* Success Message */}
-            {passwordSuccess && (
-              <div className="p-3 rounded-md bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400 text-sm">
-                {passwordSuccess}
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              disabled={isChangingPassword}
-              className="w-full"
-            >
-              {isChangingPassword ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  {t("profile.security.changingPassword")}
-                </>
-              ) : (
-                <>
-                  <Lock className="h-4 w-4 mr-2" />
-                  {t("profile.security.changePassword")}
-                </>
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Active Sessions */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <Monitor className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <CardTitle>{t("profile.sessions.title")}</CardTitle>
-                <CardDescription>{t("profile.sessions.description")}</CardDescription>
-              </div>
-            </div>
-            <Button variant="destructive" size="sm" onClick={handleLogoutAll}>
-              <LogOut className="h-4 w-4 mr-2" />
-              {t("profile.sessions.logoutAll")}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p className="text-sm text-muted-foreground mt-2">{t("common.loading")}</p>
-            </div>
-          ) : sessions.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              {t("profile.sessions.noSessions")}
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {sessions.map((session, index) => (
-                <div key={session.id}>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Monitor className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">
-                          {getBrowserName(session.user_agent)} • {getDeviceType(session.user_agent)}
-                        </span>
-                      </div>
-                      <div className="text-sm text-muted-foreground space-y-1">
-                        <p>IP: {session.ip_address}</p>
-                        <p>{t("profile.sessions.signedIn")}: {formatDate(session.created_at)}</p>
-                        <p>{t("profile.sessions.expires")}: {formatDate(session.expires_at)}</p>
-                      </div>
-                    </div>
-                    <div className="text-xs text-muted-foreground bg-primary/5 px-2 py-1 rounded">
-                      {t("profile.sessions.active")}
-                    </div>
+                {/* Error Message */}
+                {passwordError && (
+                  <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+                    {passwordError}
                   </div>
-                  {index < sessions.length - 1 && <Separator className="mt-4" />}
+                )}
+
+                {/* Success Message */}
+                {passwordSuccess && (
+                  <div className="p-3 rounded-md bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400 text-sm">
+                    {passwordSuccess}
+                  </div>
+                )}
+
+                {/* Submit Button */}
+                <Button
+                  type="submit"
+                  disabled={isChangingPassword}
+                  className="w-full"
+                >
+                  {isChangingPassword ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      {t("profile.security.changingPassword")}
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="h-4 w-4 mr-2" />
+                      {t("profile.security.changePassword")}
+                    </>
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Active Sessions */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Monitor className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle>{t("profile.sessions.title")}</CardTitle>
+                    <CardDescription>{t("profile.sessions.description")}</CardDescription>
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                <Button variant="destructive" size="sm" onClick={handleLogoutAll}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  {t("profile.sessions.logoutAll")}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                  <p className="text-sm text-muted-foreground mt-2">{t("common.loading")}</p>
+                </div>
+              ) : sessions.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">
+                  {t("profile.sessions.noSessions")}
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {sessions.map((session, index) => (
+                    <div key={session.id}>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Monitor className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium">
+                              {getBrowserName(session.user_agent)} • {getDeviceType(session.user_agent)}
+                            </span>
+                          </div>
+                          <div className="text-sm text-muted-foreground space-y-1">
+                            <p>IP: {session.ip_address}</p>
+                            <p>{t("profile.sessions.signedIn")}: {formatDate(session.created_at)}</p>
+                            <p>{t("profile.sessions.expires")}: {formatDate(session.expires_at)}</p>
+                          </div>
+                        </div>
+                        <div className="text-xs text-muted-foreground bg-primary/5 px-2 py-1 rounded">
+                          {t("profile.sessions.active")}
+                        </div>
+                      </div>
+                      {index < sessions.length - 1 && <Separator className="mt-4" />}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
