@@ -65,7 +65,7 @@ export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove,
 
   useEffect(() => {
     const prefs = preferencesService.load();
-    if (prefs?.background_image_blur_intensity) {
+    if (typeof prefs?.background_image_blur_intensity === 'number') {
       setBlurIntensity(prefs.background_image_blur_intensity);
     }
   }, []);

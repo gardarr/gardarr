@@ -303,7 +303,7 @@ export function TorrentMetadataModal({
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseLeave}
               >
-                <div className={`w-full h-64 overflow-hidden rounded-lg border ${!selectedFile && metadata?.image_url ? 'cursor-move' : ''} ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}>
+                <div className={`w-full h-64 overflow-hidden rounded-lg border ${!selectedFile && metadata?.image_url ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : ''}`}>
                   <img
                     src={imagePreview}
                     alt={taskName}
@@ -444,7 +444,8 @@ export function TorrentMetadataModal({
                   max={85}
                   step={5}
                   value={[imageOpacity]}
-                  onValueChange={handleOpacityChange}
+                  onValueChange={(value) => setImageOpacity(value[0])}
+                  onValueCommit={handleOpacityChange}
                   className="w-full"
                 />
                 <p className="text-xs text-muted-foreground">

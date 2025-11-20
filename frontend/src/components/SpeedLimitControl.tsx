@@ -15,7 +15,6 @@ interface SpeedLimitControlProps {
   taskStatus: TaskStatus | null;
   onLimitChange: (field: keyof TaskLimits, value: string) => void;
   onAdvancedModeChange: (enabled: boolean) => void;
-  mixedFields?: Partial<Record<keyof TaskLimits, boolean>>;
 }
 
 export function SpeedLimitControl({
@@ -24,7 +23,6 @@ export function SpeedLimitControl({
   taskStatus,
   onLimitChange,
   onAdvancedModeChange,
-  mixedFields = {},
 }: SpeedLimitControlProps) {
   const shouldShowSpeedLimits = taskStatus === null || isDownloadStatus(taskStatus) || isUploadStatus(taskStatus);
 
@@ -50,7 +48,6 @@ export function SpeedLimitControl({
           isAdvancedMode={isAdvancedMode}
           onLimitChange={(value) => onLimitChange("download_limit", value)}
           helpText="Move slider to maximum for unlimited download speed"
-          isMixed={mixedFields.download_limit}
         />
       )}
 
@@ -62,7 +59,6 @@ export function SpeedLimitControl({
           isAdvancedMode={isAdvancedMode}
           onLimitChange={(value) => onLimitChange("upload_limit", value)}
           helpText="Move slider to maximum for unlimited upload speed"
-          isMixed={mixedFields.upload_limit}
         />
       )}
     </div>
@@ -76,7 +72,6 @@ interface SpeedLimitFieldProps {
   isAdvancedMode: boolean;
   onLimitChange: (value: string) => void;
   helpText: string;
-  isMixed?: boolean;
 }
 
 function SpeedLimitField({
@@ -86,19 +81,15 @@ function SpeedLimitField({
   isAdvancedMode,
   onLimitChange,
   helpText,
-  isMixed,
 }: SpeedLimitFieldProps) {
   const inputId = useId();
-
   return (
     <div className="space-y-3">
       <Label htmlFor={inputId} className="flex items-center gap-2">
         {icon}
         <span>{label}</span>
         <span className="h-1 w-1 rounded-full bg-muted-foreground"></span>
-        {isMixed ? (
-          <span className="text-sm font-bold text-muted-foreground italic">Mixed</span>
-        ) : limit === 0 ? (
+        {limit === 0 ? (
           <span className="text-sm font-bold text-primary flex items-center gap-1">
             Unlimited
             <InfinityIcon className="h-4 w-4" />
@@ -109,7 +100,7 @@ function SpeedLimitField({
       </Label>
       <div className="space-y-2">
         <Slider
-          value={isMixed ? [0] : [bytesToSliderIndex(limit)]}
+          value={[bytesToSliderIndex(limit)]}
           onValueChange={(value) => {
             const bytes = sliderIndexToBytes(value[0]);
             onLimitChange(bytes.toString());
@@ -118,7 +109,6 @@ function SpeedLimitField({
           max={SPEED_LIMIT_SEGMENTS.length + 1}
           step={1}
           className="w-full"
-          disabled={isMixed} // Disable slider if mixed until user interacts via input or we decide how to handle slider interaction on mixed
         />
         <div className="flex justify-between text-xs text-muted-foreground px-1">
           <span>{formatBytes(SPEED_LIMIT_SEGMENTS[0])}/s</span>
@@ -129,10 +119,10 @@ function SpeedLimitField({
         <div className="flex items-center gap-2">
           <Input
             id={inputId}
-            type={isMixed ? "text" : "number"}
+            type="number"
             min="0"
             step="1"
-            value={isMixed ? "" : (limit === 0 ? "" : limit)}
+            value={limit === 0 ? "" : limit}
             onChange={(e) => {
               const raw = e.target.value;
               if (raw === "") {
@@ -146,10 +136,10 @@ function SpeedLimitField({
               const clamped = Math.max(0, Math.floor(parsed));
               onLimitChange(String(clamped));
             }}
-            placeholder={isMixed ? "Mixed values" : "0 = unlimited"}
+            placeholder="0 = unlimited"
             className="flex-1"
           />
-          {!isMixed && limit > 0 && (
+          {limit > 0 && (
             <span className="text-sm text-muted-foreground whitespace-nowrap min-w-[100px] text-right">
               ({formatBytes(limit)}/s)
             </span>

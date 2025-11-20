@@ -566,7 +566,14 @@
       "pause": "Pause",
       "delete": "Remove"
     },
-    "limits": "Limits"
+    "limits": "Limits",
+    "start": "Start",
+    "stop": "Stop",
+    "forceDownload": "Force download",
+    "forceReannounce": "Force reannounce",
+    "forceRecheck": "Force recheck",
+    "metrics": "Metrics",
+    "metadata": "Metadata"
   },
   "categories": {
     "title": "Categories",

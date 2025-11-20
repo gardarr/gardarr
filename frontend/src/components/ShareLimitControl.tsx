@@ -16,7 +16,6 @@ interface ShareLimitControlProps {
   onRatioLimitModeChange: (mode: LimitMode) => void;
   onSeedingTimeLimitModeChange: (mode: LimitMode) => void;
   onInactiveSeedingTimeLimitModeChange: (mode: LimitMode) => void;
-  mixedFields?: Partial<Record<keyof TaskLimits, boolean>>;
 }
 
 export function ShareLimitControl({
@@ -28,7 +27,6 @@ export function ShareLimitControl({
   onRatioLimitModeChange,
   onSeedingTimeLimitModeChange,
   onInactiveSeedingTimeLimitModeChange,
-  mixedFields = {},
 }: ShareLimitControlProps) {
   return (
     <div className="space-y-4 pt-4 border-t">
@@ -39,7 +37,6 @@ export function ShareLimitControl({
         mode={ratioLimitMode}
         onModeChange={onRatioLimitModeChange}
         onLimitChange={onLimitChange}
-        isMixed={mixedFields.ratio_limit}
       />
 
       <SeedingTimeLimitField
@@ -50,7 +47,6 @@ export function ShareLimitControl({
         label="Seeding Time Limit (minutes)"
         field="seeding_time_limit"
         helpText="Set a custom seeding time limit in minutes (>= 0)"
-        isMixed={mixedFields.seeding_time_limit}
       />
 
       <SeedingTimeLimitField
@@ -61,7 +57,6 @@ export function ShareLimitControl({
         label="Inactive Seeding Time Limit (minutes)"
         field="inactive_seeding_time_limit"
         helpText="Set a custom inactive seeding time limit in minutes (>= 0)"
-        isMixed={mixedFields.inactive_seeding_time_limit}
       />
     </div>
   );
@@ -72,7 +67,6 @@ interface RatioLimitFieldProps {
   mode: LimitMode;
   onModeChange: (mode: LimitMode) => void;
   onLimitChange: (field: keyof TaskLimits, value: string) => void;
-  isMixed?: boolean;
 }
 
 function RatioLimitField({
@@ -80,11 +74,9 @@ function RatioLimitField({
   mode,
   onModeChange,
   onLimitChange,
-  isMixed,
 }: RatioLimitFieldProps) {
   const inputId = useId();
   const getHelpText = () => {
-    if (isMixed) return "Mixed values";
     if (mode === "global") return "Use global limit";
     if (mode === "unlimited") return "No limit";
     return "Set a custom ratio value (>= 0)";
@@ -103,16 +95,16 @@ function RatioLimitField({
         <div className="flex items-center gap-2">
           <Input
             id={inputId}
-            type={isMixed ? "text" : "number"}
+            type="number"
             min="0"
             step="0.1"
-            value={isMixed ? "" : (limits.ratio_limit >= 0 ? limits.ratio_limit : "")}
+            value={limits.ratio_limit >= 0 ? limits.ratio_limit : ""}
             onChange={(e) => onLimitChange("ratio_limit", e.target.value)}
-            placeholder={isMixed ? "Mixed values" : "Ratio value"}
+            placeholder="Ratio value"
             className="flex-1"
           />
           <span className="text-sm text-muted-foreground whitespace-nowrap">
-            {isMixed ? "Ratio: Mixed" : (limits.ratio_limit >= 0 ? `Ratio: ${limits.ratio_limit.toFixed(1)}` : "Ratio:")}
+            {limits.ratio_limit >= 0 ? `Ratio: ${limits.ratio_limit.toFixed(1)}` : "Ratio:"}
           </span>
         </div>
       )}
@@ -129,7 +121,6 @@ interface SeedingTimeLimitFieldProps {
   label: string;
   field: "seeding_time_limit" | "inactive_seeding_time_limit";
   helpText: string;
-  isMixed?: boolean;
 }
 
 function SeedingTimeLimitField({
@@ -140,11 +131,9 @@ function SeedingTimeLimitField({
   label,
   field,
   helpText,
-  isMixed,
 }: SeedingTimeLimitFieldProps) {
   const inputId = useId();
   const getHelpText = () => {
-    if (isMixed) return "Mixed values";
     if (mode === "global") return "Use global limit";
     if (mode === "unlimited") return "No limit";
     return helpText;
@@ -165,16 +154,16 @@ function SeedingTimeLimitField({
         <div className="flex items-center gap-2">
           <Input
             id={inputId}
-            type={isMixed ? "text" : "number"}
+            type="number"
             min="0"
             step="1"
-            value={isMixed ? "" : (limitValue >= 0 ? limitValue : "")}
+            value={limitValue >= 0 ? limitValue : ""}
             onChange={(e) => onLimitChange(field, e.target.value)}
-            placeholder={isMixed ? "Mixed values" : "Minutes"}
+            placeholder="Minutes"
             className="flex-1"
           />
           <span className="text-sm text-muted-foreground whitespace-nowrap">
-            {isMixed ? "Mixed" : formatMinutes(limitValue >= 0 ? limitValue : 0)}
+            {formatMinutes(limitValue >= 0 ? limitValue : 0)}
           </span>
         </div>
       )}

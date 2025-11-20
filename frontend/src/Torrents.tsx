@@ -143,11 +143,10 @@ export default function TorrentsPage() {
   const [metricsSelectedCount, setMetricsSelectedCount] = useState<number>(1);
   const [metricsTaskIds, setMetricsTaskIds] = useState<string[]>([]);
   const [isLimitsModalOpen, setIsLimitsModalOpen] = useState(false);
-  const [limitsTaskId, setLimitsTaskId] = useState<string>("");
+  const [limitsTaskIds, setLimitsTaskIds] = useState<string[]>([]);
   const [limitsAgentId, setLimitsAgentId] = useState<string>("");
   const [limitsTaskName, setLimitsTaskName] = useState<string>("");
   const [limitsTaskStatus, setLimitsTaskStatus] = useState<string>("");
-  const [limitsSelectedCount, setLimitsSelectedCount] = useState<number>(1);
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false);
   const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
   const [compact, setCompact] = useState(false);
@@ -493,24 +492,22 @@ export default function TorrentsPage() {
 
     // Se está em modo de seleção e há múltiplos torrents selecionados, usar a seleção
     const isBulkEdit = selectionMode && selectedIds.size > 1;
-    const count = isBulkEdit ? selectedIds.size : 1;
+    const taskIds = isBulkEdit ? Array.from(selectedIds) : [taskId];
 
-    setLimitsTaskId(taskId);
+    setLimitsTaskIds(taskIds);
     setLimitsAgentId(agentId || "");
     setLimitsTaskName(task?.name || "");
     setLimitsTaskStatus(task?.state || "");
-    setLimitsSelectedCount(count);
     setIsLimitsModalOpen(true);
   };
 
   // Fechar modal de limites
   const handleCloseLimitsModal = () => {
     setIsLimitsModalOpen(false);
-    setLimitsTaskId("");
+    setLimitsTaskIds([]);
     setLimitsAgentId("");
     setLimitsTaskName("");
     setLimitsTaskStatus("");
-    setLimitsSelectedCount(1);
   };
 
   // Handler para atualização de metadados
@@ -1505,15 +1502,14 @@ export default function TorrentsPage() {
       )}
 
       {/* Modal de limites do torrent - só renderiza quando aberto */}
-      {isLimitsModalOpen && limitsTaskId && limitsAgentId && (
+      {isLimitsModalOpen && limitsAgentId && limitsTaskIds.length > 0 && (
         <TorrentLimitModal
           isOpen={isLimitsModalOpen}
           onClose={handleCloseLimitsModal}
           agentId={limitsAgentId}
-          taskId={limitsTaskId}
+          taskIds={limitsTaskIds}
           taskName={limitsTaskName}
           taskStatus={limitsTaskStatus}
-          selectedCount={limitsSelectedCount}
         />
       )}
 

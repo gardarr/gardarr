@@ -43,17 +43,25 @@ export default function TorrentContextMenu(props: TorrentContextMenuProps) {
     e.preventDefault();
     e.stopPropagation();
     if (onStart) {
-      onStart(taskId);
+      // Apply to all selected tasks in bulk mode
+      const ids = selectionMode && selectedIds && selectedIds.size > 1
+        ? Array.from(selectedIds)
+        : [taskId];
+      ids.forEach(id => onStart(id));
     }
-  }, [onStart, taskId]);
+  }, [onStart, taskId, selectionMode, selectedIds]);
 
   const handleStop = React.useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (onStop) {
-      onStop(taskId);
+      // Apply to all selected tasks in bulk mode
+      const ids = selectionMode && selectedIds && selectedIds.size > 1
+        ? Array.from(selectedIds)
+        : [taskId];
+      ids.forEach(id => onStop(id));
     }
-  }, [onStop, taskId]);
+  }, [onStop, taskId, selectionMode, selectedIds]);
 
   const handleRemove = React.useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -74,25 +82,37 @@ export default function TorrentContextMenu(props: TorrentContextMenuProps) {
     e.preventDefault();
     e.stopPropagation();
     if (onForceDownload) {
-      onForceDownload(taskId);
+      // Apply to all selected tasks in bulk mode
+      const ids = selectionMode && selectedIds && selectedIds.size > 1
+        ? Array.from(selectedIds)
+        : [taskId];
+      ids.forEach(id => onForceDownload(id));
     }
-  }, [onForceDownload, taskId]);
+  }, [onForceDownload, taskId, selectionMode, selectedIds]);
 
   const handleForceReannounce = React.useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (onForceReannounce) {
-      onForceReannounce(taskId);
+      // Apply to all selected tasks in bulk mode
+      const ids = selectionMode && selectedIds && selectedIds.size > 1
+        ? Array.from(selectedIds)
+        : [taskId];
+      ids.forEach(id => onForceReannounce(id));
     }
-  }, [onForceReannounce, taskId]);
+  }, [onForceReannounce, taskId, selectionMode, selectedIds]);
 
   const handleForceRecheck = React.useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (onForceRecheck) {
-      onForceRecheck(taskId);
+      // Apply to all selected tasks in bulk mode
+      const ids = selectionMode && selectedIds && selectedIds.size > 1
+        ? Array.from(selectedIds)
+        : [taskId];
+      ids.forEach(id => onForceRecheck(id));
     }
-  }, [onForceRecheck, taskId]);
+  }, [onForceRecheck, taskId, selectionMode, selectedIds]);
 
   const handleMetrics = React.useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -163,27 +183,27 @@ export default function TorrentContextMenu(props: TorrentContextMenuProps) {
       >
         <ContextMenuItem onClick={createProtectedHandler(handleStart)}>
           <Play className="text-green-500" />
-          Start
+          {t("torrents.start")}
         </ContextMenuItem>
         <ContextMenuItem onClick={createProtectedHandler(handleStop)}>
           <Pause />
-          Stop
+          {t("torrents.stop")}
         </ContextMenuItem>
         <ContextMenuItem onClick={createProtectedHandler(handleForceDownload)} disabled={!onForceDownload}>
           <Zap />
-          Force download
+          {t("torrents.forceDownload")}
         </ContextMenuItem>
         <ContextMenuItem onClick={createProtectedHandler(handleForceReannounce)} disabled={!onForceReannounce}>
           <Radio />
-          Force reannounce
+          {t("torrents.forceReannounce")}
         </ContextMenuItem>
         <ContextMenuItem onClick={createProtectedHandler(handleForceRecheck)} disabled={!onForceRecheck}>
           <CheckCircle />
-          Force recheck
+          {t("torrents.forceRecheck")}
         </ContextMenuItem>
         <ContextMenuItem onClick={createProtectedHandler(handleMetrics)} disabled={!onMetrics}>
           <BarChart3 />
-          Métricas
+          {t("torrents.metrics")}
         </ContextMenuItem>
         <ContextMenuItem onClick={createProtectedHandler(handleLimits)}>
           <Settings />
@@ -194,11 +214,11 @@ export default function TorrentContextMenu(props: TorrentContextMenuProps) {
           disabled={isMultipleSelection}
         >
           <FileText />
-          Metadados
+          {t("torrents.metadata")}
         </ContextMenuItem>
         <ContextMenuItem onClick={createProtectedHandler(handleRemove)} variant="destructive">
           <Trash2 />
-          Remove
+          {t("torrents.remove")}
         </ContextMenuItem>
       </ContextMenuContent>
       
