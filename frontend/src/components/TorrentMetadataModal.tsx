@@ -42,11 +42,14 @@ export function TorrentMetadataModal({
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
-  const [imagePositionY, setImagePositionY] = useState(metadata?.image_position_y || 50);
+  const [imagePositionY, setImagePositionY] = useState(
+    metadata?.image_position_y ?? 50
+  );
   const [imageOpacity, setImageOpacity] = useState(() => {
-    const opacity = metadata?.image_opacity || 65;
-    return Math.max(15, Math.min(85, opacity));
+    const rawOpacity = metadata?.image_opacity ?? 65;
+    return Math.max(15, Math.min(85, rawOpacity));
   });
+
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartY, setDragStartY] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -58,9 +61,9 @@ export function TorrentMetadataModal({
       setDescription(metadata?.description || "");
       setImagePreview(metadata?.image_url || null);
       setSelectedFile(null);
-      setImagePositionY(metadata?.image_position_y || 50);
-      const opacity = metadata?.image_opacity || 65;
-      setImageOpacity(Math.max(15, Math.min(85, opacity)));
+      setImagePositionY(metadata?.image_position_y ?? 50);
+      const rawOpacity = metadata?.image_opacity ?? 65;
+      setImageOpacity(Math.max(15, Math.min(85, rawOpacity)));
     }
   }, [isOpen, metadata]);
 
@@ -172,25 +175,25 @@ export function TorrentMetadataModal({
   // Image position drag handlers
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!imagePreview || selectedFile) return;
-    
+
     // Don't start drag if clicking on buttons or interactive elements
     const target = e.target as HTMLElement;
     if (target.closest('button') || target.closest('[role="button"]')) {
       return;
     }
-    
+
     setIsDragging(true);
     setDragStartY(e.clientY);
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging || !imageContainerRef.current) return;
-    
+
     const container = imageContainerRef.current;
     const containerHeight = container.clientHeight;
     const deltaY = e.clientY - dragStartY;
     const deltaPercent = (deltaY / containerHeight) * 100;
-    
+
     // Update position (0-100, clamped)
     const newPosition = Math.max(0, Math.min(100, imagePositionY - deltaPercent));
     setImagePositionY(newPosition);
@@ -201,7 +204,7 @@ export function TorrentMetadataModal({
     // Don't save position if releasing on a button
     const target = e.target as HTMLElement;
     const isButton = target.closest('button') || target.closest('[role="button"]');
-    
+
     if (isDragging && !isButton) {
       setIsDragging(false);
       handleSaveImagePosition();
@@ -220,7 +223,7 @@ export function TorrentMetadataModal({
 
   const handleSaveImagePosition = async () => {
     if (!metadata?.image_url) return;
-    
+
     try {
       await api.put(`/tasks/metadata/${taskHash}/position`, {
         image_position_y: imagePositionY,
@@ -238,9 +241,9 @@ export function TorrentMetadataModal({
   const handleOpacityChange = async (value: number[]) => {
     const newOpacity = value[0];
     setImageOpacity(newOpacity);
-    
+
     if (!metadata?.image_url) return;
-    
+
     try {
       await api.put(`/tasks/metadata/${taskHash}/opacity`, {
         image_opacity: newOpacity,
@@ -262,11 +265,13 @@ export function TorrentMetadataModal({
   };
 
   const hasChanges =
-    description !== (metadata?.description || "") || 
+    description !== (metadata?.description || "") ||
     selectedFile !== null ||
-    imagePositionY !== (metadata?.image_position_y || 50) ||
-    imageOpacity !== Math.max(15, Math.min(85, metadata?.image_opacity || 65));
-
+    imagePositionY !== (metadata?.image_position_y ?? 50) ||
+    imageOpacity !== Math.max(
+      15,
+      Math.min(85, metadata?.image_opacity ?? 65)
+    );
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
@@ -290,7 +295,7 @@ export function TorrentMetadataModal({
             <Label className="text-sm font-medium">Imagem</Label>
 
             {imagePreview ? (
-              <div 
+              <div
                 ref={imageContainerRef}
                 className="relative group"
                 onMouseDown={handleMouseDown}
@@ -303,7 +308,7 @@ export function TorrentMetadataModal({
                     src={imagePreview}
                     alt={taskName}
                     className="w-full h-full object-cover select-none"
-                    style={{ 
+                    style={{
                       objectPosition: `center ${imagePositionY}%`,
                       pointerEvents: 'none'
                     }}

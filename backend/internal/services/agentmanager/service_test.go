@@ -54,7 +54,7 @@ func TestService_ListTasks_EmptyAgents(t *testing.T) {
 	// Create a minimal service for testing
 	service := &Service{}
 
-	result, err := service.ListTasks([]*entities.Agent{})
+	result, err := service.ListTasks(context.Background(), []*entities.Agent{})
 
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
@@ -79,7 +79,7 @@ func TestService_ListTasks_ParallelExecution(t *testing.T) {
 	// but we can test the basic functionality and error handling
 
 	// Test with empty agents
-	result, err := service.ListTasks([]*entities.Agent{})
+	result, err := service.ListTasks(context.Background(), []*entities.Agent{})
 	if err != nil {
 		t.Errorf("Expected no error for empty agents, got %v", err)
 	}
@@ -96,7 +96,7 @@ func TestService_ListTasks_ErrorHandling(t *testing.T) {
 	service := &Service{}
 
 	// Test with nil agents slice
-	result, err := service.ListTasks(nil)
+	result, err := service.ListTasks(context.Background(), nil)
 	if err != nil {
 		t.Errorf("Expected no error for nil agents, got %v", err)
 	}

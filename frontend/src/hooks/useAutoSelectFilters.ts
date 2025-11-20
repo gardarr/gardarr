@@ -8,7 +8,10 @@ export function useAutoSelectFilters<T>(
     const prevAvailableItemsRef = useRef<T[]>([]);
 
     useEffect(() => {
-        if (availableItems.length === 0) return;
+        if (availableItems.length === 0) {
+            prevAvailableItemsRef.current = availableItems;
+            return;
+        }
 
         const prevItems = prevAvailableItemsRef.current;
 

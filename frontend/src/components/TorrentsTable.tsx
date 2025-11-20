@@ -67,6 +67,26 @@ interface TorrentsTableProps {
   onRequestDelete?: (ids: string[]) => void;
 }
 
+
+const SpeedCell = ({ rate, total, isUpload, compact }: { rate: number, total: number, isUpload?: boolean, compact?: boolean }) => (
+  <div className="flex items-center gap-1.5 whitespace-nowrap flex-nowrap">
+    {rate > 0 && (
+      isUpload ? (
+        <ArrowUp className={`${compact ? 'h-3 w-3' : 'h-3.5 w-3.5'} text-purple-600 dark:text-purple-400 flex-shrink-0`} />
+      ) : (
+        <ArrowDown className={`${compact ? 'h-3 w-3' : 'h-3.5 w-3.5'} text-green-600 dark:text-green-400 flex-shrink-0`} />
+      )
+    )}
+    <span className={`${compact ? 'text-xs' : ''} ${rate > 0 ? (isUpload ? 'text-purple-600 dark:text-purple-400' : 'text-green-600 dark:text-green-400') : ''}`}>
+      {formatBytesPerSecond(rate)}
+    </span>
+    <span className="text-xs text-muted-foreground">•</span>
+    <span className="text-xs text-muted-foreground">
+      {formatBytes(total)}
+    </span>
+  </div>
+);
+
 function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits, onMetadataUpdate, selectionMode, selected, onToggleSelect, selectedIds, onRequestDelete, compact }: {
   torrent: Torrent;
   onShowDetails: (id: string) => void;
@@ -98,24 +118,7 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
   const textSizeClass = compact ? 'text-xs' : 'text-sm';
   const cellClass = `px-4 ${pyClass} ${textSizeClass}`;
 
-  const SpeedCell = ({ rate, total, isUpload }: { rate: number, total: number, isUpload?: boolean }) => (
-    <div className="flex items-center gap-1.5 whitespace-nowrap flex-nowrap">
-      {rate > 0 && (
-        isUpload ? (
-          <ArrowUp className={`${compact ? 'h-3 w-3' : 'h-3.5 w-3.5'} text-purple-600 dark:text-purple-400 flex-shrink-0`} />
-        ) : (
-          <ArrowDown className={`${compact ? 'h-3 w-3' : 'h-3.5 w-3.5'} text-green-600 dark:text-green-400 flex-shrink-0`} />
-        )
-      )}
-      <span className={`${compact ? 'text-xs' : ''} ${rate > 0 ? (isUpload ? 'text-purple-600 dark:text-purple-400' : 'text-green-600 dark:text-green-400') : ''}`}>
-        {formatBytesPerSecond(rate)}
-      </span>
-      <span className="text-xs text-muted-foreground">•</span>
-      <span className="text-xs text-muted-foreground">
-        {formatBytes(total)}
-      </span>
-    </div>
-  );
+
 
   return (
     <TorrentContextMenu
@@ -180,10 +183,10 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
           </div>
         </td>
         <td className={cellClass}>
-          <SpeedCell rate={torrent.downloadRateBps} total={torrent.downloadedBytes} />
+          <SpeedCell rate={torrent.downloadRateBps} total={torrent.downloadedBytes} compact={compact} />
         </td>
         <td className={cellClass}>
-          <SpeedCell rate={torrent.uploadRateBps} total={torrent.uploadedBytes} isUpload />
+          <SpeedCell rate={torrent.uploadRateBps} total={torrent.uploadedBytes} isUpload compact={compact} />
         </td>
         <td className={cellClass}>
           <RatioBadge ratio={torrent.ratio} showIcon={false} />
@@ -238,8 +241,8 @@ function SortButton({
       size="sm"
       onClick={() => onSort(currentSortType)}
       className={`h-6 w-6 p-0 hover:bg-muted ${activeSortType === currentSortType
-          ? "bg-muted text-foreground"
-          : "text-muted-foreground"
+        ? "bg-muted text-foreground"
+        : "text-muted-foreground"
         }`}
       title={`Ordenar por ${children}`}
     >

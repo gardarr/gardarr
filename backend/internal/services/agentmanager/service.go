@@ -137,7 +137,7 @@ func (s *Service) enrichTasksWithMetadata(ctx context.Context, tasks []*entities
 	return nil
 }
 
-func (s *Service) ListTasks(agents []*entities.Agent) (*entities.TaskListResult, error) {
+func (s *Service) ListTasks(ctx context.Context, agents []*entities.Agent) (*entities.TaskListResult, error) {
 	if len(agents) == 0 {
 		return &entities.TaskListResult{
 			Tasks:  []*entities.Task{},
@@ -157,6 +157,17 @@ func (s *Service) ListTasks(agents []*entities.Agent) (*entities.TaskListResult,
 	// Process each agent concurrently
 	for _, agent := range agents {
 		go func(a *entities.Agent) {
+			// Check context before starting work
+			select {
+			case <-ctx.Done():
+				resultChan <- agentResult{
+					agentID: a.UUID.String(),
+					err:     ctx.Err(),
+				}
+				return
+			default:
+			}
+
 			tasks, err := s.repository.ListAgentTasks(a)
 			resultChan <- agentResult{
 				agentID: a.UUID.String(),
@@ -171,18 +182,22 @@ func (s *Service) ListTasks(agents []*entities.Agent) (*entities.TaskListResult,
 	agentErrors := make(map[string]string)
 
 	for i := 0; i < len(agents); i++ {
-		res := <-resultChan
-		if res.err != nil {
-			agentErrors[res.agentID] = res.err.Error()
-		} else if res.tasks != nil {
-			allTasks = append(allTasks, res.tasks...)
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case res := <-resultChan:
+			if res.err != nil {
+				agentErrors[res.agentID] = res.err.Error()
+			} else if res.tasks != nil {
+				allTasks = append(allTasks, res.tasks...)
+			}
 		}
 	}
 
 	close(resultChan)
 
 	// Enrich tasks with metadata
-	_ = s.enrichTasksWithMetadata(context.Background(), allTasks)
+	_ = s.enrichTasksWithMetadata(ctx, allTasks)
 
 	return &entities.TaskListResult{
 		Tasks:  allTasks,
@@ -393,13 +408,13 @@ func (s *Service) ListAgentTasks(ctx context.Context, id string) ([]*entities.Ta
 	return tasks, nil
 }
 
-func (s *Service) ListAgentsTasks() (*entities.TaskListResult, error) {
+func (s *Service) ListAgentsTasks(ctx context.Context) (*entities.TaskListResult, error) {
 	agents, err := s.repository.ListAgents()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list agents: %w", err)
 	}
 
-	return s.ListTasks(agents)
+	return s.ListTasks(ctx, agents)
 }
 
 func (s *Service) StopAgentTask(ctx context.Context, agentID, taskID string) error {

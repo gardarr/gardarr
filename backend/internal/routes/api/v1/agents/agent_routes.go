@@ -155,7 +155,7 @@ func (m *Module) deleteAgent(c *gin.Context) {
 }
 
 func (m *Module) listAgentsTasks(c *gin.Context) {
-	result, err := m.service.ListAgentsTasks()
+	result, err := m.service.ListAgentsTasks(c.Request.Context())
 	if err != nil {
 		errors.HandleError(c, err)
 		return
