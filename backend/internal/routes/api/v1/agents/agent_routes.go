@@ -161,12 +161,15 @@ func (m *Module) listAgentsTasks(c *gin.Context) {
 		return
 	}
 
-	resp := make([]models.TaskResponseModel, len(result))
-	for i, item := range result {
-		resp[i] = mappers.ToTaskResponse(item)
+	tasks := make([]models.TaskResponseModel, len(result.Tasks))
+	for i, item := range result.Tasks {
+		tasks[i] = mappers.ToTaskResponse(item)
 	}
 
-	c.JSON(http.StatusOK, resp)
+	c.JSON(http.StatusOK, gin.H{
+		"tasks":  tasks,
+		"errors": result.Errors,
+	})
 }
 
 func (m *Module) listAgentTasks(c *gin.Context) {

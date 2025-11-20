@@ -68,7 +68,8 @@ export interface DeleteTaskRequest {
 }
 
 export interface TaskListResponse {
-  data: Task[];
+  tasks: Task[];
+  errors?: Record<string, string>;
 }
 
 export interface TaskCreateResponse {

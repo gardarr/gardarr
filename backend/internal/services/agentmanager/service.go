@@ -137,66 +137,57 @@ func (s *Service) enrichTasksWithMetadata(ctx context.Context, tasks []*entities
 	return nil
 }
 
-func (s *Service) ListTasks(agents []*entities.Agent) ([]*entities.Task, error) {
+func (s *Service) ListTasks(agents []*entities.Agent) (*entities.TaskListResult, error) {
 	if len(agents) == 0 {
-		return []*entities.Task{}, nil
+		return &entities.TaskListResult{
+			Tasks:  []*entities.Task{},
+			Errors: make(map[string]string),
+		}, nil
 	}
 
-	// Create channels to receive results and errors
-	taskChan := make(chan []*entities.Task, len(agents))
-	errorChan := make(chan error, len(agents))
+	type agentResult struct {
+		agentID string
+		tasks   []*entities.Task
+		err     error
+	}
+
+	// Create channel to receive results
+	resultChan := make(chan agentResult, len(agents))
 
 	// Process each agent concurrently
 	for _, agent := range agents {
 		go func(a *entities.Agent) {
 			tasks, err := s.repository.ListAgentTasks(a)
-			if err != nil {
-				errorChan <- err
-				taskChan <- nil
-			} else {
-				errorChan <- nil
-				taskChan <- tasks
+			resultChan <- agentResult{
+				agentID: a.UUID.String(),
+				tasks:   tasks,
+				err:     err,
 			}
 		}(agent)
 	}
 
-	// Collect results and errors
-	var result []*entities.Task
-	var errors []error
+	// Collect results
+	allTasks := make([]*entities.Task, 0)
+	agentErrors := make(map[string]string)
 
 	for i := 0; i < len(agents); i++ {
-		tasks := <-taskChan
-		err := <-errorChan
-
-		if err != nil {
-			errors = append(errors, err)
-		} else if tasks != nil {
-			result = append(result, tasks...)
+		res := <-resultChan
+		if res.err != nil {
+			agentErrors[res.agentID] = res.err.Error()
+		} else if res.tasks != nil {
+			allTasks = append(allTasks, res.tasks...)
 		}
 	}
 
-	// Close channels
-	close(taskChan)
-	close(errorChan)
-
-	// If we have any errors, return them along with the results
-	if len(errors) > 0 {
-		// Create a combined error message
-		var errorMsg strings.Builder
-		errorMsg.WriteString("errors occurred while fetching tasks from agents: ")
-		for i, err := range errors {
-			if i > 0 {
-				errorMsg.WriteString("; ")
-			}
-			errorMsg.WriteString(err.Error())
-		}
-		return result, fmt.Errorf("%s", errorMsg.String())
-	}
+	close(resultChan)
 
 	// Enrich tasks with metadata
-	_ = s.enrichTasksWithMetadata(context.Background(), result)
+	_ = s.enrichTasksWithMetadata(context.Background(), allTasks)
 
-	return result, nil
+	return &entities.TaskListResult{
+		Tasks:  allTasks,
+		Errors: agentErrors,
+	}, nil
 }
 
 func (s *Service) GetAgent(ctx context.Context, id string) (*entities.Agent, error) {
@@ -402,7 +393,7 @@ func (s *Service) ListAgentTasks(ctx context.Context, id string) ([]*entities.Ta
 	return tasks, nil
 }
 
-func (s *Service) ListAgentsTasks() ([]*entities.Task, error) {
+func (s *Service) ListAgentsTasks() (*entities.TaskListResult, error) {
 	agents, err := s.repository.ListAgents()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list agents: %w", err)

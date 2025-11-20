@@ -151,3 +151,8 @@ type TaskShareLimit struct {
 	SeedingTimeLimit         int
 	InactiveSeedingTimeLimit int
 }
+
+type TaskListResult struct {
+	Tasks  []*Task           `json:"tasks"`
+	Errors map[string]string `json:"errors"` // Map of AgentUUID -> ErrorMessage
+}

@@ -127,8 +127,12 @@ func (s *Service) collectOnce(ctx context.Context) {
 // collectAgentData collects statistics for a single agent
 func (s *Service) collectAgentData(ctx context.Context, a *entities.Agent, now time.Time) {
 	// Get tasks for this agent only
-	tasks, err := s.agents.ListTasks([]*entities.Agent{a})
-	if err != nil || len(tasks) == 0 {
+	result, err := s.agents.ListTasks([]*entities.Agent{a})
+	if err != nil {
+		return
+	}
+	tasks := result.Tasks
+	if len(tasks) == 0 {
 		return
 	}
 
