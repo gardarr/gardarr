@@ -312,29 +312,28 @@ func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statist
 	mediaPath := filepath.Join(wd, "uploads", "task_images")
 	router.GET("/media/*filepath", middlewares.SessionMiddleware(db), func(c *gin.Context) {
 		// Get the requested file path
-		requestedFile := c.Param("filepath")
+		requestedFile := strings.TrimPrefix(c.Param("filepath"), "/")
 
 		// Security: prevent path traversal attacks
 		requestedFile = filepath.Clean(requestedFile)
-		if strings.Contains(requestedFile, "..") {
+		if requestedFile == "." || strings.HasPrefix(requestedFile, "..") || strings.Contains(requestedFile, "/../") || strings.Contains(requestedFile, `\..\\`) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file path"})
 			return
 		}
 
 		// Build full file path
 		fullPath := filepath.Join(mediaPath, requestedFile)
+		fullPath = filepath.Clean(fullPath)
+
+		if !strings.HasPrefix(fullPath, mediaPath+string(os.PathSeparator)) && fullPath != mediaPath {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file path"})
+			return
+		}
 
 		// Check if file exists
 		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
 			return
-		}
-
-		// Set CORS headers explicitly for cross-origin requests
-		origin := c.GetHeader("Origin")
-		if origin != "" {
-			c.Header("Access-Control-Allow-Origin", origin)
-			c.Header("Access-Control-Allow-Credentials", "true")
 		}
 
 		// Set headers to prevent caching - force browser to always check authentication

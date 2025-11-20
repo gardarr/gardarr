@@ -3,6 +3,7 @@ package event
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/gardarr/gardarr/internal/entities"
@@ -21,11 +22,13 @@ func NewRepository(db *database.Database) *Repository {
 
 // CreateEvent creates a new event in the database
 func (r *Repository) CreateEvent(ctx context.Context, event *entities.Event) error {
-	metadataJSON := ""
+	var metadataJSON string
 	if event.Metadata != nil {
-		if data, err := json.Marshal(event.Metadata); err == nil {
-			metadataJSON = string(data)
+		data, err := json.Marshal(event.Metadata)
+		if err != nil {
+			return fmt.Errorf("marshal event metadata: %w", err)
 		}
+		metadataJSON = string(data)
 	}
 
 	model := &models.Event{

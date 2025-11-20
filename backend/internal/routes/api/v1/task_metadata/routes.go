@@ -24,6 +24,7 @@ func NewModule(router *gin.RouterGroup, db *database.Database, service *task_met
 	return &Module{
 		group:   router.Group("/tasks/metadata"),
 		service: service,
+		db:      db,
 	}
 }
 

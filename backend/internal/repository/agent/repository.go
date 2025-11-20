@@ -161,13 +161,14 @@ func (r *Repository) CheckAgentAvailability(agent *entities.Agent) error {
 		return err
 	}
 
+	defer response.Body.Close()
+
 	if response.StatusCode != http.StatusOK {
 		return fmt.Errorf("invalid status code - %d", response.StatusCode)
 	}
 
 	var handler models.AgentLivenessResponse
 	body, err := io.ReadAll(response.Body)
-	defer response.Body.Close()
 	if err != nil {
 		return err
 	}

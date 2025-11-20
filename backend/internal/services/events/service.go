@@ -16,7 +16,7 @@ import (
 // Service handles event tracking and state change detection
 type Service struct {
 	repo          *event.Repository
-	taskStates    map[string]*TaskState // taskHash -> state
+	taskStates    map[uuid.UUID]map[string]*TaskState // agentID -> taskHash -> state
 	mu            sync.RWMutex
 	retentionDays int
 }
@@ -34,7 +34,7 @@ type TaskState struct {
 func NewService(db *database.Database) *Service {
 	return &Service{
 		repo:          event.NewRepository(db),
-		taskStates:    make(map[string]*TaskState),
+		taskStates:    make(map[uuid.UUID]map[string]*TaskState),
 		retentionDays: env.Get("EVENT_RETENTION_DAYS").Default(7).ValueInt(),
 	}
 }
@@ -46,7 +46,7 @@ func isErrorState(state string) bool {
 		"MISSING_FILES",
 		"MISSINGFILES",
 	}
-	
+
 	for _, errState := range errorStates {
 		if state == errState {
 			return true
@@ -72,11 +72,16 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 			defer wg.Done()
 
 			s.mu.Lock()
-			lastState, exists := s.taskStates[t.Hash]
+			// Ensure agent map exists
+			if s.taskStates[agentID] == nil {
+				s.taskStates[agentID] = make(map[string]*TaskState)
+			}
+
+			lastState, exists := s.taskStates[agentID][t.Hash]
 
 			// New task detected
 			if !exists {
-				s.taskStates[t.Hash] = &TaskState{
+				s.taskStates[agentID][t.Hash] = &TaskState{
 					AgentID:   agentID,
 					Hash:      t.Hash,
 					State:     t.State,
@@ -198,11 +203,13 @@ func (s *Service) DetectRemovedTasks(ctx context.Context, currentTasks []*entiti
 	}
 
 	s.mu.Lock()
-	// Collect hashes to check
+	// Collect hashes to check for this specific agent
 	var hashesToCheck []string
-	for hash, state := range s.taskStates {
-		if state.AgentID == agentID && !currentHashes[hash] {
-			hashesToCheck = append(hashesToCheck, hash)
+	if agentTasks, exists := s.taskStates[agentID]; exists {
+		for hash := range agentTasks {
+			if !currentHashes[hash] {
+				hashesToCheck = append(hashesToCheck, hash)
+			}
 		}
 	}
 	s.mu.Unlock()
@@ -223,7 +230,7 @@ func (s *Service) DetectRemovedTasks(ctx context.Context, currentTasks []*entiti
 			defer wg.Done()
 
 			s.mu.RLock()
-			state, exists := s.taskStates[h]
+			state, exists := s.taskStates[agentID][h]
 			s.mu.RUnlock()
 
 			if !exists {
@@ -266,7 +273,7 @@ func (s *Service) DetectRemovedTasks(ctx context.Context, currentTasks []*entiti
 	// Remove from tracked states
 	s.mu.Lock()
 	for hash := range removedHashes {
-		delete(s.taskStates, hash)
+		delete(s.taskStates[agentID], hash)
 	}
 	s.mu.Unlock()
 
@@ -299,9 +306,15 @@ func (s *Service) CleanStaleStates() {
 	defer s.mu.Unlock()
 
 	cutoff := time.Now().Add(-24 * time.Hour)
-	for hash, state := range s.taskStates {
-		if state.UpdatedAt.Before(cutoff) {
-			delete(s.taskStates, hash)
+	for agentID, agentTasks := range s.taskStates {
+		for hash, state := range agentTasks {
+			if state.UpdatedAt.Before(cutoff) {
+				delete(agentTasks, hash)
+			}
+		}
+		// Remove empty agent maps
+		if len(agentTasks) == 0 {
+			delete(s.taskStates, agentID)
 		}
 	}
 }
