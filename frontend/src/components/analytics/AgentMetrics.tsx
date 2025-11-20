@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { 
-  BarChart3, 
-  TrendingUp, 
+import {
+  BarChart3,
+  TrendingUp,
   Server
 } from 'lucide-react';
 import type { TaskStats, Agent } from '../../types/agent';
 import type { Task } from '@/types/torrent';
- import { agentService } from '../../services/agents';
+import { agentService } from '../../services/agents';
 import MostUploadedTorrents from '@/components/widgets/MostUploadedTorrents';
 import RecentCreatedTorrents from '@/components/widgets/RecentCreatedTorrents';
 import MostUsedCategoriesWidget from '@/components/widgets/MostUsedCategoriesWidget';
@@ -166,7 +166,7 @@ const WordCloud: React.FC<WordCloudProps> = ({ wordCloud, title }) => {
   // Color variations for theme compatibility
   const colors = [
     'text-blue-500',
-    'text-green-500', 
+    'text-green-500',
     'text-purple-500',
     'text-orange-500',
     'text-pink-500',
@@ -206,7 +206,7 @@ const WordCloud: React.FC<WordCloudProps> = ({ wordCloud, title }) => {
                 >
                   <span
                     className={`inline-block px-2 py-1 rounded-md bg-secondary/50 hover:bg-secondary transition-colors cursor-pointer ${getColor(index)}`}
-                    style={{ 
+                    style={{
                       fontSize: `${getFontSize(count)}px`,
                       fontWeight: count > maxCount * 0.7 ? 'bold' : 'normal'
                     }}
@@ -262,43 +262,43 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
   // API calls for agent metrics
   useEffect(() => {
     let isMounted = true; // Flag to track if component is mounted
-    
+
     const fetchAgentMetrics = async () => {
       setIsLoading(true);
       try {
         console.log('Fetching metrics for selectedAgentId:', currentSelectedAgentId, 'Type:', typeof currentSelectedAgentId);
-        
+
         // Early return if no selectedAgentId to avoid unnecessary processing
         if (!currentSelectedAgentId || currentSelectedAgentId.trim() === '') {
           console.log('No selectedAgentId, loading aggregated data from all agents');
           // Fetch agents list
           const agentsResponse = await agentService.listAgents();
           if (!isMounted) return; // Check if still mounted
-          
+
           setAgents(agentsResponse.data || []);
-          
+
           // If no specific agent selected, aggregate data from all active agents
           const activeAgents = agentsResponse.data?.filter(agent => agent.status === 'ACTIVE') || [];
-          
+
           if (activeAgents.length > 0) {
             // Fetch stats for all active agents
-            const statsPromises = activeAgents.map(agent => 
+            const statsPromises = activeAgents.map(agent =>
               agentService.getAgentTaskStats(agent.uuid).catch(() => null)
             );
             // Fetch tasks for all active agents to compute active amounts
             const tasksPromises = activeAgents.map(agent =>
               torrentService.listAgentTasks(agent.uuid).catch(() => ({ data: null }))
             );
-            
+
             const [allStats, allTasksResponses] = await Promise.all([Promise.all(statsPromises), Promise.all(tasksPromises)]);
             if (!isMounted) return; // Check if still mounted
-            
+
             const validStats = allStats.filter(response => response?.data);
             const allTasks = allTasksResponses
               .map(r => (r && 'data' in r ? (r as { data: Task[] | null }).data : null))
               .filter((arr): arr is Task[] => Array.isArray(arr))
               .flat();
-            
+
             if (validStats.length > 0) {
               console.log('Aggregating stats from', validStats.length, 'agents');
               // Aggregate the stats from all active agents
@@ -350,12 +350,12 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
                 tags_usage: {} as Record<string, number>,
                 word_cloud: {} as Record<string, number>
               });
-              
+
               // Fix lowest_ratio if no valid ratios were found
               if (aggregatedStats.lowest_ratio === Infinity) {
                 aggregatedStats.lowest_ratio = 0;
               }
-              
+
               console.log('Final aggregated stats:', aggregatedStats);
               if (isMounted) setStats(aggregatedStats);
               // Compute active download/upload amounts from tasks
@@ -378,21 +378,21 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
           }
           return;
         }
-        
+
         // If a specific agent is selected, fetch its stats, agent details and windowed data
         if (currentSelectedAgentId && currentSelectedAgentId.trim() !== '') {
           console.log('Loading single agent data for:', currentSelectedAgentId);
-        const [statsResponse, agentResponse, tasksResponse] = await Promise.all([
-          agentService.getAgentTaskStats(currentSelectedAgentId),
-          agentService.getAgent(currentSelectedAgentId),
-          torrentService.listAgentTasks(currentSelectedAgentId)
-        ]);
-          
+          const [statsResponse, agentResponse, tasksResponse] = await Promise.all([
+            agentService.getAgentTaskStats(currentSelectedAgentId),
+            agentService.getAgent(currentSelectedAgentId),
+            torrentService.listAgentTasks(currentSelectedAgentId)
+          ]);
+
           if (!isMounted) return; // Check if still mounted
-          
+
           console.log('Single agent stats:', statsResponse.data);
           setStats(statsResponse.data || null);
-          
+
           // Update the agent with real storage information
           if (agentResponse.data) {
             const updatedAgent = { ...agentResponse.data };
@@ -434,7 +434,7 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
     };
 
     fetchAgentMetrics();
-    
+
     // Cleanup function to mark component as unmounted
     return () => {
       isMounted = false;
@@ -506,10 +506,49 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
     );
   }
 
+  // Calculate derived metrics to avoid duplication in JSX
+  const ratioValue = (
+    <TooltipProvider>
+      <div className="flex items-baseline gap-2">
+        {selectedAgent && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="cursor-help">{selectedAgent.instance.transfer.global_ratio.toFixed(2)}</span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Global Ratio</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {selectedAgent && <span>/</span>}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="cursor-help">~{stats.average_ratio.toFixed(2)}</span>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Average Ratio</p>
+          </TooltipContent>
+        </Tooltip>
+      </div>
+    </TooltipProvider>
+  );
+
+  const totalDownloadedBytes = selectedAgent
+    ? selectedAgent.instance.transfer.all_time_downloaded
+    : agents.filter(a => a.status === 'ACTIVE').reduce((sum, agent) => sum + (agent.instance.transfer.all_time_downloaded || 0), 0);
+
+  const totalUploadedBytes = selectedAgent
+    ? selectedAgent.instance.transfer.all_time_uploaded
+    : agents.filter(a => a.status === 'ACTIVE').reduce((sum, agent) => sum + (agent.instance.transfer.all_time_uploaded || 0), 0);
+
+  const freeSpaceBytes = selectedAgent
+    ? selectedAgent.instance.server.free_space_on_disk
+    : agents.filter(a => a.status === 'ACTIVE').reduce((sum, agent) => sum + agent.instance.server.free_space_on_disk, 0);
+
   return (
     <div className="space-y-6">
-      {/* Speed Widgets - Same line on mobile only */}
-      <div className="grid grid-cols-2 gap-6 md:hidden">
+      {/* Unified Metrics Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <DownloadSpeedWidget
           speedBytesPerSecond={stats.current_download_speed}
           subtitle={`${stats.active_seeds} seeders • Swarm: ${stats.swarm_seeders ?? 0}`}
@@ -518,154 +557,48 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
           speedBytesPerSecond={stats.current_upload_speed}
           subtitle={`${stats.active_peers} peers • Swarm: ${stats.swarm_leechers ?? 0}`}
         />
-      </div>
 
-      {/* All Information Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Speed Widgets - Desktop: part of normal grid */}
-        <div className="hidden md:block">
-          <DownloadSpeedWidget
-            speedBytesPerSecond={stats.current_download_speed}
-            subtitle={`${stats.active_seeds} seeders • Swarm: ${stats.swarm_seeders ?? 0}`}
-          />
-        </div>
-        <div className="hidden md:block">
-          <UploadSpeedWidget
-            speedBytesPerSecond={stats.current_upload_speed}
-            subtitle={`${stats.active_peers} peers • Swarm: ${stats.swarm_leechers ?? 0}`}
-          />
-        </div>
-        {/* Ratio and Active Tasks - Same line on mobile only */}
-        <div className="grid grid-cols-2 gap-6 md:hidden">
-          <MetricCard
-            title="Ratio"
-            value={
-              <TooltipProvider>
-                <div className="flex items-baseline gap-2">
-                  {selectedAgent && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="cursor-help">{selectedAgent.instance.transfer.global_ratio.toFixed(2)}</span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Global Ratio</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                  {selectedAgent && <span>/</span>}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="cursor-help">~{stats.average_ratio.toFixed(2)}</span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Average Ratio</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              </TooltipProvider>
-            }
-            subtitle={`${stats.highest_ratio.toFixed(2)} highest / ${stats.lowest_ratio.toFixed(2)} lowest`}
-            icon={TrendingUp}
-            color="text-lime-500"
-          />
-          <ActiveTasksWidget tasks={tasks} />
-        </div>
-
-        {/* Ratio and Active Tasks - Desktop: part of normal grid */}
-        <div className="hidden md:block">
-          <MetricCard
-            title="Ratio"
-            value={
-              <TooltipProvider>
-                <div className="flex items-baseline gap-2">
-                  {selectedAgent && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="cursor-help">{selectedAgent.instance.transfer.global_ratio.toFixed(2)}</span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Global Ratio</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                  {selectedAgent && <span>/</span>}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="cursor-help">~{stats.average_ratio.toFixed(2)}</span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Average Ratio</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              </TooltipProvider>
-            }
-            subtitle={`${stats.highest_ratio.toFixed(2)} highest / ${stats.lowest_ratio.toFixed(2)} lowest`}
-            icon={TrendingUp}
-            color="text-lime-500"
-          />
-        </div>
-        <div className="hidden md:block">
-          <ActiveTasksWidget tasks={tasks} />
-        </div>
-        {/* Total Downloaded and Uploaded - Same line on mobile only */}
-        <div className="grid grid-cols-2 gap-6 md:hidden">
-          <AgentTotalDownloadedSize
-            bytes={activeDownloadAmount}
-            totalBytes={selectedAgent
-              ? selectedAgent.instance.transfer.all_time_downloaded
-              : agents.filter(a => a.status === 'ACTIVE').reduce((sum, agent) => sum + (agent.instance.transfer.all_time_downloaded || 0), 0)
-            }
-          />
-          <AgentTotalUploadedSize
-            bytes={activeUploadAmount}
-            totalBytes={selectedAgent
-              ? selectedAgent.instance.transfer.all_time_uploaded
-              : agents.filter(a => a.status === 'ACTIVE').reduce((sum, agent) => sum + (agent.instance.transfer.all_time_uploaded || 0), 0)
-            }
-          />
-        </div>
-        {/* Total Downloaded and Uploaded - Desktop: part of normal grid */}
-        <div className="hidden md:block">
-          <AgentTotalDownloadedSize
-            bytes={activeDownloadAmount}
-            totalBytes={selectedAgent
-              ? selectedAgent.instance.transfer.all_time_downloaded
-              : agents.filter(a => a.status === 'ACTIVE').reduce((sum, agent) => sum + (agent.instance.transfer.all_time_downloaded || 0), 0)
-            }
-          />
-        </div>
-        <div className="hidden md:block">
-          <AgentTotalUploadedSize
-            bytes={activeUploadAmount}
-            totalBytes={selectedAgent
-              ? selectedAgent.instance.transfer.all_time_uploaded
-              : agents.filter(a => a.status === 'ACTIVE').reduce((sum, agent) => sum + (agent.instance.transfer.all_time_uploaded || 0), 0)
-            }
-          />
-        </div>
-        <TotalStorageWidget
-          totalBytes={stats.total_disk_size}
-          subtitle={selectedAgent 
-            ? `Free: ${formatBytes(selectedAgent.instance.server.free_space_on_disk)}`
-            : `Free: ${formatBytes(agents.filter(a => a.status === 'ACTIVE').reduce((sum, agent) => sum + agent.instance.server.free_space_on_disk, 0))}`
-          }
+        <MetricCard
+          title="Ratio"
+          value={ratioValue}
+          subtitle={`${stats.highest_ratio.toFixed(2)} highest / ${stats.lowest_ratio.toFixed(2)} lowest`}
+          icon={TrendingUp}
+          color="text-lime-500"
         />
+
+        <ActiveTasksWidget tasks={tasks} />
+
+        <AgentTotalDownloadedSize
+          bytes={activeDownloadAmount}
+          totalBytes={totalDownloadedBytes}
+        />
+
+        <AgentTotalUploadedSize
+          bytes={activeUploadAmount}
+          totalBytes={totalUploadedBytes}
+        />
+
+        <div className="col-span-2 md:col-span-1">
+          <TotalStorageWidget
+            totalBytes={stats.total_disk_size}
+            subtitle={`Free: ${formatBytes(freeSpaceBytes)}`}
+          />
+        </div>
       </div>
 
       {/* Activities Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Created Torrents Card */}
-        <RecentCreatedTorrents items={tasks} limit={5}/>
+        <RecentCreatedTorrents items={tasks} limit={5} />
 
         {/* Most Used Categories & Tags Widget */}
-        <MostUsedCategoriesWidget 
+        <MostUsedCategoriesWidget
           categoryUsage={stats.category_usage}
           tagsUsage={stats.tags_usage}
         />
 
         {/* Most Uploaded Torrents Card */}
-        <MostUploadedTorrents 
+        <MostUploadedTorrents
           items={topUploaded}
           taskNameById={taskNameById}
           loading={!topUploaded || (Array.isArray(topUploaded) && topUploaded.length === 0)}

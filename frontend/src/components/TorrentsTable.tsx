@@ -67,8 +67,8 @@ interface TorrentsTableProps {
   onRequestDelete?: (ids: string[]) => void;
 }
 
-function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits, onMetadataUpdate, selectionMode, selected, onToggleSelect, selectedIds, onRequestDelete, compact }: { 
-  torrent: Torrent; 
+function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits, onMetadataUpdate, selectionMode, selected, onToggleSelect, selectedIds, onRequestDelete, compact }: {
+  torrent: Torrent;
   onShowDetails: (id: string) => void;
   onStart: (id: string) => void;
   onStop: (id: string) => void;
@@ -94,8 +94,31 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
     }
   };
 
+  const pyClass = compact ? 'py-1' : 'py-3';
+  const textSizeClass = compact ? 'text-xs' : 'text-sm';
+  const cellClass = `px-4 ${pyClass} ${textSizeClass}`;
+
+  const SpeedCell = ({ rate, total, isUpload }: { rate: number, total: number, isUpload?: boolean }) => (
+    <div className="flex items-center gap-1.5 whitespace-nowrap flex-nowrap">
+      {rate > 0 && (
+        isUpload ? (
+          <ArrowUp className={`${compact ? 'h-3 w-3' : 'h-3.5 w-3.5'} text-purple-600 dark:text-purple-400 flex-shrink-0`} />
+        ) : (
+          <ArrowDown className={`${compact ? 'h-3 w-3' : 'h-3.5 w-3.5'} text-green-600 dark:text-green-400 flex-shrink-0`} />
+        )
+      )}
+      <span className={`${compact ? 'text-xs' : ''} ${rate > 0 ? (isUpload ? 'text-purple-600 dark:text-purple-400' : 'text-green-600 dark:text-green-400') : ''}`}>
+        {formatBytesPerSecond(rate)}
+      </span>
+      <span className="text-xs text-muted-foreground">•</span>
+      <span className="text-xs text-muted-foreground">
+        {formatBytes(total)}
+      </span>
+    </div>
+  );
+
   return (
-    <TorrentContextMenu 
+    <TorrentContextMenu
       taskId={torrent.id}
       taskHash={torrent.hash}
       taskName={torrent.name}
@@ -114,133 +137,110 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
       onLimits={onLimits}
       onMetadataUpdate={onMetadataUpdate}
     >
-      <tr 
+      <tr
         className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
         onClick={handleRowClick}
       >
-      {selectionMode && (
-        <td className={`px-3 ${compact ? 'py-1' : 'py-3'}`}>
-          <Checkbox
-            checked={!!selected}
-            onCheckedChange={() => onToggleSelect && onToggleSelect(torrent.id)}
-            onClick={(e) => e.stopPropagation()}
-            className={compact ? 'h-3.5 w-3.5' : ''}
+        {selectionMode && (
+          <td className={`px-3 ${pyClass}`}>
+            <Checkbox
+              checked={!!selected}
+              onCheckedChange={() => onToggleSelect && onToggleSelect(torrent.id)}
+              onClick={(e) => e.stopPropagation()}
+              className={compact ? 'h-3.5 w-3.5' : ''}
+            />
+          </td>
+        )}
+        <td className={`px-4 ${pyClass}`}>
+          <div className="flex items-center gap-2">
+            <StatusBadge
+              status={torrent.status}
+              size={compact ? "sm" : "md"}
+            />
+            <span
+              className="text-sm font-medium truncate"
+              title={isTextTruncated(torrent.name) ? `${torrent.name} (truncado)` : torrent.name}
+            >
+              {truncateText(torrent.name)}
+            </span>
+          </div>
+        </td>
+        <td className={`px-4 ${pyClass} text-xs text-muted-foreground`}>
+          {formatBytes(torrent.totalSizeBytes)}
+        </td>
+        <td className={cellClass}>
+          <div className="flex items-center gap-2">
+            <div className={`w-16 bg-secondary rounded-full ${compact ? 'h-1' : 'h-1.5'}`}>
+              <div
+                className={`bg-primary ${compact ? 'h-1' : 'h-1.5'} rounded-full transition-all duration-300`}
+                style={{ width: `${torrent.progress}%` }}
+              ></div>
+            </div>
+            <span className="text-xs text-muted-foreground">{torrent.progress.toFixed(0)}%</span>
+          </div>
+        </td>
+        <td className={cellClass}>
+          <SpeedCell rate={torrent.downloadRateBps} total={torrent.downloadedBytes} />
+        </td>
+        <td className={cellClass}>
+          <SpeedCell rate={torrent.uploadRateBps} total={torrent.uploadedBytes} isUpload />
+        </td>
+        <td className={cellClass}>
+          <RatioBadge ratio={torrent.ratio} showIcon={false} />
+        </td>
+        <td className={`px-2 ${pyClass} ${textSizeClass} w-20`}>
+          <SeedersAndPeersBadge
+            seeders={torrent.numSeeds}
+            leechers={torrent.numLeechs}
           />
         </td>
-      )}
-      <td className={`px-4 ${compact ? 'py-1' : 'py-3'}`}>
-        <div className="flex items-center gap-2">
-          <StatusBadge 
-            status={torrent.status} 
-            size={compact ? "sm" : "md"}
-          />
-          <span 
-            className="text-sm font-medium truncate" 
-            title={isTextTruncated(torrent.name) ? `${torrent.name} (truncado)` : torrent.name}
-          >
-            {truncateText(torrent.name)}
-          </span>
-        </div>
-      </td>
-      <td className={`px-4 ${compact ? 'py-1' : 'py-3'} text-xs text-muted-foreground`}>
-        {formatBytes(torrent.totalSizeBytes)}
-      </td>
-      <td className={`px-4 ${compact ? 'py-1' : 'py-3'} ${compact ? 'text-xs' : 'text-sm'}`}>
-        <div className="flex items-center gap-2">
-          <div className={`w-16 bg-secondary rounded-full ${compact ? 'h-1' : 'h-1.5'}`}>
-            <div 
-              className={`bg-primary ${compact ? 'h-1' : 'h-1.5'} rounded-full transition-all duration-300`} 
-              style={{ width: `${torrent.progress}%` }}
-            ></div>
-          </div>
-          <span className="text-xs text-muted-foreground">{torrent.progress.toFixed(0)}%</span>
-        </div>
-      </td>
-      <td className={`px-4 ${compact ? 'py-1' : 'py-3'} ${compact ? 'text-xs' : 'text-sm'}`}>
-        <div className="flex items-center gap-1.5 whitespace-nowrap flex-nowrap">
-          {torrent.downloadRateBps > 0 && (
-            <ArrowDown className={`${compact ? 'h-3 w-3' : 'h-3.5 w-3.5'} text-green-600 dark:text-green-400 flex-shrink-0`} />
+        <td className={cellClass}>
+          {torrent.agentName ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center justify-center">
+                  <AgentIcon
+                    iconName={torrent.agentIcon}
+                    color={torrent.agentColor}
+                    size={compact ? "sm" : "md"}
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{torrent.agentName}</p>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <span className={`${compact ? 'text-xs' : ''} text-muted-foreground`}>—</span>
           )}
-          <span className={`${compact ? 'text-xs' : ''} ${torrent.downloadRateBps > 0 ? 'text-green-600 dark:text-green-400' : ''}`}>
-            {formatBytesPerSecond(torrent.downloadRateBps)}
-          </span>
-          <span className="text-xs text-muted-foreground">•</span>
-          <span className="text-xs text-muted-foreground">
-            {formatBytes(torrent.downloadedBytes)}
-          </span>
-        </div>
-      </td>
-      <td className={`px-4 ${compact ? 'py-1' : 'py-3'} ${compact ? 'text-xs' : 'text-sm'}`}>
-        <div className="flex items-center gap-1.5 whitespace-nowrap flex-nowrap">
-          {torrent.uploadRateBps > 0 && (
-            <ArrowUp className={`${compact ? 'h-3 w-3' : 'h-3.5 w-3.5'} text-purple-600 dark:text-purple-400 flex-shrink-0`} />
-          )}
-          <span className={`${compact ? 'text-xs' : ''} ${torrent.uploadRateBps > 0 ? 'text-purple-600 dark:text-purple-400' : ''}`}>
-            {formatBytesPerSecond(torrent.uploadRateBps)}
-          </span>
-          <span className="text-xs text-muted-foreground">•</span>
-          <span className="text-xs text-muted-foreground">
-            {formatBytes(torrent.uploadedBytes)}
-          </span>
-        </div>
-      </td>
-      <td className={`px-4 ${compact ? 'py-1' : 'py-3'} ${compact ? 'text-xs' : 'text-sm'}`}>
-        <RatioBadge ratio={torrent.ratio} showIcon={false} />
-      </td>
-      <td className={`px-2 ${compact ? 'py-1' : 'py-3'} ${compact ? 'text-xs' : 'text-sm'} w-20`}>
-        <SeedersAndPeersBadge 
-          seeders={torrent.numSeeds} 
-          leechers={torrent.numLeechs} 
-        />
-      </td>
-      <td className={`px-4 ${compact ? 'py-1' : 'py-3'} ${compact ? 'text-xs' : 'text-sm'}`}>
-        {torrent.agentName ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="flex items-center justify-center">
-                <AgentIcon 
-                  iconName={torrent.agentIcon}
-                  color={torrent.agentColor}
-                  size={compact ? "sm" : "md"}
-                />
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{torrent.agentName}</p>
-            </TooltipContent>
-          </Tooltip>
-        ) : (
-          <span className={`${compact ? 'text-xs' : ''} text-muted-foreground`}>—</span>
-        )}
-      </td>
+        </td>
       </tr>
     </TorrentContextMenu>
   );
 }
 
-function SortButton({ 
-  sortType: currentSortType, 
+function SortButton({
+  sortType: currentSortType,
   currentSortType: activeSortType,
   currentSortDirection,
-  onSort, 
-  children 
-}: { 
-  sortType: SortType; 
+  onSort,
+  children
+}: {
+  sortType: SortType;
   currentSortType: SortType;
   currentSortDirection: "asc" | "desc";
-  onSort: (type: SortType) => void; 
-  children: React.ReactNode; 
+  onSort: (type: SortType) => void;
+  children: React.ReactNode;
 }) {
   return (
     <Button
       variant="ghost"
       size="sm"
       onClick={() => onSort(currentSortType)}
-      className={`h-6 w-6 p-0 hover:bg-muted ${
-        activeSortType === currentSortType 
-          ? "bg-muted text-foreground" 
+      className={`h-6 w-6 p-0 hover:bg-muted ${activeSortType === currentSortType
+          ? "bg-muted text-foreground"
           : "text-muted-foreground"
-      }`}
+        }`}
       title={`Ordenar por ${children}`}
     >
       {activeSortType === currentSortType ? (
@@ -253,6 +253,38 @@ function SortButton({
         <SortAsc className="h-3 w-3 opacity-50" />
       )}
     </Button>
+  );
+}
+
+function SortableColumnHeader({
+  sortType,
+  currentSortType,
+  currentSortDirection,
+  onSortChange,
+  label,
+  compact
+}: {
+  sortType: SortType;
+  currentSortType: SortType;
+  currentSortDirection: "asc" | "desc";
+  onSortChange: (type: SortType) => void;
+  label: string;
+  compact?: boolean;
+}) {
+  return (
+    <th className={`px-4 ${compact ? 'py-1' : 'py-3'} text-left text-sm font-medium text-muted-foreground`}>
+      <div className="flex items-center gap-1">
+        <span>{label}</span>
+        <SortButton
+          sortType={sortType}
+          currentSortType={currentSortType}
+          currentSortDirection={currentSortDirection}
+          onSort={onSortChange}
+        >
+          {label}
+        </SortButton>
+      </div>
+    </th>
   );
 }
 
@@ -296,71 +328,46 @@ export default function TorrentsTable({
                     {/* empty header for checkbox column */}
                   </th>
                 )}
-                <th className={`px-4 ${compact ? 'py-1' : 'py-3'} text-left text-sm font-medium text-muted-foreground`}>
-                  <div className="flex items-center gap-1">
-                    <span>{t('torrents.name')}</span>
-                    <SortButton
-                      sortType="priority"
-                      currentSortType={sortType}
-                      currentSortDirection={sortDirection}
-                      onSort={onSortChange}
-                    >
-                      {t('torrents.sortBy.priority')}
-                    </SortButton>
-                  </div>
-                </th>
-                <th className={`px-4 ${compact ? 'py-1' : 'py-3'} text-left text-sm font-medium text-muted-foreground`}>
-                  <div className="flex items-center gap-1">
-                    <span>{t('torrents.size')}</span>
-                    <SortButton
-                      sortType="size"
-                      currentSortType={sortType}
-                      currentSortDirection={sortDirection}
-                      onSort={onSortChange}
-                    >
-                      {t('torrents.sortBy.size')}
-                    </SortButton>
-                  </div>
-                </th>
-                <th className={`px-4 ${compact ? 'py-1' : 'py-3'} text-left text-sm font-medium text-muted-foreground`}>
-                  <div className="flex items-center gap-1">
-                    <span>{t('torrents.progress')}</span>
-                    <SortButton
-                      sortType="progress"
-                      currentSortType={sortType}
-                      currentSortDirection={sortDirection}
-                      onSort={onSortChange}
-                    >
-                      {t('torrents.sortBy.progress')}
-                    </SortButton>
-                  </div>
-                </th>
-                <th className={`px-4 ${compact ? 'py-1' : 'py-3'} text-left text-sm font-medium text-muted-foreground`}>
-                  <div className="flex items-center gap-1">
-                    <span>{t('torrents.download')}</span>
-                    <SortButton
-                      sortType="download_speed"
-                      currentSortType={sortType}
-                      currentSortDirection={sortDirection}
-                      onSort={onSortChange}
-                    >
-                      {t('torrents.sortBy.downloadSpeed')}
-                    </SortButton>
-                  </div>
-                </th>
-                <th className={`px-4 ${compact ? 'py-1' : 'py-3'} text-left text-sm font-medium text-muted-foreground`}>
-                  <div className="flex items-center gap-1">
-                    <span>{t('torrents.upload')}</span>
-                    <SortButton
-                      sortType="upload_speed"
-                      currentSortType={sortType}
-                      currentSortDirection={sortDirection}
-                      onSort={onSortChange}
-                    >
-                      {t('torrents.sortBy.uploadSpeed')}
-                    </SortButton>
-                  </div>
-                </th>
+                <SortableColumnHeader
+                  sortType="priority"
+                  currentSortType={sortType}
+                  currentSortDirection={sortDirection}
+                  onSortChange={onSortChange}
+                  label={t('torrents.name')}
+                  compact={compact}
+                />
+                <SortableColumnHeader
+                  sortType="size"
+                  currentSortType={sortType}
+                  currentSortDirection={sortDirection}
+                  onSortChange={onSortChange}
+                  label={t('torrents.size')}
+                  compact={compact}
+                />
+                <SortableColumnHeader
+                  sortType="progress"
+                  currentSortType={sortType}
+                  currentSortDirection={sortDirection}
+                  onSortChange={onSortChange}
+                  label={t('torrents.progress')}
+                  compact={compact}
+                />
+                <SortableColumnHeader
+                  sortType="download_speed"
+                  currentSortType={sortType}
+                  currentSortDirection={sortDirection}
+                  onSortChange={onSortChange}
+                  label={t('torrents.download')}
+                  compact={compact}
+                />
+                <SortableColumnHeader
+                  sortType="upload_speed"
+                  currentSortType={sortType}
+                  currentSortDirection={sortDirection}
+                  onSortChange={onSortChange}
+                  label={t('torrents.upload')}
+                  compact={compact}
+                />
                 <th className={`px-4 ${compact ? 'py-1' : 'py-3'} text-left text-sm font-medium text-muted-foreground`}>
                   {t('torrents.ratio')}
                 </th>
@@ -376,9 +383,9 @@ export default function TorrentsTable({
             </thead>
             <tbody>
               {torrents.map((t) => (
-                <TorrentRow 
-                  key={t.id} 
-                  torrent={t} 
+                <TorrentRow
+                  key={t.id}
+                  torrent={t}
                   onShowDetails={onShowDetails}
                   onStart={onStart}
                   onStop={onStop}
@@ -401,7 +408,7 @@ export default function TorrentsTable({
           </table>
         </div>
       </div>
-      
+
       {/* Controles de paginação para desktop */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-4 py-3 border-t">
