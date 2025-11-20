@@ -26,9 +26,14 @@ func NewService(db *database.Database, c *crypto.CryptoService, baseURL string) 
 		return nil, err
 	}
 
+	meta, err := metadata.NewService(db, baseURL)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Service{
 		repository:      repository,
-		metadataService: metadata.NewService(db, baseURL),
+		metadataService: meta,
 	}, nil
 }
 

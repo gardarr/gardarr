@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"mime/multipart"
 	"os"
 	"path/filepath"
@@ -32,18 +33,18 @@ type Service struct {
 }
 
 // NewService creates a new task metadata service
-func NewService(db *database.Database, baseURL string) *Service {
+func NewService(db *database.Database, baseURL string) (*Service, error) {
 	uploadDir := env.Get(constants.TorrentImageUploadDirEnv).Default("/media/uploads/images").Value()
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
 		// Log error but continue
-		fmt.Printf("Warning: failed to create upload directory: %v\n", err)
+		return nil, fmt.Errorf("failed to create upload directory: %w", err)
 	}
 
 	return &Service{
 		repo:      task_metadata_repo.NewRepository(db),
 		uploadDir: uploadDir,
 		baseURL:   baseURL,
-	}
+	}, nil
 }
 
 // GetByTaskHash retrieves metadata for a task
@@ -88,7 +89,7 @@ func (s *Service) UploadImage(ctx context.Context, taskHash string, file multipa
 
 	// Generate unique filename
 	ext := filepath.Ext(header.Filename)
-	filename := fmt.Sprintf("%s_%d%s", taskHash, time.Now().Unix(), ext)
+	filename := fmt.Sprintf("%s_%s%s", taskHash, time.Now().String(), ext)
 	filePath := filepath.Join(s.uploadDir, filename)
 
 	// Create file
@@ -114,7 +115,9 @@ func (s *Service) UploadImage(ctx context.Context, taskHash string, file multipa
 	if existing != nil {
 		// Delete old image if exists (validate path to prevent path traversal)
 		if existing.ImagePath != "" {
-			if err := s.validateImagePath(existing.ImagePath); err == nil {
+			if err := s.validateImagePath(existing.ImagePath); err != nil {
+				slog.Warn("skipping image deletion due to path validation failure", "error", err)
+			} else {
 				os.Remove(existing.ImagePath)
 			}
 		}

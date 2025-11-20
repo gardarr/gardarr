@@ -15,6 +15,7 @@ import (
 	"github.com/gardarr/gardarr/cmd/agent"
 	"github.com/gardarr/gardarr/internal/constants"
 	"github.com/gardarr/gardarr/internal/infra/database"
+	"github.com/gardarr/gardarr/internal/middlewares"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/agents"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/auth"
 	"github.com/gardarr/gardarr/internal/routes/api/v1/category"
@@ -33,7 +34,7 @@ import (
 	"github.com/gardarr/gardarr/internal/services/crypto"
 	settingsService "github.com/gardarr/gardarr/internal/services/settings"
 	"github.com/gardarr/gardarr/internal/services/statistics"
-	"github.com/gardarr/gardarr/internal/middlewares"
+	metadata "github.com/gardarr/gardarr/internal/services/task_metadata"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -56,12 +57,12 @@ func getBaseURL() string {
 	if appURL := env.Get(constants.AppURLEnv).Value(); appURL != "" {
 		return appURL
 	}
-	
+
 	// Fall back to BASE_URL for backward compatibility
 	if customURL := os.Getenv("BASE_URL"); customURL != "" {
 		return customURL
 	}
-	
+
 	// Default: construct from APP_PORT
 	port := env.Get(constants.AppPortEnv).Default("3000").Value()
 	return fmt.Sprintf("http://localhost:%s", port)
@@ -123,7 +124,12 @@ func Run(cmd *cobra.Command, args []string) error {
 	defer cancelStats()
 	statsSvc.Start(ctx)
 
-	setRoutes(db, agentSvc, statsSvc)
+	metaSvc, err := metadata.NewService(db, baseURL)
+	if err != nil {
+		return err
+	}
+
+	setRoutes(db, agentSvc, statsSvc, metaSvc)
 
 	// Initialize agent service if in standalone mode
 	if isStandalone {
@@ -264,15 +270,15 @@ func setRouter() {
 
 	// Get APP_URL from environment variable (default: http://localhost:3000)
 	appURL := env.Get(constants.AppURLEnv).Default("http://localhost:3000").Value()
-	
+
 	// CORS configuration
 	allowedOrigins := []string{appURL}
-	
+
 	// Also allow common development URLs if not explicitly set
 	if appURL == "http://localhost:3000" {
 		allowedOrigins = append(allowedOrigins, "http://localhost:5173")
 	}
-	
+
 	corsConfig := cors.Config{
 		AllowOrigins:     allowedOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -292,7 +298,7 @@ func setRouter() {
 	router.Use(securityHeadersMiddleware())
 }
 
-func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statistics.Service) {
+func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statistics.Service, metaSvc *metadata.Service) {
 	// Get current working directory
 	wd, _ := os.Getwd()
 	webPath := filepath.Join(wd, "web")
@@ -301,49 +307,46 @@ func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statist
 	// Serve static files from the web directory FIRST
 	router.Static("/assets", assetsPath)
 	router.StaticFile("/logo.ico", filepath.Join(webPath, "logo.ico"))
-	
+
 	// Serve uploaded media files with authentication required
 	mediaPath := filepath.Join(wd, "uploads", "task_images")
 	router.GET("/media/*filepath", middlewares.SessionMiddleware(db), func(c *gin.Context) {
 		// Get the requested file path
 		requestedFile := c.Param("filepath")
-		
+
 		// Security: prevent path traversal attacks
 		requestedFile = filepath.Clean(requestedFile)
 		if strings.Contains(requestedFile, "..") {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file path"})
 			return
 		}
-		
+
 		// Build full file path
 		fullPath := filepath.Join(mediaPath, requestedFile)
-		
+
 		// Check if file exists
 		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
 			return
 		}
-		
+
 		// Set CORS headers explicitly for cross-origin requests
 		origin := c.GetHeader("Origin")
 		if origin != "" {
 			c.Header("Access-Control-Allow-Origin", origin)
 			c.Header("Access-Control-Allow-Credentials", "true")
 		}
-		
+
 		// Set headers to prevent caching - force browser to always check authentication
 		c.Header("Cache-Control", "no-cache, no-store, must-revalidate, private")
 		c.Header("Pragma", "no-cache")
 		c.Header("Expires", "0")
-		
+
 		// Serve the file
 		c.File(fullPath)
 	})
 
 	// API routes
-
-	// Get base URL for building image URLs
-	baseURL := getBaseURL()
 
 	v1 := router.Group("/v1")
 	health.NewModule(v1, db).Register()
@@ -358,7 +361,7 @@ func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statist
 	version.NewModule(v1, db).Register()
 	events.NewModule(v1, db).Register()
 	statsroutes.NewModule(v1, db, statsSvc).Register()
-	task_metadata.NewModule(v1, db, baseURL).Register()
+	task_metadata.NewModule(v1, db, metaSvc).Register()
 
 	// Serve the main index.html for all non-API routes (SPA fallback)
 	router.NoRoute(func(c *gin.Context) {

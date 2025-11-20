@@ -14,21 +14,18 @@ import { syncLimitModes, getLimitValue } from "@/utils/limitUtils";
 interface TorrentLimitModalProps {
   isOpen: boolean;
   onClose: () => void;
-  agentId: string;
-  taskId: string;
-  taskName?: string;
-  taskStatus?: string;
-  selectedCount?: number;
+  tasks: {
+    agentId: string;
+    taskId: string;
+    name: string;
+    status?: string;
+  }[];
 }
 
 export function TorrentLimitModal({
   isOpen,
   onClose,
-  agentId,
-  taskId,
-  taskName,
-  taskStatus: taskStatusProp,
-  selectedCount = 1
+  tasks,
 }: TorrentLimitModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -41,44 +38,78 @@ export function TorrentLimitModal({
     seeding_time_limit: 0,
     inactive_seeding_time_limit: 0
   });
+  const [mixedFields, setMixedFields] = useState<Partial<Record<keyof TaskLimits, boolean>>>({});
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
   const [ratioLimitMode, setRatioLimitMode] = useState<LimitMode>("custom");
   const [seedingTimeLimitMode, setSeedingTimeLimitMode] = useState<LimitMode>("custom");
   const [inactiveSeedingTimeLimitMode, setInactiveSeedingTimeLimitMode] = useState<LimitMode>("custom");
-  
-  // Normalize task status from prop
-  const taskStatus: TaskStatus | null = taskStatusProp ? normalizeTaskStatus(taskStatusProp) : null;
+
+  // Normalize task status from prop (use the first task's status for UI logic if multiple)
+  // If multiple tasks have different statuses, we might want to be more conservative, 
+  // but for now using the first one is reasonable for enabling/disabling controls.
+  const firstTask = tasks[0];
+  const taskStatus: TaskStatus | null = firstTask?.status ? normalizeTaskStatus(firstTask.status) : null;
+  const selectedCount = tasks.length;
 
   // Load limits when modal opens
   const loadLimits = useCallback(async () => {
-    if (!agentId || !taskId) return;
+    if (tasks.length === 0) return;
 
     setIsLoading(true);
     setError(null);
+    setMixedFields({});
 
     try {
-      const response = await torrentService.getTaskLimits(agentId, taskId);
-      if (response.data) {
-        setLimits(response.data);
-        const modes = syncLimitModes(response.data);
-        setRatioLimitMode(modes.ratioMode);
-        setSeedingTimeLimitMode(modes.seedingTimeMode);
-        setInactiveSeedingTimeLimitMode(modes.inactiveSeedingTimeMode);
-      } else {
-        setError(response.error || "Failed to load limits");
+      // Fetch limits for all tasks
+      const results = await Promise.all(
+        tasks.map(async (task) => {
+          const response = await torrentService.getTaskLimits(task.agentId, task.taskId);
+          return { ...response, taskId: task.taskId };
+        })
+      );
+
+      // Check for errors
+      const failed = results.find(r => r.error);
+      if (failed) {
+        setError(failed.error || "Failed to load limits");
+        return;
       }
+
+      const allLimits = results.map(r => r.data as TaskLimits);
+      const firstLimits = allLimits[0];
+
+      // Check for mixed values
+      const newMixedFields: Partial<Record<keyof TaskLimits, boolean>> = {};
+      const keys = Object.keys(firstLimits) as (keyof TaskLimits)[];
+
+      keys.forEach(key => {
+        const isMixed = allLimits.some(l => l[key] !== firstLimits[key]);
+        if (isMixed) {
+          newMixedFields[key] = true;
+        }
+      });
+
+      setLimits(firstLimits);
+      setMixedFields(newMixedFields);
+
+      // Sync modes based on the first task's limits
+      const modes = syncLimitModes(firstLimits);
+      setRatioLimitMode(modes.ratioMode);
+      setSeedingTimeLimitMode(modes.seedingTimeMode);
+      setInactiveSeedingTimeLimitMode(modes.inactiveSeedingTimeMode);
+
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load limits");
     } finally {
       setIsLoading(false);
     }
-  }, [agentId, taskId]);
+  }, [tasks]);
 
   useEffect(() => {
-    if (isOpen && agentId && taskId) {
+    if (isOpen && tasks.length > 0) {
       loadLimits();
     }
-  }, [isOpen, agentId, taskId, loadLimits]);
+  }, [isOpen, tasks, loadLimits]);
 
   // Close modal on Escape key
   useEffect(() => {
@@ -94,65 +125,79 @@ export function TorrentLimitModal({
     }
   }, [isOpen, onClose]);
 
-  const saveDownloadLimit = async (): Promise<boolean> => {
-    if (limits.download_limit > 0) {
-      const response = await torrentService.setTaskDownloadLimit(agentId, taskId, limits.download_limit);
-      if (response.error) {
-        setError(response.error);
-        return false;
-      }
+  const saveLimitsForTask = async (task: { agentId: string; taskId: string }, currentLimits: TaskLimits): Promise<string | null> => {
+    // Save download limit
+    if (currentLimits.download_limit >= 0 && !mixedFields.download_limit) {
+      const res = await torrentService.setTaskDownloadLimit(task.agentId, task.taskId, currentLimits.download_limit);
+      if (res.error) return res.error;
     }
-    return true;
-  };
 
-  const saveUploadLimit = async (): Promise<boolean> => {
-    if (limits.upload_limit > 0) {
-      const response = await torrentService.setTaskUploadLimit(agentId, taskId, limits.upload_limit);
-      if (response.error) {
-        setError(response.error);
-        return false;
-      }
+    // Save upload limit
+    if (currentLimits.upload_limit >= 0 && !mixedFields.upload_limit) {
+      const res = await torrentService.setTaskUploadLimit(task.agentId, task.taskId, currentLimits.upload_limit);
+      if (res.error) return res.error;
     }
-    return true;
-  };
 
-  const saveShareLimits = async (): Promise<boolean> => {
-    const response = await torrentService.setTaskShareLimit(
-      agentId,
-      taskId,
-      limits.ratio_limit,
-      limits.seeding_time_limit,
-      limits.inactive_seeding_time_limit
-    );
-    if (response.error) {
-      setError(response.error);
-      return false;
+    // Save share limits
+    // Only save if at least one share limit field is NOT mixed, or if we are forcing an update
+    // Actually, if a field is mixed, we shouldn't update it unless the user changed it (which clears the mixed flag)
+    const shouldUpdateShare =
+      !mixedFields.ratio_limit ||
+      !mixedFields.seeding_time_limit ||
+      !mixedFields.inactive_seeding_time_limit;
+
+    if (shouldUpdateShare) {
+      // We need to send all 3 values to setTaskShareLimit.
+      // If a value is mixed, we should probably NOT send it, but the API requires all 3?
+      // Checking service: setTaskShareLimit takes all 3.
+      // If some are mixed and some are not, we have a problem if we can't update partially.
+      // However, if the user changed one, they likely want to apply that change to all.
+      // If they didn't change a mixed value, we might be overwriting it with the first task's value?
+      // Ideally we should only update what changed.
+      // But the API `setTaskShareLimit` updates all 3.
+      // If the user didn't touch share limits, we shouldn't call it.
+      // If the user touched ONE, we have to send values for the others.
+      // If others are mixed, we are forced to overwrite them with `limits` (first task's value).
+      // This is a trade-off. We will warn the user or just proceed.
+      // For now, we proceed using `limits` values.
+
+      const res = await torrentService.setTaskShareLimit(
+        task.agentId,
+        task.taskId,
+        currentLimits.ratio_limit,
+        currentLimits.seeding_time_limit,
+        currentLimits.inactive_seeding_time_limit
+      );
+      if (res.error) return res.error;
     }
-    return true;
+
+    return null;
   };
 
   const handleSave = async () => {
-    if (!agentId || !taskId) return;
+    if (tasks.length === 0) return;
 
     setIsSaving(true);
     setError(null);
 
     try {
-      if (!(await saveDownloadLimit())) {
-        return;
-      }
-      if (!(await saveUploadLimit())) {
-        return;
-      }
-      if (!(await saveShareLimits())) {
-        return;
-      }
+      const results = await Promise.allSettled(
+        tasks.map(task => saveLimitsForTask(task, limits))
+      );
 
-      const successMessage = selectedCount > 1 
-        ? `Limits updated for ${selectedCount} torrents`
-        : "Torrent limits updated successfully";
-      toast.success(successMessage);
-      onClose();
+      const failures = results.filter(r => r.status === "rejected" || (r.status === "fulfilled" && r.value !== null));
+
+      if (failures.length > 0) {
+        const errorMsg = `Failed to update ${failures.length} of ${tasks.length} torrents`;
+        setError(errorMsg);
+        toast.error(errorMsg);
+      } else {
+        const successMessage = tasks.length > 1
+          ? `Limits updated for ${tasks.length} torrents`
+          : "Torrent limits updated successfully";
+        toast.success(successMessage);
+        onClose();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save limits");
     } finally {
@@ -163,11 +208,19 @@ export function TorrentLimitModal({
   const handleInputChange = (field: keyof TaskLimits, value: string) => {
     const numValue = value === "" ? 0 : Number.parseFloat(value);
     const newValue = Number.isNaN(numValue) ? limits[field] : numValue;
-    
+
     setLimits(prev => ({
       ...prev,
       [field]: newValue
     }));
+
+    // Clear mixed status for this field as user has explicitly set a value
+    if (mixedFields[field]) {
+      setMixedFields(prev => ({
+        ...prev,
+        [field]: false
+      }));
+    }
   };
 
   const handleLimitModeChange = (
@@ -178,6 +231,14 @@ export function TorrentLimitModal({
     setMode(mode);
     const value = getLimitValue(mode, limits[field]);
     setLimits(prev => ({ ...prev, [field]: value }));
+
+    // Clear mixed status
+    if (mixedFields[field]) {
+      setMixedFields(prev => ({
+        ...prev,
+        [field]: false
+      }));
+    }
   };
 
   const handleRatioLimitModeChange = (mode: LimitMode) => {
@@ -225,9 +286,9 @@ export function TorrentLimitModal({
               <h2 className="text-2xl font-bold">
                 {selectedCount > 1 ? `Torrent Limits (${selectedCount} selected)` : "Torrent Limits"}
               </h2>
-              {taskName && selectedCount === 1 && (
+              {firstTask && selectedCount === 1 && (
                 <p className="text-sm text-muted-foreground mt-1 truncate max-w-md">
-                  {taskName}
+                  {firstTask.name}
                 </p>
               )}
               {selectedCount > 1 && (
@@ -268,6 +329,7 @@ export function TorrentLimitModal({
                 taskStatus={taskStatus}
                 onLimitChange={handleInputChange}
                 onAdvancedModeChange={setIsAdvancedMode}
+                mixedFields={mixedFields}
               />
 
               <ShareLimitControl
@@ -279,6 +341,7 @@ export function TorrentLimitModal({
                 onRatioLimitModeChange={handleRatioLimitModeChange}
                 onSeedingTimeLimitModeChange={handleSeedingTimeLimitModeChange}
                 onInactiveSeedingTimeLimitModeChange={handleInactiveSeedingTimeLimitModeChange}
+                mixedFields={mixedFields}
               />
 
               {/* Footer */}

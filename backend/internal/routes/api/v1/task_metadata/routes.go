@@ -20,11 +20,10 @@ type Module struct {
 }
 
 // NewModule creates a new task metadata module
-func NewModule(router *gin.RouterGroup, db *database.Database, baseURL string) *Module {
+func NewModule(router *gin.RouterGroup, db *database.Database, service *task_metadata_service.Service) *Module {
 	return &Module{
 		group:   router.Group("/tasks/metadata"),
-		service: task_metadata_service.NewService(db, baseURL),
-		db:      db,
+		service: service,
 	}
 }
 
