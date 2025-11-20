@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useDropdown } from "@/hooks/useDropdown";
 import { Button } from "@/components/ui/button";
 import { TagBadge } from "@/components/ui/TagBadge";
 import { ChevronDown, Check } from "lucide-react";
@@ -22,27 +22,7 @@ export function ListFilter({
   useTagBadge = false,
 }: ListFilterProps) {
   const { t } = useTranslation();
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setIsOpen(false);
-    }
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("keydown", handleKeyDown);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isOpen]);
+  const { isOpen, setIsOpen, ref: dropdownRef } = useDropdown();
 
   const allSelected = availableItems.length > 0 && selectedItems.size === availableItems.length;
   const noneSelected = selectedItems.size === 0;
@@ -85,7 +65,7 @@ export function ListFilter({
         <ChevronDown className={`h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
       </Button>
       {isOpen && (
-        <div 
+        <div
           className="absolute right-0 mt-1 w-64 max-h-[400px] overflow-y-auto rounded-md border bg-card text-card-foreground shadow-md z-[100] py-1"
           role="listbox"
           aria-label={`Filtrar por ${label}`}

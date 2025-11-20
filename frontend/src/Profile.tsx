@@ -182,7 +182,7 @@ export default function ProfilePage() {
     }
   };
 
-  const updatePreference = async (key: string, value: any) => {
+  const updatePreference = async (key: string, value: unknown) => {
     setIsLoadingPreferences(true);
     try {
       const payload = { [key]: value };
@@ -448,8 +448,8 @@ export default function ProfilePage() {
                     onClick={() => updatePreference("torrent_display_mode", "default")}
                     disabled={isLoadingPreferences}
                     className={`relative p-4 rounded-lg border-2 transition-all hover:border-primary/50 ${displayMode === "default"
-                        ? "border-primary bg-primary/5"
-                        : "border-border"
+                      ? "border-primary bg-primary/5"
+                      : "border-border"
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
                     <div className="space-y-2">
@@ -474,8 +474,8 @@ export default function ProfilePage() {
                     onClick={() => updatePreference("torrent_display_mode", "card")}
                     disabled={isLoadingPreferences}
                     className={`relative p-4 rounded-lg border-2 transition-all hover:border-primary/50 ${displayMode === "card"
-                        ? "border-primary bg-primary/5"
-                        : "border-border"
+                      ? "border-primary bg-primary/5"
+                      : "border-border"
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
                     <div className="space-y-2">
