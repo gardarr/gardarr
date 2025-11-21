@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	"github.com/gardarr/gardarr/cmd/agent"
-	"github.com/gardarr/gardarr/cmd/generate"
-	"github.com/gardarr/gardarr/cmd/service"
+	"github.com/jfxdev/gardarr/cmd/agent"
+	"github.com/jfxdev/gardarr/cmd/generate"
+	"github.com/jfxdev/gardarr/cmd/service"
 	"github.com/spf13/cobra"
 )
 

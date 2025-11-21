@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/gardarr/gardarr/internal/entities"
-	"github.com/gardarr/gardarr/internal/schemas"
+	"github.com/jfxdev/gardarr/internal/entities"
+	"github.com/jfxdev/gardarr/internal/schemas"
 )
 
 // mockInstanceRepository is a mock implementation of the instance repository for testing

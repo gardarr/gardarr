@@ -3,13 +3,13 @@ package agents
 import (
 	"net/http"
 
-	"github.com/gardarr/gardarr/internal/mappers"
-	"github.com/gardarr/gardarr/internal/models"
-	"github.com/gardarr/gardarr/internal/schemas"
-	"github.com/gardarr/gardarr/internal/services/agentmanager"
-	"github.com/gardarr/gardarr/pkg/errors"
-	"github.com/gardarr/gardarr/pkg/version"
 	"github.com/gin-gonic/gin"
+	"github.com/jfxdev/gardarr/internal/mappers"
+	"github.com/jfxdev/gardarr/internal/models"
+	"github.com/jfxdev/gardarr/internal/schemas"
+	"github.com/jfxdev/gardarr/internal/services/agentmanager"
+	"github.com/jfxdev/gardarr/pkg/errors"
+	"github.com/jfxdev/gardarr/pkg/version"
 )
 
 // Module holds agent routes configuration

@@ -3,7 +3,7 @@ package agent
 import (
 	"context"
 
-	"github.com/gardarr/gardarr/internal/entities"
+	"github.com/jfxdev/gardarr/internal/entities"
 )
 
 // RepositoryInterface defines the interface for instance repository operations

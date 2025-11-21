@@ -3,10 +3,10 @@ package agent
 import (
 	"context"
 
-	"github.com/gardarr/gardarr/internal/entities"
-	"github.com/gardarr/gardarr/internal/interfaces"
-	repository "github.com/gardarr/gardarr/internal/repository/instance/agent"
-	"github.com/gardarr/gardarr/internal/schemas"
+	"github.com/jfxdev/gardarr/internal/entities"
+	"github.com/jfxdev/gardarr/internal/interfaces"
+	repository "github.com/jfxdev/gardarr/internal/repository/instance/agent"
+	"github.com/jfxdev/gardarr/internal/schemas"
 )
 
 func New() (interfaces.InstanceService, error) {

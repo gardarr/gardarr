@@ -5,10 +5,10 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/license/gardarr/gardarr" alt="License" />
-  <img src="https://img.shields.io/github/v/release/gardarr/gardarr" alt="Release" />
-  <img src="https://img.shields.io/github/actions/workflow/status/gardarr/gardarr/.github%2Fworkflows%2Fbuild.yml" alt="GitHub Actions" />
-  <img src="https://img.shields.io/coderabbit/prs/github/gardarr/gardarr?utm_source=oss&utm_medium=github&utm_campaign=gardarr%2Fgardarr&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews" alt="CodeRabbit Reviews" />
+  <img src="https://img.shields.io/github/license/jfxdev/gardarr" alt="License" />
+  <img src="https://img.shields.io/github/v/release/jfxdev/gardarr" alt="Release" />
+  <img src="https://img.shields.io/github/actions/workflow/status/jfxdev/gardarr/.github%2Fworkflows%2Fbuild.yml" alt="GitHub Actions" />
+  <img src="https://img.shields.io/coderabbit/prs/github/jfxdev/gardarr?utm_source=oss&utm_medium=github&utm_campaign=gardarr%2Fgardarr&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews" alt="CodeRabbit Reviews" />
   <br />
   <a href="https://sonarcloud.io/summary/new_code?id=gardarr_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=gardarr_gardarr&metric=alert_status" alt="Quality Gate Status" /></a>
   <a href="https://sonarcloud.io/summary/new_code?id=gardarr_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=gardarr_gardarr&metric=vulnerabilities" alt="Vulnerabilities" /></a>
@@ -116,7 +116,7 @@ docker-compose up -d
 
 ```bash
 # Clone the repository
-git clone https://github.com/gardarr/gardarr.git
+git clone https://github.com/jfxdev/gardarr.git
 cd gardarr
 
 # Build and run with Docker Compose

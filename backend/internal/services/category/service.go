@@ -3,9 +3,9 @@ package category
 import (
 	"context"
 
-	"github.com/gardarr/gardarr/internal/entities"
-	"github.com/gardarr/gardarr/internal/infra/database"
-	"github.com/gardarr/gardarr/internal/repository/category"
+	"github.com/jfxdev/gardarr/internal/entities"
+	"github.com/jfxdev/gardarr/internal/infra/database"
+	"github.com/jfxdev/gardarr/internal/repository/category"
 )
 
 type Service struct {

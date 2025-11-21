@@ -4,12 +4,12 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/gardarr/gardarr/internal/infra/database"
-	"github.com/gardarr/gardarr/internal/middlewares"
-	"github.com/gardarr/gardarr/internal/models"
-	"github.com/gardarr/gardarr/internal/schemas"
-	settingsService "github.com/gardarr/gardarr/internal/services/settings"
 	"github.com/gin-gonic/gin"
+	"github.com/jfxdev/gardarr/internal/infra/database"
+	"github.com/jfxdev/gardarr/internal/middlewares"
+	"github.com/jfxdev/gardarr/internal/models"
+	"github.com/jfxdev/gardarr/internal/schemas"
+	settingsService "github.com/jfxdev/gardarr/internal/services/settings"
 )
 
 // Module holds settings routes configuration

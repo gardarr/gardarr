@@ -1,6 +1,6 @@
 services:
   gardarr:
-    image: ghcr.io/gardarr/gardarr:latest
+    image: ghcr.io/jfxdev/gardarr:latest
     container_name: gardarr
     ports:
       - "${APP_PORT:-3000}:3000"

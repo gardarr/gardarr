@@ -133,7 +133,7 @@ export default function AboutPage() {
             asChild
           >
             <a 
-              href="https://github.com/gardarr/gardarr" 
+              href="https://github.com/jfxdev/gardarr" 
               target="_blank" 
               rel="noopener noreferrer"
               className="flex items-center gap-2"
@@ -150,7 +150,7 @@ export default function AboutPage() {
             asChild
           >
             <a 
-              href="https://github.com/gardarr/gardarr/blob/main/DEVELOPMENT.md" 
+              href="https://github.com/jfxdev/gardarr/blob/main/DEVELOPMENT.md" 
               target="_blank" 
               rel="noopener noreferrer"
               className="flex items-center gap-2"

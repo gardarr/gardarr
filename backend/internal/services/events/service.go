@@ -6,12 +6,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gardarr/gardarr/internal/constants"
-	"github.com/gardarr/gardarr/internal/entities"
-	"github.com/gardarr/gardarr/internal/infra/database"
-	"github.com/gardarr/gardarr/internal/repository/event"
-	"github.com/gardarr/gardarr/pkg/env"
 	"github.com/google/uuid"
+	"github.com/jfxdev/gardarr/internal/constants"
+	"github.com/jfxdev/gardarr/internal/entities"
+	"github.com/jfxdev/gardarr/internal/infra/database"
+	"github.com/jfxdev/gardarr/internal/repository/event"
+	"github.com/jfxdev/gardarr/pkg/env"
 )
 
 // Service handles event tracking and state change detection

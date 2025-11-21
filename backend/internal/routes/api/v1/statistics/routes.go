@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gardarr/gardarr/internal/infra/database"
-	"github.com/gardarr/gardarr/internal/middlewares"
-	"github.com/gardarr/gardarr/internal/models"
-	stats "github.com/gardarr/gardarr/internal/services/statistics"
 	"github.com/gin-gonic/gin"
+	"github.com/jfxdev/gardarr/internal/infra/database"
+	"github.com/jfxdev/gardarr/internal/middlewares"
+	"github.com/jfxdev/gardarr/internal/models"
+	stats "github.com/jfxdev/gardarr/internal/services/statistics"
 )
 
 // splitAndTrim splits a string by separator and trims whitespace from each part

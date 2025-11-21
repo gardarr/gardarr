@@ -8,7 +8,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/gardarr/gardarr/pkg/env"
+	"github.com/jfxdev/gardarr/pkg/env"
 )
 
 // CryptoService handles encryption and decryption of sensitive data

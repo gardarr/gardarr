@@ -1,8 +1,8 @@
 package mappers
 
 import (
-	"github.com/gardarr/gardarr/internal/entities"
-	"github.com/gardarr/gardarr/internal/models"
+	"github.com/jfxdev/gardarr/internal/entities"
+	"github.com/jfxdev/gardarr/internal/models"
 )
 
 func ToTask(e models.TaskResponseModel) *entities.Task {

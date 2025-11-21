@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gardarr/gardarr/internal/constants"
-	"github.com/gardarr/gardarr/pkg/env"
 	"github.com/gin-gonic/gin"
+	"github.com/jfxdev/gardarr/internal/constants"
+	"github.com/jfxdev/gardarr/pkg/env"
 )
 
 // RequireBearerToken validates the Authorization Bearer token against the value of the provided envKey.

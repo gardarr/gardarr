@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gardarr/gardarr/internal/infra/database"
-	"github.com/gardarr/gardarr/internal/models"
+	"github.com/jfxdev/gardarr/internal/infra/database"
+	"github.com/jfxdev/gardarr/internal/models"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )

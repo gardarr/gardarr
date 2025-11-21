@@ -1,4 +1,4 @@
-module github.com/gardarr/gardarr
+module github.com/jfxdev/gardarr
 
 go 1.25.3
 

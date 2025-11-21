@@ -8,11 +8,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/gardarr/gardarr/internal/infra/database"
-	"github.com/gardarr/gardarr/internal/mappers"
-	"github.com/gardarr/gardarr/internal/middlewares"
-	task_metadata_service "github.com/gardarr/gardarr/internal/services/task_metadata"
 	"github.com/gin-gonic/gin"
+	"github.com/jfxdev/gardarr/internal/infra/database"
+	"github.com/jfxdev/gardarr/internal/mappers"
+	"github.com/jfxdev/gardarr/internal/middlewares"
+	task_metadata_service "github.com/jfxdev/gardarr/internal/services/task_metadata"
 )
 
 const (

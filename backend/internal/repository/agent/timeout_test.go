@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gardarr/gardarr/internal/constants"
-	"github.com/gardarr/gardarr/internal/infra/database"
-	"github.com/gardarr/gardarr/internal/services/crypto"
+	"github.com/jfxdev/gardarr/internal/constants"
+	"github.com/jfxdev/gardarr/internal/infra/database"
+	"github.com/jfxdev/gardarr/internal/services/crypto"
 )
 
 func TestRepositoryTimeout(t *testing.T) {

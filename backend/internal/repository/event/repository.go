@@ -7,10 +7,10 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/gardarr/gardarr/internal/entities"
-	"github.com/gardarr/gardarr/internal/infra/database"
-	"github.com/gardarr/gardarr/internal/models"
 	"github.com/google/uuid"
+	"github.com/jfxdev/gardarr/internal/entities"
+	"github.com/jfxdev/gardarr/internal/infra/database"
+	"github.com/jfxdev/gardarr/internal/models"
 )
 
 type Repository struct {

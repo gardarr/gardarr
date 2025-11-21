@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gardarr/gardarr/internal/entities"
-	"github.com/gardarr/gardarr/internal/infra/database"
-	"github.com/gardarr/gardarr/internal/repository/password_reset"
-	"github.com/gardarr/gardarr/internal/repository/signup_token"
-	"github.com/gardarr/gardarr/internal/services/user"
+	"github.com/jfxdev/gardarr/internal/entities"
+	"github.com/jfxdev/gardarr/internal/infra/database"
+	"github.com/jfxdev/gardarr/internal/repository/password_reset"
+	"github.com/jfxdev/gardarr/internal/repository/signup_token"
+	"github.com/jfxdev/gardarr/internal/services/user"
 )
 
 const (

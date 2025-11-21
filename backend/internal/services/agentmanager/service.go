@@ -6,13 +6,13 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/gardarr/gardarr/internal/entities"
-	"github.com/gardarr/gardarr/internal/infra/database"
-	repository "github.com/gardarr/gardarr/internal/repository/agent"
-	"github.com/gardarr/gardarr/internal/schemas"
-	"github.com/gardarr/gardarr/internal/services/crypto"
-	metadata "github.com/gardarr/gardarr/internal/services/task_metadata"
 	"github.com/google/uuid"
+	"github.com/jfxdev/gardarr/internal/entities"
+	"github.com/jfxdev/gardarr/internal/infra/database"
+	repository "github.com/jfxdev/gardarr/internal/repository/agent"
+	"github.com/jfxdev/gardarr/internal/schemas"
+	"github.com/jfxdev/gardarr/internal/services/crypto"
+	metadata "github.com/jfxdev/gardarr/internal/services/task_metadata"
 )
 
 type Service struct {

@@ -8,9 +8,9 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/gardarr/gardarr/internal/infra/database"
-	"github.com/gardarr/gardarr/internal/models"
 	"github.com/gin-gonic/gin"
+	"github.com/jfxdev/gardarr/internal/infra/database"
+	"github.com/jfxdev/gardarr/internal/models"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )

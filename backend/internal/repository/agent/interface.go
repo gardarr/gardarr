@@ -3,9 +3,9 @@ package agent
 import (
 	"context"
 
-	"github.com/gardarr/gardarr/internal/entities"
-	"github.com/gardarr/gardarr/internal/schemas"
 	"github.com/google/uuid"
+	"github.com/jfxdev/gardarr/internal/entities"
+	"github.com/jfxdev/gardarr/internal/schemas"
 )
 
 // RepositoryInterface defines the interface for agent repository operations

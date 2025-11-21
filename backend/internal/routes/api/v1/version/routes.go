@@ -3,11 +3,11 @@ package version
 import (
 	"net/http"
 
-	"github.com/gardarr/gardarr/internal/infra/database"
-	"github.com/gardarr/gardarr/internal/middlewares"
-	"github.com/gardarr/gardarr/pkg/env"
-	"github.com/gardarr/gardarr/pkg/version"
 	"github.com/gin-gonic/gin"
+	"github.com/jfxdev/gardarr/internal/infra/database"
+	"github.com/jfxdev/gardarr/internal/middlewares"
+	"github.com/jfxdev/gardarr/pkg/env"
+	"github.com/jfxdev/gardarr/pkg/version"
 )
 
 // Module holds users routes configuration

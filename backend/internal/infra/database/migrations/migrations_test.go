@@ -3,8 +3,8 @@ package migrations
 import (
 	"testing"
 
-	"github.com/gardarr/gardarr/internal/infra/migration"
-	"github.com/gardarr/gardarr/internal/models"
+	"github.com/jfxdev/gardarr/internal/infra/migration"
+	"github.com/jfxdev/gardarr/internal/models"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )

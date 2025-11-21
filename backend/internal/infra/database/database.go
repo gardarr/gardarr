@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gardarr/gardarr/pkg/env"
+	"github.com/jfxdev/gardarr/pkg/env"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"

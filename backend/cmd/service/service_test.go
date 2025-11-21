@@ -4,8 +4,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/gardarr/gardarr/internal/constants"
-	"github.com/gardarr/gardarr/pkg/env"
+	"github.com/jfxdev/gardarr/internal/constants"
+	"github.com/jfxdev/gardarr/pkg/env"
 	"github.com/stretchr/testify/assert"
 )
 

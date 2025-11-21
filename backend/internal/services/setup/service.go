@@ -3,8 +3,8 @@ package setup
 import (
 	"context"
 
-	"github.com/gardarr/gardarr/internal/entities"
-	"github.com/gardarr/gardarr/internal/services/user"
+	"github.com/jfxdev/gardarr/internal/entities"
+	"github.com/jfxdev/gardarr/internal/services/user"
 )
 
 type Service struct {

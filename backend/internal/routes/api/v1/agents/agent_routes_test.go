@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gardarr/gardarr/internal/schemas"
 	"github.com/gin-gonic/gin"
+	"github.com/jfxdev/gardarr/internal/schemas"
 	"github.com/stretchr/testify/assert"
 )
 

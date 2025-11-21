@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gardarr/gardarr/internal/entities"
-	"github.com/gardarr/gardarr/internal/infra/database"
-	"github.com/gardarr/gardarr/internal/models"
-	task_metadata_repo "github.com/gardarr/gardarr/internal/repository/task_metadata"
 	"github.com/google/uuid"
+	"github.com/jfxdev/gardarr/internal/entities"
+	"github.com/jfxdev/gardarr/internal/infra/database"
+	"github.com/jfxdev/gardarr/internal/models"
+	task_metadata_repo "github.com/jfxdev/gardarr/internal/repository/task_metadata"
 )
 
 const (

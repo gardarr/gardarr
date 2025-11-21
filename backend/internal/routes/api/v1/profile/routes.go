@@ -4,14 +4,14 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/gardarr/gardarr/internal/entities"
-	"github.com/gardarr/gardarr/internal/infra/database"
-	"github.com/gardarr/gardarr/internal/middlewares"
-	"github.com/gardarr/gardarr/internal/models"
-	"github.com/gardarr/gardarr/internal/schemas"
-	"github.com/gardarr/gardarr/internal/services/user"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jfxdev/gardarr/internal/entities"
+	"github.com/jfxdev/gardarr/internal/infra/database"
+	"github.com/jfxdev/gardarr/internal/middlewares"
+	"github.com/jfxdev/gardarr/internal/models"
+	"github.com/jfxdev/gardarr/internal/schemas"
+	"github.com/jfxdev/gardarr/internal/services/user"
 	"gorm.io/gorm"
 )
 
@@ -109,8 +109,8 @@ func (m *Module) getPreferences(c *gin.Context) {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Return default if preferences don't exist yet
 			c.JSON(http.StatusOK, models.PreferencesResponse{
-				TorrentDisplayMode:          "default",
-				Compact:                     false,
+				TorrentDisplayMode:           "default",
+				Compact:                      false,
 				BackgroundImageBlurIntensity: 50,
 			})
 			return
@@ -122,8 +122,8 @@ func (m *Module) getPreferences(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, models.PreferencesResponse{
-		TorrentDisplayMode:          preferences.TorrentDisplayMode,
-		Compact:                     preferences.Compact,
+		TorrentDisplayMode:           preferences.TorrentDisplayMode,
+		Compact:                      preferences.Compact,
 		BackgroundImageBlurIntensity: preferences.BackgroundImageBlurIntensity,
 	})
 }
@@ -193,10 +193,10 @@ func (m *Module) updatePreferences(c *gin.Context) {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Create new preferences with defaults
 			preferences = models.UserPreferences{
-				UUID:                        uuid.New(),
-				UserUUID:                    currentUser.UUID,
-				TorrentDisplayMode:          "default",
-				Compact:                     false,
+				UUID:                         uuid.New(),
+				UserUUID:                     currentUser.UUID,
+				TorrentDisplayMode:           "default",
+				Compact:                      false,
 				BackgroundImageBlurIntensity: 50,
 			}
 			// Apply updates from request
@@ -241,8 +241,8 @@ func (m *Module) updatePreferences(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, models.PreferencesResponse{
-		TorrentDisplayMode:          preferences.TorrentDisplayMode,
-		Compact:                     preferences.Compact,
+		TorrentDisplayMode:           preferences.TorrentDisplayMode,
+		Compact:                      preferences.Compact,
 		BackgroundImageBlurIntensity: preferences.BackgroundImageBlurIntensity,
 	})
 }

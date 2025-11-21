@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gardarr/gardarr/internal/infra/database"
+	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

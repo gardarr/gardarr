@@ -3,11 +3,11 @@ package instance
 import (
 	"net/http"
 
-	"github.com/gardarr/gardarr/internal/interfaces"
-	"github.com/gardarr/gardarr/internal/mappers"
-	"github.com/gardarr/gardarr/internal/middlewares"
-	"github.com/gardarr/gardarr/internal/schemas"
 	"github.com/gin-gonic/gin"
+	"github.com/jfxdev/gardarr/internal/interfaces"
+	"github.com/jfxdev/gardarr/internal/mappers"
+	"github.com/jfxdev/gardarr/internal/middlewares"
+	"github.com/jfxdev/gardarr/internal/schemas"
 )
 
 type Module struct {

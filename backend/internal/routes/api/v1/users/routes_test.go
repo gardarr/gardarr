@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gardarr/gardarr/internal/infra/database"
-	"github.com/gardarr/gardarr/internal/models"
-	"github.com/gardarr/gardarr/internal/services/user"
 	"github.com/gin-gonic/gin"
+	"github.com/jfxdev/gardarr/internal/infra/database"
+	"github.com/jfxdev/gardarr/internal/models"
+	"github.com/jfxdev/gardarr/internal/services/user"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"

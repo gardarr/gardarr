@@ -1,8 +1,8 @@
 package database
 
 import (
-	"github.com/gardarr/gardarr/internal/infra/database/migrations"
-	"github.com/gardarr/gardarr/internal/infra/migration"
+	"github.com/jfxdev/gardarr/internal/infra/database/migrations"
+	"github.com/jfxdev/gardarr/internal/infra/migration"
 )
 
 func RunMigrations(db *Database) error {

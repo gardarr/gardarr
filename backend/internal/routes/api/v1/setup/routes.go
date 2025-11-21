@@ -3,12 +3,12 @@ package setup
 import (
 	"net/http"
 
-	"github.com/gardarr/gardarr/internal/infra/database"
-	"github.com/gardarr/gardarr/internal/mappers"
-	"github.com/gardarr/gardarr/internal/models"
-	"github.com/gardarr/gardarr/internal/services/setup"
-	"github.com/gardarr/gardarr/internal/services/user"
 	"github.com/gin-gonic/gin"
+	"github.com/jfxdev/gardarr/internal/infra/database"
+	"github.com/jfxdev/gardarr/internal/mappers"
+	"github.com/jfxdev/gardarr/internal/models"
+	"github.com/jfxdev/gardarr/internal/services/setup"
+	"github.com/jfxdev/gardarr/internal/services/user"
 )
 
 // Module holds setup routes configuration

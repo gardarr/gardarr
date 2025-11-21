@@ -27,8 +27,8 @@ Serviço unificado de autenticação que gerencia tokens de cadastro (signup) e 
 
 ```go
 import (
-    "github.com/gardarr/gardarr/internal/services/auth"
-    "github.com/gardarr/gardarr/internal/infra/database"
+    "github.com/jfxdev/gardarr/internal/services/auth"
+    "github.com/jfxdev/gardarr/internal/infra/database"
 )
 
 // Inicializar o serviço
@@ -188,8 +188,8 @@ import (
     "context"
     "log"
     
-    "github.com/gardarr/gardarr/internal/services/auth"
-    "github.com/gardarr/gardarr/internal/infra/database"
+    "github.com/jfxdev/gardarr/internal/services/auth"
+    "github.com/jfxdev/gardarr/internal/infra/database"
 )
 
 func signupFlow() {

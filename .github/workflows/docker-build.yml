@@ -136,9 +136,9 @@ jobs:
             GOOS=linux \
             GOARCH=${{ matrix.goarch }} \
             go build \
-              -ldflags='-X github.com/gardarr/gardarr/pkg/version.Version=${{ steps.version.outputs.version }} \
-                        -X github.com/gardarr/gardarr/pkg/version.Commit=${{ steps.version.outputs.commit }} \
-                        -X github.com/gardarr/gardarr/pkg/version.Date=${{ steps.version.outputs.date }} \
+              -ldflags='-X github.com/jfxdev/gardarr/pkg/version.Version=${{ steps.version.outputs.version }} \
+                        -X github.com/jfxdev/gardarr/pkg/version.Commit=${{ steps.version.outputs.commit }} \
+                        -X github.com/jfxdev/gardarr/pkg/version.Date=${{ steps.version.outputs.date }} \
                         -w -s -linkmode external -extldflags \"-static\"' \
               -tags 'osusergo netgo sqlite_omit_load_extension' \
               -o /dist/${{ matrix.output }} .

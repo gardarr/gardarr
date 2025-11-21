@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gardarr/gardarr/internal/entities"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jfxdev/gardarr/internal/entities"
 )
 
 func TestRequireAdminRole(t *testing.T) {

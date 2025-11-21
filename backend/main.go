@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/gardarr/gardarr/cmd"
+	"github.com/jfxdev/gardarr/cmd"
 	"github.com/joho/godotenv"
 )
 

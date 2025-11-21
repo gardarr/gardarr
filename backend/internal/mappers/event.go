@@ -3,8 +3,8 @@ package mappers
 import (
 	"encoding/json"
 
-	"github.com/gardarr/gardarr/internal/entities"
-	"github.com/gardarr/gardarr/internal/models"
+	"github.com/jfxdev/gardarr/internal/entities"
+	"github.com/jfxdev/gardarr/internal/models"
 )
 
 // ToEventResponse converts an event entity to a response model

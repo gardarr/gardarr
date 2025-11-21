@@ -39,9 +39,9 @@ make get-version
 # Build com ldflags
 cd backend
 go build \
-  -ldflags "-X github.com/gardarr/gardarr/pkg/version.Version=1.2.3 \
-            -X github.com/gardarr/gardarr/pkg/version.Commit=abc1234 \
-            -X github.com/gardarr/gardarr/pkg/version.Date=2025-01-18T21:30:00Z \
+  -ldflags "-X github.com/jfxdev/gardarr/pkg/version.Version=1.2.3 \
+            -X github.com/jfxdev/gardarr/pkg/version.Commit=abc1234 \
+            -X github.com/jfxdev/gardarr/pkg/version.Date=2025-01-18T21:30:00Z \
             -w -s" \
   -o ../gardarr .
 ```
@@ -134,7 +134,7 @@ DATE=2025-01-18T21:30:00Z
 
 ## 🚨 Troubleshooting
 
-### Erro: "package github.com/gardarr/gardarr/pkg/version not found"
+### Erro: "package github.com/jfxdev/gardarr/pkg/version not found"
 
 Verifique se o módulo Go está configurado corretamente:
 

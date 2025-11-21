@@ -4,17 +4,17 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gardarr/gardarr/internal/entities"
-	"github.com/gardarr/gardarr/internal/infra/database"
-	"github.com/gardarr/gardarr/internal/mappers"
-	"github.com/gardarr/gardarr/internal/middlewares"
-	"github.com/gardarr/gardarr/internal/models"
-	"github.com/gardarr/gardarr/internal/schemas"
-	"github.com/gardarr/gardarr/internal/services/auth"
-	"github.com/gardarr/gardarr/internal/services/ratelimit"
-	"github.com/gardarr/gardarr/internal/services/session"
-	"github.com/gardarr/gardarr/internal/services/user"
 	"github.com/gin-gonic/gin"
+	"github.com/jfxdev/gardarr/internal/entities"
+	"github.com/jfxdev/gardarr/internal/infra/database"
+	"github.com/jfxdev/gardarr/internal/mappers"
+	"github.com/jfxdev/gardarr/internal/middlewares"
+	"github.com/jfxdev/gardarr/internal/models"
+	"github.com/jfxdev/gardarr/internal/schemas"
+	"github.com/jfxdev/gardarr/internal/services/auth"
+	"github.com/jfxdev/gardarr/internal/services/ratelimit"
+	"github.com/jfxdev/gardarr/internal/services/session"
+	"github.com/jfxdev/gardarr/internal/services/user"
 )
 
 const (

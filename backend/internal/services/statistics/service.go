@@ -13,12 +13,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gardarr/gardarr/internal/entities"
-	"github.com/gardarr/gardarr/internal/infra/database"
-	"github.com/gardarr/gardarr/internal/models"
-	agentmanager "github.com/gardarr/gardarr/internal/services/agentmanager"
-	"github.com/gardarr/gardarr/internal/services/events"
-	"github.com/gardarr/gardarr/pkg/env"
+	"github.com/jfxdev/gardarr/internal/entities"
+	"github.com/jfxdev/gardarr/internal/infra/database"
+	"github.com/jfxdev/gardarr/internal/models"
+	agentmanager "github.com/jfxdev/gardarr/internal/services/agentmanager"
+	"github.com/jfxdev/gardarr/internal/services/events"
+	"github.com/jfxdev/gardarr/pkg/env"
 )
 
 type Service struct {

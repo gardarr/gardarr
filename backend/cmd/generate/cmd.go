@@ -1,7 +1,7 @@
 package generate
 
 import (
-	"github.com/gardarr/gardarr/cmd/generate/key"
+	"github.com/jfxdev/gardarr/cmd/generate/key"
 	"github.com/spf13/cobra"
 )
 

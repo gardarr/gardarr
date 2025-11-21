@@ -5,13 +5,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gardarr/gardarr/internal/constants"
-	"github.com/gardarr/gardarr/internal/entities"
-	"github.com/gardarr/gardarr/internal/schemas"
-	"github.com/gardarr/gardarr/pkg/env"
+	"github.com/jfxdev/gardarr/internal/constants"
+	"github.com/jfxdev/gardarr/internal/entities"
+	"github.com/jfxdev/gardarr/internal/schemas"
+	"github.com/jfxdev/gardarr/pkg/env"
 	"github.com/jfxdev/go-qbt"
 
-	"github.com/gardarr/gardarr/pkg/errors"
+	"github.com/jfxdev/gardarr/pkg/errors"
 )
 
 type Repository struct {

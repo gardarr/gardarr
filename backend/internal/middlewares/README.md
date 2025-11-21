@@ -55,7 +55,7 @@ agentRoutes.POST("/status", updateStatus)
 package main
 
 import (
-    "github.com/gardarr/gardarr/internal/middlewares"
+    "github.com/jfxdev/gardarr/internal/middlewares"
     "github.com/gin-gonic/gin"
 )
 

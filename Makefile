@@ -63,9 +63,9 @@ build-with-version: get-version
 	@source .version && \
 	cd $(BACKEND_DIR) && \
 	CGO_ENABLED=1 go build \
-		-ldflags "-X github.com/gardarr/gardarr/pkg/version.Version=$$VERSION \
-		          -X github.com/gardarr/gardarr/pkg/version.Commit=$$COMMIT \
-		          -X github.com/gardarr/gardarr/pkg/version.Date=$$DATE \
+		-ldflags "-X github.com/jfxdev/gardarr/pkg/version.Version=$$VERSION \
+		          -X github.com/jfxdev/gardarr/pkg/version.Commit=$$COMMIT \
+		          -X github.com/jfxdev/gardarr/pkg/version.Date=$$DATE \
 		          -w -s" \
 		-o ../$(BINARY_NAME) .
 

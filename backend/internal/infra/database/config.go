@@ -1,7 +1,7 @@
 package database
 
 import (
-	"github.com/gardarr/gardarr/pkg/env"
+	"github.com/jfxdev/gardarr/pkg/env"
 )
 
 // loadConfigFromEnv loads database configuration from environment variables

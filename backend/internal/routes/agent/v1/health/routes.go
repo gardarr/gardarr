@@ -3,8 +3,8 @@ package health
 import (
 	"net/http"
 
-	"github.com/gardarr/gardarr/internal/interfaces"
 	"github.com/gin-gonic/gin"
+	"github.com/jfxdev/gardarr/internal/interfaces"
 )
 
 type Module struct {

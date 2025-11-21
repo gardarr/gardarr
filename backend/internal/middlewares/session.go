@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gardarr/gardarr/internal/entities"
-	"github.com/gardarr/gardarr/internal/infra/database"
-	"github.com/gardarr/gardarr/internal/services/ratelimit"
-	"github.com/gardarr/gardarr/internal/services/session"
 	"github.com/gin-gonic/gin"
+	"github.com/jfxdev/gardarr/internal/entities"
+	"github.com/jfxdev/gardarr/internal/infra/database"
+	"github.com/jfxdev/gardarr/internal/services/ratelimit"
+	"github.com/jfxdev/gardarr/internal/services/session"
 )
 
 const (
