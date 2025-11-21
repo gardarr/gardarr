@@ -10,13 +10,13 @@
   <img src="https://img.shields.io/github/actions/workflow/status/jfxdev/gardarr/.github%2Fworkflows%2Fbuild.yml" alt="GitHub Actions" />
   <img src="https://img.shields.io/coderabbit/prs/github/jfxdev/gardarr?utm_source=oss&utm_medium=github&utm_campaign=gardarr%2Fgardarr&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews" alt="CodeRabbit Reviews" />
   <br />
-  <a href="https://sonarcloud.io/summary/new_code?id=gardarr_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=gardarr_gardarr&metric=alert_status" alt="Quality Gate Status" /></a>
-  <a href="https://sonarcloud.io/summary/new_code?id=gardarr_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=gardarr_gardarr&metric=vulnerabilities" alt="Vulnerabilities" /></a>
-  <a href="https://sonarcloud.io/summary/new_code?id=gardarr_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=gardarr_gardarr&metric=bugs" alt="Bugs" /></a>
-  <a href="https://sonarcloud.io/summary/new_code?id=gardarr_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=gardarr_gardarr&metric=duplicated_lines_density" alt="Duplicated Lines" /></a>
-  <a href="https://sonarcloud.io/summary/new_code?id=gardarr_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=gardarr_gardarr&metric=sqale_rating" alt="Maintainability Rating" /></a>
-  <a href="https://sonarcloud.io/summary/new_code?id=gardarr_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=gardarr_gardarr&metric=security_rating" alt="Security Rating" /></a>
-  <a href="https://sonarcloud.io/summary/new_code?id=gardarr_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=gardarr_gardarr&metric=ncloc" alt="Lines of Code" /></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=jfxdev_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=jfxdev_gardarr&metric=alert_status" alt="Quality Gate Status" /></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=jfxdev_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=jfxdev_gardarr&metric=vulnerabilities" alt="Vulnerabilities" /></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=jfxdev_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=jfxdev_gardarr&metric=bugs" alt="Bugs" /></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=jfxdev_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=jfxdev_gardarr&metric=duplicated_lines_density" alt="Duplicated Lines" /></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=jfxdev_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=jfxdev_gardarr&metric=sqale_rating" alt="Maintainability Rating" /></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=jfxdev_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=jfxdev_gardarr&metric=security_rating" alt="Security Rating" /></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=jfxdev_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=jfxdev_gardarr&metric=ncloc" alt="Lines of Code" /></a>
 </p>
 
 Lightweight qBittorrent management and analytics tool, optimized for mobile
