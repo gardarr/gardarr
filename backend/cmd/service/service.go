@@ -68,6 +68,10 @@ func getBaseURL() string {
 	return fmt.Sprintf("http://localhost:%s", port)
 }
 
+func getMediaDirectory() string {
+	return env.Get(constants.TorrentImageUploadDirEnv).Default("/media/uploads/images").Value()
+}
+
 func Run(cmd *cobra.Command, args []string) error {
 	// Check if APP_MODE is set to standalone
 	appMode := env.Get(constants.AppModeEnv).Value()
@@ -110,10 +114,11 @@ func Run(cmd *cobra.Command, args []string) error {
 
 	// Get base URL for building image URLs
 	baseURL := getBaseURL()
+	mediaDirectory := getMediaDirectory()
 
 	setRouter()
 
-	agentSvc, err := agentmanager.NewService(db, cryptoSvc, baseURL)
+	agentSvc, err := agentmanager.NewService(db, cryptoSvc, baseURL, mediaDirectory)
 	if err != nil {
 		return err
 	}
@@ -124,7 +129,7 @@ func Run(cmd *cobra.Command, args []string) error {
 	defer cancelStats()
 	statsSvc.Start(ctx)
 
-	metaSvc, err := metadata.NewService(db, baseURL)
+	metaSvc, err := metadata.NewService(db, baseURL, mediaDirectory)
 	if err != nil {
 		return err
 	}
@@ -309,7 +314,7 @@ func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statist
 	router.StaticFile("/logo.ico", filepath.Join(webPath, "logo.ico"))
 
 	// Serve uploaded media files with authentication required
-	mediaPath := filepath.Join(wd, "uploads", "task_images")
+	mediaPath := getMediaDirectory()
 	router.GET("/media/*filepath", middlewares.SessionMiddleware(db), func(c *gin.Context) {
 		// Get the requested file path
 		requestedFile := strings.TrimPrefix(c.Param("filepath"), "/")

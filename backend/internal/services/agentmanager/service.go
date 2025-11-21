@@ -20,13 +20,13 @@ type Service struct {
 	metadataService *metadata.Service
 }
 
-func NewService(db *database.Database, c *crypto.CryptoService, baseURL string) (*Service, error) {
+func NewService(db *database.Database, c *crypto.CryptoService, baseURL, uploadDir string) (*Service, error) {
 	repository, err := repository.NewRepository(db, c)
 	if err != nil {
 		return nil, err
 	}
 
-	meta, err := metadata.NewService(db, baseURL)
+	meta, err := metadata.NewService(db, baseURL, uploadDir)
 	if err != nil {
 		return nil, err
 	}

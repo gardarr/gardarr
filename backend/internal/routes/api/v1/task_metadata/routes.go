@@ -1,6 +1,9 @@
 package task_metadata
 
 import (
+	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -10,6 +13,21 @@ import (
 	"github.com/gardarr/gardarr/internal/middlewares"
 	task_metadata_service "github.com/gardarr/gardarr/internal/services/task_metadata"
 	"github.com/gin-gonic/gin"
+)
+
+const (
+	// MaxImageUploadSize defines the maximum allowed image upload size (5MB)
+	MaxImageUploadSize = 5 * 1024 * 1024 // 5MB
+)
+
+var (
+	// AllowedImageMIMETypes defines the permitted image MIME types
+	AllowedImageMIMETypes = map[string]bool{
+		"image/jpeg": true,
+		"image/png":  true,
+		"image/gif":  true,
+		"image/webp": true,
+	}
 )
 
 // Module holds task metadata routes configuration
@@ -68,12 +86,56 @@ func (m *Module) uploadTaskImage(c *gin.Context) {
 	}
 	defer file.Close()
 
-	// Upload image
+	// Validate file size
+	if header.Size > MaxImageUploadSize {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("image file exceeds maximum size of %dMB", MaxImageUploadSize/1024/1024),
+		})
+		return
+	}
+
+	// Validate Content-Type header
+	contentType := header.Header.Get("Content-Type")
+	if !AllowedImageMIMETypes[contentType] {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid image type; only JPEG, PNG, GIF, and WebP are allowed",
+		})
+		return
+	}
+
+	// Sniff file content to confirm actual MIME type
+	// Read first 512 bytes for detection (http.DetectContentType uses up to 512 bytes)
+	buffer := make([]byte, 512)
+	n, err := file.Read(buffer)
+	if err != nil && err != io.EOF {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "failed to read image file",
+		})
+		return
+	}
+
+	// Detect actual content type from file content
+	detectedType := http.DetectContentType(buffer[:n])
+	if !AllowedImageMIMETypes[detectedType] {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "image file content does not match allowed types",
+		})
+		return
+	}
+
+	// Reset file pointer to beginning for service to read
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "failed to process image file",
+		})
+		return
+	}
+
+	// Upload validated image (size already checked via header.Size)
 	metadata, err := m.service.UploadImage(c.Request.Context(), taskHash, file, header)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		slog.Error("failed to upload image", "error", err, "task_hash", taskHash)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to upload image"})
 		return
 	}
 

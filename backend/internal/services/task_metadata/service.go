@@ -11,12 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gardarr/gardarr/internal/constants"
 	"github.com/gardarr/gardarr/internal/entities"
 	"github.com/gardarr/gardarr/internal/infra/database"
 	"github.com/gardarr/gardarr/internal/models"
 	task_metadata_repo "github.com/gardarr/gardarr/internal/repository/task_metadata"
-	"github.com/gardarr/gardarr/pkg/env"
 	"github.com/google/uuid"
 )
 
@@ -33,8 +31,7 @@ type Service struct {
 }
 
 // NewService creates a new task metadata service
-func NewService(db *database.Database, baseURL string) (*Service, error) {
-	uploadDir := env.Get(constants.TorrentImageUploadDirEnv).Default("/media/uploads/images").Value()
+func NewService(db *database.Database, baseURL, uploadDir string) (*Service, error) {
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
 		// Log error but continue
 		return nil, fmt.Errorf("failed to create upload directory: %w", err)

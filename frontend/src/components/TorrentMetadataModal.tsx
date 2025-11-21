@@ -68,20 +68,21 @@ export function TorrentMetadataModal({
   }, [isOpen, metadata]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
     const file = event.target.files?.[0];
     if (!file) return;
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
       toast.error("Por favor, selecione um arquivo de imagem válido");
-      event.target.value = ""; // Reset input
+      input.value = ""; // Reset input
       return;
     }
 
-    // Validate file size (10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("A imagem deve ter no máximo 10MB");
-      event.target.value = ""; // Reset input
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("A imagem deve ter no máximo 5MB");
+      input.value = ""; // Reset input
       return;
     }
 
@@ -105,7 +106,7 @@ export function TorrentMetadataModal({
       toast.success("Imagem enviada com sucesso");
 
       setSelectedFile(null);
-      event.target.value = ""; // Reset input to allow re-selection
+      input.value = ""; // Reset input to allow re-selection
       onUpdate();
     } catch (error: unknown) {
       const errorMessage = error && typeof error === 'object' && 'response' in error
@@ -115,7 +116,7 @@ export function TorrentMetadataModal({
       // Revert preview on error
       setImagePreview(metadata?.image_url || null);
       setSelectedFile(null);
-      event.target.value = ""; // Reset input
+      input.value = ""; // Reset input
     } finally {
       setIsUploading(false);
     }
@@ -410,7 +411,7 @@ export function TorrentMetadataModal({
                   Clique para fazer upload de uma imagem
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  PNG, JPG, GIF, WEBP até 10MB
+                  PNG, JPG, GIF, WEBP até 5MB
                 </p>
                 <p className="text-xs text-muted-foreground/70 mt-2">
                   O upload será feito automaticamente após a seleção

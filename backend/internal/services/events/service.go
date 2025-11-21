@@ -2,6 +2,7 @@ package events
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -186,7 +187,7 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 	// Create events from channel
 	for event := range eventsChan {
 		if err := s.repo.CreateEvent(ctx, event); err != nil {
-			// Log error but continue
+			slog.Error("failed to create event", "error", err, "agent_id", agentID.String(), "event_type", event.Type)
 			continue
 		}
 	}
@@ -265,7 +266,7 @@ func (s *Service) DetectRemovedTasks(ctx context.Context, currentTasks []*entiti
 	// Create events from channel
 	for event := range eventsChan {
 		if err := s.repo.CreateEvent(ctx, event); err != nil {
-			// Log error but continue
+			slog.Error("failed to create removal event", "error", err, "agent_id", agentID.String(), "task_hash", event.TaskHash)
 			continue
 		}
 	}

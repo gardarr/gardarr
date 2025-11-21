@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/gardarr/gardarr/internal/entities"
@@ -75,7 +76,9 @@ func (r *Repository) ListEvents(ctx context.Context, agentID *uuid.UUID, eventTy
 	for i, e := range events {
 		var metadata map[string]interface{}
 		if e.Metadata != "" {
-			_ = json.Unmarshal([]byte(e.Metadata), &metadata)
+			if err := json.Unmarshal([]byte(e.Metadata), &metadata); err != nil {
+				slog.Warn("failed to unmarshal event metadata", "error", err, "event_uuid", e.UUID.String())
+			}
 		}
 
 		result[i] = &entities.Event{
@@ -102,7 +105,9 @@ func (r *Repository) GetEventByUUID(ctx context.Context, uuid uuid.UUID) (*entit
 
 	var metadata map[string]interface{}
 	if model.Metadata != "" {
-		_ = json.Unmarshal([]byte(model.Metadata), &metadata)
+		if err := json.Unmarshal([]byte(model.Metadata), &metadata); err != nil {
+			slog.Warn("failed to unmarshal event metadata", "error", err, "event_uuid", model.UUID.String())
+		}
 	}
 
 	return &entities.Event{
