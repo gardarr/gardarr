@@ -17,6 +17,7 @@
       "categories": "Categorias",
       "users": "Usuários",
       "analytics": "Análises",
+      "history": "Histórico",
       "integrations": "Integrações",
       "settings": "Configurações",
       "profile": "Perfil",
@@ -25,6 +26,11 @@
     "profile": {
       "title": "Perfil",
       "subtitle": "Gerencie sua conta e preferências",
+      "tabs": {
+        "general": "Geral",
+        "display": "Exibição",
+        "security": "Segurança"
+      },
       "personalInfo": {
         "title": "Informações Pessoais",
         "description": "Gerencie seus dados pessoais",
@@ -42,6 +48,33 @@
         "switchToDark": "Mudar para Escuro",
         "switchToLight": "Mudar para Claro",
         "language": "Idioma"
+      },
+      "display": {
+        "title": "Exibição",
+        "description": "Personalize como o conteúdo é exibido",
+        "torrentDisplayMode": "Modo de Visualização de Torrents",
+        "torrentDisplayModeDesc": "Escolha como os torrents são exibidos na interface",
+        "compactMode": "Modo Compacto",
+        "compactModeDesc": "Reduz o espaçamento e mostra mais conteúdo na tela",
+        "blurIntensity": "Desfoque da Imagem de Fundo",
+        "blurIntensityDesc": "Ajuste a intensidade do desfoque nas imagens de fundo (0-100)"
+      },
+      "security": {
+        "title": "Segurança",
+        "description": "Altere sua senha",
+        "currentPassword": "Senha Atual",
+        "newPassword": "Nova Senha",
+        "confirmPassword": "Confirmar Senha",
+        "enterCurrentPassword": "Digite sua senha atual",
+        "enterNewPassword": "Digite sua nova senha",
+        "enterConfirmPassword": "Confirme sua nova senha",
+        "passwordRequirements": "A senha deve ter pelo menos 8 caracteres",
+        "changePassword": "Alterar Senha",
+        "changingPassword": "Alterando Senha...",
+        "passwordChanged": "Senha alterada com sucesso!",
+        "passwordChangeFailed": "Falha ao alterar senha",
+        "passwordTooShort": "A senha deve ter pelo menos 8 caracteres",
+        "passwordMismatch": "As senhas não coincidem"
       },
       "sessions": {
         "title": "Sessões Ativas",
@@ -525,7 +558,14 @@
         "pause": "Pausar",
         "delete": "Remover"
       },
-      "limits": "Limites"
+      "limits": "Limites",
+      "start": "Iniciar",
+      "stop": "Parar",
+      "forceDownload": "Forçar download",
+      "forceReannounce": "Forçar reannounce",
+      "forceRecheck": "Forçar recheck",
+      "metrics": "Métricas",
+      "metadata": "Metadados"
     },
     "categories": {
       "title": "Categorias",
@@ -772,5 +812,43 @@
     "minutes": "Minutos",
     "hours": "Horas",
     "days": "Dias"
+  },
+  "history": {
+    "title": "Histórico",
+    "subtitle": "Acompanhe eventos e mudanças de estado dos torrents",
+    "refresh": "Atualizar",
+    "filter": {
+      "all": "Todos os Eventos"
+    },
+    "events": {
+      "title": "Eventos Recentes",
+      "description": "Mostrando {{total}} eventos",
+      "noEvents": "Nenhum evento encontrado"
+    },
+    "event": {
+      "stateChange": "Torrent mudou de estado",
+      "added": "Torrent adicionado",
+      "removed": "Torrent removido",
+      "completed": "Torrent completado",
+      "completedDescription": "Download concluído com sucesso",
+      "default": "Evento"
+    },
+    "badge": {
+      "stateChange": "Mudança de Estado",
+      "added": "Adicionado",
+      "removed": "Removido",
+      "completed": "Completo"
+    },
+    "time": {
+      "justNow": "Agora mesmo",
+      "minutesAgo": "{{count}}min atrás",
+      "hoursAgo": "{{count}}h atrás",
+      "daysAgo": "{{count}}d atrás"
+    },
+    "pagination": {
+      "showing": "Mostrando {{from}}-{{to}} de {{total}}",
+      "previous": "Anterior",
+      "next": "Próximo"
+    }
   }
 }

@@ -1,14 +1,16 @@
-import { ArrowUpDown, Activity, TrendingUp } from "lucide-react";
+import { ArrowUpDown, Activity, TrendingUp, Upload } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getRatioGrade, getGradeColor, getGradeStars, getGradeGlowClass, getGradeDescription, getGradeMessage } from "@/utils/ratioUtils";
 import { useTranslation } from "react-i18next";
+import { formatBytes } from "@/utils/bytes";
 
 interface TorrentRatioWidgetProps {
   ratio: number;
   popularity: number;
+  totalUploaded?: number;
 }
 
-export function TorrentRatioWidget({ ratio, popularity }: TorrentRatioWidgetProps) {
+export function TorrentRatioWidget({ ratio, popularity, totalUploaded }: TorrentRatioWidgetProps) {
   const { t } = useTranslation();
   const grade = getRatioGrade(ratio);
   const colorClass = getGradeColor(grade);
@@ -37,6 +39,12 @@ export function TorrentRatioWidget({ ratio, popularity }: TorrentRatioWidgetProp
                 </TooltipContent>
               </Tooltip>
             </div>
+            {totalUploaded !== undefined && (
+              <div className="flex items-center gap-2">
+                <Upload className="h-3 w-3 opacity-70" />
+                <span className="text-sm opacity-80 font-mono">{formatBytes(totalUploaded)}</span>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <TrendingUp className="h-3 w-3 opacity-70" />
               <Tooltip>

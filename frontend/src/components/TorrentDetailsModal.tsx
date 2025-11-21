@@ -85,7 +85,6 @@ function useIsMobile(): boolean {
   return isMobile;
 }
 
-
 export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause, onDelete, onForceDownload, onForceReannounce, onForceRecheck, onRename, onSetLocation, onUpdateCategory, onUpdateTags }: TorrentDetailsModalProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -596,83 +595,71 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
           <div className="space-y-4">
             <h3 className="text-sm font-medium text-muted-foreground">{t('torrentDetails.general.title', { defaultValue: 'Informações Gerais' })}</h3>
             <div className="space-y-4">
-              {/* Card Informações Gerais - Full width */}
-              <div className="p-3 container-content-background/50 rounded-lg border">
-                <div className="flex items-center gap-2 mb-3">
-                  <Activity className="h-4 w-4 text-muted-foreground" />
-                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('torrentDetails.general.title', { defaultValue: 'Informações Gerais' })}</h4>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">{t('torrentDetails.general.state', { defaultValue: 'Estado:' })}</span>
-                    <div className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium w-fit ${getStatusBackgroundColor(torrent.state as TorrentStatus)} ${getStatusColor(torrent.state as TorrentStatus)}`}>
-                      {(() => {
-                        const StatusIcon = getStatusIcon(torrent.state as TorrentStatus);
-                        return <StatusIcon className="h-4 w-4" />;
-                      })()}
-                      <span className="capitalize">{torrent.state}</span>
-                    </div>
+              {/* Cards General Information e Ratio - Always on same row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 sm:gap-4">
+                {/* Card Informações Gerais */}
+                <div className="p-3 container-content-background/50 rounded-lg border">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Activity className="h-4 w-4 text-muted-foreground" />
+                    <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('torrentDetails.general.title', { defaultValue: 'Informações Gerais' })}</h4>
                   </div>
-                  {torrent.agent && (
+                  <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">{t('torrentDetails.general.agent', { defaultValue: 'Agent:' })}</span>
-                      <div className="flex items-center gap-2">
-                        <AgentIcon 
-                          iconName={torrent.agent.icon}
-                          color={torrent.agent.color}
-                          size="sm"
-                        />
-                        <span className="text-sm text-muted-foreground">{torrent.agent.name}</span>
+                      <span className="text-sm font-medium">{t('torrentDetails.general.state', { defaultValue: 'Estado:' })}</span>
+                      <div className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium w-fit ${getStatusBackgroundColor(torrent.state as TorrentStatus)} ${getStatusColor(torrent.state as TorrentStatus)}`}>
+                        {(() => {
+                          const StatusIcon = getStatusIcon(torrent.state as TorrentStatus);
+                          return <StatusIcon className="h-4 w-4" />;
+                        })()}
+                        <span className="capitalize">{torrent.state}</span>
                       </div>
                     </div>
-                  )}
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">{t('torrentDetails.general.createdAt', { defaultValue: 'Criado em:' })}</span>
-                    <span className="text-sm text-muted-foreground">{new Date(torrent.created_at).toLocaleString()}</span>
+                    {torrent.agent && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">{t('torrentDetails.general.agent', { defaultValue: 'Agent:' })}</span>
+                        <div className="flex items-center gap-2">
+                          <AgentIcon 
+                            iconName={torrent.agent.icon}
+                            color={torrent.agent.color}
+                            size="sm"
+                          />
+                          <span className="text-sm text-muted-foreground">{torrent.agent.name}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">{t('torrentDetails.general.completedAt', { defaultValue: 'Concluído em:' })}</span>
-                    <span className="text-sm text-muted-foreground">{torrent.completed_at ? new Date(torrent.completed_at).toLocaleString() : '—'}</span>
-                  </div>
+                </div>
+
+                {/* Card Ratio */}
+                <div>
+                  <TorrentRatioWidget 
+                    ratio={torrent.ratio} 
+                    popularity={torrent.popularity}
+                    totalUploaded={torrent.network?.upload?.amount}
+                  />
+                </div>
+              </div>
+
+              {/* Card Tamanho e Progresso */}
+              <div className="p-3 container-content-background/50 rounded-lg border">
+                <div className="flex items-center gap-2 mb-3">
+                  <HardDrive className="h-4 w-4 text-muted-foreground" />
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('torrentDetails.size.progress', { defaultValue: 'Progress' })}</h4>
+                  <span className="text-sm text-muted-foreground">•</span>
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">
+                    {formatBytes(torrent.network?.download?.amount || (torrent.progress / 100) * torrent.size)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <ProgressBar progress={torrent.progress} height="sm" className="flex-1" />
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">
+                    {torrent.progress.toFixed(1)}%
+                  </span>
                 </div>
               </div>
 
               {/* Timeline Widget */}
               <TorrentLifetimeWidget task={torrent} />
-
-              {/* Cards Tamanho e Ratio - Always on same row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 sm:gap-4">
-                {/* Card Tamanho e Progresso: ocupa a linha inteira em telas menores, 1/2 no desktop grande */}
-                <div className="p-3 container-content-background/50 rounded-lg border sm:col-span-2 lg:col-span-1">
-                  <div className="flex items-center gap-2 mb-3">
-                    <HardDrive className="h-4 w-4 text-muted-foreground" />
-                    <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('torrentDetails.size.title', { defaultValue: 'Tamanho' })}</h4>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">{t('torrentDetails.size.total', { defaultValue: 'Total:' })}</span>
-                      <span className="text-sm text-muted-foreground">{formatBytes(torrent.size)}</span>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm">{t('torrentDetails.size.progress', { defaultValue: 'Progresso:' })}</span>
-                        <span className="text-sm text-muted-foreground">{torrent.progress.toFixed(1)}%</span>
-                      </div>
-                      <ProgressBar progress={torrent.progress} height="sm" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Card Ratio: ocupa a linha inteira em telas menores, 1/2 no desktop grande */}
-                <div className="sm:col-span-2 lg:col-span-1">
-                  <TorrentRatioWidget 
-                    ratio={torrent.ratio} 
-                    popularity={torrent.popularity} 
-                  />
-                </div>
-
-                {/* Card Agent removido - informações movidas para "Informações Gerais" */}
-              </div>
 
               {/* Card Categoria + Tags (Unificado) */}
               {((currentTags && currentTags.length > 0) || isEditingTags) && (

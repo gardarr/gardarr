@@ -50,3 +50,7 @@ type AgentVersionResponse struct {
 	Commit  string `json:"commit"`
 	Date    string `json:"date"`
 }
+
+type AgentLivenessResponse struct {
+	Status string `json:"status"`
+}

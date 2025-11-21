@@ -23,9 +23,13 @@ class ApiClient {
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
     
+    // Se headers está vazio (FormData), não adicionar Content-Type
+    const shouldAddContentType = options.headers === undefined || 
+      (typeof options.headers === 'object' && Object.keys(options.headers).length > 0);
+    
     const defaultOptions: RequestInit = {
       headers: {
-        'Content-Type': 'application/json',
+        ...(shouldAddContentType ? { 'Content-Type': 'application/json' } : {}),
         ...options.headers,
       },
       credentials: 'include', // Include cookies in requests
@@ -90,6 +94,15 @@ class ApiClient {
 
   // POST request
   async post<T>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
+    // Se data é FormData, não fazer stringify e remover Content-Type para o browser definir
+    if (data instanceof FormData) {
+      return this.request<T>(endpoint, {
+        method: 'POST',
+        body: data,
+        headers: {}, // Remove Content-Type header para FormData
+      });
+    }
+    
     return this.request<T>(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,

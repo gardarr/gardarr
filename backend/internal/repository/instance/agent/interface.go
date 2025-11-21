@@ -11,6 +11,7 @@ type RepositoryInterface interface {
 	GetInstance() (*entities.Instance, error)
 	GetPreferences(ctx context.Context) (*entities.InstancePreferences, error)
 	Ping() error
+	GetStatus() string
 	SetDownloadSpeedLimit(limit int) error
 	SetUploadSpeedLimit(limit int) error
 }

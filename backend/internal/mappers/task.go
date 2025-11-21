@@ -91,7 +91,8 @@ func ToTaskResponse(e *entities.Task) models.TaskResponseModel {
 			Seeders:       e.Pairs.Seeders,
 			Leechers:      e.Pairs.Leechers,
 		},
-		Tags: e.Tags,
+		Tags:     e.Tags,
+		Metadata: ToTaskMetadataResponse(e.Metadata),
 		Network: models.TaskNetworkResponseModel{
 			Download: models.TaskDownloadResponseModel{
 				Speed:  e.Network.Download.Speed,

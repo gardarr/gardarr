@@ -62,3 +62,15 @@ type SessionResponse struct {
 	CreatedAt time.Time `json:"created_at"`
 	ExpiresAt time.Time `json:"expires_at"`
 }
+
+// TorrentDisplayModeResponse represents the response body for torrent display mode
+type TorrentDisplayModeResponse struct {
+	DisplayMode string `json:"display_mode"`
+}
+
+// PreferencesResponse represents the response body for user preferences
+type PreferencesResponse struct {
+	TorrentDisplayMode          string `json:"torrent_display_mode"`
+	Compact                     bool   `json:"compact"`
+	BackgroundImageBlurIntensity int    `json:"background_image_blur_intensity"`
+}

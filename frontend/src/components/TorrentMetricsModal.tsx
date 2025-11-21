@@ -4,7 +4,7 @@ import { BarChart3, Loader2, ArrowDown, ArrowUp, Gauge, Database, Globe, Users, 
 import type { LucideIcon } from "lucide-react";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import { statisticsService } from "@/services/statistics";
 import { torrentService } from "@/services/torrents";
 import type { Task } from "@/types/torrent";
@@ -17,6 +17,9 @@ interface TorrentMetricsModalProps {
   onClose: () => void;
   taskId: string;
   agentId?: string;
+  selectedCount?: number;
+  taskName?: string;
+  taskIds?: string[]; // Multiple task IDs for multi-series charts
 }
 
 interface SpeedPoint {
@@ -28,6 +31,8 @@ interface SpeedPoint {
   avgRatio: number;
   totalDownloadBytes: number;
   totalUploadBytes: number;
+  // For multi-series support: dynamic task properties
+  [key: string]: string | number; // e.g., download_taskHash, upload_taskHash
 }
 
 interface WindowTaskData {
@@ -104,6 +109,26 @@ const totalBytesChartConfig = {
   },
 };
 
+// Helper function to format time range
+function formatTimeRange(fromDate: Date | undefined, toDate: Date | undefined): string {
+  if (!fromDate || !toDate) return "";
+  
+  const diffMs = toDate.getTime() - fromDate.getTime();
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffDays > 0) {
+    return `${diffDays}d`;
+  } else if (diffHours > 0) {
+    return `${diffHours}h`;
+  } else if (diffMinutes > 0) {
+    return `${diffMinutes}m`;
+  } else {
+    return "0m";
+  }
+}
+
 // Reusable components
 interface MetricItemProps {
   icon: LucideIcon;
@@ -158,88 +183,86 @@ function MetricSection({ title, icon: Icon, iconColor, items }: MetricSectionPro
   );
 }
 
-interface MetricsChartProps {
+// Speed Chart Component (Line Chart style like TaskMetrics)
+interface SpeedChartProps {
   title: string;
   icon: LucideIcon;
   config: Record<string, { label: string; theme: { light: string; dark: string } }>;
   data: SpeedPoint[];
-  areas: Array<{
+  lines: Array<{
     dataKey: string;
     tooltipFormatter?: (value: number, name: string) => [string, string];
-    yAxisFormatter?: (value: number) => string;
   }>;
   yAxisFormatter?: (value: number) => string;
+  yAxisLabel?: string;
 }
 
-function MetricsChart({ title, icon: Icon, config, data, areas, yAxisFormatter }: MetricsChartProps) {
+function SpeedChart({ title, icon: Icon, config, data, lines, yAxisFormatter, yAxisLabel }: SpeedChartProps) {
   return (
-    <div className="rounded-lg border p-2 sm:p-4 overflow-x-hidden">
+    <div className="rounded-xl border p-2 sm:p-4 overflow-x-hidden">
       <div className="flex items-center gap-2 mb-4">
         <Icon className="h-4 w-4 text-primary" />
         <h3 className="text-sm font-semibold">{title}</h3>
       </div>
-      <ChartContainer config={config} className="h-[250px] sm:h-[400px] w-full min-w-0">
-        <AreaChart 
-          data={data} 
-          width={undefined} 
-          height={undefined}
-          margin={{ left: 0, right: 0, top: 5, bottom: 5 }}
-        >
+      <ChartContainer config={config} className="h-[300px] w-full">
+        <LineChart data={data} width={undefined} height={300}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis 
             dataKey="time" 
-            tick={{ fontSize: 10 }}
+            tick={{ fontSize: 12 }}
             tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
-            className="text-xs"
           />
           <YAxis 
-            tick={{ fontSize: 10 }}
+            tick={{ fontSize: 12 }}
             tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
-            className="text-xs"
-            width={60}
             tickFormatter={yAxisFormatter}
+            label={yAxisLabel ? { value: yAxisLabel, angle: -90, position: 'insideLeft' } : undefined}
           />
           <ChartTooltip 
             content={
               <ChartTooltipContent 
                 formatter={(value, name) => {
-                  const area = areas.find(a => a.dataKey === name);
-                  if (area?.tooltipFormatter) {
-                    return area.tooltipFormatter(value as number, name as string);
+                  const line = lines.find(l => l.dataKey === name);
+                  if (line?.tooltipFormatter) {
+                    return line.tooltipFormatter(value as number, name as string);
                   }
                   return [`${value}`, config[name as string]?.label || name as string];
                 }}
               />
             } 
           />
-          {areas.map((area) => (
-            <Area 
-              key={area.dataKey}
+          {lines.map((line) => (
+            <Line 
+              key={line.dataKey}
               type="monotone" 
-              dataKey={area.dataKey}
-              stroke={`var(--color-${area.dataKey})`}
-              fill={`var(--color-${area.dataKey})`}
-              fillOpacity={0.2}
+              dataKey={line.dataKey}
+              stroke={`var(--color-${line.dataKey})`}
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 6, stroke: `var(--color-${line.dataKey})`, strokeWidth: 2 }}
             />
           ))}
-        </AreaChart>
+        </LineChart>
       </ChartContainer>
     </div>
   );
 }
 
-
 export function TorrentMetricsModal({
   isOpen,
   onClose,
   taskId,
-  agentId
+  agentId,
+  selectedCount = 1,
+  taskName,
+  taskIds = []
 }: TorrentMetricsModalProps) {
   const [chartData, setChartData] = useState<SpeedPoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [taskHash, setTaskHash] = useState<string>(taskId);
   const [taskData, setTaskData] = useState<Task | null>(null);
+  const [aggregatedTaskData, setAggregatedTaskData] = useState<Task | null>(null); // Aggregated data for multiple tasks
   const fetchingKeyRef = useRef<string>(""); // Track the key currently being fetched
   const metricsFetchedRef = useRef<string>(""); // Track what was already fetched
   
@@ -275,6 +298,54 @@ export function TorrentMetricsModal({
       try {
         const response = await torrentService.listAgentTasks(agentId);
         if (response.data) {
+          // If multiple tasks selected, fetch hashes and aggregate data for all
+          if (selectedCount > 1 && taskIds.length > 0) {
+            const hashes: string[] = [];
+            const tasks: Task[] = [];
+            
+            for (const id of taskIds) {
+              const task = response.data.find((t: Task) => t.id === id);
+              if (task) {
+                tasks.push(task);
+                if (task.hash) {
+                  hashes.push(task.hash);
+                } else {
+                  // If no hash, use ID directly
+                  hashes.push(id);
+                }
+              }
+            }
+            
+            // Aggregate task data from all selected tasks
+            if (tasks.length > 0) {
+              const aggregated: Task = {
+                ...tasks[0], // Use first task as base
+                name: `${tasks.length} torrents selected`,
+                network: {
+                  download: {
+                    speed: tasks.reduce((sum, t) => sum + (t.network?.download?.speed || 0), 0),
+                    amount: tasks.reduce((sum, t) => sum + (t.network?.download?.amount || 0), 0),
+                  },
+                  upload: {
+                    speed: tasks.reduce((sum, t) => sum + (t.network?.upload?.speed || 0), 0),
+                    amount: tasks.reduce((sum, t) => sum + (t.network?.upload?.amount || 0), 0),
+                  },
+                },
+                pairs: {
+                  seeders: tasks.reduce((sum, t) => sum + (t.pairs?.seeders || 0), 0),
+                  leechers: tasks.reduce((sum, t) => sum + (t.pairs?.leechers || 0), 0),
+                  swarm_seeders: tasks.reduce((sum, t) => sum + (t.pairs?.swarm_seeders || 0), 0),
+                  swarm_leechers: tasks.reduce((sum, t) => sum + (t.pairs?.swarm_leechers || 0), 0),
+                },
+              };
+              setAggregatedTaskData(aggregated);
+            }
+          } else {
+            // Single task - clear aggregated data
+            setAggregatedTaskData(null);
+          }
+          
+          // Also get primary task data for display
           const task = response.data.find((t: Task) => t.id === taskId);
           if (task) {
             setTaskData(task);
@@ -293,7 +364,7 @@ export function TorrentMetricsModal({
 
     fetchTask();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, agentId, taskId]);
+  }, [isOpen, agentId, taskId, taskIds, selectedCount]);
 
   // Fetch metrics data
   useEffect(() => {
@@ -313,13 +384,35 @@ export function TorrentMetricsModal({
       setLoading(true);
       setError(null);
 
+      // Calculate time range and determine appropriate step
+      const diffMs = toDate.getTime() - fromDate.getTime();
+      const diffHours = diffMs / (1000 * 60 * 60);
+      const diffDays = diffMs / (1000 * 60 * 60 * 24);
+      
+      // Determine step based on time range to avoid too many data points
+      let step: string;
+      let stepMinutes: number;
+      if (diffDays >= 3) {
+        step = "1h"; // 1 hour for 3+ days
+        stepMinutes = 60;
+      } else if (diffDays >= 1) {
+        step = "15m"; // 15 minutes for 1-3 days
+        stepMinutes = 15;
+      } else if (diffHours >= 6) {
+        step = "5m"; // 5 minutes for 6-24 hours
+        stepMinutes = 5;
+      } else {
+        step = "1m"; // 1 minute for < 6 hours
+        stepMinutes = 1;
+      }
+
       try {
         const response = await statisticsService.getWindowedByTask({
           agentId,
           taskHash,
           from: fromDate.toISOString(),
           to: toDate.toISOString(),
-          step: "1m",
+          step,
         });
 
         // Verify we're still supposed to be fetching this (compare against original fetchKey)
@@ -380,12 +473,12 @@ export function TorrentMetricsModal({
           }
         }
 
-        // Generate complete interval: every 1 minute from 'fromDate' to 'toDate'
+        // Generate complete interval with appropriate step based on time range
         const transformed: SpeedPoint[] = [];
-        const stepMinutes = 1;
         const stepMs = stepMinutes * 60 * 1000;
+        const diffDaysForFormat = diffMs / (1000 * 60 * 60 * 24);
         
-        // Round 'fromDate' to the nearest 1-minute interval (downward)
+        // Round 'fromDate' to the nearest step interval (downward)
         const fromRounded = new Date(Math.floor(fromDate.getTime() / stepMs) * stepMs);
         
         // Generate points for the entire selected period
@@ -418,11 +511,38 @@ export function TorrentMetricsModal({
             ? taskData.ul_kb * 1024
             : 0;
 
-          // Format time for display
-          const timeStr = current.toLocaleTimeString("pt-BR", {
-            hour: "2-digit",
-            minute: "2-digit",
-          });
+          // Format time for display - adjust format based on step size
+          let timeStr: string;
+          if (stepMinutes >= 60) {
+            // For hourly or larger steps, show date and time
+            timeStr = current.toLocaleString("pt-BR", {
+              month: "2-digit",
+              day: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+          } else if (stepMinutes >= 15) {
+            // For 15+ minute steps, show time with date if it spans multiple days
+            if (diffDaysForFormat >= 1) {
+              timeStr = current.toLocaleString("pt-BR", {
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+              });
+            } else {
+              timeStr = current.toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              });
+            }
+          } else {
+            // For smaller steps, just show time
+            timeStr = current.toLocaleTimeString("pt-BR", {
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+          }
 
           transformed.push({
             time: timeStr,
@@ -479,7 +599,21 @@ export function TorrentMetricsModal({
             <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
               <BarChart3 className="h-4 w-4 text-primary" />
             </div>
-            <DialogTitle>Métricas</DialogTitle>
+            <div>
+              <DialogTitle>
+                {selectedCount > 1 ? `Métricas (${selectedCount} selected)` : "Métricas"}
+              </DialogTitle>
+              {taskName && selectedCount === 1 && (
+                <p className="text-sm text-muted-foreground mt-1 truncate max-w-md">
+                  {taskName}
+                </p>
+              )}
+              {selectedCount > 1 && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Showing aggregated stats for all selected torrents
+                </p>
+              )}
+            </div>
           </div>
         </DialogHeader>
         
@@ -495,60 +629,72 @@ export function TorrentMetricsModal({
           </div>
 
           {/* Network & Peers Section */}
-          {taskData && (
+          {(aggregatedTaskData || taskData) && (
             <div className="space-y-4">
-              <h3 className="text-sm font-medium text-muted-foreground">Rede e Pares</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">
+                {selectedCount > 1 ? `Rede e Pares (${selectedCount} torrents)` : "Rede e Pares"}
+              </h3>
               
-              {/* Barra de Progresso de Seeding */}
-              <TorrentContributionWidget taskData={taskData} />
+              {/* Barra de Progresso de Seeding - show aggregated or single data */}
+              <TorrentContributionWidget taskData={aggregatedTaskData || taskData!} />
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-                {/* Card Download e Upload */}
-                <div className="col-span-2 p-3 container-content-background/50 rounded-lg border">
-                  <div className="flex gap-4 items-stretch">
-                    <MetricSection
-                      title="Download"
-                      icon={ArrowDown}
-                      iconColor="text-blue-500"
-                      items={[
-                        { icon: Gauge, label: "Velocidade", value: `${formatBytes(taskData.network.download.speed)}/s` },
-                        { icon: Database, label: "Total", value: formatBytes(taskData.network.download.amount) },
-                      ]}
-                    />
-                    <div className="w-px bg-border self-stretch mx-2" />
-                    <MetricSection
-                      title="Upload"
-                      icon={ArrowUp}
-                      iconColor="text-green-500"
-                      items={[
-                        { icon: Gauge, label: "Velocidade", value: `${formatBytes(taskData.network.upload.speed)}/s` },
-                        { icon: Database, label: "Total", value: formatBytes(taskData.network.upload.amount) },
-                      ]}
-                    />
-                  </div>
-                </div>
+                {(() => {
+                  // Use aggregated data if multiple torrents selected, otherwise use single task data
+                  const displayData = aggregatedTaskData || taskData;
+                  if (!displayData) return null;
+                  
+                  return (
+                    <>
+                      {/* Card Download e Upload */}
+                      <div className="col-span-2 p-3 container-content-background/50 rounded-xl border">
+                        <div className="flex gap-4 items-stretch">
+                          <MetricSection
+                            title="Download"
+                            icon={ArrowDown}
+                            iconColor="text-blue-500"
+                            items={[
+                              { icon: Gauge, label: "Velocidade", value: `${formatBytes(displayData.network.download.speed)}/s` },
+                              { icon: Database, label: "Total", value: formatBytes(displayData.network.download.amount) },
+                            ]}
+                          />
+                          <div className="w-px bg-border self-stretch mx-2" />
+                          <MetricSection
+                            title="Upload"
+                            icon={ArrowUp}
+                            iconColor="text-green-500"
+                            items={[
+                              { icon: Gauge, label: "Velocidade", value: `${formatBytes(displayData.network.upload.speed)}/s` },
+                              { icon: Database, label: "Total", value: formatBytes(displayData.network.upload.amount) },
+                            ]}
+                          />
+                        </div>
+                      </div>
 
-                {/* Card Conectados e Swarm */}
-                <div className="col-span-2 p-3 container-content-background/50 rounded-lg border">
-                  <div className="flex gap-4 items-stretch">
-                    <MetricSection
-                      title="Conectados"
-                      icon={Users}
-                      items={[
-                        { icon: UserPlus, label: "Seeders", value: taskData.pairs.seeders, iconClassName: "text-green-600" },
-                        { icon: UserMinus, label: "Leechers", value: taskData.pairs.leechers, iconClassName: "text-orange-600" },
-                      ]}
-                    />
-                    <div className="w-px bg-border self-stretch mx-2" />
-                    <MetricSection
-                      title="Swarm"
-                      icon={Globe}
-                      items={[
-                        { icon: Users2, label: "Swarm Seeders", value: taskData.pairs.swarm_seeders, iconClassName: "text-green-600" },
-                        { icon: Users2, label: "Swarm Leechers", value: taskData.pairs.swarm_leechers, iconClassName: "text-orange-600" },
-                      ]}
-                    />
-                  </div>
-                </div>
+                      {/* Card Conectados e Swarm */}
+                      <div className="col-span-2 p-3 container-content-background/50 rounded-xl border">
+                        <div className="flex gap-4 items-stretch">
+                          <MetricSection
+                            title="Conectados"
+                            icon={Users}
+                            items={[
+                              { icon: UserPlus, label: "Seeders", value: displayData.pairs.seeders, iconClassName: "text-green-600" },
+                              { icon: UserMinus, label: "Leechers", value: displayData.pairs.leechers, iconClassName: "text-orange-600" },
+                            ]}
+                          />
+                          <div className="w-px bg-border self-stretch mx-2" />
+                          <MetricSection
+                            title="Swarm"
+                            icon={Globe}
+                            items={[
+                              { icon: Users2, label: "Swarm Seeders", value: displayData.pairs.swarm_seeders, iconClassName: "text-green-600" },
+                              { icon: Users2, label: "Swarm Leechers", value: displayData.pairs.swarm_leechers, iconClassName: "text-orange-600" },
+                            ]}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           )}
@@ -577,72 +723,85 @@ export function TorrentMetricsModal({
             </div>
           ) : (
             <div className="space-y-4 w-full overflow-x-hidden">
-              <MetricsChart
-                title="Velocidades de Download e Upload"
-                icon={Activity}
-                config={speedChartConfig}
-                data={chartData}
-                yAxisFormatter={(value) => formatBytes(value)}
-                areas={[
-                  {
-                    dataKey: "download",
-                    tooltipFormatter: (value) => [formatBytesPerSecond(value), "Download"],
-                  },
-                  {
-                    dataKey: "upload",
-                    tooltipFormatter: (value) => [formatBytesPerSecond(value), "Upload"],
-                  },
-                ]}
-              />
+              {(() => {
+                const timeRange = formatTimeRange(fromDate, toDate);
+                const timeSuffix = timeRange ? ` (${timeRange})` : "";
+                
+                return (
+                  <>
+                    <SpeedChart
+                      title={`Velocidades de Download e Upload${timeSuffix}`}
+                      icon={Activity}
+                      config={speedChartConfig}
+                      data={chartData}
+                      yAxisFormatter={(value) => {
+                        const mbPerSecond = value / (1024 * 1024);
+                        return `${mbPerSecond.toFixed(1)}`;
+                      }}
+                      yAxisLabel="MB/s"
+                      lines={[
+                        {
+                          dataKey: "download",
+                          tooltipFormatter: (value) => [formatBytesPerSecond(value), "Download"],
+                        },
+                        {
+                          dataKey: "upload",
+                          tooltipFormatter: (value) => [formatBytesPerSecond(value), "Upload"],
+                        },
+                      ]}
+                    />
 
-              <MetricsChart
-                title="Seeders e Leechers"
-                icon={Network}
-                config={peersChartConfig}
-                data={chartData}
-                areas={[
-                  {
-                    dataKey: "seeders",
-                    tooltipFormatter: (value) => [`${value} peer${Number(value) !== 1 ? 's' : ''}`, "Seeders"],
-                  },
-                  {
-                    dataKey: "leechers",
-                    tooltipFormatter: (value) => [`${value} peer${Number(value) !== 1 ? 's' : ''}`, "Leechers"],
-                  },
-                ]}
-              />
+                    <SpeedChart
+                      title={`Seeders e Leechers${timeSuffix}`}
+                      icon={Network}
+                      config={peersChartConfig}
+                      data={chartData}
+                      lines={[
+                        {
+                          dataKey: "seeders",
+                          tooltipFormatter: (value) => [`${value} peer${Number(value) !== 1 ? 's' : ''}`, "Seeders"],
+                        },
+                        {
+                          dataKey: "leechers",
+                          tooltipFormatter: (value) => [`${value} peer${Number(value) !== 1 ? 's' : ''}`, "Leechers"],
+                        },
+                      ]}
+                    />
 
-              <MetricsChart
-                title="Ratio Médio"
-                icon={TrendingUp}
-                config={ratioChartConfig}
-                data={chartData}
-                yAxisFormatter={(value) => value.toFixed(2)}
-                areas={[
-                  {
-                    dataKey: "avgRatio",
-                    tooltipFormatter: (value) => [`${Number(value).toFixed(2)}`, "Ratio Médio"],
-                  },
-                ]}
-              />
+                    <SpeedChart
+                      title={`Ratio Médio${timeSuffix}`}
+                      icon={TrendingUp}
+                      config={ratioChartConfig}
+                      data={chartData}
+                      yAxisFormatter={(value) => value.toFixed(2)}
+                      lines={[
+                        {
+                          dataKey: "avgRatio",
+                          tooltipFormatter: (value) => [`${Number(value).toFixed(2)}`, "Ratio Médio"],
+                        },
+                      ]}
+                    />
 
-              <MetricsChart
-                title="Total Acumulado de Bytes"
-                icon={HardDrive}
-                config={totalBytesChartConfig}
-                data={chartData}
-                yAxisFormatter={(value) => formatBytes(value)}
-                areas={[
-                  {
-                    dataKey: "totalDownloadBytes",
-                    tooltipFormatter: (value) => [formatBytes(value), "Total Download"],
-                  },
-                  {
-                    dataKey: "totalUploadBytes",
-                    tooltipFormatter: (value) => [formatBytes(value), "Total Upload"],
-                  },
-                ]}
-              />
+                    <SpeedChart
+                      title={`Total Acumulado de Bytes${timeSuffix}`}
+                      icon={HardDrive}
+                      config={totalBytesChartConfig}
+                      data={chartData}
+                      yAxisFormatter={(value) => formatBytes(value)}
+                      lines={[
+                        {
+                          dataKey: "totalDownloadBytes",
+                          tooltipFormatter: (value) => [formatBytes(value), "Total Download"],
+                        },
+                        {
+                          dataKey: "totalUploadBytes",
+                          tooltipFormatter: (value) => [formatBytes(value), "Total Upload"],
+                        },
+                      ]}
+                    />
+                  </>
+                );
+              })()}
             </div>
           )}
         </div>

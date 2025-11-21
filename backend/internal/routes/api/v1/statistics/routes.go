@@ -3,6 +3,7 @@ package statistics
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gardarr/gardarr/internal/infra/database"
@@ -11,6 +12,19 @@ import (
 	stats "github.com/gardarr/gardarr/internal/services/statistics"
 	"github.com/gin-gonic/gin"
 )
+
+// splitAndTrim splits a string by separator and trims whitespace from each part
+func splitAndTrim(s, sep string) []string {
+	parts := strings.Split(s, sep)
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
+}
 
 type Module struct {
 	group   *gin.RouterGroup
@@ -81,19 +95,31 @@ func (m *Module) getDayHours(c *gin.Context) {
 	})
 }
 
-// GET /v1/statistics/agents/:agent_id/range/windowed?from=YYYY-MM-DDTHH:MM:SSZ&to=...&step=5m&group_by=agent|task&task_hash=optional
+// GET /v1/statistics/agents/:agent_id/range/windowed?from=YYYY-MM-DDTHH:MM:SSZ&to=...&step=5m&group_by=agent|task&task_hash=hash1,hash2,hash3
 // Returns a breakdown in fixed windows across the range. If group_by=task, returns per-task metrics per window.
+// task_hash can be a single hash or multiple comma-separated hashes to filter multiple tasks
 func (m *Module) getWindowed(c *gin.Context) {
 	agentID := c.Param("agent_id")
 	fromStr := c.Query("from")
 	toStr := c.Query("to")
 	stepStr := c.DefaultQuery("step", "5m")
 	groupBy := c.DefaultQuery("group_by", "agent")
-	filterTask := c.Query("task_hash")
+	filterTasksStr := c.Query("task_hash")
 
 	if agentID == "" || fromStr == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "agent_id and from are required"})
 		return
+	}
+
+	// Parse task_hash: can be comma-separated for multiple tasks
+	var filterTasks []string
+	if filterTasksStr != "" {
+		// Split by comma and trim whitespace
+		for _, hash := range splitAndTrim(filterTasksStr, ",") {
+			if hash != "" {
+				filterTasks = append(filterTasks, hash)
+			}
+		}
 	}
 
 	step, err := time.ParseDuration(stepStr)
@@ -122,19 +148,20 @@ func (m *Module) getWindowed(c *gin.Context) {
 		return
 	}
 
-	windows, err := m.service.GetWindowedAggregation(c.Request.Context(), agentID, from, to, step, groupBy, filterTask)
+	windows, err := m.service.GetWindowedAggregation(c.Request.Context(), agentID, from, to, step, groupBy, filterTasks)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to compute windowed aggregation"})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"agent_id": agentID,
-		"from":     from.UTC(),
-		"to":       to.UTC(),
-		"step":     step.String(),
-		"group_by": groupBy,
-		"windows":  windows,
+		"agent_id":     agentID,
+		"from":         from.UTC(),
+		"to":           to.UTC(),
+		"step":         step.String(),
+		"group_by":     groupBy,
+		"filter_tasks": filterTasks,
+		"windows":      windows,
 	})
 }
 

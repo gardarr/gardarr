@@ -27,11 +27,11 @@ COPY backend/dist/ ./binaries/
 # Select the correct binary based on target architecture
 # TARGETARCH is automatically set by BuildKit (amd64, arm64, etc.)
 RUN if [ "$TARGETARCH" = "amd64" ]; then \
-        cp binaries/gardarr-amd64 ./main; \
+    cp binaries/gardarr-amd64 ./main; \
     elif [ "$TARGETARCH" = "arm64" ]; then \
-        cp binaries/gardarr-arm64 ./main; \
+    cp binaries/gardarr-arm64 ./main; \
     else \
-        echo "Unsupported architecture: $TARGETARCH" && exit 1; \
+    echo "Unsupported architecture: $TARGETARCH" && exit 1; \
     fi && \
     chmod +x ./main && \
     rm -rf ./binaries
@@ -57,9 +57,9 @@ RUN mkdir -p /data && \
     chown -R nonroot:nonroot /data && \
     chmod 755 /data
 
-RUN mkdir -p /media && \
+RUN mkdir -p /media/uploads/images && \
     chown -R nonroot:nonroot /media && \
-    chmod 755 /media
+    chmod 750 -R /media
 
 # Set build argument for port
 ARG APP_PORT=3000

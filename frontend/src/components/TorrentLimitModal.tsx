@@ -15,7 +15,7 @@ interface TorrentLimitModalProps {
   isOpen: boolean;
   onClose: () => void;
   agentId: string;
-  taskId: string;
+  taskIds: string[];
   taskName?: string;
   taskStatus?: string;
 }
@@ -24,7 +24,7 @@ export function TorrentLimitModal({
   isOpen,
   onClose,
   agentId,
-  taskId,
+  taskIds,
   taskName,
   taskStatus: taskStatusProp
 }: TorrentLimitModalProps) {
@@ -39,44 +39,88 @@ export function TorrentLimitModal({
     seeding_time_limit: 0,
     inactive_seeding_time_limit: 0
   });
+  const [hasMixedValues, setHasMixedValues] = useState(false);
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
   const [ratioLimitMode, setRatioLimitMode] = useState<LimitMode>("custom");
   const [seedingTimeLimitMode, setSeedingTimeLimitMode] = useState<LimitMode>("custom");
   const [inactiveSeedingTimeLimitMode, setInactiveSeedingTimeLimitMode] = useState<LimitMode>("custom");
   
+  const isBulkEdit = taskIds.length > 1;
+
   // Normalize task status from prop
   const taskStatus: TaskStatus | null = taskStatusProp ? normalizeTaskStatus(taskStatusProp) : null;
 
   // Load limits when modal opens
   const loadLimits = useCallback(async () => {
-    if (!agentId || !taskId) return;
+    if (!agentId || taskIds.length === 0) return;
 
     setIsLoading(true);
     setError(null);
+    setHasMixedValues(false);
 
     try {
-      const response = await torrentService.getTaskLimits(agentId, taskId);
-      if (response.data) {
-        setLimits(response.data);
-        const modes = syncLimitModes(response.data);
-        setRatioLimitMode(modes.ratioMode);
-        setSeedingTimeLimitMode(modes.seedingTimeMode);
-        setInactiveSeedingTimeLimitMode(modes.inactiveSeedingTimeMode);
-      } else {
-        setError(response.error || "Failed to load limits");
+      // Load limits from all selected tasks
+      const responses = await Promise.all(
+        taskIds.map(id => torrentService.getTaskLimits(agentId, id))
+      );
+
+      // Check for errors
+      const errors = responses.filter(r => r.error);
+      if (errors.length > 0) {
+        setError(errors[0].error || "Failed to load limits");
+        return;
       }
+
+      const allLimits = responses.map(r => r.data).filter(Boolean) as TaskLimits[];
+      
+      if (allLimits.length === 0) {
+        setError("Failed to load limits");
+        return;
+      }
+
+      // Use the first task's limits as base
+      const baseLimits = allLimits[0];
+      setLimits(baseLimits);
+
+      // Check if there are mixed values across tasks
+      let hasMixed = false;
+      if (allLimits.length > 1) {
+        const fields: (keyof TaskLimits)[] = [
+          "download_limit",
+          "upload_limit",
+          "ratio_limit",
+          "seeding_time_limit",
+          "inactive_seeding_time_limit"
+        ];
+
+        for (const field of fields) {
+          const values = allLimits.map(l => l[field]);
+          const uniqueValues = new Set(values);
+          if (uniqueValues.size > 1) {
+            hasMixed = true;
+            break;
+          }
+        }
+      }
+
+      setHasMixedValues(hasMixed);
+
+      const modes = syncLimitModes(baseLimits);
+      setRatioLimitMode(modes.ratioMode);
+      setSeedingTimeLimitMode(modes.seedingTimeMode);
+      setInactiveSeedingTimeLimitMode(modes.inactiveSeedingTimeMode);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load limits");
     } finally {
       setIsLoading(false);
     }
-  }, [agentId, taskId]);
+  }, [agentId, taskIds]);
 
   useEffect(() => {
-    if (isOpen && agentId && taskId) {
+    if (isOpen && agentId && taskIds.length > 0) {
       loadLimits();
     }
-  }, [isOpen, agentId, taskId, loadLimits]);
+  }, [isOpen, agentId, taskIds, loadLimits]);
 
   // Close modal on Escape key
   useEffect(() => {
@@ -94,9 +138,14 @@ export function TorrentLimitModal({
 
   const saveDownloadLimit = async (): Promise<boolean> => {
     if (limits.download_limit > 0) {
-      const response = await torrentService.setTaskDownloadLimit(agentId, taskId, limits.download_limit);
-      if (response.error) {
-        setError(response.error);
+      // Apply to all selected tasks
+      const responses = await Promise.all(
+        taskIds.map(id => torrentService.setTaskDownloadLimit(agentId, id, limits.download_limit))
+      );
+      
+      const errors = responses.filter(r => r.error);
+      if (errors.length > 0) {
+        setError(errors[0].error || "Failed to update download limit");
         return false;
       }
     }
@@ -105,9 +154,14 @@ export function TorrentLimitModal({
 
   const saveUploadLimit = async (): Promise<boolean> => {
     if (limits.upload_limit > 0) {
-      const response = await torrentService.setTaskUploadLimit(agentId, taskId, limits.upload_limit);
-      if (response.error) {
-        setError(response.error);
+      // Apply to all selected tasks
+      const responses = await Promise.all(
+        taskIds.map(id => torrentService.setTaskUploadLimit(agentId, id, limits.upload_limit))
+      );
+      
+      const errors = responses.filter(r => r.error);
+      if (errors.length > 0) {
+        setError(errors[0].error || "Failed to update upload limit");
         return false;
       }
     }
@@ -115,22 +169,27 @@ export function TorrentLimitModal({
   };
 
   const saveShareLimits = async (): Promise<boolean> => {
-    const response = await torrentService.setTaskShareLimit(
-      agentId,
-      taskId,
-      limits.ratio_limit,
-      limits.seeding_time_limit,
-      limits.inactive_seeding_time_limit
+    // Apply to all selected tasks
+    const responses = await Promise.all(
+      taskIds.map(id => torrentService.setTaskShareLimit(
+        agentId,
+        id,
+        limits.ratio_limit,
+        limits.seeding_time_limit,
+        limits.inactive_seeding_time_limit
+      ))
     );
-    if (response.error) {
-      setError(response.error);
+    
+    const errors = responses.filter(r => r.error);
+    if (errors.length > 0) {
+      setError(errors[0].error || "Failed to update share limits");
       return false;
     }
     return true;
   };
 
   const handleSave = async () => {
-    if (!agentId || !taskId) return;
+    if (!agentId || taskIds.length === 0) return;
 
     setIsSaving(true);
     setError(null);
@@ -146,7 +205,10 @@ export function TorrentLimitModal({
         return;
       }
 
-      toast.success("Torrent limits updated successfully");
+      const successMessage = isBulkEdit
+        ? `Limits updated for ${taskIds.length} torrents`
+        : "Torrent limits updated successfully";
+      toast.success(successMessage);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save limits");
@@ -158,7 +220,7 @@ export function TorrentLimitModal({
   const handleInputChange = (field: keyof TaskLimits, value: string) => {
     const numValue = value === "" ? 0 : Number.parseFloat(value);
     const newValue = Number.isNaN(numValue) ? limits[field] : numValue;
-    
+
     setLimits(prev => ({
       ...prev,
       [field]: newValue
@@ -217,10 +279,17 @@ export function TorrentLimitModal({
               <Share2 className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold">Torrent Limits</h2>
-              {taskName && (
+              <h2 className="text-2xl font-bold">
+                {isBulkEdit ? `Torrent Limits (${taskIds.length} selected)` : "Torrent Limits"}
+              </h2>
+              {taskName && !isBulkEdit && (
                 <p className="text-sm text-muted-foreground mt-1 truncate max-w-md">
                   {taskName}
+                </p>
+              )}
+              {isBulkEdit && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Changes will be applied to all selected torrents
                 </p>
               )}
             </div>
@@ -241,6 +310,15 @@ export function TorrentLimitModal({
           {error && (
             <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
               <p className="text-sm text-destructive">{error}</p>
+            </div>
+          )}
+
+          {hasMixedValues && isBulkEdit && (
+            <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+              <p className="text-sm text-blue-600 dark:text-blue-400">
+                Selected torrents have different limit values. Displayed values are from the first selected torrent. 
+                Saving will apply the same limits to all selected torrents.
+              </p>
             </div>
           )}
 

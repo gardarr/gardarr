@@ -95,7 +95,7 @@ func (m *Module) listAgents(c *gin.Context) {
 func (m *Module) getAgent(c *gin.Context) {
 	id := c.Param("id")
 
-	result, err := m.service.Get(c.Request.Context(), id)
+	result, err := m.service.GetAgent(c.Request.Context(), id)
 	if err != nil {
 		errors.HandleError(c, err)
 		return
@@ -108,7 +108,7 @@ func (m *Module) getAgentPreferences(c *gin.Context) {
 	id := c.Param("id")
 
 	// First get the agent to ensure it exists
-	agent, err := m.service.Get(c.Request.Context(), id)
+	agent, err := m.service.GetAgent(c.Request.Context(), id)
 	if err != nil {
 		errors.HandleError(c, err)
 		return
@@ -155,18 +155,21 @@ func (m *Module) deleteAgent(c *gin.Context) {
 }
 
 func (m *Module) listAgentsTasks(c *gin.Context) {
-	result, err := m.service.ListAgentsTasks()
+	result, err := m.service.ListAgentsTasks(c.Request.Context())
 	if err != nil {
 		errors.HandleError(c, err)
 		return
 	}
 
-	resp := make([]models.TaskResponseModel, len(result))
-	for i, item := range result {
-		resp[i] = mappers.ToTaskResponse(item)
+	tasks := make([]models.TaskResponseModel, len(result.Tasks))
+	for i, item := range result.Tasks {
+		tasks[i] = mappers.ToTaskResponse(item)
 	}
 
-	c.JSON(http.StatusOK, resp)
+	c.JSON(http.StatusOK, gin.H{
+		"tasks":  tasks,
+		"errors": result.Errors,
+	})
 }
 
 func (m *Module) listAgentTasks(c *gin.Context) {
@@ -509,7 +512,7 @@ func (m *Module) getAgentTaskLimits(c *gin.Context) {
 	agentID := c.Param("id")
 	taskID := c.Param("task_id")
 
-	agent, err := m.service.Get(c.Request.Context(), agentID)
+	agent, err := m.service.GetAgent(c.Request.Context(), agentID)
 	if err != nil {
 		errors.HandleError(c, err)
 		return

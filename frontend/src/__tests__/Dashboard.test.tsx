@@ -2,8 +2,8 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { BrowserRouter } from 'react-router-dom';
-import { vi } from 'vitest';
-import Analytics from '../Analytics';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+import Dashboard from '../Dashboard';
 
 // Mock react-i18next
 vi.mock('react-i18next', async (importOriginal) => {
@@ -13,6 +13,7 @@ vi.mock('react-i18next', async (importOriginal) => {
     useTranslation: () => ({
       t: (key: string) => {
         const translations: Record<string, string> = {
+          'navigation.dashboard': 'Dashboard',
           'navigation.analytics': 'Analytics Dashboard',
           'common.loading': 'Loading...',
         };
@@ -69,7 +70,20 @@ vi.mock('../services/agents', () => ({
   },
 }));
 
-describe('Analytics Component', () => {
+// Mock child components
+vi.mock('../components/DateRangePicker', () => ({
+  default: () => <div data-testid="date-range-picker">Date Range Picker</div>,
+}));
+
+vi.mock('../components/analytics/AgentMetrics', () => ({
+  default: () => <div data-testid="agent-metrics">Agent Metrics</div>,
+}));
+
+vi.mock('../components/analytics/TaskMetrics', () => ({
+  default: () => <div data-testid="task-metrics">Task Metrics</div>,
+}));
+
+describe('Dashboard Component', () => {
   beforeEach(() => {
     // Clear any previous mocks
     vi.clearAllMocks();
@@ -79,34 +93,40 @@ describe('Analytics Component', () => {
     return render(<BrowserRouter>{component}</BrowserRouter>);
   };
 
-  it('renders analytics component', () => {
-    renderWithRouter(<Analytics />);
+  it('renders dashboard component', async () => {
+    renderWithRouter(<Dashboard />);
     
-    // Component should render the analytics dashboard title
-    expect(screen.getByText('Analytics Dashboard')).toBeInTheDocument();
-    expect(screen.getByText('Monitor your torrent activity and performance metrics')).toBeInTheDocument();
+    // Component should render the dashboard title
+    await waitFor(() => {
+      expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Real-time analytics and insights for your torrent agents and tasks')).toBeInTheDocument();
   });
 
-  it('renders analytics dashboard with tabs', async () => {
-    renderWithRouter(<Analytics />);
+  it('renders dashboard with metrics', async () => {
+    renderWithRouter(<Dashboard />);
     
     // Check main dashboard elements
     await waitFor(() => {
-      expect(screen.getByText('Analytics Dashboard')).toBeInTheDocument();
+      expect(screen.getByText('Dashboard')).toBeInTheDocument();
     }, { timeout: 2000 });
 
-    expect(screen.getByText('Monitor your torrent activity and performance metrics')).toBeInTheDocument();
-    // Component should have tabs structure (exact tab labels depend on implementation)
-    expect(screen.getByRole('tablist')).toBeInTheDocument();
+    expect(screen.getByText('Real-time analytics and insights for your torrent agents and tasks')).toBeInTheDocument();
+    
+    // Check that child components are rendered
+    expect(screen.getByTestId('agent-metrics')).toBeInTheDocument();
   });
 
   it('renders with date range picker and refresh button', async () => {
-    renderWithRouter(<Analytics />);
+    renderWithRouter(<Dashboard />);
     
     await waitFor(() => {
-      expect(screen.getByText('Analytics Dashboard')).toBeInTheDocument();
+      expect(screen.getByText('Dashboard')).toBeInTheDocument();
     }, { timeout: 2000 });
 
+    // Check for date range picker
+    expect(screen.getByTestId('date-range-picker')).toBeInTheDocument();
+    
     // Check for refresh button
     const refreshButton = screen.getByLabelText('Refresh now');
     expect(refreshButton).toBeInTheDocument();
@@ -114,7 +134,7 @@ describe('Analytics Component', () => {
 });
 
 // Test utility functions
-describe('Analytics Utility Functions', () => {
+describe('Dashboard Utility Functions', () => {
   // These would be tested if the utility functions were extracted
   // For now, they're tested indirectly through component rendering
   

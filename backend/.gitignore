@@ -41,3 +41,6 @@ gardarr.exe
 .idea/
 *.swp
 *.swo
+
+# Media
+uploads/

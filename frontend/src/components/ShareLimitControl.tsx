@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { Share2, Clock } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -74,6 +75,7 @@ function RatioLimitField({
   onModeChange,
   onLimitChange,
 }: RatioLimitFieldProps) {
+  const inputId = useId();
   const getHelpText = () => {
     if (mode === "global") return "Use global limit";
     if (mode === "unlimited") return "No limit";
@@ -83,7 +85,7 @@ function RatioLimitField({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <Label htmlFor="ratio_limit" className="flex items-center gap-2">
+        <Label htmlFor={inputId} className="flex items-center gap-2">
           <Share2 className="h-4 w-4" />
           Ratio Limit
         </Label>
@@ -92,7 +94,7 @@ function RatioLimitField({
       {mode === "custom" && (
         <div className="flex items-center gap-2">
           <Input
-            id="ratio_limit"
+            id={inputId}
             type="number"
             min="0"
             step="0.1"
@@ -130,6 +132,7 @@ function SeedingTimeLimitField({
   field,
   helpText,
 }: SeedingTimeLimitFieldProps) {
+  const inputId = useId();
   const getHelpText = () => {
     if (mode === "global") return "Use global limit";
     if (mode === "unlimited") return "No limit";
@@ -141,7 +144,7 @@ function SeedingTimeLimitField({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <Label htmlFor={field} className="flex items-center gap-2">
+        <Label htmlFor={inputId} className="flex items-center gap-2">
           <Clock className="h-4 w-4" />
           {label}
         </Label>
@@ -150,7 +153,7 @@ function SeedingTimeLimitField({
       {mode === "custom" && (
         <div className="flex items-center gap-2">
           <Input
-            id={field}
+            id={inputId}
             type="number"
             min="0"
             step="1"

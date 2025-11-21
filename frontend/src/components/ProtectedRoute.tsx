@@ -4,9 +4,10 @@ import { useAuth } from "@/contexts/auth-hooks";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  adminOnly?: boolean;
 }
 
-export default function ProtectedRoute({ children }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, adminOnly = false }: ProtectedRouteProps) {
   const { user, loading } = useAuth();
 
   // Ensure dark theme is applied on loading screen
@@ -31,6 +32,10 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (adminOnly && user.role !== 'admin') {
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;

@@ -48,6 +48,7 @@
     "categories": "Categories",
     "users": "Users",
     "analytics": "Analytics",
+    "history": "History",
     "integrations": "Integrations",
     "settings": "Settings",
     "profile": "Profile",
@@ -56,6 +57,11 @@
   "profile": {
     "title": "Profile",
     "subtitle": "Manage your account and preferences",
+    "tabs": {
+      "general": "General",
+      "display": "Display",
+      "security": "Security"
+    },
     "personalInfo": {
       "title": "Personal Information",
       "description": "Manage your personal data",
@@ -73,6 +79,33 @@
       "switchToDark": "Switch to Dark",
       "switchToLight": "Switch to Light",
       "language": "Language"
+    },
+    "display": {
+      "title": "Display",
+      "description": "Customize how content is displayed",
+      "torrentDisplayMode": "Torrent Display Mode",
+      "torrentDisplayModeDesc": "Choose how torrents are displayed in the interface",
+      "compactMode": "Compact Mode",
+      "compactModeDesc": "Reduce spacing and show more content on screen",
+      "blurIntensity": "Background Image Blur",
+      "blurIntensityDesc": "Adjust the blur intensity for background images (0-100)"
+    },
+    "security": {
+      "title": "Security",
+      "description": "Change your password",
+      "currentPassword": "Current Password",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm Password",
+      "enterCurrentPassword": "Enter your current password",
+      "enterNewPassword": "Enter your new password",
+      "enterConfirmPassword": "Confirm your new password",
+      "passwordRequirements": "Password must be at least 8 characters",
+      "changePassword": "Change Password",
+      "changingPassword": "Changing Password...",
+      "passwordChanged": "Password changed successfully!",
+      "passwordChangeFailed": "Failed to change password",
+      "passwordTooShort": "Password must be at least 8 characters",
+      "passwordMismatch": "Passwords do not match"
     },
     "sessions": {
       "title": "Active Sessions",
@@ -533,7 +566,14 @@
       "pause": "Pause",
       "delete": "Remove"
     },
-    "limits": "Limits"
+    "limits": "Limits",
+    "start": "Start",
+    "stop": "Stop",
+    "forceDownload": "Force download",
+    "forceReannounce": "Force reannounce",
+    "forceRecheck": "Force recheck",
+    "metrics": "Metrics",
+    "metadata": "Metadata"
   },
   "categories": {
     "title": "Categories",
@@ -749,5 +789,43 @@
     "minutes": "Minutes",
     "hours": "Hours",
     "days": "Days"
+  },
+  "history": {
+    "title": "History",
+    "subtitle": "Track torrent events and state changes",
+    "refresh": "Refresh",
+    "filter": {
+      "all": "All Events"
+    },
+    "events": {
+      "title": "Recent Events",
+      "description": "Showing {{total}} events",
+      "noEvents": "No events found"
+    },
+    "event": {
+      "stateChange": "Torrent changed state",
+      "added": "Torrent added",
+      "removed": "Torrent removed",
+      "completed": "Torrent completed",
+      "completedDescription": "Download completed successfully",
+      "default": "Event"
+    },
+    "badge": {
+      "stateChange": "State Change",
+      "added": "Added",
+      "removed": "Removed",
+      "completed": "Completed"
+    },
+    "time": {
+      "justNow": "Just now",
+      "minutesAgo": "{{count}}m ago",
+      "hoursAgo": "{{count}}h ago",
+      "daysAgo": "{{count}}d ago"
+    },
+    "pagination": {
+      "showing": "Showing {{from}}-{{to}} of {{total}}",
+      "previous": "Previous",
+      "next": "Next"
+    }
   }
 }

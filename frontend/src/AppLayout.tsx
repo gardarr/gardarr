@@ -1,6 +1,6 @@
 // AppLayout.tsx
 import { Button } from "@/components/ui/button";
-import { Settings, Users, BarChart3, ArrowDownUp, Menu, Sun, Moon, Info, LogOut, FolderOpen, UserCircle, Server, Plug } from "lucide-react";
+import { Settings, Users, BarChart3, ArrowDownUp, Menu, Sun, Moon, Info, LogOut, FolderOpen, UserCircle, Server, Plug, Clock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import PageTransition from "@/components/PageTransition";
@@ -62,13 +62,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   const menuItems = [
-    { href: "/", icon: ArrowDownUp, label: t("navigation.torrents") },
-    { href: "/agents", icon: Server, label: t("navigation.agents") },
-    { href: "/categories", icon: FolderOpen, label: t("navigation.categories") },
+    { href: "/", icon: BarChart3, label: t("navigation.dashboard"), key: "dashboard" },
+    { href: "/torrents", icon: ArrowDownUp, label: t("navigation.torrents"), key: "torrents" },
+    { href: "/agents", icon: Server, label: t("navigation.agents"), key: "agents" },
+    { href: "/categories", icon: FolderOpen, label: t("navigation.categories"), key: "categories" },
     // Only show Users menu item for admin users
-    ...(user?.role === 'admin' ? [{ href: "/users", icon: Users, label: t("navigation.users") }] : []),
-    { href: "/analytics", icon: BarChart3, label: t("navigation.analytics") },
-    { href: "/integrations", icon: Plug, label: t("navigation.integrations") },
+    ...(user?.role === 'admin' ? [{ href: "/users", icon: Users, label: t("navigation.users"), key: "users" }] : []),
+    // Only show Settings menu item for admin users
+    ...(user?.role === 'admin' ? [{ href: "/settings", icon: Settings, label: t("navigation.settings"), key: "settings" }] : []),
+    { href: "/history", icon: Clock, label: t("navigation.history"), key: "history" },
+    { href: "/integrations", icon: Plug, label: t("navigation.integrations"), key: "integrations" },
   ];
 
   return (
@@ -112,7 +115,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <ul className="space-y-1">
             {menuItems.map((item) => {
               const IconComponent = item.icon;
-              const isActive = location.pathname === item.href;
+              // Special handling for dashboard - should be active on "/" or "/agent/:agent_uuid" paths
+              const isActive = item.href === "/" 
+                ? (location.pathname === "/" || location.pathname.startsWith("/agent/"))
+                : location.pathname === item.href || location.pathname.startsWith(item.href + "/");
               const isCollapsed = !sidebarOpen && !isMobile;
               
               const menuItem = (
@@ -135,7 +141,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               );
 
               return (
-                <li key={item.href}>
+                <li key={item.key}>
                   {isCollapsed ? (
                     <TooltipProvider>
                       <Tooltip>
@@ -161,25 +167,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {(() => {
             const isCollapsed = !sidebarOpen && !isMobile;
             
-            const settingsItem = (
-              <Link
-                to="/settings"
-                onClick={() => isMobile && setSidebarOpen(false)}
-                className={`flex items-center px-3 py-2 rounded-md transition-all ${
-                  location.pathname === "/settings"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-sidebar-foreground hover:bg-primary/90 hover:text-primary-foreground"
-                } ${isCollapsed ? 'justify-center' : 'gap-3'}`}
-              >
-                <Settings className="h-4 w-4 flex-shrink-0" />
-                <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${
-                  sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
-                }`}>
-                  {t("navigation.settings")}
-                </span>
-              </Link>
-            );
-
             const aboutItem = (
               <Link
                 to="/about"
@@ -220,21 +207,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
             return (
               <>
-                {isCollapsed ? (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        {settingsItem}
-                      </TooltipTrigger>
-                      <TooltipContent side="right">
-                        <p>{t("navigation.settings")}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                ) : (
-                  settingsItem
-                )}
-                
                 {isCollapsed ? (
                   <TooltipProvider>
                     <Tooltip>
@@ -294,13 +266,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </Button>
             {/* Desktop: Show page title */}
             <h1 className="text-xl font-semibold hidden md:block">
-              {location.pathname === "/" && t("navigation.torrents")}
+              {(location.pathname === "/" || location.pathname.startsWith("/agent/")) && t("navigation.dashboard")}
               {location.pathname === "/torrents" && t("navigation.torrents")}
               {location.pathname === "/instances" && "Instances"}
               {location.pathname === "/agents" && t("navigation.agents")}
               {location.pathname === "/categories" && t("navigation.categories")}
               {location.pathname === "/users" && t("navigation.users")}
-              {location.pathname === "/analytics" && t("navigation.analytics")}
+              {location.pathname === "/history" && t("navigation.history")}
               {location.pathname === "/integrations" && t("navigation.integrations")}
               {location.pathname === "/settings" && t("navigation.settings")}
               {location.pathname === "/profile" && t("navigation.profile")}

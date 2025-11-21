@@ -2,8 +2,10 @@
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Globe, Save, RotateCcw, Languages, Settings as SettingsIcon } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { settingsService, type TimezoneInfo } from "@/services/settings";
+import { toast } from "sonner";
 
 const TIMEZONES = [
   "America/New_York",
@@ -37,16 +39,62 @@ export default function SettingsPage() {
   const [currentTime, setCurrentTime] = useState<string>("");
   const [language, setLanguage] = useState<string>(i18n.language);
   const [savedLanguage, setSavedLanguage] = useState<string>(i18n.language);
+  const [availableTimezones, setAvailableTimezones] = useState<TimezoneInfo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const loadSettings = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Load current settings from backend
+      const [timezoneResponse, languageResponse, timezonesResponse] = await Promise.all([
+        settingsService.getTimezone(),
+        settingsService.getLanguage(),
+        settingsService.getTimezones()
+      ]);
+
+      if (timezoneResponse.data) {
+        const tz = timezoneResponse.data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+        setTimezone(tz);
+        setSavedTimezone(tz);
+      }
+
+      if (languageResponse.data) {
+        const lang = languageResponse.data.default_language || i18n.language;
+        setLanguage(lang);
+        setSavedLanguage(lang);
+        // Sync with i18n if different from current
+        if (lang !== i18n.language) {
+          i18n.changeLanguage(lang);
+          localStorage.setItem("app_language", lang);
+        }
+      }
+
+      if (timezonesResponse.data) {
+        setAvailableTimezones(timezonesResponse.data.timezones);
+      }
+    } catch (error) {
+      console.error('Failed to load settings:', error);
+      toast.error(t('settings.loadError'));
+      
+      // Fallback to system detection
+      const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      setTimezone(detectedTimezone);
+      setSavedTimezone(detectedTimezone);
+      // Convert TIMEZONES array to TimezoneInfo format
+      setAvailableTimezones(TIMEZONES.map(tz => ({ value: tz, label: tz })));
+      
+      // Use current i18n language as fallback
+      setLanguage(i18n.language);
+      setSavedLanguage(i18n.language);
+    } finally {
+      setLoading(false);
+    }
+  }, [t, i18n]);
 
   useEffect(() => {
-    // Load saved timezone from localStorage or detect system timezone
-    const stored = localStorage.getItem("app_timezone");
-    const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const initialTimezone = stored || detectedTimezone;
-    
-    setTimezone(initialTimezone);
-    setSavedTimezone(initialTimezone);
-  }, []);
+    loadSettings();
+  }, [loadSettings]);
 
   useEffect(() => {
     // Update current time every second
@@ -69,17 +117,25 @@ export default function SettingsPage() {
     return () => clearInterval(interval);
   }, [timezone, i18n.language]);
 
-  useEffect(() => {
-    // Sync language state with i18n
-    setLanguage(i18n.language);
-    setSavedLanguage(i18n.language);
-  }, [i18n.language]);
 
-  const handleSaveTimezone = () => {
-    localStorage.setItem("app_timezone", timezone);
-    setSavedTimezone(timezone);
-    
-    alert(t("settings.timezone.saveSuccess") + `: ${timezone}`);
+  const handleSaveTimezone = async () => {
+    setSaving(true);
+    try {
+      const result = await settingsService.updateTimezone(timezone);
+      if (result.error) {
+        toast.error(result.error);
+        setSaving(false);
+        return;
+      }
+      
+      setSavedTimezone(timezone);
+      toast.success(t("settings.timezone.saveSuccess") + `: ${timezone}`);
+    } catch (error) {
+      console.error('Failed to save timezone:', error);
+      toast.error('Failed to save timezone');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleResetTimezone = () => {
@@ -87,16 +143,41 @@ export default function SettingsPage() {
     setTimezone(detectedTimezone);
   };
 
-  const handleSaveLanguage = () => {
-    i18n.changeLanguage(language);
-    localStorage.setItem("app_language", language);
-    setSavedLanguage(language);
-    
-    alert(t("settings.language.saveSuccess"));
+  const handleSaveLanguage = async () => {
+    setSaving(true);
+    try {
+      const result = await settingsService.updateLanguage(language);
+      if (result.error) {
+        toast.error(result.error);
+        setSaving(false);
+        return;
+      }
+      
+      i18n.changeLanguage(language);
+      localStorage.setItem("app_language", language);
+      setSavedLanguage(language);
+      toast.success(t("settings.language.saveSuccess"));
+    } catch (error) {
+      console.error('Failed to save language:', error);
+      toast.error('Failed to save language');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const hasTimezoneChanges = timezone !== savedTimezone;
   const hasLanguageChanges = language !== savedLanguage;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground">{t("settings.loading")}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -162,11 +243,11 @@ export default function SettingsPage() {
           <div className="flex gap-3 pt-4 border-t border-border">
             <Button
               onClick={handleSaveLanguage}
-              disabled={!hasLanguageChanges || !language}
+              disabled={!hasLanguageChanges || !language || loading || saving}
               className="flex items-center gap-2"
             >
               <Save className="h-4 w-4" />
-              {t("settings.language.saveChanges")}
+              {saving ? t("settings.saving") : t("settings.language.saveChanges")}
             </Button>
           </div>
         </CardContent>
@@ -211,9 +292,13 @@ export default function SettingsPage() {
               className="w-full px-3 py-2 bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 text-sm"
             >
               <option value="">{t("settings.timezone.selectPlaceholder")}</option>
-              {TIMEZONES.map((tz) => (
-                <option key={tz} value={tz}>
-                  {t(`timezones.${tz}`)}
+              {availableTimezones.length > 0 ? availableTimezones.map((tz, index) => (
+                <option key={`timezone-${tz.value}-${index}`} value={tz.value}>
+                  {tz.value}
+                </option>
+              )) : TIMEZONES.map((tz, index) => (
+                <option key={`timezone-${tz}-${index}`} value={tz}>
+                  {tz}
                 </option>
               ))}
             </select>
@@ -236,11 +321,11 @@ export default function SettingsPage() {
           <div className="flex gap-3 pt-4 border-t border-border">
             <Button
               onClick={handleSaveTimezone}
-              disabled={!hasTimezoneChanges || !timezone}
+              disabled={!hasTimezoneChanges || !timezone || loading || saving}
               className="flex items-center gap-2"
             >
               <Save className="h-4 w-4" />
-              {t("settings.timezone.saveChanges")}
+              {saving ? t("settings.saving") : t("settings.timezone.saveChanges")}
             </Button>
             <Button
               variant="outline"

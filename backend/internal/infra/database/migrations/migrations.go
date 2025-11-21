@@ -102,5 +102,35 @@ func Register(m *migration.Migrator) {
 				return db.Migrator().DropTable(&models.Settings{})
 			},
 		},
+		{
+			Version:     "009_create_events_table",
+			Description: "Cria a tabela de eventos para histórico de mudanças de estado",
+			Up: func(db *gorm.DB) error {
+				return db.AutoMigrate(&models.Event{})
+			},
+			Down: func(db *gorm.DB) error {
+				return db.Migrator().DropTable(&models.Event{})
+			},
+		},
+		{
+			Version:     "010_create_task_metadata_table",
+			Description: "Cria a tabela de metadados de tasks com suporte a imagens",
+			Up: func(db *gorm.DB) error {
+				return db.AutoMigrate(&models.TaskMetadata{})
+			},
+			Down: func(db *gorm.DB) error {
+				return db.Migrator().DropTable(&models.TaskMetadata{})
+			},
+		},
+		{
+			Version:     "013_create_user_preferences_table",
+			Description: "Cria a tabela de preferências de usuário",
+			Up: func(db *gorm.DB) error {
+				return db.AutoMigrate(&models.UserPreferences{})
+			},
+			Down: func(db *gorm.DB) error {
+				return db.Migrator().DropTable(&models.UserPreferences{})
+			},
+		},
 	})
 }

@@ -5,7 +5,8 @@ import type {
   CreateTaskRequest,
   TaskMagnetLink,
   TaskFile,
-  TaskLimits
+  TaskLimits,
+  TaskListResponse
 } from '../types/torrent';
 
 /**
@@ -17,8 +18,8 @@ export class TorrentService {
   /**
    * Lista todos os torrents/tasks
    */
-  async listTasks(): Promise<ApiResponse<Task[]>> {
-    return api.get<Task[]>(this.baseEndpoint);
+  async listTasks(): Promise<ApiResponse<TaskListResponse>> {
+    return api.get<TaskListResponse>(this.baseEndpoint);
   }
 
   /**
@@ -170,7 +171,7 @@ export const torrentService = new TorrentService();
 export function convertMagnetUriToTaskMagnetLink(magnetUri: string): TaskMagnetLink | null {
   try {
     const url = new URL(magnetUri);
-    
+
     if (url.protocol !== 'magnet:') {
       return null;
     }

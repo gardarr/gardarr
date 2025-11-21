@@ -8,24 +8,32 @@ import (
 
 	"github.com/gardarr/gardarr/internal/entities"
 	"github.com/gardarr/gardarr/internal/infra/database"
-	"github.com/gardarr/gardarr/internal/repository/agent"
+	repository "github.com/gardarr/gardarr/internal/repository/agent"
 	"github.com/gardarr/gardarr/internal/schemas"
 	"github.com/gardarr/gardarr/internal/services/crypto"
+	metadata "github.com/gardarr/gardarr/internal/services/task_metadata"
 	"github.com/google/uuid"
 )
 
 type Service struct {
-	repository agent.RepositoryInterface
+	repository      repository.RepositoryInterface
+	metadataService *metadata.Service
 }
 
-func NewService(db *database.Database, c *crypto.CryptoService) (*Service, error) {
-	repository, err := agent.NewRepository(db, c)
+func NewService(db *database.Database, c *crypto.CryptoService, baseURL, uploadDir string) (*Service, error) {
+	repository, err := repository.NewRepository(db, c)
+	if err != nil {
+		return nil, err
+	}
+
+	meta, err := metadata.NewService(db, baseURL, uploadDir)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Service{
-		repository: repository,
+		repository:      repository,
+		metadataService: meta,
 	}, nil
 }
 
@@ -69,18 +77,23 @@ func (s *Service) ListAgents() ([]*entities.Agent, error) {
 	// Process each agent concurrently
 	for _, agent := range agents {
 		go func(a *entities.Agent) {
-			// Set default status to ACTIVE
 			a.Status = entities.AgentStatusActive
 
-			// Try to get instance, if it fails, set status to ERRORED
+			// Try to get instance
+			// GetInstance internally calls isAvailable first - if that fails, it aborts and returns error
+			// If error occurs (including isAvailable failure), abort and return agent with error status
 			instance, err := s.repository.GetInstance(a)
 			if err != nil {
+				// isAvailable failed or GetInstance failed - abort execution
 				a.Status = entities.AgentStatusErrored
 				a.Error = err.Error()
 				a.Instance = nil
-			} else {
-				a.Instance = instance
+				agentChan <- a
+				return
 			}
+
+			// Success - set instance
+			a.Instance = instance
 
 			// Send the processed agent to the channel
 			agentChan <- a
@@ -89,7 +102,7 @@ func (s *Service) ListAgents() ([]*entities.Agent, error) {
 
 	// Collect all processed agents from the channel
 	result := make([]*entities.Agent, 0, len(agents))
-	for i := 0; i < len(agents); i++ {
+	for range len(agents) {
 		processedAgent := <-agentChan
 		result = append(result, processedAgent)
 	}
@@ -100,69 +113,114 @@ func (s *Service) ListAgents() ([]*entities.Agent, error) {
 	return result, nil
 }
 
-func (s *Service) ListTasks(agents []*entities.Agent) ([]*entities.Task, error) {
-	if len(agents) == 0 {
-		return []*entities.Task{}, nil
+// enrichTasksWithMetadata loads metadata for a list of tasks
+func (s *Service) enrichTasksWithMetadata(ctx context.Context, tasks []*entities.Task) error {
+	if len(tasks) == 0 {
+		return nil
 	}
 
-	// Create channels to receive results and errors
-	taskChan := make(chan []*entities.Task, len(agents))
-	errorChan := make(chan error, len(agents))
+	// Collect all task hashes
+	taskHashes := make([]string, 0, len(tasks))
+	for _, task := range tasks {
+		taskHashes = append(taskHashes, task.Hash)
+	}
+
+	// Load metadata in batch
+	metadataMap, err := s.metadataService.GetByTaskHashes(ctx, taskHashes)
+	if err != nil {
+		// Log error but don't fail - metadata is optional
+		return nil
+	}
+
+	// Attach metadata to tasks
+	for _, task := range tasks {
+		if metadata, exists := metadataMap[task.Hash]; exists {
+			task.Metadata = metadata
+		}
+	}
+
+	return nil
+}
+
+func (s *Service) ListTasks(ctx context.Context, agents []*entities.Agent) (*entities.TaskListResult, error) {
+	if len(agents) == 0 {
+		return &entities.TaskListResult{
+			Tasks:  []*entities.Task{},
+			Errors: make(map[string]string),
+		}, nil
+	}
+
+	type agentResult struct {
+		agentID string
+		tasks   []*entities.Task
+		err     error
+	}
+
+	// Create channel to receive results
+	resultChan := make(chan agentResult, len(agents))
 
 	// Process each agent concurrently
 	for _, agent := range agents {
 		go func(a *entities.Agent) {
+			// Check context before starting work
+			select {
+			case <-ctx.Done():
+				resultChan <- agentResult{
+					agentID: a.UUID.String(),
+					err:     ctx.Err(),
+				}
+				return
+			default:
+			}
+
 			tasks, err := s.repository.ListAgentTasks(a)
-			if err != nil {
-				errorChan <- err
-				taskChan <- nil
-			} else {
-				errorChan <- nil
-				taskChan <- tasks
+			resultChan <- agentResult{
+				agentID: a.UUID.String(),
+				tasks:   tasks,
+				err:     err,
 			}
 		}(agent)
 	}
 
-	// Collect results and errors
-	var result []*entities.Task
-	var errors []error
+	// Collect results
+	allTasks := make([]*entities.Task, 0)
+	agentErrors := make(map[string]string)
 
 	for i := 0; i < len(agents); i++ {
-		tasks := <-taskChan
-		err := <-errorChan
-
-		if err != nil {
-			errors = append(errors, err)
-		} else if tasks != nil {
-			result = append(result, tasks...)
-		}
-	}
-
-	// Close channels
-	close(taskChan)
-	close(errorChan)
-
-	// If we have any errors, return them along with the results
-	if len(errors) > 0 {
-		// Create a combined error message
-		var errorMsg strings.Builder
-		errorMsg.WriteString("errors occurred while fetching tasks from agents: ")
-		for i, err := range errors {
-			if i > 0 {
-				errorMsg.WriteString("; ")
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case res := <-resultChan:
+			if res.err != nil {
+				agentErrors[res.agentID] = res.err.Error()
+			} else if res.tasks != nil {
+				allTasks = append(allTasks, res.tasks...)
 			}
-			errorMsg.WriteString(err.Error())
 		}
-		return result, fmt.Errorf("%s", errorMsg.String())
 	}
 
-	return result, nil
+	close(resultChan)
+
+	// Enrich tasks with metadata
+	_ = s.enrichTasksWithMetadata(ctx, allTasks)
+
+	return &entities.TaskListResult{
+		Tasks:  allTasks,
+		Errors: agentErrors,
+	}, nil
 }
 
-func (s *Service) Get(ctx context.Context, id string) (*entities.Agent, error) {
+func (s *Service) GetAgent(ctx context.Context, id string) (*entities.Agent, error) {
 	parsedID, err := uuid.Parse(id)
 	if err != nil {
 		return nil, fmt.Errorf("invalid UUID format: %w", err)
+	}
+
+	// Check if context is already cancelled
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
 	}
 
 	agent, err := s.repository.GetAgentByUUID(parsedID)
@@ -173,41 +231,49 @@ func (s *Service) Get(ctx context.Context, id string) (*entities.Agent, error) {
 	// Set default status to ACTIVE
 	agent.Status = entities.AgentStatusActive
 
-	// Try to get instance, if it fails, set status to ERRORED
+	// Check agent availability first - if it fails, abort immediately without trying to get instance
+	if err := s.repository.CheckAgentAvailability(agent); err != nil {
+		// Check if context was cancelled during the call
+		select {
+		case <-ctx.Done():
+			agent.Status = entities.AgentStatusErrored
+			agent.Instance = nil
+			agent.Error = "request cancelled or timeout"
+			return agent, nil
+		default:
+			// Agent is not available - abort execution and return agent with error status
+			agent.Status = entities.AgentStatusErrored
+			agent.Instance = nil
+			agent.Error = err.Error()
+			return agent, nil
+		}
+	}
+
+	// Agent is available, now try to get instance
+	// GetInstance internally calls isAvailable again as a safety check
+	// If it fails, abort and return agent with error
 	instance, err := s.repository.GetInstance(agent)
 	if err != nil {
-		agent.Status = entities.AgentStatusErrored
-		agent.Instance = nil
-	} else {
-		agent.Instance = instance
+		// Check if context was cancelled during the call
+		select {
+		case <-ctx.Done():
+			// Context was cancelled - abort execution
+			agent.Status = entities.AgentStatusErrored
+			agent.Instance = nil
+			agent.Error = "request cancelled or timeout"
+			return agent, nil
+		default:
+			// Error from GetInstance (could be from isAvailable or instance fetch)
+			// Abort execution and return agent with error status and instance = nil
+			agent.Status = entities.AgentStatusErrored
+			agent.Instance = nil
+			agent.Error = err.Error()
+			return agent, nil
+		}
 	}
 
-	return agent, nil
-}
-
-func (s *Service) GetAgent(ctx context.Context, id string) (*entities.Agent, error) {
-	parsedID, err := uuid.Parse(id)
-	if err != nil {
-		return nil, err
-	}
-
-	agent, err := s.repository.GetAgentByUUID(parsedID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Set default status to ACTIVE
-	agent.Status = entities.AgentStatusActive
-
-	// Try to get instance, if it fails, set status to ERRORED
-	instance, err := s.repository.GetInstance(agent)
-	if err != nil {
-		agent.Status = entities.AgentStatusErrored
-		agent.Error = err.Error()
-		agent.Instance = nil
-	} else {
-		agent.Instance = instance
-	}
+	// Success - set instance
+	agent.Instance = instance
 
 	return agent, nil
 }
@@ -341,16 +407,19 @@ func (s *Service) ListAgentTasks(ctx context.Context, id string) ([]*entities.Ta
 		return nil, fmt.Errorf("failed to list tasks: %w", err)
 	}
 
+	// Enrich tasks with metadata
+	_ = s.enrichTasksWithMetadata(ctx, tasks)
+
 	return tasks, nil
 }
 
-func (s *Service) ListAgentsTasks() ([]*entities.Task, error) {
+func (s *Service) ListAgentsTasks(ctx context.Context) (*entities.TaskListResult, error) {
 	agents, err := s.repository.ListAgents()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list agents: %w", err)
 	}
 
-	return s.ListTasks(agents)
+	return s.ListTasks(ctx, agents)
 }
 
 func (s *Service) StopAgentTask(ctx context.Context, agentID, taskID string) error {
@@ -410,6 +479,9 @@ func (s *Service) GetAgentTask(ctx context.Context, agentID, taskID string) (*en
 	if err != nil {
 		return nil, fmt.Errorf("failed to get task: %w", err)
 	}
+
+	// Enrich task with metadata
+	_ = s.enrichTasksWithMetadata(ctx, []*entities.Task{task})
 
 	return task, nil
 }

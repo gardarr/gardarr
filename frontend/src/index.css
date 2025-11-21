@@ -571,3 +571,24 @@ html.dark[data-color-variant="silver"] {
 .animate-accordion-up {
   animation: accordion-up 0.2s ease-out;
 }
+
+/* Toast icon-only colors */
+.toast-success-icon-only [data-icon],
+.toast-success-icon-only svg {
+  color: #10b981 !important; /* green-500 */
+}
+
+.toast-error-icon-only [data-icon],
+.toast-error-icon-only svg {
+  color: #ef4444 !important; /* red-500 */
+}
+
+.toast-warning-icon-only [data-icon],
+.toast-warning-icon-only svg {
+  color: #f59e0b !important; /* amber-500 */
+}
+
+.toast-info-icon-only [data-icon],
+.toast-info-icon-only svg {
+  color: #3b82f6 !important; /* blue-500 */
+}

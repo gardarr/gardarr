@@ -22,6 +22,7 @@ export interface Task {
   pairs: TaskPairs;
   network: TaskNetwork;
   tags?: string[];
+  metadata?: TaskMetadata | null;
 }
 
 export interface TaskDownload {
@@ -67,7 +68,8 @@ export interface DeleteTaskRequest {
 }
 
 export interface TaskListResponse {
-  data: Task[];
+  tasks: Task[];
+  errors?: Record<string, string>;
 }
 
 export interface TaskCreateResponse {
@@ -95,4 +97,16 @@ export interface TaskLimits {
   ratio_limit: number;
   seeding_time_limit: number;
   inactive_seeding_time_limit: number;
+}
+
+export interface TaskMetadata {
+  uuid: string;
+  task_hash: string;
+  image_url?: string;
+  thumbnail_url?: string;
+  description?: string;
+  image_position_y?: number; // Vertical position offset in percentage (0-100)
+  image_opacity?: number; // Image opacity in percentage (0-100)
+  created_at: string;
+  updated_at: string;
 }
