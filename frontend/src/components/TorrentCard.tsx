@@ -42,7 +42,7 @@ export type MobileTorrent = {
   metadata?: TaskMetadata | null;
 };
 
-export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits, onMetadataUpdate: _onMetadataUpdate, compact, selectionMode, selected, onToggleSelect, selectedIds, onRequestDelete }: Readonly<{
+export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits, onMetadataUpdate: _, compact, selectionMode, selected, onToggleSelect, selectedIds, onRequestDelete }: Readonly<{
   torrent: MobileTorrent;
   onShowDetails: (id: string) => void;
   onStart: (id: string) => void;
