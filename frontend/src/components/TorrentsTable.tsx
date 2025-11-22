@@ -123,10 +123,7 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
   return (
     <TorrentContextMenu
       taskId={torrent.id}
-      taskHash={torrent.hash}
-      taskName={torrent.name}
       agentId={torrent.agentUUID}
-      metadata={torrent.metadata}
       selectionMode={selectionMode}
       selectedIds={selectedIds}
       onRequestDelete={onRequestDelete}
@@ -138,7 +135,6 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
       onForceRecheck={onForceRecheck}
       onMetrics={onMetrics}
       onLimits={onLimits}
-      onMetadataUpdate={onMetadataUpdate}
     >
       <tr
         className="border-b hover:bg-muted/50 transition-colors cursor-pointer"

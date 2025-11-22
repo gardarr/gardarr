@@ -11,6 +11,7 @@ import { ButtonGroup } from "@/components/ui/button-group";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { 
   Copy, 
   Check, 
@@ -26,7 +27,8 @@ import {
   Radio,
   CheckCircle,
   Edit,
-  Save
+  Save,
+  Image
 } from "lucide-react";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { AgentIcon } from "@/components/ui/AgentIcon";
@@ -44,6 +46,7 @@ import type { Category } from "@/types/category";
 import { TorrentFilesList } from "@/components/TorrentFilesList";
 import { TorrentRatioWidget } from "@/components/widgets/TorrentRatioWidget";
 import { TorrentLifetimeWidget } from "@/components/widgets/TorrentLifetimeWidget";
+import { TorrentImageEditor } from "@/components/TorrentImageEditor";
 import { formatBytes  } from "@/utils/bytes";
 
 interface TorrentDetailsModalProps {
@@ -60,6 +63,7 @@ interface TorrentDetailsModalProps {
   onSetLocation?: (torrentId: string, location: string) => void;
   onUpdateCategory?: (torrentId: string, category: string) => void;
   onUpdateTags?: (torrentId: string, tags: string[]) => void;
+  onUpdate?: () => void;
 }
 
 
@@ -85,7 +89,7 @@ function useIsMobile(): boolean {
   return isMobile;
 }
 
-export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause, onDelete, onForceDownload, onForceReannounce, onForceRecheck, onRename, onSetLocation, onUpdateCategory, onUpdateTags }: TorrentDetailsModalProps) {
+export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause, onDelete, onForceDownload, onForceReannounce, onForceRecheck, onRename, onSetLocation, onUpdateCategory, onUpdateTags, onUpdate }: TorrentDetailsModalProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -531,7 +535,20 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
           </ButtonGroup>
         </div>
 
-        <div className="space-y-3 sm:space-y-6">
+        <Tabs defaultValue="details" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="details" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              {t('torrentDetails.tabs.details', { defaultValue: 'Detalhes' })}
+            </TabsTrigger>
+            <TabsTrigger value="images" className="flex items-center gap-2">
+              <Image className="h-4 w-4" />
+              {t('torrentDetails.tabs.images', { defaultValue: 'Imagens' })}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="details" className="mt-4">
+            <div className="space-y-3 sm:space-y-6">
           {/* Nome do Torrent */}
           <div className="space-y-2">
             <h3 className="text-sm font-medium text-muted-foreground">{t('torrentDetails.name.label', { defaultValue: 'Nome' })}</h3>
@@ -603,28 +620,39 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                     <Activity className="h-4 w-4 text-muted-foreground" />
                     <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('torrentDetails.general.title', { defaultValue: 'Informações Gerais' })}</h4>
                   </div>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">{t('torrentDetails.general.state', { defaultValue: 'Estado:' })}</span>
-                      <div className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium w-fit ${getStatusBackgroundColor(torrent.state as TorrentStatus)} ${getStatusColor(torrent.state as TorrentStatus)}`}>
-                        {(() => {
-                          const StatusIcon = getStatusIcon(torrent.state as TorrentStatus);
-                          return <StatusIcon className="h-4 w-4" />;
-                        })()}
-                        <span className="capitalize">{torrent.state}</span>
-                      </div>
-                    </div>
-                    {torrent.agent && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">{t('torrentDetails.general.agent', { defaultValue: 'Agent:' })}</span>
-                        <div className="flex items-center gap-2">
-                          <AgentIcon 
-                            iconName={torrent.agent.icon}
-                            color={torrent.agent.color}
-                            size="sm"
-                          />
-                          <span className="text-sm text-muted-foreground">{torrent.agent.name}</span>
+                  <div className="flex gap-3 items-start">
+                    <div className="flex-1 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{t('torrentDetails.general.state', { defaultValue: 'Estado:' })}</span>
+                        <div className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium w-fit ${getStatusBackgroundColor(torrent.state as TorrentStatus)} ${getStatusColor(torrent.state as TorrentStatus)}`}>
+                          {(() => {
+                            const StatusIcon = getStatusIcon(torrent.state as TorrentStatus);
+                            return <StatusIcon className="h-4 w-4" />;
+                          })()}
+                          <span className="capitalize">{torrent.state}</span>
                         </div>
+                      </div>
+                      {torrent.agent && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">{t('torrentDetails.general.agent', { defaultValue: 'Agent:' })}</span>
+                          <div className="flex items-center gap-2">
+                            <AgentIcon 
+                              iconName={torrent.agent.icon}
+                              color={torrent.agent.color}
+                              size="sm"
+                            />
+                            <span className="text-sm text-muted-foreground">{torrent.agent.name}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    {torrent.metadata?.thumbnail_url && (
+                      <div className="flex-shrink-0">
+                        <img
+                          src={torrent.metadata.thumbnail_url}
+                          alt={torrent.name}
+                          className="w-24 h-24 rounded-lg border object-cover"
+                        />
                       </div>
                     )}
                   </div>
@@ -977,8 +1005,20 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
               </div>
             )}
           </div>
+            </div>
+          </TabsContent>
 
-        </div>
+          <TabsContent value="images" className="mt-4">
+            {torrent && (
+              <TorrentImageEditor
+                taskHash={torrent.hash}
+                taskName={torrent.name}
+                metadata={torrent.metadata}
+                onUpdate={onUpdate}
+              />
+            )}
+          </TabsContent>
+        </Tabs>
       </DialogContent>
 
       {/* Modal de confirmação de deleção */}
