@@ -6,7 +6,9 @@
     "reset": "Reset",
     "loading": "Loading...",
     "error": "Error",
-    "success": "Success"
+    "success": "Success",
+    "selectAll": "Select all",
+    "clearAll": "Clear all"
   },
   "nota": "Grade",
   "ratio": {
@@ -535,7 +537,8 @@
       "agents": "Agents",
       "status": "Status",
       "categories": "Categories",
-      "tags": "Tags"
+      "tags": "Tags",
+      "ratioGrades": "Ratio Grades"
     },
     "sortBy": {
       "priority": "priority",
@@ -562,7 +565,21 @@
       "addError": "Error creating torrent: {{error}}",
       "deleteSuccess": "Torrent removed successfully!",
       "deleteWithFilesSuccess": "Torrent and files removed successfully!",
-      "deleteError": "Error removing torrent"
+      "deleteError": "Error removing torrent",
+      "deleteBulkSuccess": "{{count}} torrent removed successfully",
+      "deleteBulkSuccess_plural": "{{count}} torrents removed successfully",
+      "deleteBulkError": "Error removing torrent(s)",
+      "someAgentsFailed": "Some agents failed to load tasks",
+      "agentIdNotFound": "Agent ID not found for this torrent",
+      "resumeSuccess": "Torrent resumed successfully",
+      "pauseSuccess": "Torrent paused successfully",
+      "forceDownloadSuccess": "Force download started successfully",
+      "forceReannounceSuccess": "Force reannounce started successfully",
+      "forceRecheckSuccess": "Force recheck started successfully",
+      "renameSuccess": "Torrent renamed successfully",
+      "renameError": "Error renaming torrent",
+      "pathChangeSuccess": "Path changed successfully",
+      "pathChangeError": "Error changing torrent path"
     },
     "actionButtons": {
       "play": "Start/Resume",
@@ -576,7 +593,26 @@
     "forceReannounce": "Force reannounce",
     "forceRecheck": "Force recheck",
     "metrics": "Metrics",
-    "metadata": "Metadata"
+    "metadata": "Metadata",
+    "selection": {
+      "enable": "Enable selection",
+      "selectAll": "Select all",
+      "disable": "Disable multiple selection",
+      "selected": "selected",
+      "selectedCount": "{{count}} selected",
+      "selectedCount_plural": "{{count}} selected"
+    },
+    "addFile": "Add file",
+    "agentErrorWarning": {
+      "title": "Agent Errors Detected",
+      "description": "Some agents have errors that need to be fixed. This may affect task management and monitoring.",
+      "descriptionShort": "Some agents have errors that need to be fixed.",
+      "fixAgents": "Fix Agents",
+      "fix": "Fix"
+    },
+    "updateInterval": {
+      "title": "Update every {{seconds}} seconds"
+    }
   },
   "categories": {
     "title": "Categories",

@@ -572,6 +572,24 @@ html.dark[data-color-variant="silver"] {
   animation: accordion-up 0.2s ease-out;
 }
 
+/* Loading bar animation */
+@keyframes loading-bar {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-loading-bar {
+  animation: loading-bar 1.5s ease-in-out infinite;
+  width: 50%;
+}
+
 /* Toast icon-only colors */
 .toast-success-icon-only [data-icon],
 .toast-success-icon-only svg {
