@@ -50,7 +50,7 @@ func (m *Module) checkSetup(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"initialized":        initialized,
-		"statistics_enabled": m.statsService.Enabled(),
+		"statistics_enabled": m.statsService != nil && m.statsService.Enabled(),
 	})
 }
 
