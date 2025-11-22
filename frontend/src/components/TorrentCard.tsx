@@ -82,6 +82,7 @@ export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove,
   // Scale: 0 = 0px, 50 = 12px, 100 = 24px
   const blurPx = Math.round((blurIntensity / 100) * 24);
   const hasImage = !!torrent.metadata?.image_url;
+  const encodedImageUrl = hasImage && torrent.metadata?.image_url ? encodeURI(torrent.metadata.image_url) : null;
 
   return (
     <TorrentContextMenu
@@ -112,7 +113,7 @@ export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove,
           <div
             className="absolute inset-0 bg-cover pointer-events-none z-0"
             style={{
-              backgroundImage: `url(${torrent.metadata!.image_url})`,
+              backgroundImage: `url(${encodedImageUrl})`,
               ...(blurPx > 0 && { filter: `blur(${blurPx}px)` }),
               backgroundPosition: `center ${torrent.metadata!.image_position_y ?? 50}%`,
               opacity: Math.max(0.15, Math.min(0.85, (torrent.metadata!.image_opacity ?? 65) / 100))
@@ -129,7 +130,7 @@ export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove,
 
         {compact ? (
           <>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 py-1.5 px-2.5 relative z-10">
+            <CardHeader className={`flex flex-row items-center justify-between space-y-0 py-1.5 px-2.5 relative z-10 ${!hasImage ? getStatusBackgroundColor(torrent.status) : ''}`}>
               <BlurOverlay hasImage={hasImage} blurPx={blurPx} opacityClass="bg-white/30" />
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
                 {selectionMode && (
@@ -156,7 +157,7 @@ export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove,
                 {hasImage && (
                   <div className="flex-shrink-0">
                     <img
-                      src={torrent.metadata!.image_url}
+                      src={encodedImageUrl!}
                       alt={torrent.name}
                       className="w-16 h-16 object-cover rounded-md"
                     />
@@ -234,7 +235,7 @@ export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove,
                 {hasImage && (
                   <div className="flex-shrink-0">
                     <img
-                      src={torrent.metadata!.image_url}
+                      src={encodedImageUrl!}
                       alt={torrent.name}
                       className="w-24 h-24 object-cover rounded-md"
                     />

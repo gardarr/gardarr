@@ -10,6 +10,7 @@ interface DropdownSelectProps<T> {
     ariaLabel?: string;
     minWidth?: string;
     title?: string;
+    disabled?: boolean;
 }
 
 export function DropdownSelect<T extends string | number>({
@@ -19,7 +20,8 @@ export function DropdownSelect<T extends string | number>({
     formatLabel = (v) => String(v),
     ariaLabel,
     minWidth = "80px",
-    title
+    title,
+    disabled = false
 }: DropdownSelectProps<T>) {
     const { isOpen, setIsOpen, ref: dropdownRef } = useDropdown();
 
@@ -29,6 +31,7 @@ export function DropdownSelect<T extends string | number>({
                 variant="outline"
                 size="sm"
                 onClick={() => setIsOpen(!isOpen)}
+                disabled={disabled}
                 className={`flex items-center gap-2 justify-between`}
                 style={{ minWidth }}
                 aria-haspopup="listbox"

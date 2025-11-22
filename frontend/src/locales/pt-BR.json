@@ -1,13 +1,15 @@
 {
-    "common": {
-      "save": "Salvar",
-      "cancel": "Cancelar",
-      "delete": "Excluir",
-      "reset": "Redefinir",
-      "loading": "Carregando...",
-      "error": "Erro",
-      "success": "Sucesso"
-    },
+  "common": {
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "delete": "Excluir",
+    "reset": "Redefinir",
+    "loading": "Carregando...",
+    "error": "Erro",
+    "success": "Sucesso",
+    "selectAll": "Selecionar todos",
+    "clearAll": "Limpar todos"
+  },
     "ratio": "Ratio",
     "nota": "Nota",
     "navigation": {
@@ -527,7 +529,8 @@
         "agents": "Agentes",
         "status": "Status",
         "categories": "Categorias",
-        "tags": "Tags"
+        "tags": "Tags",
+        "ratioGrades": "Notas de Ratio"
       },
       "sortBy": {
         "priority": "prioridade",
@@ -554,7 +557,21 @@
         "addError": "Erro ao criar torrent: {{error}}",
         "deleteSuccess": "Torrent removido com sucesso!",
         "deleteWithFilesSuccess": "Torrent e arquivos removidos com sucesso!",
-        "deleteError": "Erro ao remover torrent"
+        "deleteError": "Erro ao remover torrent",
+        "deleteBulkSuccess": "{{count}} torrent removido com sucesso",
+        "deleteBulkSuccess_plural": "{{count}} torrents removidos com sucesso",
+        "deleteBulkError": "Erro ao remover torrent(s)",
+        "someAgentsFailed": "Alguns agentes falharam ao carregar tarefas",
+        "agentIdNotFound": "Agent ID não encontrado para este torrent",
+        "resumeSuccess": "Torrent retomado com sucesso",
+        "pauseSuccess": "Torrent pausado com sucesso",
+        "forceDownloadSuccess": "Force download iniciado com sucesso",
+        "forceReannounceSuccess": "Force reannounce iniciado com sucesso",
+        "forceRecheckSuccess": "Force recheck iniciado com sucesso",
+        "renameSuccess": "Torrent renomeado com sucesso",
+        "renameError": "Erro ao renomear torrent",
+        "pathChangeSuccess": "Caminho alterado com sucesso",
+        "pathChangeError": "Erro ao alterar caminho do torrent"
       },
       "actionButtons": {
         "play": "Iniciar/Retomar",
@@ -568,7 +585,26 @@
       "forceReannounce": "Forçar reannounce",
       "forceRecheck": "Forçar recheck",
       "metrics": "Métricas",
-      "metadata": "Metadados"
+      "metadata": "Metadados",
+      "selection": {
+        "enable": "Habilitar seleção",
+        "selectAll": "Selecionar todos",
+        "disable": "Desabilitar seleção múltipla",
+        "selected": "selecionado",
+        "selectedCount": "{{count}} selecionado",
+        "selectedCount_plural": "{{count}} selecionados"
+      },
+      "addFile": "Adicionar arquivo",
+      "agentErrorWarning": {
+        "title": "Erros de Agente Detectados",
+        "description": "Alguns agentes têm erros que precisam ser corrigidos. Isso pode afetar o gerenciamento e monitoramento de tarefas.",
+        "descriptionShort": "Alguns agentes têm erros que precisam ser corrigidos.",
+        "fixAgents": "Corrigir Agentes",
+        "fix": "Corrigir"
+      },
+      "updateInterval": {
+        "title": "Atualizar a cada {{seconds}} segundos"
+      }
     },
     "categories": {
       "title": "Categorias",
