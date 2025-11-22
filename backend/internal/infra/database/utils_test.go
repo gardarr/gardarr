@@ -6,11 +6,13 @@ import (
 	"github.com/jfxdev/gardarr/internal/models"
 )
 
+const nilDatabaseError = "Expected database instance, got nil"
+
 func TestSetupTestDB(t *testing.T) {
 	// Test with no models
 	db := SetupTestDB(t)
 	if db == nil {
-		t.Fatal("Expected database instance, got nil")
+		t.Fatal(nilDatabaseError)
 	}
 	if db.DB == nil {
 		t.Fatal("Expected GORM DB instance, got nil")
@@ -26,11 +28,11 @@ func TestSetupTestDB(t *testing.T) {
 	}
 }
 
-func TestSetupTestDB_WithModels(t *testing.T) {
+func TestSetupTestDBWithModels(t *testing.T) {
 	// Test with models
 	db := SetupTestDB(t, &models.Category{})
 	if db == nil {
-		t.Fatal("Expected database instance, got nil")
+		t.Fatal(nilDatabaseError)
 	}
 
 	// Verify migration was successful by checking if table exists
@@ -39,11 +41,11 @@ func TestSetupTestDB_WithModels(t *testing.T) {
 	}
 }
 
-func TestSetupTestDB_WithMultipleModels(t *testing.T) {
+func TestSetupTestDBWithMultipleModels(t *testing.T) {
 	// Test with multiple models
 	db := SetupTestDB(t, &models.Category{}, &models.User{})
 	if db == nil {
-		t.Fatal("Expected database instance, got nil")
+		t.Fatal(nilDatabaseError)
 	}
 
 	// Verify all tables were created
