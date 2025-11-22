@@ -7,27 +7,10 @@ import (
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/models"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
-// setupTestDB creates an in-memory SQLite database for testing
-func setupTestDB(t *testing.T) *database.Database {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("Failed to create test database: %v", err)
-	}
-
-	// Run migrations
-	if err := db.AutoMigrate(&models.Category{}); err != nil {
-		t.Fatalf("Failed to migrate test database: %v", err)
-	}
-
-	return &database.Database{DB: db}
-}
-
 func TestService_CreateCategory(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.Category{})
 	service := NewService(db)
 	ctx := context.Background()
 
@@ -67,7 +50,7 @@ func TestService_CreateCategory(t *testing.T) {
 }
 
 func TestService_ListCategories(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.Category{})
 	service := NewService(db)
 	ctx := context.Background()
 
@@ -106,7 +89,7 @@ func TestService_ListCategories(t *testing.T) {
 }
 
 func TestService_GetCategoryByID(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.Category{})
 	service := NewService(db)
 	ctx := context.Background()
 
@@ -140,7 +123,7 @@ func TestService_GetCategoryByID(t *testing.T) {
 }
 
 func TestService_GetCategoryByName(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.Category{})
 	service := NewService(db)
 	ctx := context.Background()
 
@@ -174,7 +157,7 @@ func TestService_GetCategoryByName(t *testing.T) {
 }
 
 func TestService_UpdateCategory(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.Category{})
 	service := NewService(db)
 	ctx := context.Background()
 
@@ -221,7 +204,7 @@ func TestService_UpdateCategory(t *testing.T) {
 }
 
 func TestService_DeleteCategory(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.Category{})
 	service := NewService(db)
 	ctx := context.Background()
 
@@ -251,7 +234,7 @@ func TestService_DeleteCategory(t *testing.T) {
 }
 
 func TestService_Integration_FullCRUD(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.Category{})
 	service := NewService(db)
 	ctx := context.Background()
 

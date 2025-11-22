@@ -7,25 +7,10 @@ import (
 
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/models"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
-func setupTestDB(t *testing.T) *database.Database {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("Failed to create test database: %v", err)
-	}
-
-	if err := db.AutoMigrate(&models.SignupToken{}); err != nil {
-		t.Fatalf("Failed to migrate test database: %v", err)
-	}
-
-	return &database.Database{DB: db}
-}
-
 func TestRepository_CreateToken(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.SignupToken{})
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -51,7 +36,7 @@ func TestRepository_CreateToken(t *testing.T) {
 }
 
 func TestRepository_GetTokenByValue(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.SignupToken{})
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -76,7 +61,7 @@ func TestRepository_GetTokenByValue(t *testing.T) {
 }
 
 func TestRepository_GetTokenByValue_NotFound(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.SignupToken{})
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -90,7 +75,7 @@ func TestRepository_GetTokenByValue_NotFound(t *testing.T) {
 }
 
 func TestRepository_MarkTokenAsUsed(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.SignupToken{})
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -121,7 +106,7 @@ func TestRepository_MarkTokenAsUsed(t *testing.T) {
 }
 
 func TestRepository_DeleteExpiredTokens(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.SignupToken{})
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -161,7 +146,7 @@ func TestRepository_DeleteExpiredTokens(t *testing.T) {
 }
 
 func TestRepository_DeleteToken(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.SignupToken{})
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -188,7 +173,7 @@ func TestRepository_DeleteToken(t *testing.T) {
 }
 
 func TestRepository_DeleteToken_NotFound(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.SignupToken{})
 	repo := NewRepository(db)
 	ctx := context.Background()
 

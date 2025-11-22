@@ -7,26 +7,10 @@ import (
 
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/models"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
-func setupTestDB(t *testing.T) *database.Database {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("failed to connect to test database: %v", err)
-	}
-
-	// Auto migrate models
-	if err := db.AutoMigrate(&models.PasswordResetToken{}); err != nil {
-		t.Fatalf("failed to migrate test database: %v", err)
-	}
-
-	return &database.Database{DB: db}
-}
-
 func TestCreateToken(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.PasswordResetToken{})
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -51,7 +35,7 @@ func TestCreateToken(t *testing.T) {
 }
 
 func TestGetTokenByValue(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.PasswordResetToken{})
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -85,7 +69,7 @@ func TestGetTokenByValue(t *testing.T) {
 }
 
 func TestMarkTokenAsUsed(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.PasswordResetToken{})
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -116,7 +100,7 @@ func TestMarkTokenAsUsed(t *testing.T) {
 }
 
 func TestDeleteExpiredTokens(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.PasswordResetToken{})
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -157,7 +141,7 @@ func TestDeleteExpiredTokens(t *testing.T) {
 }
 
 func TestGetActiveTokenByEmail(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.PasswordResetToken{})
 	repo := NewRepository(db)
 	ctx := context.Background()
 
