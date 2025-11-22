@@ -360,7 +360,7 @@ func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statist
 	users.NewModule(v1, db).Register()
 	profile.NewModule(v1, db).Register()
 	signup.NewModule(v1, db).Register()
-	setup.NewModule(v1, db).Register()
+	setup.NewModule(v1, db, statsSvc).Register()
 	settings.NewModule(v1, db).Register()
 	version.NewModule(v1, db).Register()
 	events.NewModule(v1, db).Register()
