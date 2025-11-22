@@ -2,6 +2,8 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Plus } from "lucide-react";
 import type { Task } from "@/types/torrent";
 import { formatTimeAgo } from "@/utils/timeUtils";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { useTranslation } from "react-i18next";
 
 interface RecentCreatedTorrentsProps {
   items?: Task[];
@@ -9,10 +11,22 @@ interface RecentCreatedTorrentsProps {
 }
 
 export default function RecentCreatedTorrents({ items, limit }: RecentCreatedTorrentsProps) {
+  const { i18n } = useTranslation();
   const sorted = (items ?? [])
     .slice()
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, typeof limit === 'number' ? limit : undefined);
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString(i18n.language, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  };
 
   return (
     <Card>
@@ -32,9 +46,16 @@ export default function RecentCreatedTorrents({ items, limit }: RecentCreatedTor
                 <span className="text-sm font-medium truncate flex-1 min-w-0 mr-3">
                   {t.name}
                 </span>
-                <span className="text-xs text-muted-foreground flex-shrink-0">
-                  {formatTimeAgo(t.created_at)}
-                </span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-xs text-muted-foreground flex-shrink-0 cursor-help">
+                      {formatTimeAgo(t.created_at)}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{formatDate(t.created_at)}</p>
+                  </TooltipContent>
+                </Tooltip>
               </div>
             ))
           )}

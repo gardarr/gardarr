@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
-  Activity,
-  AlertTriangle
+  Activity
 } from 'lucide-react';
 import DateRangePicker from '@/components/DateRangePicker';
 import AgentMetrics from '@/components/analytics/AgentMetrics';
@@ -13,7 +12,7 @@ import { RefreshCw } from 'lucide-react';
 import { agentService } from '@/services/agents';
 import { SelectAgent } from '@/components/SelectAgent';
 import { setupService } from '@/services/setup';
-import { Card, CardContent } from '@/components/ui/card';
+import StatisticsDisabledAlert from '@/components/StatisticsDisabledAlert';
 
 
 // Main Dashboard Component
@@ -222,18 +221,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Statistics Warning */}
-      {!statisticsEnabled && (
-        <Card className="py-4">
-          <CardContent className="flex items-center gap-3 py-0">
-            <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <AlertTriangle className="h-4 w-4 text-primary" />
-            </div>
-            <div className="text-sm text-muted-foreground">
-              {t("dashboard.statisticsDisabled")}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <StatisticsDisabledAlert statisticsEnabled={statisticsEnabled} />
 
       {/* Agent Metrics */}
       <div className="space-y-6">
