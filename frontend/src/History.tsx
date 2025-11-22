@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Separator } from "@/components/ui/separator";
 import { normalizeTaskStatus } from "@/utils/statusUtils";
 import {
   Select,
@@ -34,6 +35,8 @@ import {
   Filter
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { setupService } from "@/services/setup";
+import StatisticsDisabledAlert from "@/components/StatisticsDisabledAlert";
 
 interface Event {
   uuid: string;
@@ -65,6 +68,7 @@ export default function HistoryPage() {
   const [page, setPage] = useState(0);
   const [limit] = useState(50);
   const [filterType, setFilterType] = useState<string>("all");
+  const [statisticsEnabled, setStatisticsEnabled] = useState<boolean>(true);
 
   const loadEvents = useCallback(async () => {
     setIsLoading(true);
@@ -94,6 +98,21 @@ export default function HistoryPage() {
     loadEvents();
   }, [loadEvents]);
 
+  // Check setup status to determine if statistics are enabled
+  useEffect(() => {
+    const checkStatisticsStatus = async () => {
+      try {
+        const result = await setupService.checkSetup();
+        setStatisticsEnabled(result.data?.statistics_enabled ?? true);
+      } catch (error) {
+        // On error, assume statistics are enabled to avoid blocking the UI
+        console.error('Failed to check statistics status:', error);
+        setStatisticsEnabled(true);
+      }
+    };
+    checkStatisticsStatus();
+  }, []);
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString(i18n.language, {
       year: "numeric",
@@ -116,8 +135,8 @@ export default function HistoryPage() {
     if (diffMins < 1) return t("history.time.justNow");
     if (diffMins < 60) return t("history.time.minutesAgo", { count: diffMins });
     if (diffHours < 24) return t("history.time.hoursAgo", { count: diffHours });
-    if (diffDays < 7) return t("history.time.daysAgo", { count: diffDays });
-    return formatDate(dateString);
+    // Always show relative time, even for events older than 7 days
+    return t("history.time.daysAgo", { count: diffDays });
   };
 
   const getEventIcon = (type: string) => {
@@ -150,40 +169,20 @@ export default function HistoryPage() {
     }
   };
 
-  const getEventTitle = (event: Event) => {
-    switch (event.type) {
-      case "torrent.state_change":
-        return t("history.event.stateChange");
-      case "torrent.added":
-        return t("history.event.added");
-      case "torrent.removed":
-        return t("history.event.removed");
-      case "torrent.completed":
-        return t("history.event.completed");
-      default:
-        return t("history.event.default");
-    }
-  };
-
-  const formatProgress = (progress: number | undefined): string => {
-    if (progress === undefined) return "";
-    // If progress > 1, assume it's already a percentage (0-100)
-    // Otherwise treat it as a fraction (0-1)
-    const percentage = progress > 1 ? progress : progress * 100;
-    return `${percentage.toFixed(1)}%`;
-  };
-
   const getEventDescription = (event: Event) => {
     switch (event.type) {
       case "torrent.state_change":
         // Return null for state_change - we'll render badges separately
         return null;
       case "torrent.added":
-        return formatProgress(event.metadata?.progress);
+        // Don't show description for added torrents
+        return null;
       case "torrent.removed":
-        return formatProgress(event.metadata?.last_progress);
+        // Don't show description for removed torrents
+        return null;
       case "torrent.completed":
-        return t("history.event.completedDescription");
+        // Don't show description for completed torrents
+        return null;
       default:
         return "";
     }
@@ -305,44 +304,59 @@ export default function HistoryPage() {
         </div>
       </div>
 
+      {/* Statistics Warning */}
+      <StatisticsDisabledAlert statisticsEnabled={statisticsEnabled} />
+
       {/* Events List */}
-      <Card>
-        <CardHeader className="pb-3 sm:pb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-lg sm:text-xl">{t("history.events.title")}</CardTitle>
-              <CardDescription className="text-xs sm:text-sm">
-                {t("history.events.description", { total })}
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="px-4 sm:px-6">
-          {isLoading ? (
-            <div className="text-center py-12">
+      {isLoading ? (
+        <Card>
+          <CardContent className="px-4 sm:px-6 py-12">
+            <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
               <p className="text-sm text-muted-foreground mt-4">{t("common.loading")}</p>
             </div>
-          ) : events.length === 0 ? (
-            <div className="text-center py-12">
+          </CardContent>
+        </Card>
+      ) : events.length === 0 ? (
+        <Card>
+          <CardContent className="px-4 sm:px-6 py-12">
+            <div className="text-center">
               <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">{t("history.events.noEvents")}</p>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {events.map((event, index) => (
-                <div key={event.uuid}>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <div className="space-y-3">
+            {events.map((event) => (
+              <Card key={event.uuid}>
+                <CardContent className="px-4 sm:px-6 py-2">
                   <div className="flex items-start gap-3">
-                    {/* Icon */}
-                    <div className={`h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center border shrink-0 ${getEventColor(event.type)}`}>
-                      {getEventIcon(event.type)}
+                    {/* Icon and Timestamp */}
+                    <div className="flex flex-col items-center gap-1 shrink-0">
+                      <div className={`h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center border ${getEventColor(event.type)}`}>
+                        {getEventIcon(event.type)}
+                      </div>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <p className="text-xs text-muted-foreground cursor-help leading-tight text-center">
+                            {formatRelativeTime(event.created_at)}
+                          </p>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{formatDate(event.created_at)}</p>
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
 
+                    {/* Vertical Separator */}
+                    <Separator orientation="vertical" className="self-stretch min-h-[50px]" />
+
                     {/* Content */}
-                    <div className="flex-1 min-w-0 space-y-1.5">
-                      {/* Title and Badge */}
+                    <div className="flex-1 min-w-0 space-y-1">
+                      {/* Badge */}
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className="font-medium text-sm leading-tight">{getEventTitle(event)}</h4>
                         <Badge variant="outline" className="text-xs shrink-0">
                           {getEventBadge(event.type)}
                         </Badge>
@@ -357,7 +371,9 @@ export default function HistoryPage() {
                       
                       {/* Description */}
                       {event.type === "torrent.state_change" ? (
-                        renderStateChange(event.old_value, event.new_value)
+                        <div className={event.metadata?.name ? "mt-2" : ""}>
+                          {renderStateChange(event.old_value, event.new_value)}
+                        </div>
                       ) : (
                         getEventDescription(event) && (
                           <p className="text-xs text-muted-foreground font-mono leading-tight">
@@ -365,25 +381,16 @@ export default function HistoryPage() {
                           </p>
                         )
                       )}
-                      
-                      {/* Timestamp - Footer */}
-                      <div className="flex justify-end pt-1">
-                        <div className="text-right text-xs text-muted-foreground">
-                          <p className="leading-tight">{formatRelativeTime(event.created_at)}</p>
-                          <p className="text-[10px] mt-0.5 leading-tight opacity-70">{formatDate(event.created_at)}</p>
-                        </div>
-                      </div>
                     </div>
                   </div>
-                  {index < events.length - 1 && <Separator className="my-3" />}
-                </div>
-              ))}
-            </div>
-          )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
 
           {/* Pagination */}
-          {!isLoading && events.length > 0 && totalPages > 1 && (
-            <div className="flex flex-col items-center gap-3 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t">
+          {totalPages > 1 && (
+            <div className="flex flex-col items-center gap-3 mt-4 sm:mt-6">
               <div className="text-xs sm:text-sm text-muted-foreground">
                 {t("history.pagination.showing", {
                   from: page * limit + 1,
@@ -426,8 +433,8 @@ export default function HistoryPage() {
               </Pagination>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </>
+      )}
     </div>
   );
 }

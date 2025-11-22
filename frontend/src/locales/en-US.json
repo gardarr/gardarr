@@ -843,9 +843,9 @@
     },
     "event": {
       "stateChange": "Torrent changed state",
-      "added": "Torrent added",
-      "removed": "Torrent removed",
-      "completed": "Torrent completed",
+      "added": "Torrent Added",
+      "removed": "Torrent Removed",
+      "completed": "Torrent Completed",
       "completedDescription": "Download completed successfully",
       "default": "Event"
     },
