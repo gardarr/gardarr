@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 interface LoadingBarProps {
-  className?: string;
+  readonly className?: string;
 }
 
 export function LoadingBar({ className }: LoadingBarProps) {
