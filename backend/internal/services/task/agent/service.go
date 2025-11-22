@@ -9,6 +9,7 @@ import (
 	"github.com/jfxdev/gardarr/internal/interfaces"
 	repository "github.com/jfxdev/gardarr/internal/repository/task/agent"
 	"github.com/jfxdev/gardarr/internal/schemas"
+	"github.com/jfxdev/go-qbt"
 )
 
 type service struct {
@@ -24,15 +25,10 @@ var wordSplitReplacer = strings.NewReplacer(
 	"~", " ", "`", " ", "'", " ", "\"", " ",
 )
 
-func New() (interfaces.TaskService, error) {
-	r, err := repository.New()
-	if err != nil {
-		return nil, err
-	}
-
+func New(client *qbt.Client) interfaces.TaskService {
 	return &service{
-		repository: r,
-	}, nil
+		repository: repository.New(client),
+	}
 }
 
 func (s *service) ListTasks(ctx context.Context) ([]*entities.Task, error) {

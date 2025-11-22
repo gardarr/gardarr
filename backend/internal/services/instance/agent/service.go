@@ -7,16 +7,14 @@ import (
 	"github.com/jfxdev/gardarr/internal/interfaces"
 	repository "github.com/jfxdev/gardarr/internal/repository/instance/agent"
 	"github.com/jfxdev/gardarr/internal/schemas"
+	"github.com/jfxdev/go-qbt"
 )
 
-func New() (interfaces.InstanceService, error) {
-	r, err := repository.New()
-	if err != nil {
-		return nil, err
-	}
+func New(client *qbt.Client) interfaces.InstanceService {
+	r := repository.New(client)
 	return &service{
 		repository: r,
-	}, nil
+	}
 }
 
 type service struct {
