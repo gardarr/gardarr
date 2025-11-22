@@ -11,10 +11,10 @@ import { useTranslation } from "react-i18next";
 import type { TaskMetadata } from "@/types/torrent";
 
 interface TorrentImageEditorProps {
-  taskHash: string;
-  taskName: string;
-  metadata?: TaskMetadata | null;
-  onUpdate?: () => void;
+  readonly taskHash: string;
+  readonly taskName: string;
+  readonly metadata?: TaskMetadata | null;
+  readonly onUpdate?: () => void;
 }
 
 export function TorrentImageEditor({
@@ -245,14 +245,7 @@ export function TorrentImageEditor({
     }
   };
 
-  const hasChanges =
-    description !== (metadata?.description || "") ||
-    selectedFile !== null ||
-    imagePositionY !== (metadata?.image_position_y ?? 50) ||
-    imageOpacity !== Math.max(
-      15,
-      Math.min(85, metadata?.image_opacity ?? 65)
-    );
+  const hasChanges = description !== (metadata?.description || "");
 
   return (
     <div className="space-y-6 py-4">
@@ -478,7 +471,7 @@ export function TorrentImageEditor({
           placeholder={t('torrentImageEditor.description.placeholder', { defaultValue: 'Adicione uma descrição personalizada...' })}
           className="min-h-[100px] resize-none"
         />
-        {hasChanges && !selectedFile && (
+        {hasChanges && (
           <Button onClick={handleSaveDescription} className="w-full sm:w-auto">
             {t('torrentImageEditor.description.save', { defaultValue: 'Salvar Alterações' })}
           </Button>

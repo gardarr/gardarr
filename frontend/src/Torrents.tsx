@@ -516,7 +516,16 @@ export default function TorrentsPage() {
   // Handler para atualização de metadados
   const handleMetadataUpdate = useCallback(async () => {
     // Recarregar torrents silenciosamente para obter metadados atualizados
-    await refreshTorrentsSilently();
+    const updatedTasks = await refreshTorrentsSilently();
+    
+    // Atualizar o torrent selecionado no modal se houver um aberto
+    setSelectedTorrent(prev => {
+      if (prev && updatedTasks.length > 0) {
+        const updatedTask = updatedTasks.find(t => t.id === prev.id);
+        return updatedTask || prev;
+      }
+      return prev;
+    });
   }, [refreshTorrentsSilently]);
 
   // Controles de torrent
@@ -1468,6 +1477,7 @@ export default function TorrentsPage() {
           onForceRecheck={handleForceRecheckTorrent}
           onRename={handleRenameTorrent}
           onSetLocation={handleSetLocationTorrent}
+          onUpdate={handleMetadataUpdate}
         />
       )}
 
