@@ -87,10 +87,7 @@ export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove,
   return (
     <TorrentContextMenu
       taskId={torrent.id}
-      taskHash={torrent.hash}
-      taskName={torrent.name}
       agentId={torrent.agentUUID}
-      metadata={torrent.metadata}
       selectionMode={selectionMode}
       selectedIds={selectedIds}
       onRequestDelete={onRequestDelete}
@@ -102,7 +99,6 @@ export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove,
       onForceRecheck={onForceRecheck}
       onMetrics={onMetrics}
       onLimits={onLimits}
-      onMetadataUpdate={onMetadataUpdate}
     >
       <Card
         className={`hover:shadow-lg transition-shadow overflow-hidden p-0 gap-2 cursor-pointer relative`}

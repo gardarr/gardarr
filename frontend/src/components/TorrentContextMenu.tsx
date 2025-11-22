@@ -7,16 +7,11 @@ import {
   ContextMenuContent,
   ContextMenuItem
 } from "@/components/ui/context-menu";
-import { Play, Pause, Trash2, Zap, Radio, CheckCircle, BarChart3, Settings, FileText } from "lucide-react";
-import { TorrentMetadataModal } from "./TorrentMetadataModal";
-import type { TaskMetadata } from "@/types/torrent";
+import { Play, Pause, Trash2, Zap, Radio, CheckCircle, BarChart3, Settings } from "lucide-react";
 
 type TorrentContextMenuProps = {
   taskId: string;
   agentId?: string;
-  taskHash: string;
-  taskName: string;
-  metadata?: TaskMetadata | null;
   children: React.ReactNode;
   onStart?: (taskId: string) => void;
   onStop?: (taskId: string) => void;
@@ -26,7 +21,6 @@ type TorrentContextMenuProps = {
   onForceRecheck?: (taskId: string) => void;
   onMetrics?: (taskId: string, agentId?: string) => void;
   onLimits?: (taskId: string, agentId?: string) => void;
-  onMetadataUpdate?: () => void;
   selectionMode?: boolean;
   selectedIds?: Set<string>;
   onRequestDelete?: (ids: string[]) => void;
@@ -34,9 +28,8 @@ type TorrentContextMenuProps = {
 
 export default function TorrentContextMenu(props: TorrentContextMenuProps) {
   const { t } = useTranslation();
-  const { taskId, agentId, taskHash, taskName, metadata, children, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits, onMetadataUpdate, selectionMode, selectedIds, onRequestDelete } = props;
+  const { taskId, agentId, children, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits, selectionMode, selectedIds, onRequestDelete } = props;
   
-  const [isMetadataModalOpen, setIsMetadataModalOpen] = React.useState(false);
   const [isMenuReady, setIsMenuReady] = React.useState(false);
 
   const handleStart = React.useCallback((e: React.MouseEvent) => {
@@ -130,24 +123,6 @@ export default function TorrentContextMenu(props: TorrentContextMenuProps) {
     }
   }, [onLimits, taskId, agentId]);
 
-  const handleMetadata = React.useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsMetadataModalOpen(true);
-  }, []);
-
-  const handleMetadataClose = React.useCallback(() => {
-    setIsMetadataModalOpen(false);
-  }, []);
-
-  const handleMetadataUpdateWrapper = React.useCallback(() => {
-    if (onMetadataUpdate) {
-      onMetadataUpdate();
-    }
-  }, [onMetadataUpdate]);
-
-  const isMultipleSelection = selectionMode && selectedIds && selectedIds.size > 1;
-
   const handleOpenChange = React.useCallback((open: boolean) => {
     if (open) {
       setIsMenuReady(false);
@@ -209,27 +184,11 @@ export default function TorrentContextMenu(props: TorrentContextMenuProps) {
           <Settings />
           {t("torrents.limits")}
         </ContextMenuItem>
-        <ContextMenuItem 
-          onClick={createProtectedHandler(handleMetadata)} 
-          disabled={isMultipleSelection}
-        >
-          <FileText />
-          {t("torrents.metadata")}
-        </ContextMenuItem>
         <ContextMenuItem onClick={createProtectedHandler(handleRemove)} variant="destructive">
           <Trash2 />
           {t("torrents.remove")}
         </ContextMenuItem>
       </ContextMenuContent>
-      
-      <TorrentMetadataModal
-        isOpen={isMetadataModalOpen}
-        taskHash={taskHash}
-        taskName={taskName}
-        metadata={metadata}
-        onClose={handleMetadataClose}
-        onUpdate={handleMetadataUpdateWrapper}
-      />
     </ContextMenu>
   );
 }

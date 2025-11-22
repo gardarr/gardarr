@@ -1045,9 +1045,9 @@ export default function TorrentsPage() {
         )}
       </div>
 
-      {/* Aviso de erro nos agentes - mostrar se houver agentes com erro (mesmo durante loading) */}
+      {/* Aviso de erro nos agentes - mostrar se houver agentes com erro (mesmo durante loading) - apenas desktop */}
       {!agentsLoading && agents.length > 0 && agents.some(agent => agent.status === 'ERRORED') && (
-        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 mb-4">
+        <div className="hidden sm:block bg-destructive/10 border border-destructive/20 rounded-lg p-4 mb-4">
           <div className="flex items-center gap-3">
             <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0" />
             <div className="flex-1">
@@ -1164,8 +1164,8 @@ export default function TorrentsPage() {
           {!agentsLoading && agents.some(agent => agent.status === 'ERRORED') && (
             <div className="sm:hidden mb-4">
               <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <h3 className="text-xs font-medium text-destructive">
                       {t('torrents.agentErrorWarning.title')}
