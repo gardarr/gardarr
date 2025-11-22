@@ -87,7 +87,7 @@ const SpeedCell = ({ rate, total, isUpload, compact }: { rate: number, total: nu
   </div>
 );
 
-function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits, onMetadataUpdate, selectionMode, selected, onToggleSelect, selectedIds, onRequestDelete, compact }: {
+function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits, selectionMode, selected, onToggleSelect, selectedIds, onRequestDelete, compact }: {
   torrent: Torrent;
   onShowDetails: (id: string) => void;
   onStart: (id: string) => void;
