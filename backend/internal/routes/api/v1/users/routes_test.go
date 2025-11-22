@@ -14,30 +14,13 @@ import (
 	"github.com/jfxdev/gardarr/internal/services/user"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
-
-// setupTestDB creates an in-memory SQLite database for testing
-func setupTestDB(t *testing.T) *database.Database {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("Failed to create test database: %v", err)
-	}
-
-	// Run migrations
-	if err := db.AutoMigrate(&models.User{}, &models.Session{}, &models.PasswordResetToken{}); err != nil {
-		t.Fatalf("Failed to migrate test database: %v", err)
-	}
-
-	return &database.Database{DB: db}
-}
 
 // setupTestRouter creates a test router with the users routes
 func setupTestRouter(t *testing.T) (*gin.Engine, *database.Database) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	db := setupTestDB(t)
+	db := database.SetupTestDBWithCache(t, &models.User{}, &models.Session{}, &models.PasswordResetToken{})
 
 	// Create the API v1 group
 	v1 := router.Group("/api/v1")
@@ -359,7 +342,7 @@ func TestRoutes_DeleteUser_RegularUserCanBeDeleted(t *testing.T) {
 
 func TestRequestPasswordReset_Success(t *testing.T) {
 	// Setup test database
-	db := setupTestDB(t)
+	db := database.SetupTestDBWithCache(t, &models.User{}, &models.Session{}, &models.PasswordResetToken{})
 
 	// Create test user
 	userService := user.NewService(db)
@@ -400,7 +383,7 @@ func TestRequestPasswordReset_Success(t *testing.T) {
 
 func TestRequestPasswordReset_UserNotFound(t *testing.T) {
 	// Setup test database
-	db := setupTestDB(t)
+	db := database.SetupTestDBWithCache(t, &models.User{}, &models.Session{}, &models.PasswordResetToken{})
 
 	// Setup router
 	gin.SetMode(gin.TestMode)
@@ -429,7 +412,7 @@ func TestRequestPasswordReset_UserNotFound(t *testing.T) {
 
 func TestRequestPasswordReset_InvalidUUID(t *testing.T) {
 	// Setup test database
-	db := setupTestDB(t)
+	db := database.SetupTestDBWithCache(t, &models.User{}, &models.Session{}, &models.PasswordResetToken{})
 
 	// Setup router
 	gin.SetMode(gin.TestMode)

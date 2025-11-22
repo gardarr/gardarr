@@ -7,30 +7,14 @@ import (
 
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/models"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
-
-func setupTestDB(t *testing.T) *database.Database {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("failed to connect to test database: %v", err)
-	}
-
-	// Auto migrate models
-	if err := db.AutoMigrate(&models.User{}, &models.SignupToken{}, &models.PasswordResetToken{}); err != nil {
-		t.Fatalf("failed to migrate test database: %v", err)
-	}
-
-	return &database.Database{DB: db}
-}
 
 // ============================================================================
 // SIGNUP TOKEN TESTS
 // ============================================================================
 
 func TestGenerateSignupToken(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDBWithCache(t, &models.SignupToken{}, &models.User{}, &models.PasswordResetToken{})
 	service := NewService(db)
 	ctx := context.Background()
 
@@ -113,7 +97,7 @@ func TestGenerateSignupToken(t *testing.T) {
 }
 
 func TestValidateAndUseSignupToken(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDBWithCache(t, &models.SignupToken{}, &models.User{}, &models.PasswordResetToken{})
 	service := NewService(db)
 	ctx := context.Background()
 
@@ -197,7 +181,7 @@ func TestValidateAndUseSignupToken(t *testing.T) {
 }
 
 func TestSignupTokenExpiration(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDBWithCache(t, &models.SignupToken{}, &models.User{}, &models.PasswordResetToken{})
 	service := NewService(db)
 	ctx := context.Background()
 
@@ -222,7 +206,7 @@ func TestSignupTokenExpiration(t *testing.T) {
 }
 
 func TestSignupTokenReuse(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDBWithCache(t, &models.SignupToken{}, &models.User{}, &models.PasswordResetToken{})
 	service := NewService(db)
 	ctx := context.Background()
 
@@ -249,7 +233,7 @@ func TestSignupTokenReuse(t *testing.T) {
 }
 
 func TestListSignupTokens(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDBWithCache(t, &models.SignupToken{}, &models.User{}, &models.PasswordResetToken{})
 	service := NewService(db)
 	ctx := context.Background()
 
@@ -275,7 +259,7 @@ func TestListSignupTokens(t *testing.T) {
 }
 
 func TestRevokeSignupToken(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDBWithCache(t, &models.SignupToken{}, &models.User{}, &models.PasswordResetToken{})
 	service := NewService(db)
 	ctx := context.Background()
 
@@ -303,7 +287,7 @@ func TestRevokeSignupToken(t *testing.T) {
 // ============================================================================
 
 func TestGeneratePasswordResetToken(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDBWithCache(t, &models.SignupToken{}, &models.User{}, &models.PasswordResetToken{})
 	service := NewService(db)
 	ctx := context.Background()
 
@@ -373,7 +357,7 @@ func TestGeneratePasswordResetToken(t *testing.T) {
 }
 
 func TestValidateAndResetPassword(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDBWithCache(t, &models.SignupToken{}, &models.User{}, &models.PasswordResetToken{})
 	service := NewService(db)
 	ctx := context.Background()
 
@@ -476,7 +460,7 @@ func TestValidateAndResetPassword(t *testing.T) {
 }
 
 func TestPasswordResetTokenExpiration(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDBWithCache(t, &models.SignupToken{}, &models.User{}, &models.PasswordResetToken{})
 	service := NewService(db)
 	ctx := context.Background()
 
@@ -509,7 +493,7 @@ func TestPasswordResetTokenExpiration(t *testing.T) {
 }
 
 func TestPasswordResetTokenReuse(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDBWithCache(t, &models.SignupToken{}, &models.User{}, &models.PasswordResetToken{})
 	service := NewService(db)
 	ctx := context.Background()
 
@@ -544,7 +528,7 @@ func TestPasswordResetTokenReuse(t *testing.T) {
 }
 
 func TestRevokePasswordResetTokensByEmail(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDBWithCache(t, &models.SignupToken{}, &models.User{}, &models.PasswordResetToken{})
 	service := NewService(db)
 	ctx := context.Background()
 
@@ -586,7 +570,7 @@ func TestRevokePasswordResetTokensByEmail(t *testing.T) {
 // ============================================================================
 
 func TestCleanupExpiredSignupTokens(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDBWithCache(t, &models.SignupToken{}, &models.User{}, &models.PasswordResetToken{})
 	service := NewService(db)
 	ctx := context.Background()
 
@@ -626,7 +610,7 @@ func TestCleanupExpiredSignupTokens(t *testing.T) {
 }
 
 func TestCleanupExpiredPasswordResetTokens(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDBWithCache(t, &models.SignupToken{}, &models.User{}, &models.PasswordResetToken{})
 	service := NewService(db)
 	ctx := context.Background()
 
@@ -679,7 +663,7 @@ func TestCleanupExpiredPasswordResetTokens(t *testing.T) {
 }
 
 func TestCleanupAllExpiredTokens(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDBWithCache(t, &models.SignupToken{}, &models.User{}, &models.PasswordResetToken{})
 	service := NewService(db)
 	ctx := context.Background()
 

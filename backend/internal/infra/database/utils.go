@@ -1,6 +1,7 @@
 package database
 
 import (
+	"net/url"
 	"testing"
 
 	"gorm.io/driver/sqlite"
@@ -20,6 +21,20 @@ func SetupTestDB(t *testing.T, models ...interface{}) *Database {
 		if err := db.AutoMigrate(models...); err != nil {
 			t.Fatalf("Failed to migrate test database: %v", err)
 		}
+	}
+
+	return &Database{DB: db}
+}
+
+func SetupTestDBWithCache(t *testing.T, models ...interface{}) *Database {
+	dsn := "file:" + url.PathEscape(t.Name()) + "?mode=memory&cache=shared"
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("Failed to create test database: %v", err)
+	}
+
+	if err := db.AutoMigrate(models...); err != nil {
+		t.Fatalf("Failed to migrate test database: %v", err)
 	}
 
 	return &Database{DB: db}
