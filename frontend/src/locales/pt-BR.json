@@ -93,6 +93,9 @@
     "dashboard": {
       "title": "Dashboard",
       "subtitle": "Visão geral do seu servidor Gardarr",
+      "description": "Análises e insights em tempo real para seus agentes e tarefas de torrent",
+      "statisticsDisabled": "O cálculo de estatísticas está desabilitado. Os dados podem não ser exibidos corretamente.",
+      "refreshNow": "Atualizar agora",
       "activeDownloads": "Downloads Ativos",
       "activeDownloadsDesc": "+12% em relação ao mês passado",
       "onlineUsers": "Usuários Online",

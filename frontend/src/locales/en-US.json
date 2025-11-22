@@ -124,6 +124,9 @@
   "dashboard": {
     "title": "Dashboard",
     "subtitle": "Overview of your Gardarr server",
+    "description": "Real-time analytics and insights for your torrent agents and tasks",
+    "statisticsDisabled": "Statistics calculation is disabled. Data may not be displayed correctly.",
+    "refreshNow": "Refresh now",
     "activeDownloads": "Active Downloads",
     "activeDownloadsDesc": "+12% compared to last month",
     "onlineUsers": "Online Users",

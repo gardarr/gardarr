@@ -14,8 +14,9 @@ vi.mock('react-i18next', async (importOriginal) => {
       t: (key: string) => {
         const translations: Record<string, string> = {
           'navigation.dashboard': 'Dashboard',
-          'navigation.analytics': 'Analytics Dashboard',
-          'common.loading': 'Loading...',
+          'dashboard.description': 'Real-time analytics and insights for your torrent agents and tasks',
+          'dashboard.refreshNow': 'Refresh now',
+          'dashboard.statisticsDisabled': 'Statistics calculation is disabled. Data may not be displayed correctly.',
         };
         return translations[key] || key;
       },
@@ -70,9 +71,22 @@ vi.mock('../services/agents', () => ({
   },
 }));
 
+// Mock setup service
+vi.mock('../services/setup', () => ({
+  setupService: {
+    checkSetup: vi.fn().mockResolvedValue({ 
+      data: { statistics_enabled: true } 
+    }),
+  },
+}));
+
 // Mock child components
 vi.mock('../components/DateRangePicker', () => ({
   default: () => <div data-testid="date-range-picker">Date Range Picker</div>,
+}));
+
+vi.mock('../components/SelectAgent', () => ({
+  SelectAgent: () => <div data-testid="select-agent">Select Agent</div>,
 }));
 
 vi.mock('../components/analytics/AgentMetrics', () => ({

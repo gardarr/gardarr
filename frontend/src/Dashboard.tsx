@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
-  Activity
+  Activity,
+  AlertTriangle
 } from 'lucide-react';
 import DateRangePicker from '@/components/DateRangePicker';
 import AgentMetrics from '@/components/analytics/AgentMetrics';
@@ -11,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import { agentService } from '@/services/agents';
 import { SelectAgent } from '@/components/SelectAgent';
+import { setupService } from '@/services/setup';
+import { Card, CardContent } from '@/components/ui/card';
 
 
 // Main Dashboard Component
@@ -25,6 +28,7 @@ const Dashboard: React.FC = () => {
   type AgentTask = { task: string; diff: number };
   const [topUploaded, setTopUploaded] = useState<AgentTask[]>([]);
   const [taskNameById, setTaskNameById] = useState<Record<string, string>>({});
+  const [statisticsEnabled, setStatisticsEnabled] = useState<boolean>(true);
 
   // Manual refresh anchored to now, preserving current range duration
   const handleRefreshNow = () => {
@@ -46,6 +50,21 @@ const Dashboard: React.FC = () => {
       navigate('/', { replace: true });
     }
   };
+
+  // Check setup status to determine if statistics are enabled
+  useEffect(() => {
+    const checkStatisticsStatus = async () => {
+      try {
+        const result = await setupService.checkSetup();
+        setStatisticsEnabled(result.data?.statistics_enabled ?? true);
+      } catch (error) {
+        // On error, assume statistics are enabled to avoid blocking the UI
+        console.error('Failed to check statistics status:', error);
+        setStatisticsEnabled(true);
+      }
+    };
+    checkStatisticsStatus();
+  }, []);
 
   // Handle URL parameters and sync with component state
   useEffect(() => {
@@ -175,7 +194,7 @@ const Dashboard: React.FC = () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">{t("navigation.dashboard")}</h1>
             <p className="text-muted-foreground">
-              Real-time analytics and insights for your torrent agents and tasks
+              {t("dashboard.description")}
             </p>
           </div>
         </div>
@@ -196,11 +215,25 @@ const Dashboard: React.FC = () => {
             onFromDateChange={setFromDate}
             onToDateChange={setToDate}
           />
-          <Button variant="outline" size="icon" aria-label="Refresh now" onClick={handleRefreshNow} className="flex-shrink-0">
+          <Button variant="outline" size="icon" aria-label={t("dashboard.refreshNow")} onClick={handleRefreshNow} className="flex-shrink-0">
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
       </div>
+
+      {/* Statistics Warning */}
+      {!statisticsEnabled && (
+        <Card className="py-4">
+          <CardContent className="flex items-center gap-3 py-0">
+            <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle className="h-4 w-4 text-primary" />
+            </div>
+            <div className="text-sm text-muted-foreground">
+              {t("dashboard.statisticsDisabled")}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Agent Metrics */}
       <div className="space-y-6">
