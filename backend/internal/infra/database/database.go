@@ -69,7 +69,7 @@ func NewDatabase() (*Database, error) {
 
 	// Connect based on driver type
 	switch config.driver {
-	case "postgres", "postgresql":
+	case constants.DatabaseDriverPostgreSQL:
 		dsn := fmt.Sprintf(
 			"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
 			config.host, config.user, config.password, config.dbName, config.port, config.sslMode,
@@ -95,7 +95,7 @@ func NewDatabase() (*Database, error) {
 	}
 
 	// Configure connection pool for PostgreSQL
-	if config.driver == "postgres" || config.driver == "postgresql" {
+	if config.driver == constants.DatabaseDriverPostgreSQL {
 		sqlDB, err := db.DB()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get underlying sql.DB: %w", err)
