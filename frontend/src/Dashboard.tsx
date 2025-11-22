@@ -54,11 +54,12 @@ const Dashboard: React.FC = () => {
   // Check setup status to determine if statistics are enabled
   useEffect(() => {
     const checkStatisticsStatus = async () => {
-      const result = await setupService.checkSetup();
-      if (result.data) {
-        setStatisticsEnabled(result.data.statistics_enabled);
-      } else {
+      try {
+        const result = await setupService.checkSetup();
+        setStatisticsEnabled(result.data?.statistics_enabled ?? true);
+      } catch (error) {
         // On error, assume statistics are enabled to avoid blocking the UI
+        console.error('Failed to check statistics status:', error);
         setStatisticsEnabled(true);
       }
     };
