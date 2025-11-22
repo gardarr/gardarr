@@ -87,6 +87,10 @@ func (s *Service) Start(ctx context.Context) {
 	}()
 }
 
+func (s *Service) Enabled() bool {
+	return s.enabled
+}
+
 // collectOnce collects a snapshot of task statistics for all active agents and
 // writes them to a per-agent daily file. It also updates index and hourly
 // summary entries in the database.

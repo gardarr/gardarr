@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/models"
+	"github.com/jfxdev/gardarr/internal/services/statistics"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -39,7 +40,7 @@ func setupTestRouter(t *testing.T) (*gin.Engine, *database.Database) {
 	v1 := router.Group("/api/v1")
 
 	// Register setup routes
-	module := NewModule(v1, db)
+	module := NewModule(v1, db, statistics.NewService(db, nil))
 	module.Register()
 
 	return router, db
