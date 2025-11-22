@@ -6,26 +6,10 @@ import (
 
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/models"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
-func setupTestDB(t *testing.T) *database.Database {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("failed to connect to test database: %v", err)
-	}
-
-	// Auto migrate models
-	if err := db.AutoMigrate(&models.User{}); err != nil {
-		t.Fatalf("failed to migrate test database: %v", err)
-	}
-
-	return &database.Database{DB: db}
-}
-
 func TestCreateUser(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.User{})
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -80,7 +64,7 @@ func TestCreateUser(t *testing.T) {
 }
 
 func TestGetUserByEmail(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.User{})
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -114,7 +98,7 @@ func TestGetUserByEmail(t *testing.T) {
 }
 
 func TestGetUserByUUID(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.User{})
 	repo := NewRepository(db)
 	ctx := context.Background()
 

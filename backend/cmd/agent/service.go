@@ -23,6 +23,7 @@ import (
 	instanceService "github.com/jfxdev/gardarr/internal/services/instance/agent"
 	taskService "github.com/jfxdev/gardarr/internal/services/task/agent"
 	"github.com/jfxdev/gardarr/pkg/env"
+	"github.com/jfxdev/go-qbt"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -45,15 +46,21 @@ func Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	taskSvc, err := taskService.New()
+	client, err := qbt.New(qbt.Config{
+		BaseURL:        env.Get(constants.QBittorrentBaseURLEnv).Value(),
+		Username:       env.Get(constants.QBittorrentUsernameEnv).Value(),
+		Password:       env.Get(constants.QBittorrentPasswordEnv).Value(),
+		RequestTimeout: time.Duration(env.Get(constants.QBittorrentRequestTimeoutSecondsEnv).Default(3).ValueInt()) * time.Second,
+		MaxRetries:     env.Get(constants.QBittorrentMaxRetriesEnv).Default(0).ValueInt(),
+		RetryBackoff:   time.Duration(env.Get(constants.QBittorrentRetryBackoffEnv).Default(1).ValueInt()) * time.Second,
+	})
 	if err != nil {
 		return err
 	}
 
-	instanceSvc, err := instanceService.New()
-	if err != nil {
-		return err
-	}
+	taskSvc := taskService.New(client)
+
+	instanceSvc := instanceService.New(client)
 
 	setRoutes(taskSvc, instanceSvc)
 

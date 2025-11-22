@@ -8,7 +8,6 @@ import (
 	"github.com/jfxdev/gardarr/internal/constants"
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/schemas"
-	"github.com/jfxdev/gardarr/pkg/env"
 	"github.com/jfxdev/go-qbt"
 
 	"github.com/jfxdev/gardarr/pkg/errors"
@@ -18,22 +17,10 @@ type Repository struct {
 	client *qbt.Client
 }
 
-func New() (*Repository, error) {
-	client, err := qbt.New(qbt.Config{
-		BaseURL:        env.Get(constants.QBittorrentBaseURLEnv).Value(),
-		Username:       env.Get(constants.QBittorrentUsernameEnv).Value(),
-		Password:       env.Get(constants.QBittorrentPasswordEnv).Value(),
-		RequestTimeout: time.Duration(env.Get(constants.QBittorrentRequestTimeoutSecondsEnv).Default(3).ValueInt()) * time.Second,
-		MaxRetries:     env.Get(constants.QBittorrentMaxRetriesEnv).Default(0).ValueInt(),
-		RetryBackoff:   time.Duration(env.Get(constants.QBittorrentRetryBackoffEnv).Default(1).ValueInt()) * time.Second,
-	})
-	if err != nil {
-		return nil, err
-	}
-
+func New(client *qbt.Client) *Repository {
 	return &Repository{
 		client: client,
-	}, nil
+	}
 }
 
 func (s *Repository) List() ([]*entities.Task, error) {

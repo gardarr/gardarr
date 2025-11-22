@@ -10,28 +10,11 @@ import (
 	"github.com/jfxdev/gardarr/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
-
-// setupTestDB creates an in-memory SQLite database for testing
-func setupTestDB(t *testing.T) *database.Database {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("Failed to create test database: %v", err)
-	}
-
-	// Run migrations
-	if err := db.AutoMigrate(&models.Session{}, &models.User{}); err != nil {
-		t.Fatalf("Failed to migrate test database: %v", err)
-	}
-
-	return &database.Database{DB: db}
-}
 
 func TestValidateSession_ReturnsUserWithRole(t *testing.T) {
 	// Setup test database
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.Session{}, &models.User{})
 
 	// Create test user
 	userUUID := uuid.New()
@@ -90,7 +73,7 @@ func TestValidateSession_ReturnsUserWithRole(t *testing.T) {
 
 func TestValidateSession_ReturnsUserWithUserRole(t *testing.T) {
 	// Setup test database
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.Session{}, &models.User{})
 
 	// Create test user with user role
 	userUUID := uuid.New()

@@ -5,43 +5,18 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/models"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
-
-// setupTestDB creates an in-memory SQLite database for testing
-func setupTestDB(t *testing.T) *database.Database {
-	// Use a unique shared in-memory SQLite database per test to avoid cross-test leakage
-	dsn := "file:" + url.PathEscape(t.Name()) + "?mode=memory&cache=shared"
-	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("Failed to create test database: %v", err)
-	}
-
-	// Ensure GORM uses a single connection for SQLite in-memory
-	if sqlDB, err := db.DB(); err == nil {
-		sqlDB.SetMaxOpenConns(1)
-	}
-
-	// Run migrations
-	if err := db.AutoMigrate(&models.Category{}, &models.User{}, &models.Session{}); err != nil {
-		t.Fatalf("Failed to migrate test database: %v", err)
-	}
-
-	return &database.Database{DB: db}
-}
 
 // setupTestRouter creates a test router with the category routes
 func setupTestRouter(t *testing.T) (*gin.Engine, *database.Database) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	db := setupTestDB(t)
+	db := database.SetupTestDBWithCache(t, &models.Category{}, &models.User{}, &models.Session{})
 
 	// Create the API v1 group
 	v1 := router.Group("/api/v1")

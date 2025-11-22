@@ -11,30 +11,13 @@ import (
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/models"
 	"github.com/jfxdev/gardarr/internal/services/auth"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
-
-// setupTestDB creates an in-memory SQLite database for testing
-func setupTestDB(t *testing.T) *database.Database {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("Failed to create test database: %v", err)
-	}
-
-	// Run migrations
-	if err := db.AutoMigrate(&models.SignupToken{}, &models.User{}, &models.PasswordResetToken{}); err != nil {
-		t.Fatalf("Failed to migrate test database: %v", err)
-	}
-
-	return &database.Database{DB: db}
-}
 
 // setupTestRouter creates a test router with the signup routes
 func setupTestRouter(t *testing.T) (*gin.Engine, *database.Database) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	db := setupTestDB(t)
+	db := database.SetupTestDBWithCache(t, &models.SignupToken{}, &models.User{}, &models.PasswordResetToken{})
 
 	// Create the API v1 group
 	v1 := router.Group("/api/v1")

@@ -7,27 +7,10 @@ import (
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/models"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
-// setupTestDB creates an in-memory SQLite database for testing
-func setupTestDB(t *testing.T) *database.Database {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("Failed to create test database: %v", err)
-	}
-
-	// Run migrations
-	if err := db.AutoMigrate(&models.Category{}); err != nil {
-		t.Fatalf("Failed to migrate test database: %v", err)
-	}
-
-	return &database.Database{DB: db}
-}
-
 func TestRepository_CreateCategory(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.Category{})
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -65,7 +48,7 @@ func TestRepository_CreateCategory(t *testing.T) {
 }
 
 func TestRepository_CreateCategory_Duplicate(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.Category{})
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -89,7 +72,7 @@ func TestRepository_CreateCategory_Duplicate(t *testing.T) {
 }
 
 func TestRepository_ListCategories(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.Category{})
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -129,7 +112,7 @@ func TestRepository_ListCategories(t *testing.T) {
 }
 
 func TestRepository_GetCategoryByID(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.Category{})
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -167,7 +150,7 @@ func TestRepository_GetCategoryByID(t *testing.T) {
 }
 
 func TestRepository_GetCategoryByName(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.Category{})
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -205,7 +188,7 @@ func TestRepository_GetCategoryByName(t *testing.T) {
 }
 
 func TestRepository_UpdateCategory(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.Category{})
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -268,7 +251,7 @@ func TestRepository_UpdateCategory(t *testing.T) {
 }
 
 func TestRepository_DeleteCategory(t *testing.T) {
-	db := setupTestDB(t)
+	db := database.SetupTestDB(t, &models.Category{})
 	repo := NewRepository(db)
 	ctx := context.Background()
 
