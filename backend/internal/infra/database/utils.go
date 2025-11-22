@@ -4,6 +4,8 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/jfxdev/gardarr/internal/constants"
+
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -23,7 +25,7 @@ func SetupTestDB(t *testing.T, models ...interface{}) *Database {
 		}
 	}
 
-	return &Database{DB: db}
+	return &Database{DB: db, driver: constants.DatabaseDriverSQLite}
 }
 
 func SetupTestDBWithCache(t *testing.T, models ...interface{}) *Database {

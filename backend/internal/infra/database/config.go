@@ -1,13 +1,14 @@
 package database
 
 import (
+	"github.com/jfxdev/gardarr/internal/constants"
 	"github.com/jfxdev/gardarr/pkg/env"
 )
 
 // loadConfigFromEnv loads database configuration from environment variables
 func loadConfigFromEnv() *Config {
 	config := &Config{
-		driver:   env.Get("DATABASE_DRIVER").Default("sqlite").Value(),
+		driver:   env.Get("DATABASE_DRIVER").Default(constants.DatabaseDriverSQLite).Value(),
 		host:     env.Get("DATABASE_HOST").Default("localhost").Value(),
 		port:     env.Get("DATABASE_PORT").Default("5432").Value(),
 		user:     env.Get("DATABASE_USERNAME").Default("postgres").Value(),

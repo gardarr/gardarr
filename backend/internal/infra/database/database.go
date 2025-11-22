@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jfxdev/gardarr/internal/constants"
 	"github.com/jfxdev/gardarr/pkg/env"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
@@ -76,7 +77,7 @@ func NewDatabase() (*Database, error) {
 		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
 			Logger: gormLogger,
 		})
-	case "sqlite":
+	case constants.DatabaseDriverSQLite:
 		// Ensure SQLite database file and directory exist
 		if err := ensureSQLiteFile(config.filePath); err != nil {
 			return nil, fmt.Errorf("failed to create SQLite database file: %w", err)
@@ -187,9 +188,9 @@ func (d *Database) Close() error {
 // Note: Connection pool stats are only meaningful for PostgreSQL
 func (d *Database) GetStats() (map[string]any, error) {
 	// SQLite doesn't support meaningful connection pool statistics
-	if d.driver == "sqlite" {
+	if d.driver == constants.DatabaseDriverSQLite {
 		return map[string]any{
-			"driver":               "sqlite",
+			"driver":               constants.DatabaseDriverSQLite,
 			"connection_pooling":   false,
 			"max_open_connections": 1,
 			"open_connections":     1,
