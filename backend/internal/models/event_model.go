@@ -37,7 +37,7 @@ type EventResponse struct {
 	TaskHash  string                 `json:"task_hash,omitempty"`
 	OldValue  string                 `json:"old_value,omitempty"`
 	NewValue  string                 `json:"new_value,omitempty"`
-	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+	Metadata  map[string]interface{} `json:"metadata,omitempty"` // Contains all task details
 	CreatedAt time.Time              `json:"created_at"`
 }
 

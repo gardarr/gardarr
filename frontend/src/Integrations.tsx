@@ -1,10 +1,12 @@
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Webhook, Bell, Plug, Monitor, BookOpen, Joystick } from 'lucide-react';
 
 export default function IntegrationsPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const integrations = [
     {
@@ -109,9 +111,10 @@ export default function IntegrationsPage() {
                   <Button 
                     variant="outline" 
                     className="w-full"
-                    disabled={integration.status !== 'available'}
+                    disabled={integration.id !== 'webhook'}
+                    onClick={() => integration.id === 'webhook' && navigate('/integrations/webhooks')}
                   >
-                    {integration.status === 'available' 
+                    {integration.id === 'webhook' 
                       ? t('integrations.configure') 
                       : t('integrations.comingSoon')
                     }
@@ -154,9 +157,10 @@ export default function IntegrationsPage() {
                   <Button 
                     variant="outline" 
                     className="w-full"
-                    disabled={integration.status !== 'available'}
+                    disabled={integration.id !== 'webhook'}
+                    onClick={() => integration.id === 'webhook' && navigate('/integrations/webhooks')}
                   >
-                    {integration.status === 'available' 
+                    {integration.id === 'webhook' 
                       ? t('integrations.configure') 
                       : t('integrations.comingSoon')
                     }

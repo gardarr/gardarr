@@ -132,5 +132,39 @@ func Register(m *migration.Migrator) {
 				return db.Migrator().DropTable(&models.UserPreferences{})
 			},
 		},
+		{
+			Version:     "014_create_webhooks_table",
+			Description: "Cria a tabela de webhooks para integrações",
+			Up: func(db *gorm.DB) error {
+				return db.AutoMigrate(&models.Webhook{})
+			},
+			Down: func(db *gorm.DB) error {
+				return db.Migrator().DropTable(&models.Webhook{})
+			},
+		},
+		{
+			Version:     "015_create_event_filters_table",
+			Description: "Cria a tabela de filtros de eventos para integrações",
+			Up: func(db *gorm.DB) error {
+				return db.AutoMigrate(&models.EventFilter{})
+			},
+			Down: func(db *gorm.DB) error {
+				return db.Migrator().DropTable(&models.EventFilter{})
+			},
+		},
+		{
+			Version:     "016_add_event_type_filter_column",
+			Description: "Adiciona coluna event_type_filter na tabela event_filters",
+			Up: func(db *gorm.DB) error {
+				// Check if column already exists
+				if db.Migrator().HasColumn(&models.EventFilter{}, "EventTypeFilter") {
+					return nil
+				}
+				return db.Migrator().AddColumn(&models.EventFilter{}, "EventTypeFilter")
+			},
+			Down: func(db *gorm.DB) error {
+				return db.Migrator().DropColumn(&models.EventFilter{}, "event_type_filter")
+			},
+		},
 	})
 }

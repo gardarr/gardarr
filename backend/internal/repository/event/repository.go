@@ -24,7 +24,7 @@ func NewRepository(db *database.Database) *Repository {
 // CreateEvent creates a new event in the database
 func (r *Repository) CreateEvent(ctx context.Context, event *entities.Event) error {
 	var metadataJSON string
-	if event.Metadata != nil {
+	if len(event.Metadata) > 0 {
 		data, err := json.Marshal(event.Metadata)
 		if err != nil {
 			return fmt.Errorf("marshal event metadata: %w", err)
@@ -75,6 +75,7 @@ func (r *Repository) ListEvents(ctx context.Context, agentID *uuid.UUID, eventTy
 	result := make([]*entities.Event, len(events))
 	for i, e := range events {
 		var metadata map[string]interface{}
+
 		if e.Metadata != "" {
 			if err := json.Unmarshal([]byte(e.Metadata), &metadata); err != nil {
 				slog.Warn("failed to unmarshal event metadata", "error", err, "event_uuid", e.UUID.String())
@@ -104,6 +105,7 @@ func (r *Repository) GetEventByUUID(ctx context.Context, uuid uuid.UUID) (*entit
 	}
 
 	var metadata map[string]interface{}
+
 	if model.Metadata != "" {
 		if err := json.Unmarshal([]byte(model.Metadata), &metadata); err != nil {
 			slog.Warn("failed to unmarshal event metadata", "error", err, "event_uuid", model.UUID.String())

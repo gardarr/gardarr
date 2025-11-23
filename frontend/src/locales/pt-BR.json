@@ -668,6 +668,8 @@
     "integrations": {
       "title": "Integrações",
       "subtitle": "Conecte o Gardarr com serviços e ferramentas externas",
+      "configure": "Configurar",
+      "comingSoon": "Em Breve",
       "categories": {
         "notifications": "Notificações",
         "notificationsDescription": "Configure serviços de notificação para receber alertas sobre seus torrents",
@@ -700,6 +702,64 @@
       "comingSoon": "Em Breve",
       "noIntegrations": "Nenhuma integração disponível",
       "noIntegrationsDescription": "Mais integrações serão adicionadas em atualizações futuras"
+    },
+    "webhooks": {
+      "title": "Webhooks",
+      "subtitle": "Gerencie integrações de webhook para notificações de eventos",
+      "addWebhook": "Adicionar Webhook",
+      "addFirstWebhook": "Adicionar Seu Primeiro Webhook",
+      "noWebhooks": "Nenhum webhook configurado ainda. Crie seu primeiro webhook para receber notificações de eventos.",
+      "createTitle": "Criar Webhook",
+      "createDescription": "Configure um novo webhook para receber notificações HTTP quando eventos ocorrerem.",
+      "editTitle": "Editar Webhook",
+      "editDescription": "Atualize a configuração e as definições do webhook.",
+      "deleteTitle": "Excluir Webhook",
+      "deleteDescription": "Tem certeza que deseja excluir este webhook? Esta ação não pode ser desfeita.",
+      "urlLabel": "URL do Webhook",
+      "timeoutLabel": "Timeout (segundos)",
+      "timeoutHelp": "Tempo máximo para aguardar a resposta do webhook (1-300 segundos)",
+      "insecureLabel": "Ignorar Verificação SSL",
+      "insecureHelp": "Aviso: Habilite apenas para desenvolvimento ou certificados auto-assinados",
+      "insecureMode": "SSL Inseguro",
+      "enabled": "Habilitado",
+      "disabled": "Desabilitado",
+      "create": "Criar Webhook",
+      "save": "Salvar Alterações",
+      "filters": {
+        "title": "Filtros de Eventos",
+        "subtitle": "Configure quais eventos acionam este webhook",
+        "noFilters": "Sem filtros - todos os eventos serão enviados",
+        "statusLabel": "Filtro de Status",
+        "statusHelp": "Filtre por status do evento (ex: completed, seeding). Deixe vazio para todos os status.",
+        "statusPlaceholder": "completed, seeding, downloading",
+        "categoryLabel": "Filtro de Categoria",
+        "categoryHelp": "Filtre por categoria do torrent. Deixe vazio para todas as categorias.",
+        "categoryPlaceholder": "filmes, series, musicas",
+        "nameTermsLabel": "Termos no Nome",
+        "nameTermsHelp": "Filtre por termos no nome do torrent (case-insensitive). Deixe vazio para todos os nomes.",
+        "nameTermsPlaceholder": "ubuntu, 2024, 1080p",
+        "hasFilters": "Filtrado",
+        "statusCount": "{{count}} status",
+        "statusCount_plural": "{{count}} status",
+        "categoryCount": "{{count}} categoria",
+        "categoryCount_plural": "{{count}} categorias",
+        "nameCount": "{{count}} termo",
+        "nameCount_plural": "{{count}} termos"
+      },
+      "success": {
+        "created": "Webhook criado com sucesso",
+        "updated": "Webhook atualizado com sucesso",
+        "deleted": "Webhook excluído com sucesso",
+        "enabled": "Webhook habilitado",
+        "disabled": "Webhook desabilitado"
+      },
+      "errors": {
+        "loadFailed": "Falha ao carregar webhooks",
+        "createFailed": "Falha ao criar webhook",
+        "updateFailed": "Falha ao atualizar webhook",
+        "deleteFailed": "Falha ao excluir webhook",
+        "urlRequired": "URL do webhook é obrigatória"
+      }
     }
   ,
   "torrentDetails": {

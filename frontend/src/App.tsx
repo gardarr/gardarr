@@ -8,6 +8,7 @@ import AgentsPage from './Agents'
 import CategoriesPage from './Categories'
 import DashboardPage from './Dashboard'
 import IntegrationsPage from './Integrations'
+import IntegrationWebhookPage from './IntegrationWebhook'
 import SettingsPage from './Settings'
 import AboutPage from './About'
 import ProfilePage from './Profile'
@@ -50,6 +51,7 @@ function App() {
             <Route path="agents" element={<AgentsPage />} />
             <Route path="categories" element={<CategoriesPage />} />
             <Route path="integrations" element={<IntegrationsPage />} />
+            <Route path="integrations/webhooks" element={<IntegrationWebhookPage />} />
             <Route path="users" element={<UsersPage />} />
             <Route path="history" element={<HistoryPage />} />
             <Route path="settings" element={<ProtectedRoute adminOnly><SettingsPage /></ProtectedRoute>} />

@@ -22,8 +22,8 @@ func setupTestRouter(t *testing.T) (*gin.Engine, *database.Database) {
 	// Create the API v1 group
 	v1 := router.Group("/api/v1")
 
-	// Register setup routes
-	module := NewModule(v1, db, statistics.NewService(db, nil))
+	// Register setup routes (eventService is nil for tests)
+	module := NewModule(v1, db, statistics.NewService(db, nil, nil))
 	module.Register()
 
 	return router, db

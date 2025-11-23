@@ -7,4 +7,5 @@ const (
 	AppURLEnv                = "APP_URL"
 	StandaloneMode           = "standalone"
 	TorrentImageUploadDirEnv = "TORRENT_IMAGE_UPLOAD_DIR"
+	WebhookURLEnv            = "WEBHOOK_URL"
 )

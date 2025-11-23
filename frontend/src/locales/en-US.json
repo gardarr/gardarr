@@ -676,6 +676,8 @@
   "integrations": {
     "title": "Integrations",
     "subtitle": "Connect Gardarr with external services and tools",
+    "configure": "Configure",
+    "comingSoon": "Coming Soon",
     "categories": {
       "notifications": "Notifications",
       "notificationsDescription": "Configure notification services to receive alerts about your torrents",
@@ -708,6 +710,64 @@
     "comingSoon": "Coming Soon",
     "noIntegrations": "No integrations available",
     "noIntegrationsDescription": "More integrations will be added in future updates"
+  },
+  "webhooks": {
+    "title": "Webhooks",
+    "subtitle": "Manage webhook integrations for event notifications",
+    "addWebhook": "Add Webhook",
+    "addFirstWebhook": "Add Your First Webhook",
+    "noWebhooks": "No webhooks configured yet. Create your first webhook to receive event notifications.",
+    "createTitle": "Create Webhook",
+    "createDescription": "Configure a new webhook to receive HTTP notifications when events occur.",
+    "editTitle": "Edit Webhook",
+    "editDescription": "Update webhook configuration and settings.",
+    "deleteTitle": "Delete Webhook",
+    "deleteDescription": "Are you sure you want to delete this webhook? This action cannot be undone.",
+    "urlLabel": "Webhook URL",
+    "timeoutLabel": "Timeout (seconds)",
+    "timeoutHelp": "Maximum time to wait for the webhook response (1-300 seconds)",
+    "insecureLabel": "Skip SSL Verification",
+    "insecureHelp": "Warning: Only enable for development or self-signed certificates",
+    "insecureMode": "Insecure SSL",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "create": "Create Webhook",
+    "save": "Save Changes",
+    "filters": {
+      "title": "Event Filters",
+      "subtitle": "Configure which events trigger this webhook",
+      "noFilters": "No filters - all events will be sent",
+      "statusLabel": "Status Filter",
+      "statusHelp": "Filter by event status (e.g., completed, seeding). Leave empty for all statuses.",
+      "statusPlaceholder": "completed, seeding, downloading",
+      "categoryLabel": "Category Filter",
+      "categoryHelp": "Filter by torrent category. Leave empty for all categories.",
+      "categoryPlaceholder": "movies, tv-shows, music",
+      "nameTermsLabel": "Name Terms",
+      "nameTermsHelp": "Filter by terms in torrent name (case-insensitive). Leave empty to match all names.",
+      "nameTermsPlaceholder": "ubuntu, 2024, 1080p",
+      "hasFilters": "Filtered",
+      "statusCount": "{{count}} status",
+      "statusCount_plural": "{{count}} statuses",
+      "categoryCount": "{{count}} category",
+      "categoryCount_plural": "{{count}} categories",
+      "nameCount": "{{count}} term",
+      "nameCount_plural": "{{count}} terms"
+    },
+    "success": {
+      "created": "Webhook created successfully",
+      "updated": "Webhook updated successfully",
+      "deleted": "Webhook deleted successfully",
+      "enabled": "Webhook enabled",
+      "disabled": "Webhook disabled"
+    },
+    "errors": {
+      "loadFailed": "Failed to load webhooks",
+      "createFailed": "Failed to create webhook",
+      "updateFailed": "Failed to update webhook",
+      "deleteFailed": "Failed to delete webhook",
+      "urlRequired": "Webhook URL is required"
+    }
   },
   "torrentDetails": {
     "title": "Torrent Details",

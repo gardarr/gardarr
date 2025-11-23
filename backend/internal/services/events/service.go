@@ -20,6 +20,7 @@ type Service struct {
 	taskStates    map[uuid.UUID]map[string]*TaskState // agentID -> taskHash -> state
 	mu            sync.RWMutex
 	retentionDays int
+	eventChan     chan *entities.Event // Optional channel for real-time event emission
 }
 
 // TaskState represents the last known state of a task
@@ -37,7 +38,19 @@ func NewService(db *database.Database) *Service {
 		repo:          event.NewRepository(db),
 		taskStates:    make(map[uuid.UUID]map[string]*TaskState),
 		retentionDays: env.Get("EVENT_RETENTION_DAYS").Default(7).ValueInt(),
+		eventChan:     nil, // Initially nil, enabled via EnableRealTimeEmission
 	}
+}
+
+// EnableRealTimeEmission creates and returns a channel for real-time event emission.
+// This allows consumers (like integration services) to receive events as they occur.
+// Call this only once during service initialization.
+func (s *Service) EnableRealTimeEmission(bufferSize int) <-chan *entities.Event {
+	if bufferSize <= 0 {
+		bufferSize = 100
+	}
+	s.eventChan = make(chan *entities.Event, bufferSize)
+	return s.eventChan
 }
 
 // isErrorState checks if a state represents an error condition
@@ -99,8 +112,15 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 					TaskHash: t.Hash,
 					NewValue: t.State,
 					Metadata: map[string]interface{}{
-						"name":     t.Name,
-						"progress": t.Progress,
+						"name":      t.Name,
+						"hash":      t.Hash,
+						"state":     t.State,
+						"category":  t.Category,
+						"tags":      t.Tags,
+						"directory": t.Path,
+						"size":      t.Size,
+						"progress":  t.Progress,
+						"ratio":     t.Ratio,
 					},
 					CreatedAt: timestamp,
 				}
@@ -130,8 +150,16 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 					NewValue: t.State,
 					Metadata: map[string]interface{}{
 						"name":         t.Name,
+						"hash":         t.Hash,
+						"state":        t.State,
+						"category":     t.Category,
+						"tags":         t.Tags,
+						"directory":    t.Path,
+						"size":         t.Size,
 						"old_progress": oldProgress,
 						"new_progress": t.Progress,
+						"progress":     t.Progress,
+						"ratio":        t.Ratio,
 					},
 					CreatedAt: timestamp,
 				}
@@ -145,7 +173,15 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 						TaskHash: t.Hash,
 						NewValue: t.State,
 						Metadata: map[string]interface{}{
-							"name": t.Name,
+							"name":      t.Name,
+							"hash":      t.Hash,
+							"state":     t.State,
+							"category":  t.Category,
+							"tags":      t.Tags,
+							"directory": t.Path,
+							"size":      t.Size,
+							"progress":  t.Progress,
+							"ratio":     t.Ratio,
 						},
 						CreatedAt: timestamp,
 					}
@@ -169,7 +205,15 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 						TaskHash: t.Hash,
 						NewValue: t.State,
 						Metadata: map[string]interface{}{
-							"name": t.Name,
+							"name":      t.Name,
+							"hash":      t.Hash,
+							"state":     t.State,
+							"category":  t.Category,
+							"tags":      t.Tags,
+							"directory": t.Path,
+							"size":      t.Size,
+							"progress":  t.Progress,
+							"ratio":     t.Ratio,
 						},
 						CreatedAt: timestamp,
 					}
@@ -189,6 +233,15 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 		if err := s.repo.CreateEvent(ctx, event); err != nil {
 			slog.Error("failed to create event", "error", err, "agent_id", agentID.String(), "event_type", event.Type)
 			continue
+		}
+
+		// Emit to real-time channel if enabled (non-blocking)
+		if s.eventChan != nil {
+			select {
+			case s.eventChan <- event:
+			default:
+				// Channel full - skip emission to prevent blocking
+			}
 		}
 	}
 
@@ -268,6 +321,15 @@ func (s *Service) DetectRemovedTasks(ctx context.Context, currentTasks []*entiti
 		if err := s.repo.CreateEvent(ctx, event); err != nil {
 			slog.Error("failed to create removal event", "error", err, "agent_id", agentID.String(), "task_hash", event.TaskHash)
 			continue
+		}
+
+		// Emit to real-time channel if enabled (non-blocking)
+		if s.eventChan != nil {
+			select {
+			case s.eventChan <- event:
+			default:
+				// Channel full - skip emission to prevent blocking
+			}
 		}
 	}
 
