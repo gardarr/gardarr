@@ -10,8 +10,8 @@ import (
 	"github.com/jfxdev/gardarr/internal/models"
 )
 
-func TestRepository_CreateWebhook(t *testing.T) {
-	db := database.SetupTestDB(t, &models.Webhook{})
+func TestRepositoryCreateWebhook(t *testing.T) {
+	db := database.SetupTestDBWithMigrations(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -25,12 +25,11 @@ func TestRepository_CreateWebhook(t *testing.T) {
 
 	created, err := repo.CreateWebhook(ctx, webhook)
 	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
+		t.Fatalf("Expected no error, got %v", err)
 	}
 
 	if created == nil {
-		t.Error("Expected created webhook, got nil")
-		return
+		t.Fatal("Expected created webhook, got nil")
 	}
 
 	if created.UUID == uuid.Nil {
@@ -54,15 +53,15 @@ func TestRepository_CreateWebhook(t *testing.T) {
 	}
 }
 
-func TestRepository_ListWebhooks(t *testing.T) {
-	db := database.SetupTestDB(t, &models.Webhook{})
+func TestRepositoryListWebhooks(t *testing.T) {
+	db := database.SetupTestDBWithMigrations(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
 
 	// Test empty list
 	webhooks, err := repo.ListWebhooks(ctx)
 	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
+		t.Fatalf("Expected no error, got %v", err)
 	}
 
 	if len(webhooks) != 0 {
@@ -86,7 +85,7 @@ func TestRepository_ListWebhooks(t *testing.T) {
 	// List all webhooks
 	webhooks, err = repo.ListWebhooks(ctx)
 	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
+		t.Fatalf("Expected no error, got %v", err)
 	}
 
 	if len(webhooks) != len(testWebhooks) {
@@ -94,8 +93,8 @@ func TestRepository_ListWebhooks(t *testing.T) {
 	}
 }
 
-func TestRepository_ListEnabledWebhooks(t *testing.T) {
-	db := database.SetupTestDB(t, &models.Webhook{})
+func TestRepositoryListEnabledWebhooks(t *testing.T) {
+	db := database.SetupTestDBWithMigrations(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -116,7 +115,7 @@ func TestRepository_ListEnabledWebhooks(t *testing.T) {
 	// List only enabled webhooks
 	webhooks, err := repo.ListEnabledWebhooks(ctx)
 	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
+		t.Fatalf("Expected no error, got %v", err)
 	}
 
 	if len(webhooks) != 2 {
@@ -131,8 +130,8 @@ func TestRepository_ListEnabledWebhooks(t *testing.T) {
 	}
 }
 
-func TestRepository_GetWebhookByUUID(t *testing.T) {
-	db := database.SetupTestDB(t, &models.Webhook{})
+func TestRepositoryGetWebhookByUUID(t *testing.T) {
+	db := database.SetupTestDBWithMigrations(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -153,7 +152,7 @@ func TestRepository_GetWebhookByUUID(t *testing.T) {
 	// Get by UUID
 	retrieved, err := repo.GetWebhookByUUID(ctx, created.UUID)
 	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
+		t.Fatalf("Expected no error, got %v", err)
 	}
 
 	if retrieved.UUID != created.UUID {
@@ -175,8 +174,8 @@ func TestRepository_GetWebhookByUUID(t *testing.T) {
 	}
 }
 
-func TestRepository_UpdateWebhook(t *testing.T) {
-	db := database.SetupTestDB(t, &models.Webhook{})
+func TestRepositoryUpdateWebhook(t *testing.T) {
+	db := database.SetupTestDBWithMigrations(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -202,7 +201,7 @@ func TestRepository_UpdateWebhook(t *testing.T) {
 
 	updated, err := repo.UpdateWebhook(ctx, *created)
 	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
+		t.Fatalf("Expected no error, got %v", err)
 	}
 
 	if updated.URL != "https://example.com/updated" {
@@ -232,8 +231,8 @@ func TestRepository_UpdateWebhook(t *testing.T) {
 	}
 }
 
-func TestRepository_DeleteWebhook(t *testing.T) {
-	db := database.SetupTestDB(t, &models.Webhook{})
+func TestRepositoryDeleteWebhook(t *testing.T) {
+	db := database.SetupTestDBWithMigrations(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -253,7 +252,7 @@ func TestRepository_DeleteWebhook(t *testing.T) {
 	// Delete the webhook
 	err = repo.DeleteWebhook(ctx, created.UUID)
 	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
+		t.Fatalf("Expected no error, got %v", err)
 	}
 
 	// Verify deletion
@@ -269,7 +268,7 @@ func TestRepository_DeleteWebhook(t *testing.T) {
 	}
 }
 
-func TestRepository_ToWebhookConversion(t *testing.T) {
+func TestRepositoryToWebhookConversion(t *testing.T) {
 	id := uuid.New()
 	model := models.Webhook{
 		UUID:               id,

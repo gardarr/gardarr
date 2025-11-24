@@ -50,7 +50,7 @@ func (r *TestRepository) ListAgentTasks(agent *entities.Agent) ([]*entities.Task
 	}, nil
 }
 
-func TestService_ListTasks_EmptyAgents(t *testing.T) {
+func TestServiceListTasks_EmptyAgents(t *testing.T) {
 	// Create a minimal service for testing
 	service := &Service{}
 
@@ -67,7 +67,7 @@ func TestService_ListTasks_EmptyAgents(t *testing.T) {
 	}
 }
 
-func TestService_ListTasks_ParallelExecution(t *testing.T) {
+func TestServiceListTasks_ParallelExecution(t *testing.T) {
 	// This test verifies that the parallel implementation works correctly
 	// by checking that multiple agents are processed concurrently
 
@@ -88,7 +88,7 @@ func TestService_ListTasks_ParallelExecution(t *testing.T) {
 	}
 }
 
-func TestService_ListTasks_ErrorHandling(t *testing.T) {
+func TestServiceListTasks_ErrorHandling(t *testing.T) {
 	// Test that the method handles errors gracefully
 	// Since we can't easily mock the repository, we'll test the error handling
 	// by ensuring the method doesn't panic and returns appropriate errors

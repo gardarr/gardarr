@@ -9,7 +9,6 @@ import (
 	"github.com/jfxdev/gardarr/internal/constants"
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/infra/database"
-	"github.com/jfxdev/gardarr/internal/models"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,7 +16,7 @@ func TestNewService(t *testing.T) {
 	ch := make(chan *entities.Event, 10)
 	defer close(ch)
 
-	db := database.SetupTestDB(t, &models.Webhook{})
+	db := database.SetupTestDBWithMigrations(t)
 	svc := NewService(ch, db)
 
 	assert.NotNil(t, svc)
@@ -30,7 +29,7 @@ func TestServiceStart_Disabled(t *testing.T) {
 	ch := make(chan *entities.Event, 10)
 	defer close(ch)
 
-	db := database.SetupTestDB(t, &models.Webhook{})
+	db := database.SetupTestDBWithMigrations(t)
 	svc := NewService(ch, db)
 	svc.enabled = false
 
@@ -48,7 +47,7 @@ func TestServiceStart_Disabled(t *testing.T) {
 
 func TestServiceStart_Enabled(t *testing.T) {
 	ch := make(chan *entities.Event, 10)
-	db := database.SetupTestDB(t, &models.Webhook{})
+	db := database.SetupTestDBWithMigrations(t)
 	svc := NewService(ch, db)
 	svc.enabled = true
 
@@ -93,7 +92,7 @@ func TestProcessEvent_NilEvent(t *testing.T) {
 	ch := make(chan *entities.Event, 10)
 	defer close(ch)
 
-	db := database.SetupTestDB(t, &models.Webhook{})
+	db := database.SetupTestDBWithMigrations(t)
 	svc := NewService(ch, db)
 	svc.enabled = true
 
@@ -109,7 +108,7 @@ func TestProcessEvent_ValidEvent(t *testing.T) {
 	ch := make(chan *entities.Event, 10)
 	defer close(ch)
 
-	db := database.SetupTestDB(t, &models.Webhook{})
+	db := database.SetupTestDBWithMigrations(t)
 	svc := NewService(ch, db)
 	svc.enabled = true
 
@@ -141,7 +140,7 @@ func TestEnabled(t *testing.T) {
 	ch := make(chan *entities.Event, 10)
 	defer close(ch)
 
-	db := database.SetupTestDB(t, &models.Webhook{})
+	db := database.SetupTestDBWithMigrations(t)
 	svc := NewService(ch, db)
 
 	// Test default enabled state
@@ -150,4 +149,70 @@ func TestEnabled(t *testing.T) {
 	// Test disabled state
 	svc.enabled = false
 	assert.False(t, svc.Enabled())
+}
+
+func TestConcurrentReloadAndProcessEvent(t *testing.T) {
+	ch := make(chan *entities.Event, 100)
+
+	db := database.SetupTestDBWithMigrations(t)
+	svc := NewService(ch, db)
+	svc.enabled = true
+
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+
+	// Start the service
+	svc.Start(ctx)
+
+	// Simulate concurrent reloads while processing events
+	reloadDone := make(chan bool)
+	go func() {
+		for i := 0; i < 20; i++ {
+			svc.ReloadWebhooks(ctx)
+			time.Sleep(10 * time.Millisecond)
+		}
+		reloadDone <- true
+	}()
+
+	// Send events concurrently
+	sendDone := make(chan bool)
+	go func() {
+		defer func() { sendDone <- true }()
+		for i := 0; i < 50; i++ {
+			testEvent := &entities.Event{
+				UUID:     uuid.New(),
+				AgentID:  uuid.New(),
+				Type:     constants.EventTypeTorrentStateChange,
+				TaskHash: "test-hash",
+				NewValue: "downloading",
+				Metadata: map[string]interface{}{
+					"name":     "Test Task",
+					"category": "test",
+					"size":     1024,
+				},
+				CreatedAt: time.Now(),
+			}
+			select {
+			case ch <- testEvent:
+			case <-ctx.Done():
+				return
+			}
+			time.Sleep(5 * time.Millisecond)
+		}
+	}()
+
+	// Wait for reload goroutine to finish
+	<-reloadDone
+
+	// Wait for context to finish
+	<-ctx.Done()
+
+	// Wait for sender goroutine to finish before closing channel
+	<-sendDone
+
+	// Now safe to close the channel
+	close(ch)
+
+	// If we get here without panicking or deadlocking, the test passes
+	// This test would fail with -race flag if there's a data race in the service
 }

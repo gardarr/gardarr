@@ -1024,7 +1024,7 @@ func (s *Service) GetUploadDiffs(ctx context.Context, agentID string, from, to t
 		return results[i].Diff > results[j].Diff
 	})
 
-	if len(results) > limit {
+	if limit > 0 && len(results) > limit {
 		results = results[:limit]
 	}
 

@@ -9,7 +9,7 @@ import (
 	"github.com/jfxdev/gardarr/internal/models"
 )
 
-func TestRepository_CreateCategory(t *testing.T) {
+func TestRepositoryCreateCategory(t *testing.T) {
 	db := database.SetupTestDB(t, &models.Category{})
 	repo := NewRepository(db)
 	ctx := context.Background()
@@ -47,7 +47,7 @@ func TestRepository_CreateCategory(t *testing.T) {
 	}
 }
 
-func TestRepository_CreateCategory_Duplicate(t *testing.T) {
+func TestRepositoryCreateCategoryDuplicate(t *testing.T) {
 	db := database.SetupTestDB(t, &models.Category{})
 	repo := NewRepository(db)
 	ctx := context.Background()
@@ -71,7 +71,7 @@ func TestRepository_CreateCategory_Duplicate(t *testing.T) {
 	}
 }
 
-func TestRepository_ListCategories(t *testing.T) {
+func TestRepositoryListCategories(t *testing.T) {
 	db := database.SetupTestDB(t, &models.Category{})
 	repo := NewRepository(db)
 	ctx := context.Background()
@@ -111,7 +111,7 @@ func TestRepository_ListCategories(t *testing.T) {
 	}
 }
 
-func TestRepository_GetCategoryByID(t *testing.T) {
+func TestRepositoryGetCategoryByID(t *testing.T) {
 	db := database.SetupTestDB(t, &models.Category{})
 	repo := NewRepository(db)
 	ctx := context.Background()
@@ -149,7 +149,7 @@ func TestRepository_GetCategoryByID(t *testing.T) {
 	}
 }
 
-func TestRepository_GetCategoryByName(t *testing.T) {
+func TestRepositoryGetCategoryByName(t *testing.T) {
 	db := database.SetupTestDB(t, &models.Category{})
 	repo := NewRepository(db)
 	ctx := context.Background()
@@ -187,7 +187,7 @@ func TestRepository_GetCategoryByName(t *testing.T) {
 	}
 }
 
-func TestRepository_UpdateCategory(t *testing.T) {
+func TestRepositoryUpdateCategory(t *testing.T) {
 	db := database.SetupTestDB(t, &models.Category{})
 	repo := NewRepository(db)
 	ctx := context.Background()
@@ -250,7 +250,7 @@ func TestRepository_UpdateCategory(t *testing.T) {
 	}
 }
 
-func TestRepository_DeleteCategory(t *testing.T) {
+func TestRepositoryDeleteCategory(t *testing.T) {
 	db := database.SetupTestDB(t, &models.Category{})
 	repo := NewRepository(db)
 	ctx := context.Background()
@@ -286,7 +286,7 @@ func TestRepository_DeleteCategory(t *testing.T) {
 	}
 }
 
-func TestRepository_ToCategoryConversion(t *testing.T) {
+func TestRepositoryToCategoryConversion(t *testing.T) {
 	model := models.Category{
 		ID:          "test-id",
 		Name:        "Test Category",

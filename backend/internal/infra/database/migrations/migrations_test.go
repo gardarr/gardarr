@@ -9,7 +9,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestMigration_007_AddColorIconToCategories(t *testing.T) {
+func TestMigration007AddColorIconToCategories(t *testing.T) {
 	// Create in-memory SQLite database
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	if err != nil {

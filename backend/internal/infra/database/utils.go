@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/jfxdev/gardarr/internal/constants"
+	"github.com/jfxdev/gardarr/internal/infra/database/migrations"
+	"github.com/jfxdev/gardarr/internal/infra/migration"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -40,4 +42,24 @@ func SetupTestDBWithCache(t *testing.T, models ...interface{}) *Database {
 	}
 
 	return &Database{DB: db}
+}
+
+// SetupTestDBWithMigrations creates an in-memory SQLite database for testing
+// and runs all registered migrations (matching production behavior exactly)
+func SetupTestDBWithMigrations(t *testing.T) *Database {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("Failed to create test database: %v", err)
+	}
+
+	database := &Database{DB: db, driver: constants.DatabaseDriverSQLite}
+
+	// Run all migrations as they would run in production
+	m := migration.NewMigrator(db)
+	migrations.Register(m)
+	if err := m.Up(); err != nil {
+		t.Fatalf("Failed to run migrations: %v", err)
+	}
+
+	return database
 }

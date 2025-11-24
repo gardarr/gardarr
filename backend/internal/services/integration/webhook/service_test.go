@@ -28,7 +28,7 @@ func TestNewService(t *testing.T) {
 	assert.Equal(t, 15, svc.timeoutSeconds)
 }
 
-func TestNewService_InsecureSkipVerify(t *testing.T) {
+func TestNewServiceInsecureSkipVerify(t *testing.T) {
 	webhookURL := "https://example.com/webhook"
 	svc := NewService(webhookURL, true, 30)
 
@@ -40,7 +40,7 @@ func TestNewService_InsecureSkipVerify(t *testing.T) {
 	assert.Equal(t, 30, svc.timeoutSeconds)
 }
 
-func TestNewService_DefaultTimeout(t *testing.T) {
+func TestNewServiceDefaultTimeout(t *testing.T) {
 	webhookURL := "https://example.com/webhook"
 	svc := NewService(webhookURL, false, 0)
 

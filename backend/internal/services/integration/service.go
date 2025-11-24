@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"sync"
 
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/infra/database"
@@ -18,6 +19,7 @@ type Service struct {
 	webhookRepo     *webhook.Repository
 	webhookServices map[string]*webhookService.Service
 	webhookFilters  map[string]*entities.EventFilter // Maps webhook UUID to its filter
+	mu              sync.RWMutex
 }
 
 // NewService creates a new integration service that consumes events
@@ -70,6 +72,9 @@ func (s *Service) loadWebhooks(ctx context.Context) {
 	}
 
 	// Clear existing services and filters
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	s.webhookServices = make(map[string]*webhookService.Service)
 	s.webhookFilters = make(map[string]*entities.EventFilter)
 
@@ -78,7 +83,7 @@ func (s *Service) loadWebhooks(ctx context.Context) {
 		service := webhookService.NewService(wh.URL, wh.InsecureSkipVerify, wh.TimeoutSeconds)
 		webhookID := wh.UUID.String()
 		s.webhookServices[webhookID] = service
-		
+
 		// Store filter if present
 		if wh.Filter != nil {
 			s.webhookFilters[webhookID] = wh.Filter
@@ -144,16 +149,33 @@ func (s *Service) processEvent(ctx context.Context, event *entities.Event) {
 		"new_value", event.NewValue,
 	)
 
+	// Take a snapshot of current services/filters under read lock
+	s.mu.RLock()
+	type target struct {
+		id     string
+		svc    *webhookService.Service
+		filter *entities.EventFilter
+	}
+	targets := make([]target, 0, len(s.webhookServices))
+	for id, svc := range s.webhookServices {
+		targets = append(targets, target{
+			id:     id,
+			svc:    svc,
+			filter: s.webhookFilters[id],
+		})
+	}
+	s.mu.RUnlock()
+
 	// Send event to all registered webhook services that match the filter
-	for webhookID, webhookSvc := range s.webhookServices {
-		if webhookSvc != nil && webhookSvc.Enabled() {
+	// Use the snapshot to avoid holding the lock during network I/O
+	for _, t := range targets {
+		if t.svc != nil && t.svc.Enabled() {
 			// Check if event matches the webhook's filter
-			filter := s.webhookFilters[webhookID]
-			if !filters.MatchesEvent(filter, event) {
+			if !filters.MatchesEvent(t.filter, event) {
 				logger.Debug("Event filtered out for webhook",
 					"service", "integration",
 					"event_id", event.UUID.String(),
-					"webhook_id", webhookID,
+					"webhook_id", t.id,
 					"event_type", event.Type,
 					"new_value", event.NewValue,
 				)
@@ -163,14 +185,14 @@ func (s *Service) processEvent(ctx context.Context, event *entities.Event) {
 			logger.Debug("Event matches filter, sending to webhook",
 				"service", "integration",
 				"event_id", event.UUID.String(),
-				"webhook_id", webhookID,
+				"webhook_id", t.id,
 			)
 
-			if err := webhookSvc.SendEvent(ctx, event); err != nil {
+			if err := t.svc.SendEvent(ctx, event); err != nil {
 				logger.Error("Failed to send event to webhook",
 					"service", "integration",
 					"event_id", event.UUID.String(),
-					"webhook_id", webhookID,
+					"webhook_id", t.id,
 					"error", err,
 				)
 			}

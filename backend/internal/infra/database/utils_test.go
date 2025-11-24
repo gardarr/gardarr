@@ -56,3 +56,31 @@ func TestSetupTestDBWithMultipleModels(t *testing.T) {
 		t.Error("Expected User table to exist after migration")
 	}
 }
+
+func TestSetupTestDBWithMigrations(t *testing.T) {
+	// Test with full migration system
+	db := SetupTestDBWithMigrations(t)
+	if db == nil {
+		t.Fatal(nilDatabaseError)
+	}
+
+	// Verify database is accessible
+	sqlDB, err := db.DB.DB()
+	if err != nil {
+		t.Fatalf("Failed to get underlying sql.DB: %v", err)
+	}
+	if err := sqlDB.Ping(); err != nil {
+		t.Fatalf("Failed to ping database: %v", err)
+	}
+
+	// Verify some key tables exist (from migrations)
+	if !db.DB.Migrator().HasTable(&models.User{}) {
+		t.Error("Expected User table to exist after migrations")
+	}
+	if !db.DB.Migrator().HasTable(&models.EventFilter{}) {
+		t.Error("Expected EventFilter table to exist after migrations")
+	}
+	if !db.DB.Migrator().HasTable(&models.Webhook{}) {
+		t.Error("Expected Webhook table to exist after migrations")
+	}
+}

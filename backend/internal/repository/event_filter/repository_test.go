@@ -7,13 +7,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/infra/database"
-	"github.com/jfxdev/gardarr/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCreateEventFilter(t *testing.T) {
-	db := database.SetupTestDB(t, &models.EventFilter{})
+	db := database.SetupTestDBWithMigrations(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -37,7 +36,7 @@ func TestCreateEventFilter(t *testing.T) {
 }
 
 func TestGetFilterByUUID(t *testing.T) {
-	db := database.SetupTestDB(t, &models.EventFilter{})
+	db := database.SetupTestDBWithMigrations(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -58,7 +57,7 @@ func TestGetFilterByUUID(t *testing.T) {
 }
 
 func TestGetFilterByIntegration(t *testing.T) {
-	db := database.SetupTestDB(t, &models.EventFilter{})
+	db := database.SetupTestDBWithMigrations(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -79,8 +78,8 @@ func TestGetFilterByIntegration(t *testing.T) {
 	assert.Equal(t, integrationID, retrieved.IntegrationID)
 }
 
-func TestGetFilterByIntegration_NotFound(t *testing.T) {
-	db := database.SetupTestDB(t, &models.EventFilter{})
+func TestGetFilterByIntegrationNotFound(t *testing.T) {
+	db := database.SetupTestDBWithMigrations(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -91,7 +90,7 @@ func TestGetFilterByIntegration_NotFound(t *testing.T) {
 }
 
 func TestUpdateEventFilter(t *testing.T) {
-	db := database.SetupTestDB(t, &models.EventFilter{})
+	db := database.SetupTestDBWithMigrations(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -116,7 +115,7 @@ func TestUpdateEventFilter(t *testing.T) {
 }
 
 func TestDeleteEventFilter(t *testing.T) {
-	db := database.SetupTestDB(t, &models.EventFilter{})
+	db := database.SetupTestDBWithMigrations(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -140,7 +139,7 @@ func TestDeleteEventFilter(t *testing.T) {
 }
 
 func TestDeleteFiltersByIntegration(t *testing.T) {
-	db := database.SetupTestDB(t, &models.EventFilter{})
+	db := database.SetupTestDBWithMigrations(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -164,8 +163,8 @@ func TestDeleteFiltersByIntegration(t *testing.T) {
 	assert.Nil(t, retrieved)
 }
 
-func TestEventFilter_EmptyArrays(t *testing.T) {
-	db := database.SetupTestDB(t, &models.EventFilter{})
+func TestEventFilterEmptyArrays(t *testing.T) {
+	db := database.SetupTestDBWithMigrations(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -186,8 +185,8 @@ func TestEventFilter_EmptyArrays(t *testing.T) {
 	assert.Empty(t, created.NameTerms)
 }
 
-func TestEventFilter_WithEventType(t *testing.T) {
-	db := database.SetupTestDB(t, &models.EventFilter{})
+func TestEventFilterWithEventType(t *testing.T) {
+	db := database.SetupTestDBWithMigrations(t)
 	repo := NewRepository(db)
 	ctx := context.Background()
 
@@ -214,4 +213,3 @@ func TestEventFilter_WithEventType(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "torrent.added", retrieved.EventTypeFilter)
 }
-

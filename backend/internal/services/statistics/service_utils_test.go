@@ -60,7 +60,7 @@ func TestParseTime(t *testing.T) {
 	}
 }
 
-func TestService_ScanFile(t *testing.T) {
+func TestServiceScanFile(t *testing.T) {
 	// Create a temporary directory for test files
 	tmpDir := t.TempDir()
 
@@ -91,7 +91,7 @@ func TestService_ScanFile(t *testing.T) {
 	})
 }
 
-func TestService_DiscoverFiles(t *testing.T) {
+func TestServiceDiscoverFiles(t *testing.T) {
 	// Create a temporary directory for test files
 	tmpDir := t.TempDir()
 
@@ -135,7 +135,7 @@ func TestService_DiscoverFiles(t *testing.T) {
 	})
 }
 
-func TestService_WindowedAggregation(t *testing.T) {
+func TestServiceWindowedAggregation(t *testing.T) {
 	tmpDir := t.TempDir()
 	db := &database.Database{}
 
@@ -173,7 +173,7 @@ func TestService_WindowedAggregation(t *testing.T) {
 	})
 }
 
-func TestService_GetUploadDiffs(t *testing.T) {
+func TestServiceGetUploadDiffs(t *testing.T) {
 	tmpDir := t.TempDir()
 	db := &database.Database{}
 
@@ -217,7 +217,7 @@ func TestService_GetUploadDiffs(t *testing.T) {
 	})
 }
 
-func TestService_PurgeOldFiles_FSOnly(t *testing.T) {
+func TestServicePurgeOldFilesFSOnly(t *testing.T) {
 	tmpDir := t.TempDir()
 	svc := &Service{
 		baseDir:       tmpDir,
@@ -251,7 +251,7 @@ func TestService_PurgeOldFiles_FSOnly(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestService_UpsertFileIndex(t *testing.T) {
+func TestServiceUpsertFileIndex(t *testing.T) {
 	// Create a test database in memory
 	db := database.SetupTestDB(t)
 
@@ -298,7 +298,7 @@ func TestService_UpsertFileIndex(t *testing.T) {
 		}
 		db.DB.Table("stats_file_indices").Where("file_path = ?", path).First(&idx)
 		assert.Equal(t, int(lines*2), idx.LineCount) // Should be doubled
-		assert.Equal(t, size*2, idx.SizeBytes)        // Should be doubled
+		assert.Equal(t, size*2, idx.SizeBytes)       // Should be doubled
 	})
 
 	t.Run("Handles multiple different paths", func(t *testing.T) {
