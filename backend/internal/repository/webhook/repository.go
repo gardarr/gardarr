@@ -26,30 +26,41 @@ func NewRepository(db *database.Database) *Repository {
 
 // CreateWebhook inserts a new webhook into the database
 func (r *Repository) CreateWebhook(ctx context.Context, webhook entities.Webhook) (*entities.Webhook, error) {
-	model := &models.Webhook{
-		UUID:               webhook.UUID,
-		URL:                webhook.URL,
-		InsecureSkipVerify: webhook.InsecureSkipVerify,
-		Enabled:            webhook.Enabled,
-		TimeoutSeconds:     webhook.TimeoutSeconds,
-	}
+	var result *entities.Webhook
 
-	// Use Select to ensure zero values (like false) are inserted
-	if err := r.db.DB.WithContext(ctx).Select("UUID", "URL", "InsecureSkipVerify", "Enabled", "TimeoutSeconds").Create(model).Error; err != nil {
-		return nil, err
-	}
-
-	result := toWebhook(*model)
-
-	// Create filter if provided
-	if webhook.Filter != nil {
-		webhook.Filter.IntegrationID = result.UUID
-		webhook.Filter.IntegrationType = entities.EventFilterTypeWebhook
-		createdFilter, err := r.filterRepo.CreateEventFilter(ctx, *webhook.Filter)
-		if err != nil {
-			return nil, err
+	// Execute webhook creation and filter creation in a single transaction
+	err := r.db.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		model := &models.Webhook{
+			UUID:               webhook.UUID,
+			URL:                webhook.URL,
+			InsecureSkipVerify: webhook.InsecureSkipVerify,
+			Enabled:            webhook.Enabled,
+			TimeoutSeconds:     webhook.TimeoutSeconds,
 		}
-		result.Filter = createdFilter
+
+		// Use Select to ensure zero values (like false) are inserted
+		if err := tx.Select("UUID", "URL", "InsecureSkipVerify", "Enabled", "TimeoutSeconds").Create(model).Error; err != nil {
+			return err
+		}
+
+		result = toWebhook(*model)
+
+		// Create filter if provided
+		if webhook.Filter != nil {
+			webhook.Filter.IntegrationID = result.UUID
+			webhook.Filter.IntegrationType = entities.EventFilterTypeWebhook
+			createdFilter, err := r.filterRepo.CreateEventFilterTx(ctx, tx, *webhook.Filter)
+			if err != nil {
+				return err
+			}
+			result.Filter = createdFilter
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
 	}
 
 	return result, nil
@@ -127,34 +138,45 @@ func (r *Repository) GetWebhookByUUID(ctx context.Context, id uuid.UUID) (*entit
 
 // UpdateWebhook updates an existing webhook in the database
 func (r *Repository) UpdateWebhook(ctx context.Context, webhook entities.Webhook) (*entities.Webhook, error) {
-	updates := map[string]interface{}{
-		"url":                  webhook.URL,
-		"insecure_skip_verify": webhook.InsecureSkipVerify,
-		"enabled":              webhook.Enabled,
-		"timeout_seconds":      webhook.TimeoutSeconds,
-	}
-
-	if err := r.db.DB.WithContext(ctx).Model(&models.Webhook{}).Where("uuid = ?", webhook.UUID).Updates(updates).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("webhook not found")
+	// Execute webhook update and filter update in a single transaction
+	err := r.db.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		updates := map[string]interface{}{
+			"url":                  webhook.URL,
+			"insecure_skip_verify": webhook.InsecureSkipVerify,
+			"enabled":              webhook.Enabled,
+			"timeout_seconds":      webhook.TimeoutSeconds,
 		}
+
+		result := tx.Model(&models.Webhook{}).Where("uuid = ?", webhook.UUID).Updates(updates)
+		if result.Error != nil {
+			return result.Error
+		}
+
+		if result.RowsAffected == 0 {
+			return errors.New("webhook not found")
+		}
+
+		// Update filter if provided
+		if webhook.Filter != nil {
+			// Delete existing filter first
+			if err := r.filterRepo.DeleteFiltersByIntegrationTx(ctx, tx, webhook.UUID, entities.EventFilterTypeWebhook); err != nil {
+				return err
+			}
+
+			// Create new filter
+			webhook.Filter.IntegrationID = webhook.UUID
+			webhook.Filter.IntegrationType = entities.EventFilterTypeWebhook
+			_, err := r.filterRepo.CreateEventFilterTx(ctx, tx, *webhook.Filter)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
 		return nil, err
-	}
-
-	// Update filter if provided
-	if webhook.Filter != nil {
-		// Delete existing filter first
-		if err := r.filterRepo.DeleteFiltersByIntegration(ctx, webhook.UUID, entities.EventFilterTypeWebhook); err != nil {
-			return nil, err
-		}
-
-		// Create new filter
-		webhook.Filter.IntegrationID = webhook.UUID
-		webhook.Filter.IntegrationType = entities.EventFilterTypeWebhook
-		_, err := r.filterRepo.CreateEventFilter(ctx, *webhook.Filter)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	return r.GetWebhookByUUID(ctx, webhook.UUID)
@@ -162,21 +184,24 @@ func (r *Repository) UpdateWebhook(ctx context.Context, webhook entities.Webhook
 
 // DeleteWebhook removes a webhook from the database by UUID
 func (r *Repository) DeleteWebhook(ctx context.Context, id uuid.UUID) error {
-	// Delete associated filters first
-	if err := r.filterRepo.DeleteFiltersByIntegration(ctx, id, entities.EventFilterTypeWebhook); err != nil {
-		return err
-	}
+	// Execute filter deletion and webhook deletion in a single transaction
+	return r.db.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Delete associated filters first
+		if err := r.filterRepo.DeleteFiltersByIntegrationTx(ctx, tx, id, entities.EventFilterTypeWebhook); err != nil {
+			return err
+		}
 
-	result := r.db.DB.WithContext(ctx).Where("uuid = ?", id).Delete(&models.Webhook{})
-	if result.Error != nil {
-		return result.Error
-	}
+		result := tx.Where("uuid = ?", id).Delete(&models.Webhook{})
+		if result.Error != nil {
+			return result.Error
+		}
 
-	if result.RowsAffected == 0 {
-		return errors.New("webhook not found")
-	}
+		if result.RowsAffected == 0 {
+			return errors.New("webhook not found")
+		}
 
-	return nil
+		return nil
+	})
 }
 
 // toWebhook converts a models.Webhook to entities.Webhook

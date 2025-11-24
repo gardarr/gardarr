@@ -24,13 +24,18 @@ func NewRepository(db *database.Database) *Repository {
 
 // CreateEventFilter inserts a new event filter into the database
 func (r *Repository) CreateEventFilter(ctx context.Context, filter entities.EventFilter) (*entities.EventFilter, error) {
+	return r.CreateEventFilterTx(ctx, r.db.DB, filter)
+}
+
+// CreateEventFilterTx inserts a new event filter using the provided DB connection (supports transactions)
+func (r *Repository) CreateEventFilterTx(ctx context.Context, db *gorm.DB, filter entities.EventFilter) (*entities.EventFilter, error) {
 	model, err := toModel(filter)
 	if err != nil {
 		return nil, err
 	}
 
 	// Use Select to ensure all fields are inserted, including empty strings
-	if err := r.db.DB.WithContext(ctx).Select("*").Create(model).Error; err != nil {
+	if err := db.WithContext(ctx).Select("*").Create(model).Error; err != nil {
 		return nil, err
 	}
 
@@ -107,7 +112,12 @@ func (r *Repository) DeleteEventFilter(ctx context.Context, id uuid.UUID) error 
 
 // DeleteFiltersByIntegration removes all filters associated with an integration
 func (r *Repository) DeleteFiltersByIntegration(ctx context.Context, integrationID uuid.UUID, integrationType entities.EventFilterType) error {
-	return r.db.DB.WithContext(ctx).
+	return r.DeleteFiltersByIntegrationTx(ctx, r.db.DB, integrationID, integrationType)
+}
+
+// DeleteFiltersByIntegrationTx removes all filters associated with an integration using the provided DB connection (supports transactions)
+func (r *Repository) DeleteFiltersByIntegrationTx(ctx context.Context, db *gorm.DB, integrationID uuid.UUID, integrationType entities.EventFilterType) error {
+	return db.WithContext(ctx).
 		Where("integration_id = ? AND integration_type = ?", integrationID, string(integrationType)).
 		Delete(&models.EventFilter{}).Error
 }
