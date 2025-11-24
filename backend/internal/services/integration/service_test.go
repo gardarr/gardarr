@@ -25,7 +25,7 @@ func TestNewService(t *testing.T) {
 	assert.True(t, svc.enabled) // Default should be true
 }
 
-func TestServiceStart_Disabled(t *testing.T) {
+func TestServiceStartDisabled(t *testing.T) {
 	ch := make(chan *entities.Event, 10)
 	defer close(ch)
 
@@ -45,7 +45,7 @@ func TestServiceStart_Disabled(t *testing.T) {
 	// No assertions needed - just ensuring no panic/deadlock
 }
 
-func TestServiceStart_Enabled(t *testing.T) {
+func TestServiceStartEnabled(t *testing.T) {
 	ch := make(chan *entities.Event, 10)
 	db := database.SetupTestDBWithMigrations(t)
 	svc := NewService(ch, db)
@@ -88,7 +88,7 @@ func TestServiceStart_Enabled(t *testing.T) {
 	// No assertions needed - just ensuring proper handling without panic
 }
 
-func TestProcessEvent_NilEvent(t *testing.T) {
+func TestProcessEventNilEvent(t *testing.T) {
 	ch := make(chan *entities.Event, 10)
 	defer close(ch)
 
@@ -104,7 +104,7 @@ func TestProcessEvent_NilEvent(t *testing.T) {
 	})
 }
 
-func TestProcessEvent_ValidEvent(t *testing.T) {
+func TestProcessEventValidEvent(t *testing.T) {
 	ch := make(chan *entities.Event, 10)
 	defer close(ch)
 

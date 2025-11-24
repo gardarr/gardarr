@@ -63,7 +63,7 @@ func TestNewGormLogger(t *testing.T) {
 	}
 }
 
-func TestGormLogger_LogMode(t *testing.T) {
+func TestGormLoggerLogMode(t *testing.T) {
 	os.Setenv("LOG_LEVEL", "INFO")
 	defer os.Unsetenv("LOG_LEVEL")
 
@@ -78,7 +78,7 @@ func TestGormLogger_LogMode(t *testing.T) {
 	assert.Equal(t, gormlogger.Info, newLogger.(*GormLogger).LogLevel)
 }
 
-func TestGormLogger_Info(t *testing.T) {
+func TestGormLoggerInfo(t *testing.T) {
 	os.Setenv("LOG_LEVEL", "TRACE")
 	defer os.Unsetenv("LOG_LEVEL")
 
@@ -93,7 +93,7 @@ func TestGormLogger_Info(t *testing.T) {
 	})
 }
 
-func TestGormLogger_Warn(t *testing.T) {
+func TestGormLoggerWarn(t *testing.T) {
 	os.Setenv("LOG_LEVEL", "TRACE")
 	defer os.Unsetenv("LOG_LEVEL")
 
@@ -108,7 +108,7 @@ func TestGormLogger_Warn(t *testing.T) {
 	})
 }
 
-func TestGormLogger_Error(t *testing.T) {
+func TestGormLoggerError(t *testing.T) {
 	os.Setenv("LOG_LEVEL", "TRACE")
 	defer os.Unsetenv("LOG_LEVEL")
 
@@ -123,7 +123,7 @@ func TestGormLogger_Error(t *testing.T) {
 	})
 }
 
-func TestGormLogger_Trace(t *testing.T) {
+func TestGormLoggerTrace(t *testing.T) {
 	tests := []struct {
 		name      string
 		logLevel  string
@@ -185,7 +185,7 @@ func TestGormLogger_Trace(t *testing.T) {
 	}
 }
 
-func TestGormLogger_TraceSilent(t *testing.T) {
+func TestGormLoggerTraceSilent(t *testing.T) {
 	os.Setenv("LOG_LEVEL", "INFO")
 	defer os.Unsetenv("LOG_LEVEL")
 
@@ -205,4 +205,3 @@ func TestGormLogger_TraceSilent(t *testing.T) {
 		gormLog.Trace(ctx, begin, fc, nil)
 	})
 }
-

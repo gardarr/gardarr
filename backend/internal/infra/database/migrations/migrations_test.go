@@ -69,7 +69,7 @@ func TestMigration007AddColorIconToCategories(t *testing.T) {
 	}
 }
 
-func TestMigration_AllMigrationsCanRunTwice(t *testing.T) {
+func TestMigrationAllMigrationsCanRunTwice(t *testing.T) {
 	// Create in-memory SQLite database
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	if err != nil {

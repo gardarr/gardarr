@@ -8,7 +8,7 @@ import (
 	"github.com/jfxdev/gardarr/internal/entities"
 )
 
-func TestMatchesEvent_NilFilter(t *testing.T) {
+func TestMatchesEventNilFilter(t *testing.T) {
 	event := &entities.Event{
 		UUID:     uuid.New(),
 		NewValue: "completed",
@@ -19,7 +19,7 @@ func TestMatchesEvent_NilFilter(t *testing.T) {
 	}
 }
 
-func TestMatchesEvent_EmptyFilter(t *testing.T) {
+func TestMatchesEventEmptyFilter(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:           uuid.New(),
 		StatusFilter:   []string{},
@@ -37,7 +37,7 @@ func TestMatchesEvent_EmptyFilter(t *testing.T) {
 	}
 }
 
-func TestMatchesEvent_StatusFilter_Match(t *testing.T) {
+func TestMatchesEventStatusFilterMatch(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:         uuid.New(),
 		StatusFilter: []string{"completed", "seeding"},
@@ -53,7 +53,7 @@ func TestMatchesEvent_StatusFilter_Match(t *testing.T) {
 	}
 }
 
-func TestMatchesEvent_StatusFilter_NoMatch(t *testing.T) {
+func TestMatchesEventStatusFilterNoMatch(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:         uuid.New(),
 		StatusFilter: []string{"completed", "seeding"},
@@ -69,7 +69,7 @@ func TestMatchesEvent_StatusFilter_NoMatch(t *testing.T) {
 	}
 }
 
-func TestMatchesEvent_CategoryFilter_Match(t *testing.T) {
+func TestMatchesEventCategoryFilterMatch(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:           uuid.New(),
 		CategoryFilter: []string{"movies", "tv-shows"},
@@ -89,7 +89,7 @@ func TestMatchesEvent_CategoryFilter_Match(t *testing.T) {
 	}
 }
 
-func TestMatchesEvent_CategoryFilter_NoMatch(t *testing.T) {
+func TestMatchesEventCategoryFilterNoMatch(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:           uuid.New(),
 		CategoryFilter: []string{"movies", "tv-shows"},
@@ -109,7 +109,7 @@ func TestMatchesEvent_CategoryFilter_NoMatch(t *testing.T) {
 	}
 }
 
-func TestMatchesEvent_CategoryFilter_MissingCategory(t *testing.T) {
+func TestMatchesEventCategoryFilterMissingCategory(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:           uuid.New(),
 		CategoryFilter: []string{"movies"},
@@ -128,7 +128,7 @@ func TestMatchesEvent_CategoryFilter_MissingCategory(t *testing.T) {
 	}
 }
 
-func TestMatchesEvent_NameTerms_Match(t *testing.T) {
+func TestMatchesEventNameTermsMatch(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:      uuid.New(),
 		NameTerms: []string{"ubuntu", "debian"},
@@ -147,7 +147,7 @@ func TestMatchesEvent_NameTerms_Match(t *testing.T) {
 	}
 }
 
-func TestMatchesEvent_NameTerms_CaseInsensitive(t *testing.T) {
+func TestMatchesEventNameTermsCaseInsensitive(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:      uuid.New(),
 		NameTerms: []string{"UBUNTU"},
@@ -166,7 +166,7 @@ func TestMatchesEvent_NameTerms_CaseInsensitive(t *testing.T) {
 	}
 }
 
-func TestMatchesEvent_NameTerms_NoMatch(t *testing.T) {
+func TestMatchesEventNameTermsNoMatch(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:      uuid.New(),
 		NameTerms: []string{"ubuntu", "debian"},
@@ -185,7 +185,7 @@ func TestMatchesEvent_NameTerms_NoMatch(t *testing.T) {
 	}
 }
 
-func TestMatchesEvent_NameTerms_MissingName(t *testing.T) {
+func TestMatchesEventNameTermsMissingName(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:      uuid.New(),
 		NameTerms: []string{"ubuntu"},
@@ -204,7 +204,7 @@ func TestMatchesEvent_NameTerms_MissingName(t *testing.T) {
 	}
 }
 
-func TestMatchesEvent_CombinedFilters_AllMatch(t *testing.T) {
+func TestMatchesEventCombinedFiltersAllMatch(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:           uuid.New(),
 		StatusFilter:   []string{"completed"},
@@ -226,7 +226,7 @@ func TestMatchesEvent_CombinedFilters_AllMatch(t *testing.T) {
 	}
 }
 
-func TestMatchesEvent_CombinedFilters_StatusMismatch(t *testing.T) {
+func TestMatchesEventCombinedFiltersStatusMismatch(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:           uuid.New(),
 		StatusFilter:   []string{"completed"},
@@ -248,7 +248,7 @@ func TestMatchesEvent_CombinedFilters_StatusMismatch(t *testing.T) {
 	}
 }
 
-func TestMatchesEvent_CombinedFilters_CategoryMismatch(t *testing.T) {
+func TestMatchesEventCombinedFiltersCategoryMismatch(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:           uuid.New(),
 		StatusFilter:   []string{"completed"},
@@ -270,7 +270,7 @@ func TestMatchesEvent_CombinedFilters_CategoryMismatch(t *testing.T) {
 	}
 }
 
-func TestMatchesEvent_CombinedFilters_NameMismatch(t *testing.T) {
+func TestMatchesEventCombinedFiltersNameMismatch(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:           uuid.New(),
 		StatusFilter:   []string{"completed"},
@@ -292,7 +292,7 @@ func TestMatchesEvent_CombinedFilters_NameMismatch(t *testing.T) {
 	}
 }
 
-func TestMatchesEvent_PartialFilters(t *testing.T) {
+func TestMatchesEventPartialFilters(t *testing.T) {
 	// Test with only status filter
 	filter := &entities.EventFilter{
 		UUID:         uuid.New(),
@@ -313,7 +313,7 @@ func TestMatchesEvent_PartialFilters(t *testing.T) {
 	}
 }
 
-func TestMatchesEvent_RealWorldScenario_CompletedTorrents(t *testing.T) {
+func TestMatchesEventRealWorldScenarioCompletedTorrents(t *testing.T) {
 	// Filter for completed torrents only
 	filter := &entities.EventFilter{
 		UUID:         uuid.New(),
@@ -359,7 +359,7 @@ func TestMatchesEvent_RealWorldScenario_CompletedTorrents(t *testing.T) {
 	}
 }
 
-func TestMatchesEvent_RealWorldScenario_MovieCategory(t *testing.T) {
+func TestMatchesEventRealWorldScenarioMovieCategory(t *testing.T) {
 	// Filter for movies category only
 	filter := &entities.EventFilter{
 		UUID:           uuid.New(),
@@ -393,7 +393,7 @@ func TestMatchesEvent_RealWorldScenario_MovieCategory(t *testing.T) {
 	}
 }
 
-func TestMatchesEvent_EventTypeFilter_Match(t *testing.T) {
+func TestMatchesEventEventTypeFilterMatch(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:            uuid.New(),
 		EventTypeFilter: "torrent.completed",
@@ -409,7 +409,7 @@ func TestMatchesEvent_EventTypeFilter_Match(t *testing.T) {
 	}
 }
 
-func TestMatchesEvent_EventTypeFilter_NoMatch(t *testing.T) {
+func TestMatchesEventEventTypeFilterNoMatch(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:            uuid.New(),
 		EventTypeFilter: "torrent.completed",
@@ -425,7 +425,7 @@ func TestMatchesEvent_EventTypeFilter_NoMatch(t *testing.T) {
 	}
 }
 
-func TestMatchesEvent_EventTypeFilter_CaseInsensitive(t *testing.T) {
+func TestMatchesEventEventTypeFilterCaseInsensitive(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:            uuid.New(),
 		EventTypeFilter: "TORRENT.COMPLETED",
@@ -441,7 +441,7 @@ func TestMatchesEvent_EventTypeFilter_CaseInsensitive(t *testing.T) {
 	}
 }
 
-func TestMatchesEvent_EventTypeAndStatusFilter_BothMatch(t *testing.T) {
+func TestMatchesEventEventTypeAndStatusFilterBothMatch(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:            uuid.New(),
 		EventTypeFilter: "torrent.state_change",
@@ -459,7 +459,7 @@ func TestMatchesEvent_EventTypeAndStatusFilter_BothMatch(t *testing.T) {
 	}
 }
 
-func TestMatchesEvent_EventTypeAndStatusFilter_EventTypeNoMatch(t *testing.T) {
+func TestMatchesEventEventTypeAndStatusFilterEventTypeNoMatch(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:            uuid.New(),
 		EventTypeFilter: "torrent.completed",
@@ -477,7 +477,7 @@ func TestMatchesEvent_EventTypeAndStatusFilter_EventTypeNoMatch(t *testing.T) {
 	}
 }
 
-func TestMatchesEvent_EventTypeAndStatusFilter_StatusNoMatch(t *testing.T) {
+func TestMatchesEventEventTypeAndStatusFilterStatusNoMatch(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:            uuid.New(),
 		EventTypeFilter: "torrent.state_change",
@@ -495,7 +495,7 @@ func TestMatchesEvent_EventTypeAndStatusFilter_StatusNoMatch(t *testing.T) {
 	}
 }
 
-func TestMatchesEvent_EventTypeAndCategoryFilter_BothMatch(t *testing.T) {
+func TestMatchesEventEventTypeAndCategoryFilterBothMatch(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:            uuid.New(),
 		EventTypeFilter: "torrent.added",
@@ -516,7 +516,7 @@ func TestMatchesEvent_EventTypeAndCategoryFilter_BothMatch(t *testing.T) {
 	}
 }
 
-func TestMatchesEvent_AllFiltersApplied(t *testing.T) {
+func TestMatchesEventAllFiltersApplied(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:            uuid.New(),
 		EventTypeFilter: "torrent.state_change",
@@ -554,4 +554,3 @@ func TestMatchesEvent_AllFiltersApplied(t *testing.T) {
 		t.Error("Expected event to NOT match when category filter doesn't match")
 	}
 }
-

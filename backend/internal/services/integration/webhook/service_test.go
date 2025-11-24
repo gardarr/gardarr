@@ -48,7 +48,7 @@ func TestNewServiceDefaultTimeout(t *testing.T) {
 	assert.Equal(t, 10, svc.timeoutSeconds) // Should default to 10
 }
 
-func TestSendEvent_Success(t *testing.T) {
+func TestSendEventSuccess(t *testing.T) {
 	// Create a test HTTP server
 	var receivedPayload Payload
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -107,7 +107,7 @@ func TestSendEvent_Success(t *testing.T) {
 	assert.Equal(t, "movies", receivedPayload.Metadata["category"])
 }
 
-func TestSendEvent_NilEvent(t *testing.T) {
+func TestSendEventNilEvent(t *testing.T) {
 	svc := NewService("https://example.com/webhook", false, 10)
 	ctx := context.Background()
 
@@ -116,7 +116,7 @@ func TestSendEvent_NilEvent(t *testing.T) {
 	assert.Contains(t, err.Error(), "event is nil")
 }
 
-func TestSendEvent_Disabled(t *testing.T) {
+func TestSendEventDisabled(t *testing.T) {
 	svc := NewService("https://example.com/webhook", false, 10)
 	svc.SetEnabled(false)
 	ctx := context.Background()
@@ -133,7 +133,7 @@ func TestSendEvent_Disabled(t *testing.T) {
 	assert.NoError(t, err) // Should return nil when disabled
 }
 
-func TestSendEvent_ServerError(t *testing.T) {
+func TestSendEventServerError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
@@ -155,7 +155,7 @@ func TestSendEvent_ServerError(t *testing.T) {
 	assert.Contains(t, err.Error(), "webhook returned status 500")
 }
 
-func TestSendEvent_WithoutTask(t *testing.T) {
+func TestSendEventWithoutTask(t *testing.T) {
 	var receivedPayload Payload
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)

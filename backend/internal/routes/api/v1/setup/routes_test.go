@@ -29,8 +29,8 @@ func setupTestRouter(t *testing.T) (*gin.Engine, *database.Database) {
 	return router, db
 }
 
-// TestRoutes_CheckSetup_NotInitialized tests when no users exist
-func TestRoutes_CheckSetup_NotInitialized(t *testing.T) {
+// TestRoutesCheckSetupNotInitialized tests when no users exist
+func TestRoutesCheckSetupNotInitialized(t *testing.T) {
 	router, _ := setupTestRouter(t)
 
 	req, _ := http.NewRequest("GET", "/api/v1/setup/", nil)
@@ -56,8 +56,8 @@ func TestRoutes_CheckSetup_NotInitialized(t *testing.T) {
 	}
 }
 
-// TestRoutes_CheckSetup_ReturnsJSON tests that the response is valid JSON
-func TestRoutes_CheckSetup_ReturnsJSON(t *testing.T) {
+// TestRoutesCheckSetupReturnsJSON tests that the response is valid JSON
+func TestRoutesCheckSetupReturnsJSON(t *testing.T) {
 	router, _ := setupTestRouter(t)
 
 	req, _ := http.NewRequest("GET", "/api/v1/setup/", nil)
@@ -75,8 +75,8 @@ func TestRoutes_CheckSetup_ReturnsJSON(t *testing.T) {
 	}
 }
 
-// TestRoutes_CreateAdmin_Success tests successful admin creation
-func TestRoutes_CreateAdmin_Success(t *testing.T) {
+// TestRoutesCreateAdminSuccess tests successful admin creation
+func TestRoutesCreateAdminSuccess(t *testing.T) {
 	router, _ := setupTestRouter(t)
 
 	reqBody := PublicSignupRequest{
@@ -107,8 +107,8 @@ func TestRoutes_CreateAdmin_Success(t *testing.T) {
 	}
 }
 
-// TestRoutes_CreateAdmin_AlreadyInitialized tests that admin creation fails when system is initialized
-func TestRoutes_CreateAdmin_AlreadyInitialized(t *testing.T) {
+// TestRoutesCreateAdminAlreadyInitialized tests that admin creation fails when system is initialized
+func TestRoutesCreateAdminAlreadyInitialized(t *testing.T) {
 	router, _ := setupTestRouter(t)
 
 	// Create first admin
@@ -151,8 +151,8 @@ func TestRoutes_CreateAdmin_AlreadyInitialized(t *testing.T) {
 	}
 }
 
-// TestRoutes_CreateAdmin_InvalidEmail tests validation
-func TestRoutes_CreateAdmin_InvalidEmail(t *testing.T) {
+// TestRoutesCreateAdminInvalidEmail tests validation
+func TestRoutesCreateAdminInvalidEmail(t *testing.T) {
 	router, _ := setupTestRouter(t)
 
 	reqBody := map[string]string{
@@ -171,8 +171,8 @@ func TestRoutes_CreateAdmin_InvalidEmail(t *testing.T) {
 	}
 }
 
-// TestRoutes_CreateAdmin_ShortPassword tests password length validation
-func TestRoutes_CreateAdmin_ShortPassword(t *testing.T) {
+// TestRoutesCreateAdminShortPassword tests password length validation
+func TestRoutesCreateAdminShortPassword(t *testing.T) {
 	router, _ := setupTestRouter(t)
 
 	reqBody := PublicSignupRequest{
@@ -191,8 +191,8 @@ func TestRoutes_CreateAdmin_ShortPassword(t *testing.T) {
 	}
 }
 
-// TestRoutes_CheckSetup_InitializedAfterUserCreation tests that check returns true after creating a user
-func TestRoutes_CheckSetup_InitializedAfterUserCreation(t *testing.T) {
+// TestRoutesCheckSetupInitializedAfterUserCreation tests that check returns true after creating a user
+func TestRoutesCheckSetupInitializedAfterUserCreation(t *testing.T) {
 	router, _ := setupTestRouter(t)
 
 	// Create admin
