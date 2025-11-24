@@ -709,6 +709,9 @@
       "addWebhook": "Adicionar Webhook",
       "addFirstWebhook": "Adicionar Seu Primeiro Webhook",
       "noWebhooks": "Nenhum webhook configurado ainda. Crie seu primeiro webhook para receber notificações de eventos.",
+      "examplePayload": "Exemplo de Payload",
+      "examplePayloadTitle": "Exemplo de Payload",
+      "examplePayloadDescription": "Exemplo do payload JSON que será enviado para seu endpoint webhook",
       "createTitle": "Criar Webhook",
       "createDescription": "Configure um novo webhook para receber notificações HTTP quando eventos ocorrerem.",
       "editTitle": "Editar Webhook",
@@ -723,6 +726,9 @@
       "insecureMode": "SSL Inseguro",
       "enabled": "Habilitado",
       "disabled": "Desabilitado",
+      "enable": "Habilitar",
+      "disable": "Desabilitar",
+      "edit": "Editar",
       "create": "Criar Webhook",
       "save": "Salvar Alterações",
       "filters": {
@@ -916,13 +922,18 @@
     "title": "Histórico",
     "subtitle": "Acompanhe eventos e mudanças de estado dos torrents",
     "refresh": "Atualizar",
+    "showEvents": "Exibir Eventos",
     "filter": {
       "all": "Todos os Eventos"
+    },
+    "search": {
+      "placeholder": "Buscar eventos..."
     },
     "events": {
       "title": "Eventos Recentes",
       "description": "Mostrando {{total}} eventos",
-      "noEvents": "Nenhum evento encontrado"
+      "noEvents": "Nenhum evento encontrado",
+      "noResults": "Nenhum evento encontrado para sua busca"
     },
     "event": {
       "stateChange": "Torrent mudou de estado",

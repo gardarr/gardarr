@@ -717,6 +717,9 @@
     "addWebhook": "Add Webhook",
     "addFirstWebhook": "Add Your First Webhook",
     "noWebhooks": "No webhooks configured yet. Create your first webhook to receive event notifications.",
+    "examplePayload": "Example Payload",
+    "examplePayloadTitle": "Example Payload",
+    "examplePayloadDescription": "Example of the JSON payload that will be sent to your webhook endpoint",
     "createTitle": "Create Webhook",
     "createDescription": "Configure a new webhook to receive HTTP notifications when events occur.",
     "editTitle": "Edit Webhook",
@@ -731,6 +734,9 @@
     "insecureMode": "Insecure SSL",
     "enabled": "Enabled",
     "disabled": "Disabled",
+    "enable": "Enable",
+    "disable": "Disable",
+    "edit": "Edit",
     "create": "Create Webhook",
     "save": "Save Changes",
     "filters": {
@@ -893,13 +899,18 @@
     "title": "History",
     "subtitle": "Track torrent events and state changes",
     "refresh": "Refresh",
+    "showEvents": "Show Events",
     "filter": {
       "all": "All Events"
+    },
+    "search": {
+      "placeholder": "Search events..."
     },
     "events": {
       "title": "Recent Events",
       "description": "Showing {{total}} events",
-      "noEvents": "No events found"
+      "noEvents": "No events found",
+      "noResults": "No events found matching your search"
     },
     "event": {
       "stateChange": "Torrent changed state",

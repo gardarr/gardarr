@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,12 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Webhook, Trash2, Edit, Plus, ArrowLeft, CheckCircle, XCircle, Clock, Filter } from 'lucide-react';
+import { Webhook, Trash2, Edit2, Plus, ArrowLeft, CheckCircle, XCircle, Clock, Filter, FileJson } from 'lucide-react';
 import { webhookService } from '@/services/webhooks';
 import type { Webhook as WebhookType, CreateWebhookRequest, UpdateWebhookRequest } from '@/types/webhook';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
-import { EventFilter, buildFilterFromStrings, filterToStrings } from '@/components/EventFilter';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { EventFilter } from '@/components/EventFilter';
+import { buildFilterFromStrings, filterToStrings } from '@/utils/eventFilterUtils';
 
 export default function IntegrationWebhookPage() {
   const { t } = useTranslation();
@@ -22,6 +24,7 @@ export default function IntegrationWebhookPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isExampleModalOpen, setIsExampleModalOpen] = useState(false);
   const [selectedWebhook, setSelectedWebhook] = useState<WebhookType | null>(null);
   const [formData, setFormData] = useState<CreateWebhookRequest>({
     url: '',
@@ -40,11 +43,7 @@ export default function IntegrationWebhookPage() {
     nameTerms: '',
   });
 
-  useEffect(() => {
-    loadWebhooks();
-  }, []);
-
-  const loadWebhooks = async () => {
+  const loadWebhooks = useCallback(async () => {
     setLoading(true);
     const response = await webhookService.listWebhooks();
     if (response.data) {
@@ -55,7 +54,11 @@ export default function IntegrationWebhookPage() {
       });
     }
     setLoading(false);
-  };
+  }, [t]);
+
+  useEffect(() => {
+    loadWebhooks();
+  }, [loadWebhooks]);
 
   const handleCreate = async () => {
     if (!formData.url) {
@@ -187,10 +190,16 @@ export default function IntegrationWebhookPage() {
             </div>
           </div>
         </div>
-        <Button onClick={() => setIsCreateModalOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          {t('webhooks.addWebhook')}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setIsExampleModalOpen(true)}>
+            <FileJson />
+            {t('webhooks.examplePayload')}
+          </Button>
+          <Button onClick={() => setIsCreateModalOpen(true)}>
+            <Plus />
+            {t('webhooks.addWebhook')}
+          </Button>
+        </div>
       </div>
 
       {/* Webhooks List */}
@@ -216,21 +225,44 @@ export default function IntegrationWebhookPage() {
           {webhooks.map((webhook) => (
             <Card key={webhook.uuid}>
               <CardHeader>
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
                     <div className={`p-2 rounded-lg flex-shrink-0 ${webhook.enabled ? 'bg-green-500/10' : 'bg-gray-500/10'}`}>
                       <Webhook className={`h-5 w-5 ${webhook.enabled ? 'text-green-500' : 'text-gray-500'}`} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <CardTitle className="text-lg flex items-center gap-2 break-all">
-                        <span className="break-all">{webhook.url}</span>
-                        {webhook.enabled ? (
-                          <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                        ) : (
-                          <XCircle className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                        )}
+                      <CardTitle className="text-base break-all">
+                        {webhook.url}
                       </CardTitle>
-                      <CardDescription className="flex flex-wrap items-center gap-2 sm:gap-4 mt-1">
+                      {webhook.filter && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {webhook.filter.event_type_filter && (
+                            <Badge variant="secondary" className="gap-1">
+                              <Filter className="h-3 w-3" />
+                              Event Type: {webhook.filter.event_type_filter}
+                            </Badge>
+                          )}
+                          {webhook.filter.status_filter && webhook.filter.status_filter.length > 0 && (
+                            <Badge variant="secondary" className="gap-1">
+                              <Filter className="h-3 w-3" />
+                              Status: {webhook.filter.status_filter.join(', ')}
+                            </Badge>
+                          )}
+                          {webhook.filter.category_filter && webhook.filter.category_filter.length > 0 && (
+                            <Badge variant="secondary" className="gap-1">
+                              <Filter className="h-3 w-3" />
+                              Category: {webhook.filter.category_filter.join(', ')}
+                            </Badge>
+                          )}
+                          {webhook.filter.name_terms && webhook.filter.name_terms.length > 0 && (
+                            <Badge variant="secondary" className="gap-1">
+                              <Filter className="h-3 w-3" />
+                              Terms: {webhook.filter.name_terms.join(', ')}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                      <CardDescription className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2">
                         <span className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
                           {webhook.timeout_seconds}s timeout
@@ -240,73 +272,60 @@ export default function IntegrationWebhookPage() {
                             {t('webhooks.insecureMode')}
                           </span>
                         )}
-                        {webhook.filter && (
-                          <span className="flex items-center gap-1 text-primary">
-                            <Filter className="h-3 w-3" />
-                            {t('webhooks.filters.hasFilters')}
-                          </span>
-                        )}
                       </CardDescription>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0 self-start sm:self-center">
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor={`enabled-${webhook.uuid}`} className="text-sm whitespace-nowrap">
-                        {webhook.enabled ? t('webhooks.enabled') : t('webhooks.disabled')}
-                      </Label>
-                      <Switch
-                        id={`enabled-${webhook.uuid}`}
-                        checked={webhook.enabled}
-                        onCheckedChange={() => handleToggleEnabled(webhook)}
-                      />
-                    </div>
+                  <div className="flex flex-col sm:flex-row items-center gap-2 flex-shrink-0">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
                     <Button
-                      variant="ghost"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleToggleEnabled(webhook)}
+                      aria-label={webhook.enabled ? t('webhooks.enabled') : t('webhooks.disabled')}
+                    >
+                      {webhook.enabled ? (
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <XCircle className="h-4 w-4" />
+                      )}
+                    </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {webhook.enabled ? t('webhooks.disable') : t('webhooks.enable')}
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
                       size="icon"
                       onClick={() => openEditModal(webhook)}
                     >
-                      <Edit className="h-4 w-4" />
+                      <Edit2 className="h-4 w-4" />
                     </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {t('webhooks.edit')}
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="icon"
                       onClick={() => openDeleteModal(webhook)}
                     >
                       <Trash2 className="h-4 w-4 text-red-500" />
                     </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {t('common.delete')}
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
                 </div>
               </CardHeader>
-              {webhook.filter && (
-                <CardContent className="pt-0">
-                  <div className="flex flex-wrap gap-2">
-                    {webhook.filter.event_type_filter && (
-                      <Badge variant="secondary" className="gap-1">
-                        <Filter className="h-3 w-3" />
-                        Event Type: {webhook.filter.event_type_filter}
-                      </Badge>
-                    )}
-                    {webhook.filter.status_filter && webhook.filter.status_filter.length > 0 && (
-                      <Badge variant="secondary" className="gap-1">
-                        <Filter className="h-3 w-3" />
-                        Status: {webhook.filter.status_filter.join(', ')}
-                      </Badge>
-                    )}
-                    {webhook.filter.category_filter && webhook.filter.category_filter.length > 0 && (
-                      <Badge variant="secondary" className="gap-1">
-                        <Filter className="h-3 w-3" />
-                        Category: {webhook.filter.category_filter.join(', ')}
-                      </Badge>
-                    )}
-                    {webhook.filter.name_terms && webhook.filter.name_terms.length > 0 && (
-                      <Badge variant="secondary" className="gap-1">
-                        <Filter className="h-3 w-3" />
-                        Terms: {webhook.filter.name_terms.join(', ')}
-                      </Badge>
-                    )}
-                  </div>
-                </CardContent>
-              )}
             </Card>
           ))}
         </div>
@@ -454,6 +473,65 @@ export default function IntegrationWebhookPage() {
             </Button>
             <Button variant="destructive" onClick={handleDelete}>
               {t('common.delete')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Example Payload Modal */}
+      <Dialog open={isExampleModalOpen} onOpenChange={setIsExampleModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileJson className="h-5 w-5" />
+              {t('webhooks.examplePayloadTitle')}
+            </DialogTitle>
+            <DialogDescription>
+              {t('webhooks.examplePayloadDescription')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">Method: POST</Badge>
+              <Badge variant="secondary">Content-Type: application/json</Badge>
+            </div>
+            <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs font-mono">
+              <code>
+                {'{\n'}
+                {'  "event_id": "e637b596-51bd-4f42-8120-14dcc1d73ca8",\n'}
+                {'  "event_type": '}
+                <span className="bg-primary/20 text-primary px-1 rounded font-semibold">"torrent.added"</span>
+                {',\n'}
+                {'  "agent_id": "0c32bee5-1bc8-47c2-9b70-68971c3d4e59 ",\n'}
+                {'  "task_hash": "36x8a5j74vfrk0usr6xedby71gn69mqm6bblp5h2",\n'}
+                {'  "new_value": '}
+                <span className="bg-primary/20 text-primary px-1 rounded font-semibold">"STALLED_DOWNLOAD"</span>
+                {',\n'}
+                {'  "metadata": {\n'}
+                {'    "category": '}
+                <span className="bg-primary/20 text-primary px-1 rounded font-semibold">"iso"</span>
+                {',\n'}
+                {'    "directory": "/data/downloads/iso",\n'}
+                {'    "hash": "36x8a5j74vfrk0usr6xedby71gn69mqm6bblp5h2",\n'}
+                {'    "name": '}
+                <span className="bg-primary/20 text-primary px-1 rounded font-semibold">"ubuntu-25.10-desktop-amd64.is"</span>
+                {',\n'}
+                {'    "progress": 100,\n'}
+                {'    "ratio": 0.3,\n'}
+                {'    "size": 890405393,\n'}
+                {'    "state": '}
+                <span className="bg-primary/20 text-primary px-1 rounded font-semibold">"DOWNLOADING"</span>
+                {',\n'}
+                {'    "tags": ["iso", "ubuntu", "linux"]\n'}
+                {'  },\n'}
+                {'  "timestamp": "2025-11-23T21:33:54Z"\n'}
+                {'}'}
+              </code>
+            </pre>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsExampleModalOpen(false)}>
+              {t('common.close') || 'Close'}
             </Button>
           </DialogFooter>
         </DialogContent>

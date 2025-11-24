@@ -12,7 +12,6 @@ import IntegrationWebhookPage from './IntegrationWebhook'
 import SettingsPage from './Settings'
 import AboutPage from './About'
 import ProfilePage from './Profile'
-import HistoryPage from './History'
 import UsersPage from './Users'
 import LoginPage from './Login'
 import SignupPage from './Signup'
@@ -53,7 +52,6 @@ function App() {
             <Route path="integrations" element={<IntegrationsPage />} />
             <Route path="integrations/webhooks" element={<IntegrationWebhookPage />} />
             <Route path="users" element={<UsersPage />} />
-            <Route path="history" element={<HistoryPage />} />
             <Route path="settings" element={<ProtectedRoute adminOnly><SettingsPage /></ProtectedRoute>} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="about" element={<AboutPage />} />
