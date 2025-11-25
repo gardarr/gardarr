@@ -170,24 +170,8 @@ export function EventList({
     return typeMap[type];
   };
 
-  // Filter events based on search query (client-side filtering)
-  const filteredEvents = searchQuery
-    ? events.filter((event) => {
-        const searchLower = searchQuery.toLowerCase();
-        const name = event.metadata?.name?.toLowerCase() || "";
-        const type = event.type.toLowerCase();
-        return name.includes(searchLower) || type.includes(searchLower);
-      })
-    : events;
-
-  // When searching, paginate the filtered results locally
-  const paginatedEvents = searchQuery
-    ? filteredEvents.slice(page * limit, (page + 1) * limit)
-    : filteredEvents;
-
-  // Calculate total based on filtered results when search is active
-  const effectiveTotal = searchQuery ? filteredEvents.length : total;
-  const totalPages = Math.ceil(effectiveTotal / limit);
+  // Use server-provided pagination and total (search filtering is handled by backend)
+  const totalPages = Math.ceil(total / limit);
 
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
@@ -241,10 +225,7 @@ export function EventList({
             value={searchQuery}
             onChange={(e) => {
               onSearchChange?.(e.target.value);
-              // Only reset page if parent doesn't handle search (onSearchChange undefined)
-              if (!onSearchChange) {
-                onPageChange(0);
-              }
+              onPageChange(0);
             }}
             className="pl-9 h-9"
           />
@@ -284,7 +265,7 @@ export function EventList({
             </div>
           </CardContent>
         </Card>
-      ) : filteredEvents.length === 0 ? (
+      ) : events.length === 0 ? (
         <Card>
           <CardContent className="px-4 sm:px-6 py-12">
             <div className="text-center">
@@ -301,7 +282,7 @@ export function EventList({
       ) : (
         <>
           <div className="space-y-3">
-            {paginatedEvents.map((event) => (
+            {events.map((event) => (
               <Card key={event.uuid}>
                 <CardContent className="px-4 sm:px-6 py-2">
                   <div className="flex items-start gap-3">
@@ -361,13 +342,13 @@ export function EventList({
           </div>
 
           {/* Pagination */}
-          {(totalPages > 1 || searchQuery) && paginatedEvents.length > 0 && (
+          {(totalPages > 1 || searchQuery) && events.length > 0 && (
             <div className="flex flex-col items-center gap-3 mt-4 sm:mt-6">
               <div className="text-xs sm:text-sm text-muted-foreground">
                 {t("history.pagination.showing", {
-                  from: Math.min(page * limit + 1, effectiveTotal),
-                  to: Math.min((page + 1) * limit, effectiveTotal),
-                  total: effectiveTotal,
+                  from: Math.min(page * limit + 1, total),
+                  to: Math.min((page + 1) * limit, total),
+                  total: total,
                 })}
               </div>
               <Pagination className="mx-0">

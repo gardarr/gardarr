@@ -28,13 +28,15 @@ export default function IntegrationsPage() {
   const loadEvents = useCallback(async () => {
     setIsLoading(true);
     try {
-      // When searching, load more events to give better results
-      const effectiveLimit = searchQuery ? 100 : limit;
-      const offset = searchQuery ? 0 : page * limit;
-      let url = `/events?limit=${effectiveLimit}&offset=${offset}`;
+      const offset = page * limit;
+      let url = `/events?limit=${limit}&offset=${offset}`;
       
       if (filterType && filterType !== "all") {
         url += `&type=${encodeURIComponent(filterType)}`;
+      }
+      
+      if (searchQuery) {
+        url += `&search=${encodeURIComponent(searchQuery)}`;
       }
       
       const response = await api.get<EventsResponse>(url);

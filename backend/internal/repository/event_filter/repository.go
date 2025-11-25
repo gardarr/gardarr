@@ -74,6 +74,10 @@ func (r *Repository) GetFilterByIntegration(ctx context.Context, integrationID u
 		return nil, result.Error
 	}
 
+	if result.RowsAffected == 0 {
+		return nil, errEventFilterNotFound
+	}
+
 	return toEntity(model)
 }
 

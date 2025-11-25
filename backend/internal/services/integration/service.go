@@ -50,7 +50,11 @@ func (s *Service) Start(ctx context.Context) {
 		logger.Info("Integration service started - listening for events", "service", "integration")
 		for {
 			select {
-			case event := <-s.eventChan:
+			case event, ok := <-s.eventChan:
+				if !ok {
+					logger.Info("Event channel closed, stopping integration service", "service", "integration")
+					return
+				}
 				s.processEvent(ctx, event)
 			case <-ctx.Done():
 				logger.Info("Integration service stopped", "service", "integration")
@@ -110,6 +114,91 @@ func (s *Service) ReloadWebhooks(ctx context.Context) {
 	s.loadWebhooks(ctx)
 }
 
+// webhookTarget holds webhook service reference and its filter for event processing
+type webhookTarget struct {
+	id     string
+	svc    *webhookService.Service
+	filter *entities.EventFilter
+}
+
+// eventMetadata holds extracted metadata from an event for logging purposes
+type eventMetadata struct {
+	taskName string
+	category string
+	size     int
+}
+
+// extractEventMetadata extracts task name, category and size from event metadata
+func extractEventMetadata(event *entities.Event) eventMetadata {
+	meta := eventMetadata{}
+	if event.Metadata == nil {
+		return meta
+	}
+
+	if name, ok := event.Metadata["name"].(string); ok {
+		meta.taskName = name
+	}
+	if cat, ok := event.Metadata["category"].(string); ok {
+		meta.category = cat
+	}
+	if s, ok := event.Metadata["size"].(int); ok {
+		meta.size = s
+	} else if s, ok := event.Metadata["size"].(float64); ok {
+		meta.size = int(s)
+	}
+
+	return meta
+}
+
+// getWebhookTargets returns a snapshot of current webhook services and their filters
+func (s *Service) getWebhookTargets() []webhookTarget {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	targets := make([]webhookTarget, 0, len(s.webhookServices))
+	for id, svc := range s.webhookServices {
+		targets = append(targets, webhookTarget{
+			id:     id,
+			svc:    svc,
+			filter: s.webhookFilters[id],
+		})
+	}
+	return targets
+}
+
+// sendEventToWebhook checks if event matches filter and sends it to the webhook
+func (s *Service) sendEventToWebhook(ctx context.Context, event *entities.Event, target webhookTarget) {
+	if target.svc == nil || !target.svc.Enabled() {
+		return
+	}
+
+	if !filters.MatchesEvent(target.filter, event) {
+		logger.Debug("Event filtered out for webhook",
+			"service", "integration",
+			"event_id", event.UUID.String(),
+			"webhook_id", target.id,
+			"event_type", event.Type,
+			"new_value", event.NewValue,
+		)
+		return
+	}
+
+	logger.Debug("Event matches filter, sending to webhook",
+		"service", "integration",
+		"event_id", event.UUID.String(),
+		"webhook_id", target.id,
+	)
+
+	if err := target.svc.SendEvent(ctx, event); err != nil {
+		logger.Error("Failed to send event to webhook",
+			"service", "integration",
+			"event_id", event.UUID.String(),
+			"webhook_id", target.id,
+			"error", err,
+		)
+	}
+}
+
 // processEvent evaluates an event and decides whether to forward
 // it to configured integrations (webhooks, notifications, etc.)
 func (s *Service) processEvent(ctx context.Context, event *entities.Event) {
@@ -117,86 +206,25 @@ func (s *Service) processEvent(ctx context.Context, event *entities.Event) {
 		return
 	}
 
-	// Get task details from metadata
-	taskName := ""
-	category := ""
-	size := 0
+	meta := extractEventMetadata(event)
 
-	if event.Metadata != nil {
-		if name, ok := event.Metadata["name"].(string); ok {
-			taskName = name
-		}
-		if cat, ok := event.Metadata["category"].(string); ok {
-			category = cat
-		}
-		if s, ok := event.Metadata["size"].(int); ok {
-			size = s
-		} else if s, ok := event.Metadata["size"].(float64); ok {
-			size = int(s)
-		}
-	}
-
-	// Build structured log
 	logger.Info("Event received",
 		"service", "integration",
 		"event_type", event.Type,
 		"agent_id", event.AgentID.String(),
 		"task_hash", event.TaskHash,
-		"task_name", taskName,
-		"category", category,
-		"size", size,
+		"task_name", meta.taskName,
+		"category", meta.category,
+		"size", meta.size,
 		"old_value", event.OldValue,
 		"new_value", event.NewValue,
 	)
 
-	// Take a snapshot of current services/filters under read lock
-	s.mu.RLock()
-	type target struct {
-		id     string
-		svc    *webhookService.Service
-		filter *entities.EventFilter
-	}
-	targets := make([]target, 0, len(s.webhookServices))
-	for id, svc := range s.webhookServices {
-		targets = append(targets, target{
-			id:     id,
-			svc:    svc,
-			filter: s.webhookFilters[id],
-		})
-	}
-	s.mu.RUnlock()
+	// Snapshot targets to avoid holding lock during network I/O
+	targets := s.getWebhookTargets()
 
-	// Send event to all registered webhook services that match the filter
-	// Use the snapshot to avoid holding the lock during network I/O
-	for _, t := range targets {
-		if t.svc != nil && t.svc.Enabled() {
-			// Check if event matches the webhook's filter
-			if !filters.MatchesEvent(t.filter, event) {
-				logger.Debug("Event filtered out for webhook",
-					"service", "integration",
-					"event_id", event.UUID.String(),
-					"webhook_id", t.id,
-					"event_type", event.Type,
-					"new_value", event.NewValue,
-				)
-				continue
-			}
-
-			logger.Debug("Event matches filter, sending to webhook",
-				"service", "integration",
-				"event_id", event.UUID.String(),
-				"webhook_id", t.id,
-			)
-
-			if err := t.svc.SendEvent(ctx, event); err != nil {
-				logger.Error("Failed to send event to webhook",
-					"service", "integration",
-					"event_id", event.UUID.String(),
-					"webhook_id", t.id,
-					"error", err,
-				)
-			}
-		}
+	for _, target := range targets {
+		s.sendEventToWebhook(ctx, event, target)
 	}
 }
 

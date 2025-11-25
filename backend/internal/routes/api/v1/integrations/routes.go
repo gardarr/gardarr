@@ -1,6 +1,7 @@
 package integrations
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -35,7 +36,6 @@ func NewModule(router *gin.RouterGroup, db *database.Database, integrationSvc *i
 const (
 	errRequiredWebhookID      = "Webhook ID is required"
 	errInvalidWebhookIDFormat = "Invalid webhook ID format"
-	errWebhookNotFound        = "webhook not found"
 )
 
 // Register registers all integration routes
@@ -134,17 +134,17 @@ func (m *Module) getWebhookByID(c *gin.Context) {
 		return
 	}
 
-	webhook, err := m.webhookRepo.GetWebhookByUUID(c.Request.Context(), webhookUUID)
+	wh, err := m.webhookRepo.GetWebhookByUUID(c.Request.Context(), webhookUUID)
 	if err != nil {
-		statusCode := http.StatusInternalServerError
-		if err.Error() == errWebhookNotFound {
-			statusCode = http.StatusNotFound
+		if errors.Is(err, webhook.ErrNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
 		}
-		c.JSON(statusCode, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, m.toResponse(webhook))
+	c.JSON(http.StatusOK, m.toResponse(wh))
 }
 
 // updateWebhook updates an existing webhook
@@ -173,11 +173,11 @@ func (m *Module) updateWebhook(c *gin.Context) {
 	// Get existing webhook
 	existing, err := m.webhookRepo.GetWebhookByUUID(c.Request.Context(), webhookUUID)
 	if err != nil {
-		statusCode := http.StatusInternalServerError
-		if err.Error() == errWebhookNotFound {
-			statusCode = http.StatusNotFound
+		if errors.Is(err, webhook.ErrNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
 		}
-		c.JSON(statusCode, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -216,11 +216,11 @@ func (m *Module) updateWebhook(c *gin.Context) {
 
 	result, err := m.webhookRepo.UpdateWebhook(c.Request.Context(), updated)
 	if err != nil {
-		statusCode := http.StatusInternalServerError
-		if err.Error() == errWebhookNotFound {
-			statusCode = http.StatusNotFound
+		if errors.Is(err, webhook.ErrNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
 		}
-		c.JSON(statusCode, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -247,11 +247,11 @@ func (m *Module) deleteWebhook(c *gin.Context) {
 	}
 
 	if err := m.webhookRepo.DeleteWebhook(c.Request.Context(), webhookUUID); err != nil {
-		statusCode := http.StatusInternalServerError
-		if err.Error() == errWebhookNotFound {
-			statusCode = http.StatusNotFound
+		if errors.Is(err, webhook.ErrNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
 		}
-		c.JSON(statusCode, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 

@@ -12,6 +12,9 @@ import (
 	"gorm.io/gorm"
 )
 
+// ErrNotFound is returned when a webhook is not found in the database
+var ErrNotFound = errors.New("webhook not found")
+
 type Repository struct {
 	db         *database.Database
 	filterRepo *event_filter.Repository
@@ -119,7 +122,7 @@ func (r *Repository) GetWebhookByUUID(ctx context.Context, id uuid.UUID) (*entit
 	var model models.Webhook
 	if err := r.db.DB.WithContext(ctx).Where("uuid = ?", id).First(&model).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("webhook not found")
+			return nil, ErrNotFound
 		}
 		return nil, err
 	}
@@ -153,7 +156,7 @@ func (r *Repository) UpdateWebhook(ctx context.Context, webhook entities.Webhook
 		}
 
 		if result.RowsAffected == 0 {
-			return errors.New("webhook not found")
+			return ErrNotFound
 		}
 
 		// Update filter if provided
@@ -197,7 +200,7 @@ func (r *Repository) DeleteWebhook(ctx context.Context, id uuid.UUID) error {
 		}
 
 		if result.RowsAffected == 0 {
-			return errors.New("webhook not found")
+			return ErrNotFound
 		}
 
 		return nil
