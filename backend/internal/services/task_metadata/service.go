@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -22,6 +23,16 @@ const (
 	MaxFileSize      = 10 << 20 // 10 MB
 	AllowedMimeTypes = "image/jpeg,image/png,image/gif,image/webp"
 )
+
+// validateTaskHash ensures the provided taskHash contains only safe characters (no slashes, no traversal)
+func validateTaskHash(taskHash string) error {
+	// Only allow alphanumeric, `_`, and `-`
+	var validTaskHash = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+	if !validTaskHash.MatchString(taskHash) {
+		return fmt.Errorf("invalid task_hash value")
+	}
+	return nil
+}
 
 // Service handles task metadata operations
 type Service struct {
@@ -68,11 +79,17 @@ func (s *Service) GetByTaskHashes(ctx context.Context, taskHashes []string) (map
 	for hash, model := range modelsMap {
 		result[hash] = s.modelToEntity(model)
 	}
+
 	return result, nil
 }
 
 // UploadImage uploads an image for a task
 func (s *Service) UploadImage(ctx context.Context, taskHash string, file multipart.File, header *multipart.FileHeader) (*entities.TaskMetadata, error) {
+	// Validate taskHash to prevent path traversal
+	if err := validateTaskHash(taskHash); err != nil {
+		return nil, fmt.Errorf("invalid task_hash: %w", err)
+	}
+
 	// Validate file size
 	if header.Size > MaxFileSize {
 		return nil, fmt.Errorf("file size exceeds maximum allowed size of %d bytes", MaxFileSize)
@@ -87,10 +104,29 @@ func (s *Service) UploadImage(ctx context.Context, taskHash string, file multipa
 	// Generate unique filename
 	ext := filepath.Ext(header.Filename)
 	filename := fmt.Sprintf("%s_%s%s", taskHash, time.Now().String(), ext)
+
+	// Ensure filename contains no path separators (belt-and-suspenders)
+	if strings.Contains(filename, "/") || strings.Contains(filename, "\\") || strings.Contains(filename, "..") {
+		return nil, fmt.Errorf("invalid generated filename")
+	}
+
 	filePath := filepath.Join(s.uploadDir, filename)
 
+	// Ensure filePath is within s.uploadDir
+	absFilePath, err := filepath.Abs(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve file path: %w", err)
+	}
+	absUploadDir, err := filepath.Abs(s.uploadDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve upload directory: %w", err)
+	}
+	if !strings.HasPrefix(absFilePath, absUploadDir+string(os.PathSeparator)) && absFilePath != absUploadDir {
+		return nil, fmt.Errorf("file path escapes upload directory")
+	}
+
 	// Create file
-	dst, err := os.Create(filePath)
+	dst, err := os.Create(absFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create file: %w", err)
 	}
@@ -98,14 +134,14 @@ func (s *Service) UploadImage(ctx context.Context, taskHash string, file multipa
 
 	// Copy file contents
 	if _, err := io.Copy(dst, file); err != nil {
-		os.Remove(filePath)
+		os.Remove(absFilePath)
 		return nil, fmt.Errorf("failed to write file: %w", err)
 	}
 
 	// Check if metadata already exists
 	existing, err := s.repo.GetByTaskHash(ctx, taskHash)
 	if err != nil {
-		os.Remove(filePath)
+		os.Remove(absFilePath)
 		return nil, err
 	}
 
@@ -139,7 +175,7 @@ func (s *Service) UploadImage(ctx context.Context, taskHash string, file multipa
 	}
 
 	if err := s.repo.Create(ctx, metadata); err != nil {
-		os.Remove(filePath)
+		os.Remove(absFilePath)
 		return nil, err
 	}
 
