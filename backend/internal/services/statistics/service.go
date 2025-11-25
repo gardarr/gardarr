@@ -32,14 +32,14 @@ type Service struct {
 	purgeInterval time.Duration
 }
 
-// NewService creates a new statistics Service using the provided database and
-// agent manager. Configuration such as base directory, interval and enabled
-// flag are loaded from environment variables.
-func NewService(db *database.Database, agents *agentmanager.Service) *Service {
+// NewService creates a new statistics Service using the provided database,
+// agent manager and event service. Configuration such as base directory,
+// interval and enabled flag are loaded from environment variables.
+func NewService(db *database.Database, agents *agentmanager.Service, eventService *events.Service) *Service {
 	return &Service{
 		db:            db,
 		agents:        agents,
-		eventService:  events.NewService(db),
+		eventService:  eventService,
 		baseDir:       env.Get("STATISTICS_DIR").Default("./data/statistics").Value(),
 		interval:      env.Get("STATISTICS_INTERVAL").Default("30s").ValueDuration(),
 		enabled:       env.Get("STATISTICS_ENABLED").Default(true).ValueBool(),
@@ -201,14 +201,16 @@ func (s *Service) upsertFileIndex(ctx context.Context, agentID string, ts time.T
 	hour := ts.Hour()
 	var idx models.StatsFileIndex
 	tx := s.db.DB.WithContext(ctx)
-	// unique per agent/date/hour
-	if err := tx.Where("agent_id = ? AND date = ? AND hour = ?", agentID, date, hour).First(&idx).Error; err == nil {
-		idx.FilePath = path
+	// Try to find by file_path first (unique constraint)
+	err := tx.Where("file_path = ?", path).First(&idx).Error
+	if err == nil {
+		// Record exists, update it
 		idx.LineCount += int(lines)
 		idx.SizeBytes += size
 		idx.EndTS = ts
 		return tx.Save(&idx).Error
 	}
+	// Record doesn't exist, create a new one
 	idx = models.StatsFileIndex{
 		AgentID:   agentID,
 		Date:      date,
@@ -1022,7 +1024,7 @@ func (s *Service) GetUploadDiffs(ctx context.Context, agentID string, from, to t
 		return results[i].Diff > results[j].Diff
 	})
 
-	if len(results) > limit {
+	if limit > 0 && len(results) > limit {
 		results = results[:limit]
 	}
 

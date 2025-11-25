@@ -3,18 +3,16 @@ package database
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/jfxdev/gardarr/internal/constants"
 	"github.com/jfxdev/gardarr/pkg/env"
+	"github.com/jfxdev/gardarr/pkg/logger"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 // Database holds the database connection and configuration
@@ -42,30 +40,9 @@ func NewDatabase() (*Database, error) {
 
 	config := loadConfigFromEnv()
 
-	// Configure GORM logger based on environment
-	logLevel := logger.Info
-	if level := strings.ToLower(env.Get("DATABASE_LOG_LEVEL").Value()); level != "" {
-		switch level {
-		case "silent":
-			logLevel = logger.Silent
-		case "error":
-			logLevel = logger.Error
-		case "warn":
-			logLevel = logger.Warn
-		case "info":
-			logLevel = logger.Info
-		}
-	}
-
-	gormLogger := logger.New(
-		log.New(os.Stdout, "\r\n", log.LstdFlags),
-		logger.Config{
-			SlowThreshold:             time.Second,
-			LogLevel:                  logLevel,
-			IgnoreRecordNotFoundError: true,
-			Colorful:                  false,
-		},
-	)
+	// Use custom GORM logger that integrates with our structured logger
+	// SQL queries will only be logged when LOG_LEVEL=TRACE
+	gormLogger := logger.NewGormLogger()
 
 	// Connect based on driver type
 	switch config.driver {

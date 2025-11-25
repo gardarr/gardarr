@@ -1,10 +1,62 @@
+import { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Webhook, Bell, Plug, Monitor, BookOpen, Joystick } from 'lucide-react';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Webhook, Bell, Plug, Monitor, BookOpen, Joystick, Activity } from 'lucide-react';
+import { api } from '@/lib/api';
+import { EventList, type Event, type FilterType } from '@/components/EventList';
+
+interface EventsResponse {
+  events: Event[];
+  total: number;
+}
 
 export default function IntegrationsPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [showEvents, setShowEvents] = useState(false);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
+  const [limit] = useState(10);
+  const [filterType, setFilterType] = useState<FilterType>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+
+  const loadEvents = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const offset = page * limit;
+      let url = `/events?limit=${limit}&offset=${offset}`;
+      
+      if (filterType && filterType !== "all") {
+        url += `&type=${encodeURIComponent(filterType)}`;
+      }
+      
+      if (searchQuery) {
+        url += `&search=${encodeURIComponent(searchQuery)}`;
+      }
+      
+      const response = await api.get<EventsResponse>(url);
+
+      if (response.data) {
+        setEvents(response.data.events || []);
+        setTotal(response.data.total || 0);
+      }
+    } catch (error) {
+      console.error("Failed to load events:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [page, limit, filterType, searchQuery]);
+
+  useEffect(() => {
+    if (showEvents) {
+      loadEvents();
+    }
+  }, [showEvents, loadEvents]);
 
   const integrations = [
     {
@@ -67,11 +119,19 @@ export default function IntegrationsPage() {
   return (
     <div className="space-y-8">
       <div>
+        <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-primary/10">
             <Plug className="h-6 w-6 text-primary" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight">{t('integrations.title')}</h1>
+          </div>
+          <Button 
+            onClick={() => setShowEvents(true)}
+          >
+            <Activity />
+            {t('history.showEvents')}
+          </Button>
         </div>
         <p className="text-muted-foreground mt-2">
           {t('integrations.subtitle')}
@@ -109,9 +169,14 @@ export default function IntegrationsPage() {
                   <Button 
                     variant="outline" 
                     className="w-full"
-                    disabled={integration.status !== 'available'}
+                    disabled={integration.id !== 'webhook'}
+                    onClick={() => {
+                     if (integration.id === 'webhook') {
+                      navigate('/integrations/webhooks');
+                    }
+                  }}
                   >
-                    {integration.status === 'available' 
+                    {integration.id === 'webhook' 
                       ? t('integrations.configure') 
                       : t('integrations.comingSoon')
                     }
@@ -154,9 +219,10 @@ export default function IntegrationsPage() {
                   <Button 
                     variant="outline" 
                     className="w-full"
-                    disabled={integration.status !== 'available'}
+                    disabled={integration.id !== 'webhook'}
+                    onClick={() => integration.id === 'webhook' && navigate('/integrations/webhooks')}
                   >
-                    {integration.status === 'available' 
+                    {integration.id === 'webhook' 
                       ? t('integrations.configure') 
                       : t('integrations.comingSoon')
                     }
@@ -168,6 +234,35 @@ export default function IntegrationsPage() {
         </div>
       </div>
 
+      {/* Events Drawer */}
+      <Sheet open={showEvents} onOpenChange={setShowEvents}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
+          <SheetHeader className="space-y-1">
+            <SheetTitle className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Activity className="h-6 w-6 text-primary" />
+              </div>
+              {t('history.title')}
+            </SheetTitle>
+            <SheetDescription>
+              {t('history.subtitle')}
+            </SheetDescription>
+          </SheetHeader>
+          <EventList
+              events={events}
+              isLoading={isLoading}
+              total={total}
+              page={page}
+              limit={limit}
+              filterType={filterType}
+              searchQuery={searchQuery}
+              onFilterChange={setFilterType}
+              onPageChange={setPage}
+              onRefresh={loadEvents}
+              onSearchChange={setSearchQuery}
+            />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

@@ -336,7 +336,5 @@ func (m *Module) getTaskThumbnail(c *gin.Context) {
 		return
 	}
 
-	// TODO: Generate and serve actual thumbnail
-	// For now, serve the full image (path is validated to be within upload directory)
 	c.File(imagePath)
 }

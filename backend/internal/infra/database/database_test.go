@@ -148,7 +148,7 @@ func TestEnsureSQLiteFile(t *testing.T) {
 	}
 }
 
-func TestEnsureSQLiteFile_AbsolutePath(t *testing.T) {
+func TestEnsureSQLiteFileAbsolutePath(t *testing.T) {
 	// Create temporary directory
 	tmpDir, err := os.MkdirTemp("", "gardarr_test_*")
 	if err != nil {

@@ -60,7 +60,7 @@ func TestParseTime(t *testing.T) {
 	}
 }
 
-func TestService_ScanFile(t *testing.T) {
+func TestServiceScanFile(t *testing.T) {
 	// Create a temporary directory for test files
 	tmpDir := t.TempDir()
 
@@ -91,7 +91,7 @@ func TestService_ScanFile(t *testing.T) {
 	})
 }
 
-func TestService_DiscoverFiles(t *testing.T) {
+func TestServiceDiscoverFiles(t *testing.T) {
 	// Create a temporary directory for test files
 	tmpDir := t.TempDir()
 
@@ -135,7 +135,7 @@ func TestService_DiscoverFiles(t *testing.T) {
 	})
 }
 
-func TestService_WindowedAggregation(t *testing.T) {
+func TestServiceWindowedAggregation(t *testing.T) {
 	tmpDir := t.TempDir()
 	db := &database.Database{}
 
@@ -173,7 +173,7 @@ func TestService_WindowedAggregation(t *testing.T) {
 	})
 }
 
-func TestService_GetUploadDiffs(t *testing.T) {
+func TestServiceGetUploadDiffs(t *testing.T) {
 	tmpDir := t.TempDir()
 	db := &database.Database{}
 
@@ -217,7 +217,7 @@ func TestService_GetUploadDiffs(t *testing.T) {
 	})
 }
 
-func TestService_PurgeOldFiles_FSOnly(t *testing.T) {
+func TestServicePurgeOldFilesFSOnly(t *testing.T) {
 	tmpDir := t.TempDir()
 	svc := &Service{
 		baseDir:       tmpDir,
@@ -249,4 +249,68 @@ func TestService_PurgeOldFiles_FSOnly(t *testing.T) {
 
 	_, err = os.Stat(newFile)
 	assert.NoError(t, err)
+}
+
+func TestServiceUpsertFileIndex(t *testing.T) {
+	// Create a test database in memory
+	db := database.SetupTestDB(t)
+
+	// Run migrations to create the stats_file_indices table
+	err := database.RunMigrations(db)
+	require.NoError(t, err)
+
+	svc := &Service{
+		db:      db,
+		baseDir: t.TempDir(),
+	}
+
+	ctx := context.Background()
+	agentID := "test-agent"
+	ts := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	path := "data/statistics/2024/01/test-agent/test-agent-2024-01-15.jsonl.gz"
+	lines := int64(10)
+	size := int64(1024)
+
+	t.Run("Creates new file index", func(t *testing.T) {
+		err := svc.upsertFileIndex(ctx, agentID, ts, path, lines, size)
+		assert.NoError(t, err)
+
+		// Verify record was created
+		var count int64
+		db.DB.Table("stats_file_indices").Where("file_path = ?", path).Count(&count)
+		assert.Equal(t, int64(1), count)
+	})
+
+	t.Run("Updates existing file index on duplicate path", func(t *testing.T) {
+		// Try to insert the same path again
+		err := svc.upsertFileIndex(ctx, agentID, ts, path, lines, size)
+		assert.NoError(t, err)
+
+		// Should still have only one record
+		var count int64
+		db.DB.Table("stats_file_indices").Where("file_path = ?", path).Count(&count)
+		assert.Equal(t, int64(1), count)
+
+		// Verify the values were updated (accumulated)
+		var idx struct {
+			LineCount int
+			SizeBytes int64
+		}
+		db.DB.Table("stats_file_indices").Where("file_path = ?", path).First(&idx)
+		assert.Equal(t, int(lines*2), idx.LineCount) // Should be doubled
+		assert.Equal(t, size*2, idx.SizeBytes)       // Should be doubled
+	})
+
+	t.Run("Handles multiple different paths", func(t *testing.T) {
+		path2 := "data/statistics/2024/01/test-agent/test-agent-2024-01-16.jsonl.gz"
+		ts2 := time.Date(2024, 1, 16, 10, 30, 0, 0, time.UTC)
+
+		err := svc.upsertFileIndex(ctx, agentID, ts2, path2, lines, size)
+		assert.NoError(t, err)
+
+		// Should now have two records
+		var count int64
+		db.DB.Table("stats_file_indices").Count(&count)
+		assert.Equal(t, int64(2), count)
+	})
 }

@@ -52,7 +52,7 @@ func createTestUser(t *testing.T, db *database.Database, email string) *models.U
 	return &model
 }
 
-func TestRoutes_ListUsers_Success(t *testing.T) {
+func TestRoutesListUsersSuccess(t *testing.T) {
 	router, db := setupTestRouter(t)
 
 	// Create some test users
@@ -99,7 +99,7 @@ func TestRoutes_ListUsers_Success(t *testing.T) {
 	}
 }
 
-func TestRoutes_ListUsers_Empty(t *testing.T) {
+func TestRoutesListUsersEmpty(t *testing.T) {
 	router, _ := setupTestRouter(t)
 
 	// List users when database is empty
@@ -125,7 +125,7 @@ func TestRoutes_ListUsers_Empty(t *testing.T) {
 	}
 }
 
-func TestRoutes_ListUsers_OrderedByCreatedAt(t *testing.T) {
+func TestRoutesListUsersOrderedByCreatedAt(t *testing.T) {
 	router, db := setupTestRouter(t)
 
 	// Create users in a specific order
@@ -159,7 +159,7 @@ func TestRoutes_ListUsers_OrderedByCreatedAt(t *testing.T) {
 	}
 }
 
-func TestRoutes_DeleteUser_Success(t *testing.T) {
+func TestRoutesDeleteUserSuccess(t *testing.T) {
 	router, db := setupTestRouter(t)
 
 	// Create a test user
@@ -191,7 +191,7 @@ func TestRoutes_DeleteUser_Success(t *testing.T) {
 	}
 }
 
-func TestRoutes_DeleteUser_NotFound(t *testing.T) {
+func TestRoutesDeleteUserNotFound(t *testing.T) {
 	router, _ := setupTestRouter(t)
 
 	// Try to delete non-existent user
@@ -213,7 +213,7 @@ func TestRoutes_DeleteUser_NotFound(t *testing.T) {
 	}
 }
 
-func TestRoutes_DeleteUser_InvalidUUID(t *testing.T) {
+func TestRoutesDeleteUserInvalidUUID(t *testing.T) {
 	router, _ := setupTestRouter(t)
 
 	// Try to delete with invalid UUID format
@@ -227,7 +227,7 @@ func TestRoutes_DeleteUser_InvalidUUID(t *testing.T) {
 	}
 }
 
-func TestRoutes_DeleteUser_VerifyListAfterDelete(t *testing.T) {
+func TestRoutesDeleteUserVerifyListAfterDelete(t *testing.T) {
 	router, db := setupTestRouter(t)
 
 	// Create three users
@@ -266,7 +266,7 @@ func TestRoutes_DeleteUser_VerifyListAfterDelete(t *testing.T) {
 	}
 }
 
-func TestRoutes_DeleteUser_FounderProtection(t *testing.T) {
+func TestRoutesDeleteUserFounderProtection(t *testing.T) {
 	router, db := setupTestRouter(t)
 
 	// Create a founder user
@@ -303,7 +303,7 @@ func TestRoutes_DeleteUser_FounderProtection(t *testing.T) {
 	}
 }
 
-func TestRoutes_DeleteUser_RegularUserCanBeDeleted(t *testing.T) {
+func TestRoutesDeleteUserRegularUserCanBeDeleted(t *testing.T) {
 	router, db := setupTestRouter(t)
 
 	// Create a regular user
@@ -340,7 +340,7 @@ func TestRoutes_DeleteUser_RegularUserCanBeDeleted(t *testing.T) {
 	}
 }
 
-func TestRequestPasswordReset_Success(t *testing.T) {
+func TestRequestPasswordResetSuccess(t *testing.T) {
 	// Setup test database
 	db := database.SetupTestDBWithCache(t, &models.User{}, &models.Session{}, &models.PasswordResetToken{})
 
@@ -381,7 +381,7 @@ func TestRequestPasswordReset_Success(t *testing.T) {
 	assert.True(t, response.ExpiresAt.After(time.Now()))
 }
 
-func TestRequestPasswordReset_UserNotFound(t *testing.T) {
+func TestRequestPasswordResetUserNotFound(t *testing.T) {
 	// Setup test database
 	db := database.SetupTestDBWithCache(t, &models.User{}, &models.Session{}, &models.PasswordResetToken{})
 
@@ -410,7 +410,7 @@ func TestRequestPasswordReset_UserNotFound(t *testing.T) {
 	assert.Equal(t, "User not found", response["error"])
 }
 
-func TestRequestPasswordReset_InvalidUUID(t *testing.T) {
+func TestRequestPasswordResetInvalidUUID(t *testing.T) {
 	// Setup test database
 	db := database.SetupTestDBWithCache(t, &models.User{}, &models.Session{}, &models.PasswordResetToken{})
 

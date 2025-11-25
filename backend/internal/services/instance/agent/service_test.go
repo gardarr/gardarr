@@ -80,7 +80,7 @@ func (m *mockInstanceRepository) SetUploadSpeedLimit(limit int) error {
 	return nil
 }
 
-func TestService_GetInstance(t *testing.T) {
+func TestServiceGetInstance(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := newMockInstanceRepository()
 	service := &service{repository: mockRepo}
@@ -100,7 +100,7 @@ func TestService_GetInstance(t *testing.T) {
 	}
 }
 
-func TestService_GetPreferences(t *testing.T) {
+func TestServiceGetPreferences(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := newMockInstanceRepository()
 	service := &service{repository: mockRepo}
@@ -120,7 +120,7 @@ func TestService_GetPreferences(t *testing.T) {
 	}
 }
 
-func TestService_Ping(t *testing.T) {
+func TestServicePing(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := newMockInstanceRepository()
 	service := &service{repository: mockRepo}
@@ -139,7 +139,7 @@ func TestService_Ping(t *testing.T) {
 	}
 }
 
-func TestService_SetDownloadSpeedLimit(t *testing.T) {
+func TestServiceSetDownloadSpeedLimit(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := newMockInstanceRepository()
 	service := &service{repository: mockRepo}
@@ -167,7 +167,7 @@ func TestService_SetDownloadSpeedLimit(t *testing.T) {
 	}
 }
 
-func TestService_SetUploadSpeedLimit(t *testing.T) {
+func TestServiceSetUploadSpeedLimit(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := newMockInstanceRepository()
 	service := &service{repository: mockRepo}

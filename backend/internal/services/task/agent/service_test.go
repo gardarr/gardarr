@@ -222,7 +222,7 @@ func (m *mockRepository) GetLimits(hash string) (*entities.TaskLimits, error) {
 	}, nil
 }
 
-func TestService_StopTask(t *testing.T) {
+func TestServiceStopTask(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := newMockRepository()
 	service := &service{repository: mockRepo}
@@ -261,7 +261,7 @@ func TestService_StopTask(t *testing.T) {
 	}
 }
 
-func TestService_StartTask(t *testing.T) {
+func TestServiceStartTask(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := newMockRepository()
 	service := &service{repository: mockRepo}
@@ -300,7 +300,7 @@ func TestService_StartTask(t *testing.T) {
 	}
 }
 
-func TestService_ForceResumeTask(t *testing.T) {
+func TestServiceForceResumeTask(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := newMockRepository()
 	service := &service{repository: mockRepo}
@@ -339,7 +339,7 @@ func TestService_ForceResumeTask(t *testing.T) {
 	}
 }
 
-func TestService_ListTasks(t *testing.T) {
+func TestServiceListTasks(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := newMockRepository()
 	service := &service{repository: mockRepo}
@@ -369,7 +369,7 @@ func TestService_ListTasks(t *testing.T) {
 	}
 }
 
-func TestService_GetTask(t *testing.T) {
+func TestServiceGetTask(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := newMockRepository()
 	service := &service{repository: mockRepo}
@@ -394,7 +394,7 @@ func TestService_GetTask(t *testing.T) {
 	}
 }
 
-func TestService_CreateTask(t *testing.T) {
+func TestServiceCreateTask(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := newMockRepository()
 	service := &service{repository: mockRepo}
@@ -429,7 +429,7 @@ func TestService_CreateTask(t *testing.T) {
 	}
 }
 
-func TestService_DeleteTask(t *testing.T) {
+func TestServiceDeleteTask(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := newMockRepository()
 	service := &service{repository: mockRepo}
@@ -457,7 +457,7 @@ func TestService_DeleteTask(t *testing.T) {
 	}
 }
 
-func TestService_SetTaskShareLimit(t *testing.T) {
+func TestServiceSetTaskShareLimit(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := newMockRepository()
 	service := &service{repository: mockRepo}
@@ -485,7 +485,7 @@ func TestService_SetTaskShareLimit(t *testing.T) {
 	}
 }
 
-func TestService_SetTaskLocation(t *testing.T) {
+func TestServiceSetTaskLocation(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := newMockRepository()
 	service := &service{repository: mockRepo}
@@ -516,7 +516,7 @@ func TestService_SetTaskLocation(t *testing.T) {
 	}
 }
 
-func TestService_RenameTask(t *testing.T) {
+func TestServiceRenameTask(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := newMockRepository()
 	service := &service{repository: mockRepo}
@@ -547,7 +547,7 @@ func TestService_RenameTask(t *testing.T) {
 	}
 }
 
-func TestService_SetTaskSuperSeeding(t *testing.T) {
+func TestServiceSetTaskSuperSeeding(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := newMockRepository()
 	service := &service{repository: mockRepo}
@@ -573,7 +573,7 @@ func TestService_SetTaskSuperSeeding(t *testing.T) {
 	}
 }
 
-func TestService_ForceRecheckTask(t *testing.T) {
+func TestServiceForceRecheckTask(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := newMockRepository()
 	service := &service{repository: mockRepo}
@@ -595,7 +595,7 @@ func TestService_ForceRecheckTask(t *testing.T) {
 	}
 }
 
-func TestService_ForceReannounceTask(t *testing.T) {
+func TestServiceForceReannounceTask(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := newMockRepository()
 	service := &service{repository: mockRepo}
@@ -617,7 +617,7 @@ func TestService_ForceReannounceTask(t *testing.T) {
 	}
 }
 
-func TestService_SetTaskDownloadLimit(t *testing.T) {
+func TestServiceSetTaskDownloadLimit(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := newMockRepository()
 	service := &service{repository: mockRepo}
@@ -643,7 +643,7 @@ func TestService_SetTaskDownloadLimit(t *testing.T) {
 	}
 }
 
-func TestService_SetTaskUploadLimit(t *testing.T) {
+func TestServiceSetTaskUploadLimit(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := newMockRepository()
 	service := &service{repository: mockRepo}
@@ -669,7 +669,7 @@ func TestService_SetTaskUploadLimit(t *testing.T) {
 	}
 }
 
-func TestService_ListTaskFiles(t *testing.T) {
+func TestServiceListTaskFiles(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := newMockRepository()
 	service := &service{repository: mockRepo}
@@ -723,7 +723,7 @@ func TestService_ListTaskFiles(t *testing.T) {
 	}
 }
 
-func TestService_GetTasksStats(t *testing.T) {
+func TestServiceGetTasksStats(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := newMockRepository()
 	service := &service{repository: mockRepo}

@@ -9,7 +9,7 @@ import (
 	"github.com/jfxdev/gardarr/internal/models"
 )
 
-func TestRepository_CreateToken(t *testing.T) {
+func TestRepositoryCreateToken(t *testing.T) {
 	db := database.SetupTestDB(t, &models.SignupToken{})
 	repo := NewRepository(db)
 	ctx := context.Background()
@@ -35,7 +35,7 @@ func TestRepository_CreateToken(t *testing.T) {
 	}
 }
 
-func TestRepository_GetTokenByValue(t *testing.T) {
+func TestRepositoryGetTokenByValue(t *testing.T) {
 	db := database.SetupTestDB(t, &models.SignupToken{})
 	repo := NewRepository(db)
 	ctx := context.Background()
@@ -60,7 +60,7 @@ func TestRepository_GetTokenByValue(t *testing.T) {
 	}
 }
 
-func TestRepository_GetTokenByValue_NotFound(t *testing.T) {
+func TestRepositoryGetTokenByValueNotFound(t *testing.T) {
 	db := database.SetupTestDB(t, &models.SignupToken{})
 	repo := NewRepository(db)
 	ctx := context.Background()
@@ -74,7 +74,7 @@ func TestRepository_GetTokenByValue_NotFound(t *testing.T) {
 	}
 }
 
-func TestRepository_MarkTokenAsUsed(t *testing.T) {
+func TestRepositoryMarkTokenAsUsed(t *testing.T) {
 	db := database.SetupTestDB(t, &models.SignupToken{})
 	repo := NewRepository(db)
 	ctx := context.Background()
@@ -105,7 +105,7 @@ func TestRepository_MarkTokenAsUsed(t *testing.T) {
 	}
 }
 
-func TestRepository_DeleteExpiredTokens(t *testing.T) {
+func TestRepositoryDeleteExpiredTokens(t *testing.T) {
 	db := database.SetupTestDB(t, &models.SignupToken{})
 	repo := NewRepository(db)
 	ctx := context.Background()
@@ -145,7 +145,7 @@ func TestRepository_DeleteExpiredTokens(t *testing.T) {
 	}
 }
 
-func TestRepository_DeleteToken(t *testing.T) {
+func TestRepositoryDeleteToken(t *testing.T) {
 	db := database.SetupTestDB(t, &models.SignupToken{})
 	repo := NewRepository(db)
 	ctx := context.Background()
@@ -172,7 +172,7 @@ func TestRepository_DeleteToken(t *testing.T) {
 	}
 }
 
-func TestRepository_DeleteToken_NotFound(t *testing.T) {
+func TestRepositoryDeleteTokenNotFound(t *testing.T) {
 	db := database.SetupTestDB(t, &models.SignupToken{})
 	repo := NewRepository(db)
 	ctx := context.Background()

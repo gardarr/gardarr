@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestValidateSession_ReturnsUserWithRole(t *testing.T) {
+func TestValidateSessionReturnsUserWithRole(t *testing.T) {
 	// Setup test database
 	db := database.SetupTestDB(t, &models.Session{}, &models.User{})
 
@@ -71,7 +71,7 @@ func TestValidateSession_ReturnsUserWithRole(t *testing.T) {
 	assert.Equal(t, "admin", session.Role)
 }
 
-func TestValidateSession_ReturnsUserWithUserRole(t *testing.T) {
+func TestValidateSessionReturnsUserWithUserRole(t *testing.T) {
 	// Setup test database
 	db := database.SetupTestDB(t, &models.Session{}, &models.User{})
 

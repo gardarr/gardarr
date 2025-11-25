@@ -9,7 +9,7 @@ import (
 	"github.com/jfxdev/gardarr/internal/models"
 )
 
-func TestService_CreateCategory(t *testing.T) {
+func TestServiceCreateCategory(t *testing.T) {
 	db := database.SetupTestDB(t, &models.Category{})
 	service := NewService(db)
 	ctx := context.Background()
@@ -49,7 +49,7 @@ func TestService_CreateCategory(t *testing.T) {
 	}
 }
 
-func TestService_ListCategories(t *testing.T) {
+func TestServiceListCategories(t *testing.T) {
 	db := database.SetupTestDB(t, &models.Category{})
 	service := NewService(db)
 	ctx := context.Background()
@@ -88,7 +88,7 @@ func TestService_ListCategories(t *testing.T) {
 	}
 }
 
-func TestService_GetCategoryByID(t *testing.T) {
+func TestServiceGetCategoryByID(t *testing.T) {
 	db := database.SetupTestDB(t, &models.Category{})
 	service := NewService(db)
 	ctx := context.Background()
@@ -122,7 +122,7 @@ func TestService_GetCategoryByID(t *testing.T) {
 	}
 }
 
-func TestService_GetCategoryByName(t *testing.T) {
+func TestServiceGetCategoryByName(t *testing.T) {
 	db := database.SetupTestDB(t, &models.Category{})
 	service := NewService(db)
 	ctx := context.Background()
@@ -156,7 +156,7 @@ func TestService_GetCategoryByName(t *testing.T) {
 	}
 }
 
-func TestService_UpdateCategory(t *testing.T) {
+func TestServiceUpdateCategory(t *testing.T) {
 	db := database.SetupTestDB(t, &models.Category{})
 	service := NewService(db)
 	ctx := context.Background()
@@ -203,7 +203,7 @@ func TestService_UpdateCategory(t *testing.T) {
 	}
 }
 
-func TestService_DeleteCategory(t *testing.T) {
+func TestServiceDeleteCategory(t *testing.T) {
 	db := database.SetupTestDB(t, &models.Category{})
 	service := NewService(db)
 	ctx := context.Background()
@@ -233,7 +233,7 @@ func TestService_DeleteCategory(t *testing.T) {
 	}
 }
 
-func TestService_Integration_FullCRUD(t *testing.T) {
+func TestServiceIntegrationFullCRUD(t *testing.T) {
 	db := database.SetupTestDB(t, &models.Category{})
 	service := NewService(db)
 	ctx := context.Background()

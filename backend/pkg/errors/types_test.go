@@ -95,7 +95,7 @@ func TestNewServiceUnavailableError(t *testing.T) {
 	}
 }
 
-func TestToResponseError_TaskNotFound(t *testing.T) {
+func TestToResponseErrorTaskNotFound(t *testing.T) {
 	respErr := ToResponseError(ErrTaskNotFound)
 
 	if respErr.StatusCode != http.StatusNotFound {
@@ -107,7 +107,7 @@ func TestToResponseError_TaskNotFound(t *testing.T) {
 	}
 }
 
-func TestToResponseError_AgentNotFound(t *testing.T) {
+func TestToResponseErrorAgentNotFound(t *testing.T) {
 	respErr := ToResponseError(ErrAgentNotFound)
 
 	if respErr.StatusCode != http.StatusNotFound {
@@ -119,7 +119,7 @@ func TestToResponseError_AgentNotFound(t *testing.T) {
 	}
 }
 
-func TestToResponseError_InvalidUUID(t *testing.T) {
+func TestToResponseErrorInvalidUUID(t *testing.T) {
 	respErr := ToResponseError(ErrInvalidUUID)
 
 	if respErr.StatusCode != http.StatusBadRequest {
@@ -131,7 +131,7 @@ func TestToResponseError_InvalidUUID(t *testing.T) {
 	}
 }
 
-func TestToResponseError_InvalidInput(t *testing.T) {
+func TestToResponseErrorInvalidInput(t *testing.T) {
 	respErr := ToResponseError(ErrInvalidInput)
 
 	if respErr.StatusCode != http.StatusBadRequest {
@@ -143,7 +143,7 @@ func TestToResponseError_InvalidInput(t *testing.T) {
 	}
 }
 
-func TestToResponseError_AgentUnavailable(t *testing.T) {
+func TestToResponseErrorAgentUnavailable(t *testing.T) {
 	respErr := ToResponseError(ErrAgentUnavailable)
 
 	if respErr.StatusCode != http.StatusServiceUnavailable {
@@ -155,7 +155,7 @@ func TestToResponseError_AgentUnavailable(t *testing.T) {
 	}
 }
 
-func TestToResponseError_UnknownError(t *testing.T) {
+func TestToResponseErrorUnknownError(t *testing.T) {
 	unknownErr := errors.New("unknown error")
 	respErr := ToResponseError(unknownErr)
 
@@ -172,7 +172,7 @@ func TestToResponseError_UnknownError(t *testing.T) {
 	}
 }
 
-func TestToResponseError_NilError(t *testing.T) {
+func TestToResponseErrorNilError(t *testing.T) {
 	respErr := ToResponseError(nil)
 
 	if respErr != nil {
@@ -193,7 +193,7 @@ func TestToResponseError_WrappedInvalidUUID(t *testing.T) {
 	}
 }
 
-func TestToResponseError_WrappedAgentNotFound(t *testing.T) {
+func TestToResponseErrorWrappedAgentNotFound(t *testing.T) {
 	wrappedErr := errors.New("agent not found: details here")
 	respErr := ToResponseError(wrappedErr)
 
@@ -206,7 +206,7 @@ func TestToResponseError_WrappedAgentNotFound(t *testing.T) {
 	}
 }
 
-func TestToResponseError_WrappedTaskNotFound(t *testing.T) {
+func TestToResponseErrorWrappedTaskNotFound(t *testing.T) {
 	wrappedErr := errors.New("task not found in database")
 	respErr := ToResponseError(wrappedErr)
 
@@ -219,7 +219,7 @@ func TestToResponseError_WrappedTaskNotFound(t *testing.T) {
 	}
 }
 
-func TestToResponseError_FailedToCreateTask(t *testing.T) {
+func TestToResponseErrorFailedToCreateTask(t *testing.T) {
 	wrappedErr := errors.New("failed to create task: connection refused")
 	respErr := ToResponseError(wrappedErr)
 
@@ -232,7 +232,7 @@ func TestToResponseError_FailedToCreateTask(t *testing.T) {
 	}
 }
 
-func TestToResponseError_ErrorsFetchingTasks(t *testing.T) {
+func TestToResponseErrorErrorsFetchingTasks(t *testing.T) {
 	wrappedErr := errors.New("errors occurred while fetching tasks from agents: timeout")
 	respErr := ToResponseError(wrappedErr)
 

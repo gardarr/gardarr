@@ -33,7 +33,7 @@ func setupTestRouter(t *testing.T) (*gin.Engine, *database.Database) {
 	return router, db
 }
 
-func TestRoutes_CreateMagicLink_Success(t *testing.T) {
+func TestRoutesCreateMagicLinkSuccess(t *testing.T) {
 	router, _ := setupTestRouter(t)
 
 	reqBody := models.CreateSignupTokenRequest{
@@ -71,7 +71,7 @@ func TestRoutes_CreateMagicLink_Success(t *testing.T) {
 	}
 }
 
-func TestRoutes_CreateMagicLink_WithoutEmail(t *testing.T) {
+func TestRoutesCreateMagicLinkWithoutEmail(t *testing.T) {
 	router, _ := setupTestRouter(t)
 
 	reqBody := models.CreateSignupTokenRequest{
@@ -102,7 +102,7 @@ func TestRoutes_CreateMagicLink_WithoutEmail(t *testing.T) {
 	}
 }
 
-func TestRoutes_CreateMagicLink_InvalidRole(t *testing.T) {
+func TestRoutesCreateMagicLinkInvalidRole(t *testing.T) {
 	router, _ := setupTestRouter(t)
 
 	reqBody := models.CreateSignupTokenRequest{
@@ -121,7 +121,7 @@ func TestRoutes_CreateMagicLink_InvalidRole(t *testing.T) {
 	}
 }
 
-func TestRoutes_CreateMagicLink_InvalidExpiresIn(t *testing.T) {
+func TestRoutesCreateMagicLinkInvalidExpiresIn(t *testing.T) {
 	router, _ := setupTestRouter(t)
 
 	reqBody := models.CreateSignupTokenRequest{
@@ -140,7 +140,7 @@ func TestRoutes_CreateMagicLink_InvalidExpiresIn(t *testing.T) {
 	}
 }
 
-func TestRoutes_CreateMagicLink_MissingRole(t *testing.T) {
+func TestRoutesCreateMagicLinkMissingRole(t *testing.T) {
 	router, _ := setupTestRouter(t)
 
 	reqBody := models.CreateSignupTokenRequest{
@@ -158,7 +158,7 @@ func TestRoutes_CreateMagicLink_MissingRole(t *testing.T) {
 	}
 }
 
-func TestRoutes_VerifySignup_Success(t *testing.T) {
+func TestRoutesVerifySignupSuccess(t *testing.T) {
 	router, db := setupTestRouter(t)
 
 	// Create a magic link token directly via service
@@ -207,7 +207,7 @@ func TestRoutes_VerifySignup_Success(t *testing.T) {
 	}
 }
 
-func TestRoutes_VerifySignup_TokenAlreadyUsed(t *testing.T) {
+func TestRoutesVerifySignupTokenAlreadyUsed(t *testing.T) {
 	router, db := setupTestRouter(t)
 
 	// Create a magic link token directly via service
@@ -248,7 +248,7 @@ func TestRoutes_VerifySignup_TokenAlreadyUsed(t *testing.T) {
 	}
 }
 
-func TestRoutes_VerifySignup_WithSpecificEmail(t *testing.T) {
+func TestRoutesVerifySignupWithSpecificEmail(t *testing.T) {
 	router, db := setupTestRouter(t)
 
 	// Create a magic link token with specific email directly via service
@@ -293,7 +293,7 @@ func TestRoutes_VerifySignup_WithSpecificEmail(t *testing.T) {
 	}
 }
 
-func TestRoutes_VerifySignup_InvalidToken(t *testing.T) {
+func TestRoutesVerifySignupInvalidToken(t *testing.T) {
 	router, _ := setupTestRouter(t)
 
 	verifyReqBody := models.VerifySignupTokenRequest{
@@ -313,7 +313,7 @@ func TestRoutes_VerifySignup_InvalidToken(t *testing.T) {
 	}
 }
 
-func TestRoutes_RevokeMagicLink_Success(t *testing.T) {
+func TestRoutesRevokeMagicLinkSuccess(t *testing.T) {
 	router, db := setupTestRouter(t)
 
 	// Create a magic link token directly via service
@@ -348,7 +348,7 @@ func TestRoutes_RevokeMagicLink_Success(t *testing.T) {
 	}
 }
 
-func TestRoutes_RevokeMagicLink_NotFound(t *testing.T) {
+func TestRoutesRevokeMagicLinkNotFound(t *testing.T) {
 	router, _ := setupTestRouter(t)
 
 	// Try to revoke non-existent token
@@ -361,7 +361,7 @@ func TestRoutes_RevokeMagicLink_NotFound(t *testing.T) {
 	}
 }
 
-func TestRoutes_RevokeMagicLink_CannotUseAfterRevoke(t *testing.T) {
+func TestRoutesRevokeMagicLinkCannotUseAfterRevoke(t *testing.T) {
 	router, db := setupTestRouter(t)
 
 	// Create a magic link token

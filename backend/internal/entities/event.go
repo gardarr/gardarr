@@ -14,6 +14,6 @@ type Event struct {
 	TaskHash  string
 	OldValue  string
 	NewValue  string
-	Metadata  map[string]interface{}
+	Metadata  map[string]interface{} // Contains all task details and event-specific data
 	CreatedAt time.Time
 }

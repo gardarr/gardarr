@@ -32,6 +32,7 @@ func ToEventEntity(model *models.Event) *entities.Event {
 	}
 
 	var metadata map[string]interface{}
+
 	if model.Metadata != "" {
 		_ = json.Unmarshal([]byte(model.Metadata), &metadata)
 	}
