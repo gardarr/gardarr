@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -17,8 +18,6 @@ import (
 	"github.com/jfxdev/gardarr/internal/models"
 	task_metadata_repo "github.com/jfxdev/gardarr/internal/repository/task_metadata"
 )
-
-import "regexp"
 
 const (
 	MaxFileSize      = 10 << 20 // 10 MB
@@ -80,16 +79,17 @@ func (s *Service) GetByTaskHashes(ctx context.Context, taskHashes []string) (map
 	for hash, model := range modelsMap {
 		result[hash] = s.modelToEntity(model)
 	}
-	// Validate taskHash to prevent path traversal
-	if err := validateTaskHash(taskHash); err != nil {
-		return nil, fmt.Errorf("invalid task_hash: %w", err)
-	}
 
 	return result, nil
 }
 
 // UploadImage uploads an image for a task
 func (s *Service) UploadImage(ctx context.Context, taskHash string, file multipart.File, header *multipart.FileHeader) (*entities.TaskMetadata, error) {
+	// Validate taskHash to prevent path traversal
+	if err := validateTaskHash(taskHash); err != nil {
+		return nil, fmt.Errorf("invalid task_hash: %w", err)
+	}
+
 	// Validate file size
 	if header.Size > MaxFileSize {
 		return nil, fmt.Errorf("file size exceeds maximum allowed size of %d bytes", MaxFileSize)
@@ -99,23 +99,31 @@ func (s *Service) UploadImage(ctx context.Context, taskHash string, file multipa
 	contentType := header.Header.Get("Content-Type")
 	if !s.isAllowedMimeType(contentType) {
 		return nil, fmt.Errorf("invalid file type: %s. Allowed types: %s", contentType, AllowedMimeTypes)
-	// Ensure filename contains no path separators (belt-and-suspenders)
-	if strings.Contains(filename, "/") || strings.Contains(filename, "\\") || strings.Contains(filename, "..") {
-		return nil, fmt.Errorf("invalid generated filename")
-	}
-	}
-
-	// Ensure filePath is within s.uploadDir
-	absFilePath, err := filepath.Abs(filePath)
-	absUploadDir, err2 := filepath.Abs(s.uploadDir)
-	if err != nil || err2 != nil || !strings.HasPrefix(absFilePath, absUploadDir) {
-		return nil, fmt.Errorf("file path escapes upload directory")
 	}
 
 	// Generate unique filename
 	ext := filepath.Ext(header.Filename)
 	filename := fmt.Sprintf("%s_%s%s", taskHash, time.Now().String(), ext)
+
+	// Ensure filename contains no path separators (belt-and-suspenders)
+	if strings.Contains(filename, "/") || strings.Contains(filename, "\\") || strings.Contains(filename, "..") {
+		return nil, fmt.Errorf("invalid generated filename")
+	}
+
 	filePath := filepath.Join(s.uploadDir, filename)
+
+	// Ensure filePath is within s.uploadDir
+	absFilePath, err := filepath.Abs(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve file path: %w", err)
+	}
+	absUploadDir, err := filepath.Abs(s.uploadDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve upload directory: %w", err)
+	}
+	if !strings.HasPrefix(absFilePath, absUploadDir+string(os.PathSeparator)) && absFilePath != absUploadDir {
+		return nil, fmt.Errorf("file path escapes upload directory")
+	}
 
 	// Create file
 	dst, err := os.Create(absFilePath)
