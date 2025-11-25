@@ -198,9 +198,6 @@ func (s *Service) processEvent(ctx context.Context, event *entities.Event) {
 			}
 		}
 	}
-
-	// TODO: Implement notification integrations (Discord, Slack, etc.)
-	// TODO: Implement custom integration handlers
 }
 
 // Enabled returns whether the integration service is enabled

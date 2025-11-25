@@ -31,7 +31,7 @@ func TestEnableRealTimeEmission(t *testing.T) {
 	assert.Equal(t, 50, cap(svc2.eventChan))
 }
 
-func TestEnableRealTimeEmission_MultipleBufferSizes(t *testing.T) {
+func TestEnableRealTimeEmissionMultipleBufferSizes(t *testing.T) {
 	tests := []struct {
 		name       string
 		bufferSize int

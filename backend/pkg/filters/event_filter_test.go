@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jfxdev/gardarr/internal/constants"
 	"github.com/jfxdev/gardarr/internal/entities"
 )
 
@@ -323,7 +324,7 @@ func TestMatchesEventRealWorldScenarioCompletedTorrents(t *testing.T) {
 	completedEvent := &entities.Event{
 		UUID:      uuid.New(),
 		AgentID:   uuid.New(),
-		Type:      "torrent.state_change",
+		Type:      constants.EventTypeTorrentStateChange,
 		TaskHash:  "abc123",
 		OldValue:  "downloading",
 		NewValue:  "completed",
@@ -342,7 +343,7 @@ func TestMatchesEventRealWorldScenarioCompletedTorrents(t *testing.T) {
 	downloadingEvent := &entities.Event{
 		UUID:      uuid.New(),
 		AgentID:   uuid.New(),
-		Type:      "torrent.state_change",
+		Type:      constants.EventTypeTorrentStateChange,
 		TaskHash:  "def456",
 		OldValue:  "paused",
 		NewValue:  "downloading",
@@ -396,32 +397,32 @@ func TestMatchesEventRealWorldScenarioMovieCategory(t *testing.T) {
 func TestMatchesEventEventTypeFilterMatch(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:            uuid.New(),
-		EventTypeFilter: "torrent.completed",
+		EventTypeFilter: constants.EventTypeTorrentCompleted,
 	}
 
 	event := &entities.Event{
 		UUID: uuid.New(),
-		Type: "torrent.completed",
+		Type: constants.EventTypeTorrentCompleted,
 	}
 
 	if !MatchesEvent(filter, event) {
-		t.Error("Expected event with type 'torrent.completed' to match filter")
+		t.Errorf("Expected event with type '%s' to match filter", constants.EventTypeTorrentCompleted)
 	}
 }
 
 func TestMatchesEventEventTypeFilterNoMatch(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:            uuid.New(),
-		EventTypeFilter: "torrent.completed",
+		EventTypeFilter: constants.EventTypeTorrentCompleted,
 	}
 
 	event := &entities.Event{
 		UUID: uuid.New(),
-		Type: "torrent.added",
+		Type: constants.EventTypeTorrentAdded,
 	}
 
 	if MatchesEvent(filter, event) {
-		t.Error("Expected event with type 'torrent.added' to NOT match 'torrent.completed' filter")
+		t.Errorf("Expected event with type '%s' to NOT match '%s' filter", constants.EventTypeTorrentAdded, constants.EventTypeTorrentCompleted)
 	}
 }
 
@@ -433,7 +434,7 @@ func TestMatchesEventEventTypeFilterCaseInsensitive(t *testing.T) {
 
 	event := &entities.Event{
 		UUID: uuid.New(),
-		Type: "torrent.completed",
+		Type: constants.EventTypeTorrentCompleted,
 	}
 
 	if !MatchesEvent(filter, event) {
@@ -444,13 +445,13 @@ func TestMatchesEventEventTypeFilterCaseInsensitive(t *testing.T) {
 func TestMatchesEventEventTypeAndStatusFilterBothMatch(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:            uuid.New(),
-		EventTypeFilter: "torrent.state_change",
+		EventTypeFilter: constants.EventTypeTorrentStateChange,
 		StatusFilter:    []string{"UPLOADING", "DOWNLOADING"},
 	}
 
 	event := &entities.Event{
 		UUID:     uuid.New(),
-		Type:     "torrent.state_change",
+		Type:     constants.EventTypeTorrentStateChange,
 		NewValue: "UPLOADING",
 	}
 
@@ -462,13 +463,13 @@ func TestMatchesEventEventTypeAndStatusFilterBothMatch(t *testing.T) {
 func TestMatchesEventEventTypeAndStatusFilterEventTypeNoMatch(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:            uuid.New(),
-		EventTypeFilter: "torrent.completed",
+		EventTypeFilter: constants.EventTypeTorrentCompleted,
 		StatusFilter:    []string{"UPLOADING"},
 	}
 
 	event := &entities.Event{
 		UUID:     uuid.New(),
-		Type:     "torrent.state_change",
+		Type:     constants.EventTypeTorrentStateChange,
 		NewValue: "UPLOADING",
 	}
 
@@ -480,13 +481,13 @@ func TestMatchesEventEventTypeAndStatusFilterEventTypeNoMatch(t *testing.T) {
 func TestMatchesEventEventTypeAndStatusFilterStatusNoMatch(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:            uuid.New(),
-		EventTypeFilter: "torrent.state_change",
+		EventTypeFilter: constants.EventTypeTorrentStateChange,
 		StatusFilter:    []string{"UPLOADING"},
 	}
 
 	event := &entities.Event{
 		UUID:     uuid.New(),
-		Type:     "torrent.state_change",
+		Type:     constants.EventTypeTorrentStateChange,
 		NewValue: "DOWNLOADING",
 	}
 
@@ -498,13 +499,13 @@ func TestMatchesEventEventTypeAndStatusFilterStatusNoMatch(t *testing.T) {
 func TestMatchesEventEventTypeAndCategoryFilterBothMatch(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:            uuid.New(),
-		EventTypeFilter: "torrent.added",
+		EventTypeFilter: constants.EventTypeTorrentAdded,
 		CategoryFilter:  []string{"movies"},
 	}
 
 	event := &entities.Event{
 		UUID: uuid.New(),
-		Type: "torrent.added",
+		Type: constants.EventTypeTorrentAdded,
 		Metadata: map[string]interface{}{
 			"category": "movies",
 			"name":     "Test Movie",
@@ -512,14 +513,14 @@ func TestMatchesEventEventTypeAndCategoryFilterBothMatch(t *testing.T) {
 	}
 
 	if !MatchesEvent(filter, event) {
-		t.Error("Expected event to match both event type and category filters")
+		t.Errorf("Expected event to match both event type '%s' and category filters", constants.EventTypeTorrentAdded)
 	}
 }
 
 func TestMatchesEventAllFiltersApplied(t *testing.T) {
 	filter := &entities.EventFilter{
 		UUID:            uuid.New(),
-		EventTypeFilter: "torrent.state_change",
+		EventTypeFilter: constants.EventTypeTorrentStateChange,
 		StatusFilter:    []string{"DOWNLOADING"},
 		CategoryFilter:  []string{"movies"},
 		NameTerms:       []string{"ubuntu"},
@@ -527,7 +528,7 @@ func TestMatchesEventAllFiltersApplied(t *testing.T) {
 
 	event := &entities.Event{
 		UUID:     uuid.New(),
-		Type:     "torrent.state_change",
+		Type:     constants.EventTypeTorrentStateChange,
 		NewValue: "DOWNLOADING",
 		Metadata: map[string]interface{}{
 			"category": "movies",
@@ -542,7 +543,7 @@ func TestMatchesEventAllFiltersApplied(t *testing.T) {
 	// Test with one filter not matching
 	eventWrongCategory := &entities.Event{
 		UUID:     uuid.New(),
-		Type:     "torrent.state_change",
+		Type:     constants.EventTypeTorrentStateChange,
 		NewValue: "DOWNLOADING",
 		Metadata: map[string]interface{}{
 			"category": "tv-shows",

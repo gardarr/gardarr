@@ -6,24 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Webhook, Bell, Plug, Monitor, BookOpen, Joystick, Activity } from 'lucide-react';
 import { api } from '@/lib/api';
-import { EventList } from '@/components/EventList';
-
-interface Event {
-  uuid: string;
-  agent_id: string;
-  type: string;
-  task_hash: string;
-  old_value?: string;
-  new_value?: string;
-  metadata?: {
-    name?: string;
-    progress?: number;
-    old_progress?: number;
-    new_progress?: number;
-    last_progress?: number;
-  };
-  created_at: string;
-}
+import { EventList, type Event, type FilterType } from '@/components/EventList';
 
 interface EventsResponse {
   events: Event[];
@@ -39,7 +22,7 @@ export default function IntegrationsPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [limit] = useState(10);
-  const [filterType, setFilterType] = useState<string>("all");
+  const [filterType, setFilterType] = useState<FilterType>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   const loadEvents = useCallback(async () => {
@@ -185,7 +168,11 @@ export default function IntegrationsPage() {
                     variant="outline" 
                     className="w-full"
                     disabled={integration.id !== 'webhook'}
-                    onClick={() => integration.id === 'webhook' && navigate('/integrations/webhooks')}
+                    onClick={() => {
+                     if (integration.id === 'webhook') {
+                      navigate('/integrations/webhooks');
+                    }
+                  }}
                   >
                     {integration.id === 'webhook' 
                       ? t('integrations.configure') 

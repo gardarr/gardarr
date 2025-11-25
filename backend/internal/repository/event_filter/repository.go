@@ -22,6 +22,10 @@ func NewRepository(db *database.Database) *Repository {
 	}
 }
 
+var (
+	errEventFilterNotFound = errors.New("event filter not found")
+)
+
 // CreateEventFilter inserts a new event filter into the database
 func (r *Repository) CreateEventFilter(ctx context.Context, filter entities.EventFilter) (*entities.EventFilter, error) {
 	return r.CreateEventFilterTx(ctx, r.db.DB, filter)
@@ -47,7 +51,7 @@ func (r *Repository) GetFilterByUUID(ctx context.Context, id uuid.UUID) (*entiti
 	var model models.EventFilter
 	if err := r.db.DB.WithContext(ctx).Where("uuid = ?", id).First(&model).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("event filter not found")
+			return nil, errEventFilterNotFound
 		}
 		return nil, err
 	}
@@ -58,15 +62,16 @@ func (r *Repository) GetFilterByUUID(ctx context.Context, id uuid.UUID) (*entiti
 // GetFilterByIntegration retrieves the filter for a specific integration (1:1 relationship)
 func (r *Repository) GetFilterByIntegration(ctx context.Context, integrationID uuid.UUID, integrationType entities.EventFilterType) (*entities.EventFilter, error) {
 	var model models.EventFilter
-	err := r.db.DB.WithContext(ctx).
+	result := r.db.DB.WithContext(ctx).
 		Where("integration_id = ? AND integration_type = ?", integrationID, string(integrationType)).
-		First(&model).Error
+		First(&model)
 
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil // No filter is valid (optional relationship)
-		}
-		return nil, err
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return nil, errors.New("event filter not found")
 	}
 
 	return toEntity(model)
@@ -88,7 +93,7 @@ func (r *Repository) UpdateEventFilter(ctx context.Context, filter entities.Even
 
 	if err := r.db.DB.WithContext(ctx).Model(&models.EventFilter{}).Where("uuid = ?", filter.UUID).Updates(updates).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("event filter not found")
+			return nil, errEventFilterNotFound
 		}
 		return nil, err
 	}
@@ -104,7 +109,7 @@ func (r *Repository) DeleteEventFilter(ctx context.Context, id uuid.UUID) error 
 	}
 
 	if result.RowsAffected == 0 {
-		return errors.New("event filter not found")
+		return errEventFilterNotFound
 	}
 
 	return nil

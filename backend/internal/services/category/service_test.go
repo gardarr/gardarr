@@ -233,7 +233,7 @@ func TestServiceDeleteCategory(t *testing.T) {
 	}
 }
 
-func TestServiceIntegration_FullCRUD(t *testing.T) {
+func TestServiceIntegrationFullCRUD(t *testing.T) {
 	db := database.SetupTestDB(t, &models.Category{})
 	service := NewService(db)
 	ctx := context.Background()

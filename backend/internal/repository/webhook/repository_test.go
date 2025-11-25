@@ -10,6 +10,14 @@ import (
 	"github.com/jfxdev/gardarr/internal/models"
 )
 
+const (
+	expectedNoError                 = "Expected no error, got %v"
+	expectedURLError                = "Expected URL %s, got %s"
+	expectedInsecureSkipVerifyError = "Expected InsecureSkipVerify %v, got %v"
+	faileToCreateWebhookError       = "Failed to create webhook: %v"
+	testWebhookURL                  = "https://example.com/test"
+)
+
 func TestRepositoryCreateWebhook(t *testing.T) {
 	db := database.SetupTestDBWithMigrations(t)
 	repo := NewRepository(db)
@@ -25,7 +33,7 @@ func TestRepositoryCreateWebhook(t *testing.T) {
 
 	created, err := repo.CreateWebhook(ctx, webhook)
 	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
+		t.Fatalf(expectedNoError, err)
 	}
 
 	if created == nil {
@@ -37,11 +45,11 @@ func TestRepositoryCreateWebhook(t *testing.T) {
 	}
 
 	if created.URL != webhook.URL {
-		t.Errorf("Expected URL %s, got %s", webhook.URL, created.URL)
+		t.Errorf(expectedURLError, webhook.URL, created.URL)
 	}
 
 	if created.InsecureSkipVerify != webhook.InsecureSkipVerify {
-		t.Errorf("Expected InsecureSkipVerify %v, got %v", webhook.InsecureSkipVerify, created.InsecureSkipVerify)
+		t.Errorf(expectedInsecureSkipVerifyError, webhook.InsecureSkipVerify, created.InsecureSkipVerify)
 	}
 
 	if created.Enabled != webhook.Enabled {
@@ -61,7 +69,7 @@ func TestRepositoryListWebhooks(t *testing.T) {
 	// Test empty list
 	webhooks, err := repo.ListWebhooks(ctx)
 	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
+		t.Fatalf(expectedNoError, err)
 	}
 
 	if len(webhooks) != 0 {
@@ -78,14 +86,14 @@ func TestRepositoryListWebhooks(t *testing.T) {
 	for _, wh := range testWebhooks {
 		_, err := repo.CreateWebhook(ctx, wh)
 		if err != nil {
-			t.Fatalf("Failed to create webhook: %v", err)
+			t.Fatalf(faileToCreateWebhookError, err)
 		}
 	}
 
 	// List all webhooks
 	webhooks, err = repo.ListWebhooks(ctx)
 	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
+		t.Fatalf(expectedNoError, err)
 	}
 
 	if len(webhooks) != len(testWebhooks) {
@@ -108,14 +116,14 @@ func TestRepositoryListEnabledWebhooks(t *testing.T) {
 	for _, wh := range testWebhooks {
 		_, err := repo.CreateWebhook(ctx, wh)
 		if err != nil {
-			t.Fatalf("Failed to create webhook: %v", err)
+			t.Fatalf(faileToCreateWebhookError, err)
 		}
 	}
 
 	// List only enabled webhooks
 	webhooks, err := repo.ListEnabledWebhooks(ctx)
 	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
+		t.Fatalf(expectedNoError, err)
 	}
 
 	if len(webhooks) != 2 {
@@ -138,7 +146,7 @@ func TestRepositoryGetWebhookByUUID(t *testing.T) {
 	// Create a webhook
 	webhook := entities.Webhook{
 		UUID:               uuid.New(),
-		URL:                "https://example.com/test",
+		URL:                testWebhookURL,
 		InsecureSkipVerify: true,
 		Enabled:            true,
 		TimeoutSeconds:     25,
@@ -146,13 +154,13 @@ func TestRepositoryGetWebhookByUUID(t *testing.T) {
 
 	created, err := repo.CreateWebhook(ctx, webhook)
 	if err != nil {
-		t.Fatalf("Failed to create webhook: %v", err)
+		t.Fatalf(faileToCreateWebhookError, err)
 	}
 
 	// Get by UUID
 	retrieved, err := repo.GetWebhookByUUID(ctx, created.UUID)
 	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
+		t.Fatalf(expectedNoError, err)
 	}
 
 	if retrieved.UUID != created.UUID {
@@ -160,11 +168,11 @@ func TestRepositoryGetWebhookByUUID(t *testing.T) {
 	}
 
 	if retrieved.URL != created.URL {
-		t.Errorf("Expected URL %s, got %s", created.URL, retrieved.URL)
+		t.Errorf(expectedURLError, created.URL, retrieved.URL)
 	}
 
 	if retrieved.InsecureSkipVerify != created.InsecureSkipVerify {
-		t.Errorf("Expected InsecureSkipVerify %v, got %v", created.InsecureSkipVerify, retrieved.InsecureSkipVerify)
+		t.Errorf(expectedInsecureSkipVerifyError, created.InsecureSkipVerify, retrieved.InsecureSkipVerify)
 	}
 
 	// Test non-existent UUID
@@ -190,7 +198,7 @@ func TestRepositoryUpdateWebhook(t *testing.T) {
 
 	created, err := repo.CreateWebhook(ctx, webhook)
 	if err != nil {
-		t.Fatalf("Failed to create webhook: %v", err)
+		t.Fatalf(faileToCreateWebhookError, err)
 	}
 
 	// Update the webhook
@@ -201,7 +209,7 @@ func TestRepositoryUpdateWebhook(t *testing.T) {
 
 	updated, err := repo.UpdateWebhook(ctx, *created)
 	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
+		t.Fatalf(expectedNoError, err)
 	}
 
 	if updated.URL != "https://example.com/updated" {
@@ -223,7 +231,7 @@ func TestRepositoryUpdateWebhook(t *testing.T) {
 	// Test update non-existent webhook
 	nonExistent := entities.Webhook{
 		UUID: uuid.New(),
-		URL:  "https://example.com/test",
+		URL:  testWebhookURL,
 	}
 	_, err = repo.UpdateWebhook(ctx, nonExistent)
 	if err == nil {
@@ -246,13 +254,13 @@ func TestRepositoryDeleteWebhook(t *testing.T) {
 
 	created, err := repo.CreateWebhook(ctx, webhook)
 	if err != nil {
-		t.Fatalf("Failed to create webhook: %v", err)
+		t.Fatalf(faileToCreateWebhookError, err)
 	}
 
 	// Delete the webhook
 	err = repo.DeleteWebhook(ctx, created.UUID)
 	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
+		t.Fatalf(expectedNoError, err)
 	}
 
 	// Verify deletion
@@ -272,7 +280,7 @@ func TestRepositoryToWebhookConversion(t *testing.T) {
 	id := uuid.New()
 	model := models.Webhook{
 		UUID:               id,
-		URL:                "https://example.com/test",
+		URL:                testWebhookURL,
 		InsecureSkipVerify: true,
 		Enabled:            false,
 		TimeoutSeconds:     45,
@@ -285,11 +293,11 @@ func TestRepositoryToWebhookConversion(t *testing.T) {
 	}
 
 	if entity.URL != model.URL {
-		t.Errorf("Expected URL %s, got %s", model.URL, entity.URL)
+		t.Errorf(expectedURLError, model.URL, entity.URL)
 	}
 
 	if entity.InsecureSkipVerify != model.InsecureSkipVerify {
-		t.Errorf("Expected InsecureSkipVerify %v, got %v", model.InsecureSkipVerify, entity.InsecureSkipVerify)
+		t.Errorf(expectedInsecureSkipVerifyError, model.InsecureSkipVerify, entity.InsecureSkipVerify)
 	}
 
 	if entity.Enabled != model.Enabled {

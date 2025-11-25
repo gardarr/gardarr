@@ -60,7 +60,7 @@ func TestRepositoryGetTokenByValue(t *testing.T) {
 	}
 }
 
-func TestRepositoryGetTokenByValue_NotFound(t *testing.T) {
+func TestRepositoryGetTokenByValueNotFound(t *testing.T) {
 	db := database.SetupTestDB(t, &models.SignupToken{})
 	repo := NewRepository(db)
 	ctx := context.Background()
@@ -172,7 +172,7 @@ func TestRepositoryDeleteToken(t *testing.T) {
 	}
 }
 
-func TestRepositoryDeleteToken_NotFound(t *testing.T) {
+func TestRepositoryDeleteTokenNotFound(t *testing.T) {
 	db := database.SetupTestDB(t, &models.SignupToken{})
 	repo := NewRepository(db)
 	ctx := context.Background()

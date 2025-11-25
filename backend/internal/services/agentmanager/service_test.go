@@ -3,6 +3,7 @@ package agentmanager
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -124,27 +125,11 @@ func TestContains(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.s+"_"+tt.substr, func(t *testing.T) {
-			if got := contains(tt.s, tt.substr); got != tt.want {
+			if got := strings.Contains(tt.s, tt.substr); got != tt.want {
 				t.Errorf("contains(%q, %q) = %v, want %v", tt.s, tt.substr, got, tt.want)
 			}
 		})
 	}
-}
-
-// Helper function to check if a string contains a substring
-func contains(s, substr string) bool {
-	if len(substr) == 0 {
-		return true
-	}
-	if len(s) < len(substr) {
-		return false
-	}
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
 
 // MockRepository is a mock implementation for testing

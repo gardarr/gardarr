@@ -676,8 +676,6 @@
   "integrations": {
     "title": "Integrations",
     "subtitle": "Connect Gardarr with external services and tools",
-    "configure": "Configure",
-    "comingSoon": "Coming Soon",
     "categories": {
       "notifications": "Notifications",
       "notificationsDescription": "Configure notification services to receive alerts about your torrents",
@@ -743,6 +741,14 @@
       "title": "Event Filters",
       "subtitle": "Configure which events trigger this webhook",
       "noFilters": "No filters - all events will be sent",
+      "eventTypeLabel": "Event Type",
+      "eventTypePlaceholder": "Select an event type",
+      "eventTypeAll": "All event types",
+      "eventTypeNoFilter": "No filter applied",
+      "eventTypeHelp": "Select an event type to filter which events trigger this webhook",
+      "additionalFiltersLabel": "Additional Filters",
+      "addFilterButton": "Add Filter",
+      "addStatusButton": "Add Status",
       "statusLabel": "Status Filter",
       "statusHelp": "Filter by event status (e.g., completed, seeding). Leave empty for all statuses.",
       "statusPlaceholder": "completed, seeding, downloading",

@@ -271,7 +271,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {location.pathname === "/agents" && t("navigation.agents")}
               {location.pathname === "/categories" && t("navigation.categories")}
               {location.pathname === "/users" && t("navigation.users")}
-              {location.pathname === "/history" && t("navigation.history")}
               {location.pathname === "/integrations" && t("navigation.integrations")}
               {location.pathname === "/settings" && t("navigation.settings")}
               {location.pathname === "/profile" && t("navigation.profile")}

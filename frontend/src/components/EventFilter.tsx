@@ -107,23 +107,27 @@ export function EventFilter({
 
       {/* Event Type Filter - Always visible */}
       <div className="mb-4">
-        <Label htmlFor={`${idPrefix}event-type-filter`} className="mb-3 block">Event Type</Label>
+        <Label htmlFor={`${idPrefix}event-type-filter`} className="mb-3 block">
+          {t('webhooks.filters.eventTypeLabel')}
+        </Label>
         <Select
           value={eventTypeFilter || 'all'}
           onValueChange={(value) => onEventTypeFilterChange(value === 'all' ? '' : value)}
         >
           <SelectTrigger id={`${idPrefix}event-type-filter`} className="w-full">
-            <SelectValue placeholder="Select an event type">
+            <SelectValue placeholder={t('webhooks.filters.eventTypePlaceholder')}>
               {eventTypeFilter && eventTypeFilter !== 'all' 
                 ? EVENT_TYPE_LABELS[eventTypeFilter as keyof typeof EVENT_TYPE_LABELS] 
-                : 'All event types'}
+                : t('webhooks.filters.eventTypeAll')}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">
               <div className="flex flex-col items-start gap-0.5">
-                <span className="font-medium">All event types</span>
-                <span className="text-xs text-muted-foreground">No filter applied</span>
+                <span className="font-medium">{t('webhooks.filters.eventTypeAll')}</span>
+                <span className="text-xs text-muted-foreground">
+                  {t('webhooks.filters.eventTypeNoFilter')}
+                </span>
               </div>
             </SelectItem>
             {EVENT_TYPES.map((eventType) => (
@@ -141,7 +145,7 @@ export function EventFilter({
         <p className="text-sm text-muted-foreground mt-2">
           {eventTypeFilter && eventTypeFilter !== 'all' && EVENT_TYPE_DESCRIPTIONS[eventTypeFilter as keyof typeof EVENT_TYPE_DESCRIPTIONS] 
             ? EVENT_TYPE_DESCRIPTIONS[eventTypeFilter as keyof typeof EVENT_TYPE_DESCRIPTIONS]
-            : 'Select an event type to filter which events trigger this webhook'}
+            : t('webhooks.filters.eventTypeHelp')}
         </p>
       </div>
 
@@ -150,7 +154,9 @@ export function EventFilter({
 
       <div className="flex items-center justify-between mb-4">
         <div className="space-y-1">
-          <Label className="text-base font-semibold">Additional Filters</Label>
+          <Label className="text-base font-semibold">
+            {t('webhooks.filters.additionalFiltersLabel')}
+          </Label>
           <p className="text-sm text-muted-foreground">{t('webhooks.filters.subtitle')}</p>
         </div>
 
@@ -159,7 +165,7 @@ export function EventFilter({
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm">
                 <Plus className="h-4 w-4 mr-2" />
-                Add Filter
+                {t('webhooks.filters.addFilterButton')}
               </Button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-auto p-2">
@@ -228,7 +234,7 @@ export function EventFilter({
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className="w-full">
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Status
+                  {t('webhooks.filters.addStatusButton')}
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="start" className="w-80 p-2">

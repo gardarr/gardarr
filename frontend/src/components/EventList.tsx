@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { normalizeTaskStatus } from "@/utils/statusUtils";
+import { type EventType, EVENT_TYPES } from "@/constants/eventTypes";
 import {
   Select,
   SelectContent,
@@ -24,7 +25,6 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { 
-  Activity, 
   AlertCircle,
   CheckCircle,
   XCircle,
@@ -35,10 +35,12 @@ import {
   Search
 } from "lucide-react";
 
-interface Event {
+export type FilterType = EventType | "all";
+
+export interface Event {
   uuid: string;
   agent_id: string;
-  type: string;
+  type: EventType;
   task_hash: string;
   old_value?: string;
   new_value?: string;
@@ -58,9 +60,9 @@ interface EventListProps {
   total: number;
   page: number;
   limit: number;
-  filterType: string;
+  filterType: FilterType;
   searchQuery?: string;
-  onFilterChange: (value: string) => void;
+  onFilterChange: (value: FilterType) => void;
   onPageChange: (page: number) => void;
   onRefresh: () => void;
   onSearchChange?: (query: string) => void;
@@ -106,7 +108,7 @@ export function EventList({
     return t("history.time.daysAgo", { count: diffDays });
   };
 
-  const getEventIcon = (type: string) => {
+  const getEventIcon = (type: EventType) => {
     switch (type) {
       case "torrent.state_change":
         return <ArrowRightLeft className="h-5 w-5" />;
@@ -116,12 +118,10 @@ export function EventList({
         return <XCircle className="h-5 w-5" />;
       case "torrent.completed":
         return <CheckCircle className="h-5 w-5" />;
-      default:
-        return <Activity className="h-5 w-5" />;
     }
   };
 
-  const getEventColor = (type: string) => {
+  const getEventColor = (type: EventType) => {
     switch (type) {
       case "torrent.state_change":
         return "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20";
@@ -131,8 +131,6 @@ export function EventList({
         return "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20";
       case "torrent.completed":
         return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
-      default:
-        return "bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20";
     }
   };
 
@@ -143,8 +141,6 @@ export function EventList({
       case "torrent.removed":
       case "torrent.completed":
         return null;
-      default:
-        return "";
     }
   };
 
@@ -163,15 +159,15 @@ export function EventList({
     );
   };
 
-  const getEventBadge = (type: string) => {
-    const typeMap: Record<string, string> = {
+  const getEventBadge = (type: EventType) => {
+    const typeMap: Record<EventType, string> = {
       "torrent.state_change": t("history.badge.stateChange"),
       "torrent.added": t("history.badge.added"),
       "torrent.removed": t("history.badge.removed"),
       "torrent.completed": t("history.badge.completed"),
     };
     
-    return typeMap[type] || type;
+    return typeMap[type];
   };
 
   // Filter events based on search query (client-side filtering)
@@ -245,14 +241,17 @@ export function EventList({
             value={searchQuery}
             onChange={(e) => {
               onSearchChange?.(e.target.value);
-              onPageChange(0);
+              // Only reset page if parent doesn't handle search (onSearchChange undefined)
+              if (!onSearchChange) {
+                onPageChange(0);
+              }
             }}
             className="pl-9 h-9"
           />
         </div>
         
         <Select value={filterType} onValueChange={(value) => {
-          onFilterChange(value);
+          onFilterChange(value as FilterType);
           onPageChange(0);
         }}>
           <SelectTrigger className="w-[160px] sm:w-[200px]">
@@ -261,10 +260,11 @@ export function EventList({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("history.filter.all")}</SelectItem>
-            <SelectItem value="torrent.state_change">{t("history.badge.stateChange")}</SelectItem>
-            <SelectItem value="torrent.added">{t("history.badge.added")}</SelectItem>
-            <SelectItem value="torrent.removed">{t("history.badge.removed")}</SelectItem>
-            <SelectItem value="torrent.completed">{t("history.badge.completed")}</SelectItem>
+            {EVENT_TYPES.map((eventType) => (
+              <SelectItem key={eventType} value={eventType}>
+                {getEventBadge(eventType)}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
         

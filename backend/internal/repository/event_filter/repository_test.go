@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/jfxdev/gardarr/internal/constants"
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/stretchr/testify/assert"
@@ -194,7 +195,7 @@ func TestEventFilterWithEventType(t *testing.T) {
 		UUID:            uuid.New(),
 		IntegrationID:   uuid.New(),
 		IntegrationType: entities.EventFilterTypeWebhook,
-		EventTypeFilter: "torrent.added",
+		EventTypeFilter: constants.EventTypeTorrentAdded,
 		StatusFilter:    []string{},
 		CategoryFilter:  []string{},
 		NameTerms:       []string{},
@@ -203,7 +204,7 @@ func TestEventFilterWithEventType(t *testing.T) {
 	created, err := repo.CreateEventFilter(ctx, filter)
 	require.NoError(t, err)
 	assert.NotNil(t, created)
-	assert.Equal(t, "torrent.added", created.EventTypeFilter)
+	assert.Equal(t, constants.EventTypeTorrentAdded, created.EventTypeFilter)
 	assert.Empty(t, created.StatusFilter)
 	assert.Empty(t, created.CategoryFilter)
 	assert.Empty(t, created.NameTerms)
@@ -211,5 +212,5 @@ func TestEventFilterWithEventType(t *testing.T) {
 	// Verify it can be retrieved
 	retrieved, err := repo.GetFilterByUUID(ctx, created.UUID)
 	require.NoError(t, err)
-	assert.Equal(t, "torrent.added", retrieved.EventTypeFilter)
+	assert.Equal(t, constants.EventTypeTorrentAdded, retrieved.EventTypeFilter)
 }
