@@ -60,6 +60,7 @@ func (r *Repository) GetFilterByUUID(ctx context.Context, id uuid.UUID) (*entiti
 }
 
 // GetFilterByIntegration retrieves the filter for a specific integration (1:1 relationship)
+// Returns nil, nil if no filter exists for the integration
 func (r *Repository) GetFilterByIntegration(ctx context.Context, integrationID uuid.UUID, integrationType entities.EventFilterType) (*entities.EventFilter, error) {
 	var model models.EventFilter
 	result := r.db.DB.WithContext(ctx).
@@ -67,11 +68,10 @@ func (r *Repository) GetFilterByIntegration(ctx context.Context, integrationID u
 		First(&model)
 
 	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, result.Error
-	}
-
-	if result.RowsAffected == 0 {
-		return nil, errors.New("event filter not found")
 	}
 
 	return toEntity(model)
