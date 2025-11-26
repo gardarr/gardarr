@@ -69,12 +69,26 @@ func (s *Repository) GetPreferences(ctx context.Context) (*entities.InstancePref
 		return nil, errors.Wrap(err, "failed to get global settings")
 	}
 
+	globalDownloadLimit, err := s.client.GetGlobalDownloadLimit()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get global download limit")
+	}
+
+	globalUploadLimit, err := s.client.GetGlobalUploadLimit()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get global upload limit")
+	}
+
 	return &entities.InstancePreferences{
 		GlobalRateLimits: entities.InstancePreferencesGlobalRateLimits{
-			DownloadSpeedLimit:        settings.GlobalDLSpeedLimit,
-			DownloadSpeedLimitEnabled: settings.GlobalDLSpeedLimitEnabled,
-			UploadSpeedLimit:          settings.GlobalUPSpeedLimit,
-			UploadSpeedLimitEnabled:   settings.GlobalUPSpeedLimitEnabled,
+			DownloadSpeedLimit: globalDownloadLimit,
+			UploadSpeedLimit:   globalUploadLimit,
+		},
+		ActiveTorrentLimits: entities.InstancePreferencesActiveTorrentLimits{
+			MaxActiveDownloads:        settings.MaxActiveDownloads,
+			MaxActiveUploads:          settings.MaxActiveUploads,
+			MaxActiveTorrents:         settings.MaxActiveTorrents,
+			MaxActiveCheckingTorrents: settings.MaxActiveCheckingTorrents,
 		},
 	}, nil
 }
@@ -97,7 +111,7 @@ func (s *Repository) GetStatus() string {
 }
 
 func (s *Repository) SetDownloadSpeedLimit(limit int) error {
-	if err := s.client.SetDownloadSpeedLimit(limit); err != nil {
+	if err := s.client.SetGlobalDownloadSpeedLimit(limit); err != nil {
 		return errors.Wrap(err, "failed to set download speed limit")
 	}
 
@@ -105,8 +119,16 @@ func (s *Repository) SetDownloadSpeedLimit(limit int) error {
 }
 
 func (s *Repository) SetUploadSpeedLimit(limit int) error {
-	if err := s.client.SetUploadSpeedLimit(limit); err != nil {
+	if err := s.client.SetGlobalUploadSpeedLimit(limit); err != nil {
 		return errors.Wrap(err, "failed to set upload speed limit")
+	}
+
+	return nil
+}
+
+func (s *Repository) SetMaxActiveTorrentLimits(maxDownloads, maxUploads, maxTorrents, maxChecking int) error {
+	if err := s.client.SetMaxActiveTorrentLimits(maxDownloads, maxUploads, maxTorrents, maxChecking); err != nil {
+		return errors.Wrap(err, "failed to set max active torrent limits")
 	}
 
 	return nil

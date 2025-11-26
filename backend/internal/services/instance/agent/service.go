@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"errors"
 
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/interfaces"
@@ -42,10 +43,31 @@ func (s *service) GetPreferences(ctx context.Context) (*entities.InstancePrefere
 	return s.repository.GetPreferences(ctx)
 }
 
-func (s *service) SetDownloadSpeedLimit(ctx context.Context, schema schemas.InstanceSetDownloadSpeedLimitSchema) error {
-	return s.repository.SetDownloadSpeedLimit(schema.Limit)
+func (s *service) SetSpeedLimit(ctx context.Context, schema schemas.InstanceSetSpeedLimitSchema) error {
+	if schema.DownloadLimit < -1 {
+		return errors.New("download limit must be greater than or equal to -1")
+	}
+
+	if schema.UploadLimit < -1 {
+		return errors.New("upload limit must be greater than or equal to -1")
+	}
+
+	if err := s.repository.SetDownloadSpeedLimit(schema.DownloadLimit); err != nil {
+		return err
+	}
+
+	if err := s.repository.SetUploadSpeedLimit(schema.UploadLimit); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (s *service) SetUploadSpeedLimit(ctx context.Context, schema schemas.InstanceSetUploadSpeedLimitSchema) error {
-	return s.repository.SetUploadSpeedLimit(schema.Limit)
+func (s *service) SetMaxActiveTorrentLimits(ctx context.Context, schema schemas.InstanceSetMaxActiveTorrentLimitsSchema) error {
+	return s.repository.SetMaxActiveTorrentLimits(
+		schema.MaxActiveDownloads,
+		schema.MaxActiveUploads,
+		schema.MaxActiveTorrents,
+		schema.MaxActiveCheckingTorrents,
+	)
 }

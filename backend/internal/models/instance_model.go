@@ -24,12 +24,18 @@ type InstanceTransferResponse struct {
 }
 
 type InstancePreferencesResponse struct {
-	GlobalRateLimits InstancePreferencesGlobalRateLimitsResponse `json:"global_rate_limits"`
+	GlobalRateLimits    InstancePreferencesGlobalRateLimitsResponse    `json:"global_rate_limits"`
+	ActiveTorrentLimits InstancePreferencesActiveTorrentLimitsResponse `json:"active_torrent_limits"`
 }
 
 type InstancePreferencesGlobalRateLimitsResponse struct {
-	DownloadSpeedLimit        int  `json:"download_speed_limit"`
-	DownloadSpeedLimitEnabled bool `json:"download_speed_limit_enabled"`
-	UploadSpeedLimit          int  `json:"upload_speed_limit"`
-	UploadSpeedLimitEnabled   bool `json:"upload_speed_limit_enabled"`
+	DownloadSpeedLimit int `json:"download_speed_limit"`
+	UploadSpeedLimit   int `json:"upload_speed_limit"`
+}
+
+type InstancePreferencesActiveTorrentLimitsResponse struct {
+	MaxActiveDownloads        int `json:"max_active_downloads"`
+	MaxActiveUploads          int `json:"max_active_uploads"`
+	MaxActiveTorrents         int `json:"max_active_torrents"`
+	MaxActiveCheckingTorrents int `json:"max_active_checking_torrents"`
 }

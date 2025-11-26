@@ -39,10 +39,8 @@ func newMockInstanceRepository() *mockInstanceRepository {
 		},
 		preferences: &entities.InstancePreferences{
 			GlobalRateLimits: entities.InstancePreferencesGlobalRateLimits{
-				DownloadSpeedLimit:        1000000,
-				DownloadSpeedLimitEnabled: true,
-				UploadSpeedLimit:          500000,
-				UploadSpeedLimitEnabled:   true,
+				DownloadSpeedLimit: 1000000,
+				UploadSpeedLimit:   500000,
 			},
 		},
 	}
@@ -77,6 +75,14 @@ func (m *mockInstanceRepository) SetUploadSpeedLimit(limit int) error {
 		return m.uploadError
 	}
 	m.preferences.GlobalRateLimits.UploadSpeedLimit = limit
+	return nil
+}
+
+func (m *mockInstanceRepository) SetMaxActiveTorrentLimits(maxDownloads, maxUploads, maxTorrents, maxChecking int) error {
+	m.preferences.ActiveTorrentLimits.MaxActiveDownloads = maxDownloads
+	m.preferences.ActiveTorrentLimits.MaxActiveUploads = maxUploads
+	m.preferences.ActiveTorrentLimits.MaxActiveTorrents = maxTorrents
+	m.preferences.ActiveTorrentLimits.MaxActiveCheckingTorrents = maxChecking
 	return nil
 }
 
@@ -115,8 +121,8 @@ func TestServiceGetPreferences(t *testing.T) {
 		return
 	}
 
-	if !preferences.GlobalRateLimits.DownloadSpeedLimitEnabled {
-		t.Error("Expected download speed limit to be enabled")
+	if preferences.GlobalRateLimits.DownloadSpeedLimit != 1000000 {
+		t.Errorf("Expected download speed limit 1000000, got %d", preferences.GlobalRateLimits.DownloadSpeedLimit)
 	}
 }
 
@@ -144,12 +150,12 @@ func TestServiceSetDownloadSpeedLimit(t *testing.T) {
 	mockRepo := newMockInstanceRepository()
 	service := &service{repository: mockRepo}
 
-	schema := schemas.InstanceSetDownloadSpeedLimitSchema{
-		Limit: 2000000,
+	schema := schemas.InstanceSetSpeedLimitSchema{
+		DownloadLimit: 2000000,
 	}
 
 	// Test successful download speed limit setting
-	err := service.SetDownloadSpeedLimit(ctx, schema)
+	err := service.SetSpeedLimit(ctx, schema)
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
@@ -161,7 +167,7 @@ func TestServiceSetDownloadSpeedLimit(t *testing.T) {
 
 	// Test with repository error
 	mockRepo.downloadError = errors.New("failed to set limit")
-	err = service.SetDownloadSpeedLimit(ctx, schema)
+	err = service.SetSpeedLimit(ctx, schema)
 	if err == nil {
 		t.Error("Expected error, got nil")
 	}
@@ -172,12 +178,12 @@ func TestServiceSetUploadSpeedLimit(t *testing.T) {
 	mockRepo := newMockInstanceRepository()
 	service := &service{repository: mockRepo}
 
-	schema := schemas.InstanceSetUploadSpeedLimitSchema{
-		Limit: 1000000,
+	schema := schemas.InstanceSetSpeedLimitSchema{
+		UploadLimit: 1000000,
 	}
 
 	// Test successful upload speed limit setting
-	err := service.SetUploadSpeedLimit(ctx, schema)
+	err := service.SetSpeedLimit(ctx, schema)
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
@@ -189,7 +195,7 @@ func TestServiceSetUploadSpeedLimit(t *testing.T) {
 
 	// Test with repository error
 	mockRepo.uploadError = errors.New("failed to set limit")
-	err = service.SetUploadSpeedLimit(ctx, schema)
+	err = service.SetSpeedLimit(ctx, schema)
 	if err == nil {
 		t.Error("Expected error, got nil")
 	}

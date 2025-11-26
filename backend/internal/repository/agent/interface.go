@@ -41,4 +41,6 @@ type RepositoryInterface interface {
 	GetAgentVersion(agent *entities.Agent) (*entities.AgentVersion, error)
 	GetAgentTaskLimits(agent *entities.Agent, taskID string) (*entities.TaskLimits, error)
 	SetAgentTaskShareLimit(agent *entities.Agent, taskID string, limits schemas.TaskSetShareLimitSchema) error
+	SetAgentGlobalSpeedLimits(agent *entities.Agent, schema schemas.InstanceSetSpeedLimitSchema) error
+	SetAgentGlobalActiveLimits(agent *entities.Agent, schema schemas.InstanceSetMaxActiveTorrentLimitsSchema) error
 }

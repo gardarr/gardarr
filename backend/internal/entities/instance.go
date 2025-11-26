@@ -7,14 +7,20 @@ type Instance struct {
 }
 
 type InstancePreferences struct {
-	GlobalRateLimits InstancePreferencesGlobalRateLimits
+	GlobalRateLimits    InstancePreferencesGlobalRateLimits
+	ActiveTorrentLimits InstancePreferencesActiveTorrentLimits
 }
 
 type InstancePreferencesGlobalRateLimits struct {
-	DownloadSpeedLimit        int
-	DownloadSpeedLimitEnabled bool
-	UploadSpeedLimit          int
-	UploadSpeedLimitEnabled   bool
+	DownloadSpeedLimit int
+	UploadSpeedLimit   int
+}
+
+type InstancePreferencesActiveTorrentLimits struct {
+	MaxActiveDownloads        int
+	MaxActiveUploads          int
+	MaxActiveTorrents         int
+	MaxActiveCheckingTorrents int
 }
 
 type InstanceApplication struct {

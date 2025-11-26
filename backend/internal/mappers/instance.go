@@ -35,10 +35,14 @@ func ToInstancePreferencesResponse(e *entities.InstancePreferences) models.Insta
 
 	return models.InstancePreferencesResponse{
 		GlobalRateLimits: models.InstancePreferencesGlobalRateLimitsResponse{
-			DownloadSpeedLimit:        e.GlobalRateLimits.DownloadSpeedLimit,
-			DownloadSpeedLimitEnabled: e.GlobalRateLimits.DownloadSpeedLimitEnabled,
-			UploadSpeedLimit:          e.GlobalRateLimits.UploadSpeedLimit,
-			UploadSpeedLimitEnabled:   e.GlobalRateLimits.UploadSpeedLimitEnabled,
+			DownloadSpeedLimit: e.GlobalRateLimits.DownloadSpeedLimit,
+			UploadSpeedLimit:   e.GlobalRateLimits.UploadSpeedLimit,
+		},
+		ActiveTorrentLimits: models.InstancePreferencesActiveTorrentLimitsResponse{
+			MaxActiveDownloads:        e.ActiveTorrentLimits.MaxActiveDownloads,
+			MaxActiveUploads:          e.ActiveTorrentLimits.MaxActiveUploads,
+			MaxActiveTorrents:         e.ActiveTorrentLimits.MaxActiveTorrents,
+			MaxActiveCheckingTorrents: e.ActiveTorrentLimits.MaxActiveCheckingTorrents,
 		},
 	}
 }
@@ -65,10 +69,14 @@ func ToInstance(body models.InstanceResponse) *entities.Instance {
 func ToInstancePreferences(body models.InstancePreferencesResponse) *entities.InstancePreferences {
 	return &entities.InstancePreferences{
 		GlobalRateLimits: entities.InstancePreferencesGlobalRateLimits{
-			DownloadSpeedLimit:        body.GlobalRateLimits.DownloadSpeedLimit,
-			DownloadSpeedLimitEnabled: body.GlobalRateLimits.DownloadSpeedLimitEnabled,
-			UploadSpeedLimit:          body.GlobalRateLimits.UploadSpeedLimit,
-			UploadSpeedLimitEnabled:   body.GlobalRateLimits.UploadSpeedLimitEnabled,
+			DownloadSpeedLimit: body.GlobalRateLimits.DownloadSpeedLimit,
+			UploadSpeedLimit:   body.GlobalRateLimits.UploadSpeedLimit,
+		},
+		ActiveTorrentLimits: entities.InstancePreferencesActiveTorrentLimits{
+			MaxActiveDownloads:        body.ActiveTorrentLimits.MaxActiveDownloads,
+			MaxActiveUploads:          body.ActiveTorrentLimits.MaxActiveUploads,
+			MaxActiveTorrents:         body.ActiveTorrentLimits.MaxActiveTorrents,
+			MaxActiveCheckingTorrents: body.ActiveTorrentLimits.MaxActiveCheckingTorrents,
 		},
 	}
 }

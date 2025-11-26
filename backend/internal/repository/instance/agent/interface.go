@@ -14,4 +14,5 @@ type RepositoryInterface interface {
 	GetStatus() string
 	SetDownloadSpeedLimit(limit int) error
 	SetUploadSpeedLimit(limit int) error
+	SetMaxActiveTorrentLimits(maxDownloads, maxUploads, maxTorrents, maxChecking int) error
 }

@@ -5,7 +5,10 @@ import type {
   CreateAgentRequest,
   UpdateAgentRequest,
   Version,
-  TaskStats
+  TaskStats,
+  AgentPreferences,
+  SpeedLimitsSchema,
+  ActiveLimitsSchema
 } from '../types/agent';
 
 /**
@@ -82,6 +85,27 @@ export class AgentService {
    */
   async getAgentTaskStats(agentId: string): Promise<ApiResponse<TaskStats>> {
     return api.get<TaskStats>(`/agent/${agentId}/tasks/stats/`);
+  }
+
+  /**
+   * Gets the preferences for a specific agent
+   */
+  async getAgentPreferences(agentId: string): Promise<ApiResponse<AgentPreferences>> {
+    return api.get<AgentPreferences>(`/agent/${agentId}/preferences/`);
+  }
+
+  /**
+   * Sets the speed limits for a specific agent
+   */
+  async setAgentSpeedLimits(agentId: string, limits: SpeedLimitsSchema): Promise<ApiResponse<{ message: string }>> {
+    return api.post<{ message: string }>(`/agent/${agentId}/speed/limits`, limits);
+  }
+
+  /**
+   * Sets the active torrent limits for a specific agent
+   */
+  async setAgentActiveLimits(agentId: string, limits: ActiveLimitsSchema): Promise<ApiResponse<{ message: string }>> {
+    return api.post<{ message: string }>(`/agent/${agentId}/active/limits`, limits);
   }
 }
 

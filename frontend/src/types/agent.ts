@@ -91,3 +91,31 @@ export interface TaskStats {
   tags_usage: Record<string, number>;
   word_cloud: Record<string, number>;
 }
+
+// Agent Preferences Types
+export interface AgentPreferences {
+  global_rate_limits: {
+    download_speed_limit: number;
+    upload_speed_limit: number;
+  };
+  active_torrent_limits: {
+    max_active_downloads: number;
+    max_active_uploads: number;
+    max_active_torrents: number;
+    max_active_checking_torrents: number;
+  };
+}
+
+// Speed Limits Schema
+export interface SpeedLimitsSchema {
+  download_limit: number; // -1 for unlimited
+  upload_limit: number;   // -1 for unlimited
+}
+
+// Active Limits Schema
+export interface ActiveLimitsSchema {
+  max_active_downloads: number;
+  max_active_uploads: number;
+  max_active_torrents: number;
+  max_active_checking_torrents: number;
+}
