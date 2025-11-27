@@ -52,9 +52,10 @@ const applySliderValue = (value: number, setter: (nextValue: number) => void) =>
 
 interface AgentLimitsProps {
     agentId: string;
+    disableScroll?: boolean;
 }
 
-export function AgentLimits({ agentId }: AgentLimitsProps) {
+export function AgentLimits({ agentId, disableScroll = false }: AgentLimitsProps) {
     const { t } = useTranslation();
 
     const [loading, setLoading] = useState(true);
@@ -176,9 +177,8 @@ export function AgentLimits({ agentId }: AgentLimitsProps) {
         );
     }
 
-    return (
-        <ScrollArea className="h-full">
-            <div className="space-y-6 p-4 pb-8">
+    const content = (
+        <div className="space-y-6 p-4 pb-8">
             {/* Speed Limits Section */}
             <div className="space-y-4">
                 <div className="flex items-center gap-2">
@@ -323,7 +323,7 @@ export function AgentLimits({ agentId }: AgentLimitsProps) {
                                 id="max-active-downloads"
                                 type="number"
                                 value={maxActiveDownloads}
-                                onChange={(e) => setMaxActiveDownloads(Math.max(1, parseInt(e.target.value) || 1))}
+                                onChange={(e) => setMaxActiveDownloads(Math.max(1, Number.parseInt(e.target.value, 10) || 1))}
                                 placeholder="1"
                                 min="1"
                             />
@@ -394,7 +394,16 @@ export function AgentLimits({ agentId }: AgentLimitsProps) {
                     </Button>
                 </div>
             </div>
-            </div>
+        </div>
+    );
+
+    if (disableScroll) {
+        return content;
+    }
+
+    return (
+        <ScrollArea className="h-full">
+            {content}
         </ScrollArea>
     );
 }

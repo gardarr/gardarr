@@ -1,7 +1,7 @@
 export function formatBytes(bytes: number): string {
-  if (!bytes || bytes <= 0) return ' 0B';
+  if (!bytes || bytes <= 0) return '0 B';
   const k = 1024;
-  const sizes = ['B', 'Kb', 'Mb', 'Gb', 'Tb'];
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   const value = bytes / Math.pow(k, i);
   return `${value.toFixed(value >= 100 ? 0 : value >= 10 ? 1 : 2)} ${sizes[i]}`;
@@ -63,14 +63,14 @@ export const SPEED_LIMIT_SEGMENTS = [
  */
 export function bytesToSliderIndex(bytes: number): number {
   if (bytes === 0) return SPEED_LIMIT_SEGMENTS.length + 1; // Unlimited is max index
-  
+
   // Find the first segment that is >= bytes
   for (let i = 0; i < SPEED_LIMIT_SEGMENTS.length; i++) {
     if (bytes <= SPEED_LIMIT_SEGMENTS[i]) {
       return i + 1; // +1 because slider starts at 1
     }
   }
-  
+
   // If bytes is greater than all segments, return unlimited (max index)
   return SPEED_LIMIT_SEGMENTS.length + 1;
 }

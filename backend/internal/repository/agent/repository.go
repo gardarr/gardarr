@@ -1138,6 +1138,7 @@ func (r *Repository) SetAgentGlobalSpeedLimits(agent *entities.Agent, schema sch
 	if err != nil {
 		return err
 	}
+	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
 		return errors.New("failed to set global speed limits")
@@ -1171,6 +1172,7 @@ func (r *Repository) SetAgentGlobalActiveLimits(agent *entities.Agent, schema sc
 	if err != nil {
 		return err
 	}
+	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
 		return errors.New("failed to set global active limits")

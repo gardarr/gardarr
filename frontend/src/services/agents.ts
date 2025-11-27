@@ -91,7 +91,7 @@ export class AgentService {
    * Gets the preferences for a specific agent
    */
   async getAgentPreferences(agentId: string): Promise<ApiResponse<AgentPreferences>> {
-    return api.get<AgentPreferences>(`/agent/${agentId}/preferences/`);
+    return api.get<AgentPreferences>(`/agent/${agentId}/preferences`);
   }
 
   /**

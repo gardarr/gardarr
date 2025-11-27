@@ -44,6 +44,9 @@ func (s *service) GetPreferences(ctx context.Context) (*entities.InstancePrefere
 }
 
 func (s *service) SetSpeedLimit(ctx context.Context, schema schemas.InstanceSetSpeedLimitSchema) error {
+	// Currently unused: kept to satisfy InstanceService and for future propagation to the repository/client.
+	_ = ctx
+
 	if schema.DownloadLimit < -1 {
 		return errors.New("download limit must be greater than or equal to -1")
 	}
@@ -64,6 +67,9 @@ func (s *service) SetSpeedLimit(ctx context.Context, schema schemas.InstanceSetS
 }
 
 func (s *service) SetMaxActiveTorrentLimits(ctx context.Context, schema schemas.InstanceSetMaxActiveTorrentLimitsSchema) error {
+	// Currently unused: kept to satisfy InstanceService and for future propagation to the repository/client.
+	_ = ctx
+
 	return s.repository.SetMaxActiveTorrentLimits(
 		schema.MaxActiveDownloads,
 		schema.MaxActiveUploads,

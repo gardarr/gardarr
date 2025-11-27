@@ -3,6 +3,7 @@ import { CustomScrollArea } from "@/components/ui/custom-scroll-area";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { formatBytes } from "../utils/bytes";
 import {
   Server,
   XCircle,
@@ -217,14 +218,6 @@ export function AgentDetailsModal({
     }
   }, [isOpen]);
 
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
   const compareVersions = (a: string, b: string) => {
     const norm = (v: string) => v.replace(/^v/i, '').split('.').map(s => parseInt(s, 10) || 0);
     const pa = norm(a);
@@ -260,9 +253,9 @@ export function AgentDetailsModal({
 
         <Tabs defaultValue="detalhes" className="w-full flex-1 flex flex-col min-h-0 overflow-hidden">
           <TabsList className="grid w-full grid-cols-3 shrink-0">
-            <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
-            <TabsTrigger value="limites" disabled={agent?.status === 'ERRORED'}>Limites</TabsTrigger>
-            <TabsTrigger value="schedules" disabled>Schedules</TabsTrigger>
+            <TabsTrigger value="detalhes">{t('agents.details')}</TabsTrigger>
+            <TabsTrigger value="limites" disabled={agent?.status === 'ERRORED'}>{t('agents.limits')}</TabsTrigger>
+            <TabsTrigger value="schedules" disabled>{t('agents.schedules')}</TabsTrigger>
           </TabsList>
 
           <CustomScrollArea className="w-full flex-1 min-h-0" variant="thin" mobileFallback>
@@ -628,7 +621,7 @@ export function AgentDetailsModal({
             </TabsContent>
 
             <TabsContent value="limites" className="mt-4">
-              {agent && <AgentLimits agentId={agent.uuid} />}
+              {agent && <AgentLimits agentId={agent.uuid} disableScroll />}
             </TabsContent>
 
             <TabsContent value="schedules" className="mt-4">

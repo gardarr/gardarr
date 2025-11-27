@@ -432,7 +432,10 @@
       "errored": "Errored",
       "inactive": "Inactive",
       "unknown": "Unknown"
-    }
+    },
+    "details": "Details",
+    "limits": "Limits",
+    "schedules": "Schedules"
   },
   "users": {
     "title": "Users",
