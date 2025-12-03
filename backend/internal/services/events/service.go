@@ -111,17 +111,7 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 					Type:     constants.EventTypeTorrentAdded,
 					TaskHash: t.Hash,
 					NewValue: t.State,
-					Metadata: map[string]interface{}{
-						"name":      t.Name,
-						"hash":      t.Hash,
-						"state":     t.State,
-						"category":  t.Category,
-						"tags":      t.Tags,
-						"directory": t.Path,
-						"size":      t.Size,
-						"progress":  t.Progress,
-						"ratio":     t.Ratio,
-					},
+					Metadata: s.buildBaseMetadata(t),
 					CreatedAt: timestamp,
 				}
 				return
@@ -148,19 +138,12 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 					TaskHash: t.Hash,
 					OldValue: oldState,
 					NewValue: t.State,
-					Metadata: map[string]interface{}{
-						"name":         t.Name,
-						"hash":         t.Hash,
-						"state":        t.State,
-						"category":     t.Category,
-						"tags":         t.Tags,
-						"directory":    t.Path,
-						"size":         t.Size,
-						"old_progress": oldProgress,
-						"new_progress": t.Progress,
-						"progress":     t.Progress,
-						"ratio":        t.Ratio,
-					},
+					Metadata: func() map[string]interface{} {
+						m := s.buildBaseMetadata(t)
+						m["old_progress"] = oldProgress
+						m["new_progress"] = t.Progress
+						return m
+					}(),
 					CreatedAt: timestamp,
 				}
 
@@ -172,17 +155,7 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 						Type:     constants.EventTypeTorrentCompleted,
 						TaskHash: t.Hash,
 						NewValue: t.State,
-						Metadata: map[string]interface{}{
-							"name":      t.Name,
-							"hash":      t.Hash,
-							"state":     t.State,
-							"category":  t.Category,
-							"tags":      t.Tags,
-							"directory": t.Path,
-							"size":      t.Size,
-							"progress":  t.Progress,
-							"ratio":     t.Ratio,
-						},
+						Metadata: s.buildBaseMetadata(t),
 						CreatedAt: timestamp,
 					}
 				}
@@ -204,17 +177,7 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 						Type:     constants.EventTypeTorrentCompleted,
 						TaskHash: t.Hash,
 						NewValue: t.State,
-						Metadata: map[string]interface{}{
-							"name":      t.Name,
-							"hash":      t.Hash,
-							"state":     t.State,
-							"category":  t.Category,
-							"tags":      t.Tags,
-							"directory": t.Path,
-							"size":      t.Size,
-							"progress":  t.Progress,
-							"ratio":     t.Ratio,
-						},
+						Metadata: s.buildBaseMetadata(t),
 						CreatedAt: timestamp,
 					}
 				}
@@ -228,10 +191,37 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 		close(eventsChan)
 	}()
 
-	// Create events from channel
+	// Process events
+	s.processEvents(ctx, eventsChan, agentID)
+
+	return nil
+}
+
+// buildBaseMetadata creates the common metadata map for a task
+func (s *Service) buildBaseMetadata(t *entities.Task) map[string]interface{} {
+	return map[string]interface{}{
+		"name":      t.Name,
+		"hash":      t.Hash,
+		"state":     t.State,
+		"category":  t.Category,
+		"tags":      t.Tags,
+		"directory": t.Path,
+		"size":      t.Size,
+		"progress":  t.Progress,
+		"ratio":     t.Ratio,
+	}
+}
+
+// processEvents handles event persistence and real-time emission
+func (s *Service) processEvents(ctx context.Context, eventsChan <-chan *entities.Event, agentID uuid.UUID) {
 	for event := range eventsChan {
 		if err := s.repo.CreateEvent(ctx, event); err != nil {
-			slog.Error("failed to create event", "error", err, "agent_id", agentID.String(), "event_type", event.Type)
+			slog.Error("failed to create event",
+				"error", err,
+				"agent_id", agentID.String(),
+				"event_type", event.Type,
+				"task_hash", event.TaskHash,
+			)
 			continue
 		}
 
@@ -244,8 +234,6 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 			}
 		}
 	}
-
-	return nil
 }
 
 // DetectRemovedTasks checks for tasks that are no longer present concurrently
@@ -316,22 +304,8 @@ func (s *Service) DetectRemovedTasks(ctx context.Context, currentTasks []*entiti
 		close(removedHashes)
 	}()
 
-	// Create events from channel
-	for event := range eventsChan {
-		if err := s.repo.CreateEvent(ctx, event); err != nil {
-			slog.Error("failed to create removal event", "error", err, "agent_id", agentID.String(), "task_hash", event.TaskHash)
-			continue
-		}
-
-		// Emit to real-time channel if enabled (non-blocking)
-		if s.eventChan != nil {
-			select {
-			case s.eventChan <- event:
-			default:
-				// Channel full - skip emission to prevent blocking
-			}
-		}
-	}
+	// Process events
+	s.processEvents(ctx, eventsChan, agentID)
 
 	// Remove from tracked states
 	s.mu.Lock()

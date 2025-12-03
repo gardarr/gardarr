@@ -1,11 +1,28 @@
 package agentmanager
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/jfxdev/gardarr/internal/entities"
 )
+
+// getAgent retrieves an agent by ID string
+func (s *Service) getAgent(id string) (*entities.Agent, error) {
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		return nil, fmt.Errorf("invalid agent UUID format: %w", err)
+	}
+
+	agent, err := s.repository.GetAgentByUUID(uid)
+	if err != nil {
+		return nil, fmt.Errorf("agent not found: %w", err)
+	}
+
+	return agent, nil
+}
 
 // calculateWordCloud extracts and counts the top 25 most used terms in task names
 func (s *Service) calculateWordCloud(tasks []*entities.Task) map[string]int {
@@ -46,36 +63,10 @@ func (s *Service) calculateWordCloud(tasks []*entities.Task) map[string]int {
 		// Convert to lowercase and split by common delimiters
 		text := strings.ToLower(task.Name)
 		// Replace common delimiters with spaces
-		text = strings.ReplaceAll(text, ".", " ")
-		text = strings.ReplaceAll(text, "_", " ")
-		text = strings.ReplaceAll(text, "-", " ")
-		text = strings.ReplaceAll(text, "(", " ")
-		text = strings.ReplaceAll(text, ")", " ")
-		text = strings.ReplaceAll(text, "[", " ")
-		text = strings.ReplaceAll(text, "]", " ")
-		text = strings.ReplaceAll(text, "{", " ")
-		text = strings.ReplaceAll(text, "}", " ")
-		text = strings.ReplaceAll(text, ":", " ")
-		text = strings.ReplaceAll(text, ";", " ")
-		text = strings.ReplaceAll(text, ",", " ")
-		text = strings.ReplaceAll(text, "!", " ")
-		text = strings.ReplaceAll(text, "?", " ")
-		text = strings.ReplaceAll(text, "@", " ")
-		text = strings.ReplaceAll(text, "#", " ")
-		text = strings.ReplaceAll(text, "$", " ")
-		text = strings.ReplaceAll(text, "%", " ")
-		text = strings.ReplaceAll(text, "^", " ")
-		text = strings.ReplaceAll(text, "&", " ")
-		text = strings.ReplaceAll(text, "*", " ")
-		text = strings.ReplaceAll(text, "+", " ")
-		text = strings.ReplaceAll(text, "=", " ")
-		text = strings.ReplaceAll(text, "|", " ")
-		text = strings.ReplaceAll(text, "\\", " ")
-		text = strings.ReplaceAll(text, "/", " ")
-		text = strings.ReplaceAll(text, "<", " ")
-		text = strings.ReplaceAll(text, ">", " ")
-		text = strings.ReplaceAll(text, "~", " ")
-		text = strings.ReplaceAll(text, "`", " ")
+		delimiters := "._-()[]{} :;,!?@#$%^&*+=|\\/<>~`"
+		for _, char := range delimiters {
+			text = strings.ReplaceAll(text, string(char), " ")
+		}
 
 		// Split into words
 		words := strings.Fields(text)
