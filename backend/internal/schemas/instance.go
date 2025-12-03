@@ -35,12 +35,16 @@ func validateInstanceType(fl validator.FieldLevel) bool {
 	return slices.Contains(validInstanceTypes, instanceType)
 }
 
-// InstanceSetDownloadSpeedLimitSchema represents the request body for setting download speed limit
-type InstanceSetDownloadSpeedLimitSchema struct {
-	Limit int `json:"limit" binding:"required,min=0"`
+// InstanceSetSpeedLimitSchema represents the request body for setting download speed limit
+type InstanceSetSpeedLimitSchema struct {
+	DownloadLimit int `json:"download_limit" binding:"required,min=1"`
+	UploadLimit   int `json:"upload_limit" binding:"required,min=1"`
 }
 
-// InstanceSetUploadSpeedLimitSchema represents the request body for setting upload speed limit
-type InstanceSetUploadSpeedLimitSchema struct {
-	Limit int `json:"limit" binding:"required,min=0"`
+// InstanceSetMaxActiveTorrentLimitsSchema represents the request body for setting max active torrent limits
+type InstanceSetMaxActiveTorrentLimitsSchema struct {
+	MaxActiveDownloads        int `json:"max_active_downloads" binding:"required,min=-1"`
+	MaxActiveUploads          int `json:"max_active_uploads" binding:"required,min=-1"`
+	MaxActiveTorrents         int `json:"max_active_torrents" binding:"required,min=-1"`
+	MaxActiveCheckingTorrents int `json:"max_active_checking_torrents" binding:"required,min=-1"`
 }

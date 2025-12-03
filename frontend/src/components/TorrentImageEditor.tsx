@@ -1,14 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
-import { Upload, Trash2, X, Copy, Check } from "lucide-react";
+import { Upload, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useTranslation } from "react-i18next";
 import type { TaskMetadata } from "@/types/torrent";
+import { ImageSourceSelector } from "@/components/ImageSourceSelector";
+import { TorrentCardPreview } from "@/components/TorrentCardPreview";
 
 interface TorrentImageEditorProps {
   readonly taskHash: string;
@@ -24,14 +24,12 @@ export function TorrentImageEditor({
   onUpdate,
 }: TorrentImageEditorProps) {
   const { t } = useTranslation();
-  const [description, setDescription] = useState(metadata?.description || "");
   const [imagePreview, setImagePreview] = useState<string | null>(
     metadata?.image_url || null
   );
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isCopied, setIsCopied] = useState(false);
   const [imagePositionY, setImagePositionY] = useState(
     metadata?.image_position_y ?? 50
   );
@@ -42,12 +40,12 @@ export function TorrentImageEditor({
 
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartY, setDragStartY] = useState(0);
+  const [imageSource, setImageSource] = useState<"Upload" | "TMDB" | "TGDB">("Upload");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
 
   // Sincronizar estados quando metadata muda
   useEffect(() => {
-    setDescription(metadata?.description || "");
     setImagePreview(metadata?.image_url || null);
     setSelectedFile(null);
     setImagePositionY(metadata?.image_position_y ?? 50);
@@ -127,36 +125,6 @@ export function TorrentImageEditor({
       toast.error(errorMessage || t('torrentImageEditor.errors.deleteFailed', { defaultValue: 'Erro ao remover imagem' }));
     } finally {
       setIsDeleting(false);
-    }
-  };
-
-  const handleSaveDescription = async () => {
-    try {
-      await api.put(`/tasks/metadata/${taskHash}/description`, {
-        description,
-      });
-
-      toast.success(t('torrentImageEditor.success.descriptionUpdated', { defaultValue: 'Descrição atualizada com sucesso' }));
-
-      onUpdate?.();
-    } catch (error: unknown) {
-      const errorMessage = error && typeof error === 'object' && 'response' in error
-        ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
-        : undefined;
-      toast.error(errorMessage || t('torrentImageEditor.errors.saveDescriptionFailed', { defaultValue: 'Erro ao salvar descrição' }));
-    }
-  };
-
-  const handleCopyImageUrl = async () => {
-    if (metadata?.image_url) {
-      try {
-        await navigator.clipboard.writeText(metadata.image_url);
-        setIsCopied(true);
-        toast.success(t('torrentImageEditor.success.urlCopied', { defaultValue: 'URL copiada para a área de transferência' }));
-        setTimeout(() => setIsCopied(false), 2000);
-      } catch {
-        toast.error(t('torrentImageEditor.errors.copyFailed', { defaultValue: 'Erro ao copiar URL' }));
-      }
     }
   };
 
@@ -245,25 +213,31 @@ export function TorrentImageEditor({
     }
   };
 
-  const hasChanges = description !== (metadata?.description || "");
-
   return (
     <div className="space-y-6 py-4">
       {/* Image Section */}
       <div className="space-y-3">
         <Label className="text-sm font-medium">
-          {t('torrentImageEditor.image.label', { defaultValue: 'Imagem' })}
+          {t('torrentImageEditor.image.label', { defaultValue: 'Image Source' })}
         </Label>
+        <ImageSourceSelector
+          value={imageSource}
+          onValueChange={setImageSource}
+        />
 
         {imagePreview ? (
-          <div
-            ref={imageContainerRef}
-            className="relative group"
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseLeave}
-          >
+          <>
+            <Label className="text-sm font-medium">
+              {t('torrentImageEditor.imageAdjustments.label', { defaultValue: 'Image Adjustments' })}
+            </Label>
+            <div
+              ref={imageContainerRef}
+              className="relative group"
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseLeave}
+            >
             <div className={`w-full h-64 overflow-hidden rounded-lg border ${!selectedFile && metadata?.image_url ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : ''}`}>
               <img
                 src={imagePreview}
@@ -353,6 +327,7 @@ export function TorrentImageEditor({
               )}
             </div>
           </div>
+          </>
         ) : (
           <div
             role="button"
@@ -416,31 +391,39 @@ export function TorrentImageEditor({
         )}
       </div>
 
-      {/* Image URL Section */}
-      {metadata?.image_url && !selectedFile && (
+      {/* Card Preview Section */}
+      {imagePreview && (
         <div className="space-y-3">
-          <Label htmlFor="image-url" className="text-sm font-medium">
-            {t('torrentImageEditor.url.label', { defaultValue: 'URL da Imagem' })}
+          <Label className="text-sm font-medium">
+            {t('torrentImageEditor.preview.label', { defaultValue: 'Preview' })}
           </Label>
-          <div className="flex gap-2">
-            <Input
-              id="image-url"
-              value={metadata.image_url}
-              readOnly
-              className="font-mono text-xs"
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCopyImageUrl}
-              className="flex-shrink-0"
-            >
-              {isCopied ? (
-                <Check className="h-4 w-4 text-green-600" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-            </Button>
+          
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs text-muted-foreground mb-2">
+                {t('torrentImageEditor.preview.normal', { defaultValue: 'Normal View' })}
+              </p>
+              <TorrentCardPreview
+                taskName={taskName}
+                metadata={metadata}
+                imagePositionY={imagePositionY}
+                imageOpacity={imageOpacity}
+                compact={false}
+              />
+            </div>
+            
+            <div>
+              <p className="text-xs text-muted-foreground mb-2">
+                {t('torrentImageEditor.preview.compact', { defaultValue: 'Compact View' })}
+              </p>
+              <TorrentCardPreview
+                taskName={taskName}
+                metadata={metadata}
+                imagePositionY={imagePositionY}
+                imageOpacity={imageOpacity}
+                compact={true}
+              />
+            </div>
           </div>
         </div>
       )}
@@ -458,25 +441,6 @@ export function TorrentImageEditor({
           />
         </div>
       )}
-
-      {/* Description Section */}
-      <div className="space-y-3">
-        <Label htmlFor="description" className="text-sm font-medium">
-          {t('torrentImageEditor.description.label', { defaultValue: 'Descrição' })}
-        </Label>
-        <Textarea
-          id="description"
-          value={description}
-          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
-          placeholder={t('torrentImageEditor.description.placeholder', { defaultValue: 'Adicione uma descrição personalizada...' })}
-          className="min-h-[100px] resize-none"
-        />
-        {hasChanges && (
-          <Button onClick={handleSaveDescription} className="w-full sm:w-auto">
-            {t('torrentImageEditor.description.save', { defaultValue: 'Salvar Alterações' })}
-          </Button>
-        )}
-      </div>
     </div>
   );
 }

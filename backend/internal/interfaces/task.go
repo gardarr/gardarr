@@ -35,8 +35,8 @@ type InstanceService interface {
 	GetStatus(context.Context) string
 	Ping(context.Context) error
 	GetPreferences(context.Context) (*entities.InstancePreferences, error)
-	SetDownloadSpeedLimit(context.Context, schemas.InstanceSetDownloadSpeedLimitSchema) error
-	SetUploadSpeedLimit(context.Context, schemas.InstanceSetUploadSpeedLimitSchema) error
+	SetSpeedLimit(context.Context, schemas.InstanceSetSpeedLimitSchema) error
+	SetMaxActiveTorrentLimits(context.Context, schemas.InstanceSetMaxActiveTorrentLimitsSchema) error
 }
 
 // TaskRepositoryInterface defines the interface for task repository operations

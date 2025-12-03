@@ -549,10 +549,21 @@ function Agents() {
                               </Tooltip>
                             </TooltipProvider>
                           )}
-                          <QBittorrentIcon 
-                            size="lg"
-                            className="w-8 h-8 text-muted-foreground/60"
-                          />
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="cursor-help">
+                                  <QBittorrentIcon 
+                                    size="lg"
+                                    className="w-8 h-8 text-muted-foreground/60"
+                                  />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>qBittorrent</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
                       </div>
                     </div>

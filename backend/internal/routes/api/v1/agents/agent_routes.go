@@ -34,6 +34,10 @@ func (m Module) Register() {
 	m.agentRouter.POST("/", m.createAgent)
 	m.agentRouter.GET("/:id", m.getAgent)
 	m.agentRouter.PUT("/:id", m.updateAgent)
+
+	m.agentRouter.POST("/:id/speed/limits", m.setAgentSpeedLimits)
+	m.agentRouter.POST("/:id/active/limits", m.setAgentMaxActiveTorrents)
+
 	m.agentRouter.GET("/:id/version", m.getAgentVersion)
 	m.agentRouter.GET("/:id/tasks", m.listAgentTasks)
 	m.agentRouter.GET("/:id/tasks/stats", m.getAgentTasksStats)
@@ -525,4 +529,50 @@ func (m *Module) getAgentTaskLimits(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, mappers.ToTaskLimitsResponse(limits))
+}
+
+func (m *Module) setAgentMaxActiveTorrents(c *gin.Context) {
+	var body schemas.InstanceSetMaxActiveTorrentLimitsSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	agentID := c.Param("id")
+	agent, err := m.service.GetAgent(c.Request.Context(), agentID)
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	if err := m.service.SetAgentGlobalActiveLimits(c.Request.Context(), agent, body); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Instance max active torrents set successfully"})
+}
+
+func (m *Module) setAgentSpeedLimits(c *gin.Context) {
+	var body schemas.InstanceSetSpeedLimitSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	agentID := c.Param("id")
+	agent, err := m.service.GetAgent(c.Request.Context(), agentID)
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	if err := m.service.SetAgentGlobalSpeedLimits(c.Request.Context(), agent, body); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Instance speed limits set successfully"})
 }

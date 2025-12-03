@@ -1113,6 +1113,74 @@ func (r *Repository) GetAgentTaskLimits(agent *entities.Agent, taskID string) (*
 	return mappers.ToTaskLimits(handler), nil
 }
 
+func (r *Repository) SetAgentGlobalSpeedLimits(agent *entities.Agent, schema schemas.InstanceSetSpeedLimitSchema) error {
+	url := fmt.Sprintf("%s/v1/instance/speed/limits", agent.Address)
+
+	payload, err := json.Marshal(schema)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewReader(payload))
+	if err != nil {
+		return err
+	}
+
+	decryptedToken, err := r.crypto.Decrypt(agent.Token)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", decryptedToken))
+	req.Header.Set("Content-Type", "application/json")
+
+	response, err := r.http.Do(req)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return errors.New("failed to set global speed limits")
+	}
+
+	return nil
+}
+
+func (r *Repository) SetAgentGlobalActiveLimits(agent *entities.Agent, schema schemas.InstanceSetMaxActiveTorrentLimitsSchema) error {
+	url := fmt.Sprintf("%s/v1/instance/active/limits", agent.Address)
+
+	payload, err := json.Marshal(schema)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewReader(payload))
+	if err != nil {
+		return err
+	}
+
+	decryptedToken, err := r.crypto.Decrypt(agent.Token)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", decryptedToken))
+	req.Header.Set("Content-Type", "application/json")
+
+	response, err := r.http.Do(req)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return errors.New("failed to set global active limits")
+	}
+
+	return nil
+}
+
 func toAgent(item models.Agent) *entities.Agent {
 	return &entities.Agent{
 		UUID:    item.UUID,

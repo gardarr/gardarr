@@ -27,8 +27,8 @@ func (m Module) Register() {
 
 	m.group.GET("/", m.getInstance)
 	m.group.GET("/preferences", m.getPreferences)
-	m.group.POST("/download_speed_limit", m.setDownloadSpeedLimit)
-	m.group.POST("/upload_speed_limit", m.setUploadSpeedLimit)
+	m.group.POST("/speed/limits", m.setSpeedLimit)
+	m.group.POST("/active/limits", m.setMaxActiveTorrentLimits)
 }
 
 func (m *Module) getInstance(c *gin.Context) {
@@ -51,32 +51,32 @@ func (m *Module) getPreferences(c *gin.Context) {
 	c.JSON(http.StatusOK, mappers.ToInstancePreferencesResponse(result))
 }
 
-func (m *Module) setDownloadSpeedLimit(c *gin.Context) {
-	var body schemas.InstanceSetDownloadSpeedLimitSchema
+func (m *Module) setSpeedLimit(c *gin.Context) {
+	var body schemas.InstanceSetSpeedLimitSchema
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := m.controller.SetDownloadSpeedLimit(c.Request.Context(), body); err != nil {
+	if err := m.controller.SetSpeedLimit(c.Request.Context(), body); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "download speed limit set successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "speed limits were set successfully"})
 }
 
-func (m *Module) setUploadSpeedLimit(c *gin.Context) {
-	var body schemas.InstanceSetUploadSpeedLimitSchema
+func (m *Module) setMaxActiveTorrentLimits(c *gin.Context) {
+	var body schemas.InstanceSetMaxActiveTorrentLimitsSchema
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := m.controller.SetUploadSpeedLimit(c.Request.Context(), body); err != nil {
+	if err := m.controller.SetMaxActiveTorrentLimits(c.Request.Context(), body); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "upload speed limit set successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "max active torrent limits were set successfully"})
 }
