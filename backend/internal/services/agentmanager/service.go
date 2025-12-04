@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/google/uuid"
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	repository "github.com/jfxdev/gardarr/internal/repository/agent"
@@ -217,7 +216,7 @@ func (s *Service) GetAgent(ctx context.Context, id string) (*entities.Agent, err
 	default:
 	}
 
-	agent, err := s.getAgent(id)
+	agent, err := s.fetchAgent(id)
 	if err != nil {
 		return nil, err
 	}
@@ -274,7 +273,7 @@ func (s *Service) GetAgent(ctx context.Context, id string) (*entities.Agent, err
 
 func (s *Service) UpdateAgent(ctx context.Context, id string, schema *schemas.AgentUpdateSchema) (*entities.Agent, error) {
 	// Get the current agent first
-	currentAgent, err := s.getAgent(id)
+	currentAgent, err := s.fetchAgent(id)
 	if err != nil {
 		return nil, err
 	}
@@ -345,16 +344,18 @@ func (s *Service) UpdateAgent(ctx context.Context, id string, schema *schemas.Ag
 }
 
 func (s *Service) Delete(ctx context.Context, id string) error {
-	parsedID, err := uuid.Parse(id)
+	// Get the current agent first
+	currentAgent, err := s.fetchAgent(id)
 	if err != nil {
 		return err
 	}
+	parsedID := currentAgent.UUID
 
 	return s.repository.DeleteAgent(parsedID)
 }
 
 func (s *Service) CreateAgentTask(ctx context.Context, id string, schema schemas.TaskCreateSchema) (*entities.Task, error) {
-	agent, err := s.getAgent(id)
+	agent, err := s.fetchAgent(id)
 	if err != nil {
 		return nil, err
 	}
@@ -377,7 +378,7 @@ func (s *Service) GetPreferences(ctx context.Context, agent *entities.Agent) (*e
 }
 
 func (s *Service) ListAgentTasks(ctx context.Context, id string) ([]*entities.Task, error) {
-	agent, err := s.getAgent(id)
+	agent, err := s.fetchAgent(id)
 	if err != nil {
 		return nil, err
 	}
@@ -403,7 +404,7 @@ func (s *Service) ListAgentsTasks(ctx context.Context) (*entities.TaskListResult
 }
 
 func (s *Service) StopAgentTask(ctx context.Context, agentID, taskID string) error {
-	agent, err := s.getAgent(agentID)
+	agent, err := s.fetchAgent(agentID)
 	if err != nil {
 		return err
 	}
@@ -412,7 +413,7 @@ func (s *Service) StopAgentTask(ctx context.Context, agentID, taskID string) err
 }
 
 func (s *Service) StartAgentTask(ctx context.Context, agentID, taskID string) error {
-	agent, err := s.getAgent(agentID)
+	agent, err := s.fetchAgent(agentID)
 	if err != nil {
 		return err
 	}
@@ -421,7 +422,7 @@ func (s *Service) StartAgentTask(ctx context.Context, agentID, taskID string) er
 }
 
 func (s *Service) ForceDownloadAgentTask(ctx context.Context, agentID, taskID string) error {
-	agent, err := s.getAgent(agentID)
+	agent, err := s.fetchAgent(agentID)
 	if err != nil {
 		return err
 	}
@@ -430,7 +431,7 @@ func (s *Service) ForceDownloadAgentTask(ctx context.Context, agentID, taskID st
 }
 
 func (s *Service) GetAgentTask(ctx context.Context, agentID, taskID string) (*entities.Task, error) {
-	agent, err := s.getAgent(agentID)
+	agent, err := s.fetchAgent(agentID)
 	if err != nil {
 		return nil, err
 	}
@@ -447,7 +448,7 @@ func (s *Service) GetAgentTask(ctx context.Context, agentID, taskID string) (*en
 }
 
 func (s *Service) DeleteAgentTask(ctx context.Context, agentID, taskID string, purge bool) error {
-	agent, err := s.getAgent(agentID)
+	agent, err := s.fetchAgent(agentID)
 	if err != nil {
 		return err
 	}
@@ -456,7 +457,7 @@ func (s *Service) DeleteAgentTask(ctx context.Context, agentID, taskID string, p
 }
 
 func (s *Service) ForceResumeAgentTask(ctx context.Context, agentID, taskID string) error {
-	agent, err := s.getAgent(agentID)
+	agent, err := s.fetchAgent(agentID)
 	if err != nil {
 		return err
 	}
@@ -465,7 +466,7 @@ func (s *Service) ForceResumeAgentTask(ctx context.Context, agentID, taskID stri
 }
 
 func (s *Service) SetAgentTaskShareLimit(ctx context.Context, agentID, taskID string, schema schemas.TaskSetShareLimitSchema) error {
-	agent, err := s.getAgent(agentID)
+	agent, err := s.fetchAgent(agentID)
 	if err != nil {
 		return err
 	}
@@ -474,7 +475,7 @@ func (s *Service) SetAgentTaskShareLimit(ctx context.Context, agentID, taskID st
 }
 
 func (s *Service) SetAgentTaskLocation(ctx context.Context, agentID, taskID string, schema schemas.TaskSetLocationSchema) error {
-	agent, err := s.getAgent(agentID)
+	agent, err := s.fetchAgent(agentID)
 	if err != nil {
 		return err
 	}
@@ -483,7 +484,7 @@ func (s *Service) SetAgentTaskLocation(ctx context.Context, agentID, taskID stri
 }
 
 func (s *Service) RenameAgentTask(ctx context.Context, agentID, taskID string, schema schemas.TaskRenameSchema) error {
-	agent, err := s.getAgent(agentID)
+	agent, err := s.fetchAgent(agentID)
 	if err != nil {
 		return err
 	}
@@ -492,7 +493,7 @@ func (s *Service) RenameAgentTask(ctx context.Context, agentID, taskID string, s
 }
 
 func (s *Service) SetAgentTaskSuperSeeding(ctx context.Context, agentID, taskID string, schema schemas.TaskSuperSeedingSchema) error {
-	agent, err := s.getAgent(agentID)
+	agent, err := s.fetchAgent(agentID)
 	if err != nil {
 		return err
 	}
@@ -501,7 +502,7 @@ func (s *Service) SetAgentTaskSuperSeeding(ctx context.Context, agentID, taskID 
 }
 
 func (s *Service) ForceRecheckAgentTask(ctx context.Context, agentID, taskID string) error {
-	agent, err := s.getAgent(agentID)
+	agent, err := s.fetchAgent(agentID)
 	if err != nil {
 		return err
 	}
@@ -510,7 +511,7 @@ func (s *Service) ForceRecheckAgentTask(ctx context.Context, agentID, taskID str
 }
 
 func (s *Service) ForceReannounceAgentTask(ctx context.Context, agentID, taskID string) error {
-	agent, err := s.getAgent(agentID)
+	agent, err := s.fetchAgent(agentID)
 	if err != nil {
 		return err
 	}
@@ -519,7 +520,7 @@ func (s *Service) ForceReannounceAgentTask(ctx context.Context, agentID, taskID 
 }
 
 func (s *Service) SetAgentTaskDownloadLimit(ctx context.Context, agentID, taskID string, schema schemas.TaskSetDownloadLimitSchema) error {
-	agent, err := s.getAgent(agentID)
+	agent, err := s.fetchAgent(agentID)
 	if err != nil {
 		return err
 	}
@@ -528,7 +529,7 @@ func (s *Service) SetAgentTaskDownloadLimit(ctx context.Context, agentID, taskID
 }
 
 func (s *Service) SetAgentTaskUploadLimit(ctx context.Context, agentID, taskID string, schema schemas.TaskSetUploadLimitSchema) error {
-	agent, err := s.getAgent(agentID)
+	agent, err := s.fetchAgent(agentID)
 	if err != nil {
 		return err
 	}
@@ -537,7 +538,7 @@ func (s *Service) SetAgentTaskUploadLimit(ctx context.Context, agentID, taskID s
 }
 
 func (s *Service) ListAgentTaskFiles(ctx context.Context, agentID, taskID string) ([]*entities.TaskFile, error) {
-	agent, err := s.getAgent(agentID)
+	agent, err := s.fetchAgent(agentID)
 	if err != nil {
 		return nil, err
 	}
@@ -560,7 +561,7 @@ func (s *Service) ListAgentTaskFiles(ctx context.Context, agentID, taskID string
 }
 
 func (s *Service) GetAgentTasksStats(ctx context.Context, id string) (*entities.TaskStats, error) {
-	agent, err := s.getAgent(id)
+	agent, err := s.fetchAgent(id)
 	if err != nil {
 		return nil, err
 	}
@@ -592,7 +593,7 @@ func (s *Service) GetAgentTasksStats(ctx context.Context, id string) (*entities.
 }
 
 func (s *Service) GetAgentVersion(ctx context.Context, id string) (*entities.AgentVersion, error) {
-	agent, err := s.getAgent(id)
+	agent, err := s.fetchAgent(id)
 	if err != nil {
 		return nil, err
 	}
@@ -606,7 +607,7 @@ func (s *Service) GetAgentVersion(ctx context.Context, id string) (*entities.Age
 }
 
 func (s *Service) SetAgentTaskTags(ctx context.Context, agentID, taskID string, schema schemas.TaskSetTagsSchema) error {
-	agent, err := s.getAgent(agentID)
+	agent, err := s.fetchAgent(agentID)
 	if err != nil {
 		return err
 	}
@@ -615,7 +616,7 @@ func (s *Service) SetAgentTaskTags(ctx context.Context, agentID, taskID string, 
 }
 
 func (s *Service) SetAgentTaskCategory(ctx context.Context, agentID, taskID string, schema schemas.TaskSetCategorySchema) error {
-	agent, err := s.getAgent(agentID)
+	agent, err := s.fetchAgent(agentID)
 	if err != nil {
 		return err
 	}

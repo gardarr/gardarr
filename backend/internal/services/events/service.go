@@ -106,12 +106,12 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 
 				// Create task added event
 				eventsChan <- &entities.Event{
-					UUID:     uuid.New(),
-					AgentID:  agentID,
-					Type:     constants.EventTypeTorrentAdded,
-					TaskHash: t.Hash,
-					NewValue: t.State,
-					Metadata: s.buildBaseMetadata(t),
+					UUID:      uuid.New(),
+					AgentID:   agentID,
+					Type:      constants.EventTypeTorrentAdded,
+					TaskHash:  t.Hash,
+					NewValue:  t.State,
+					Metadata:  s.buildBaseMetadata(t),
 					CreatedAt: timestamp,
 				}
 				return
@@ -132,30 +132,25 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 
 				// Create state change event
 				eventsChan <- &entities.Event{
-					UUID:     uuid.New(),
-					AgentID:  agentID,
-					Type:     constants.EventTypeTorrentStateChange,
-					TaskHash: t.Hash,
-					OldValue: oldState,
-					NewValue: t.State,
-					Metadata: func() map[string]interface{} {
-						m := s.buildBaseMetadata(t)
-						m["old_progress"] = oldProgress
-						m["new_progress"] = t.Progress
-						return m
-					}(),
+					UUID:      uuid.New(),
+					AgentID:   agentID,
+					Type:      constants.EventTypeTorrentStateChange,
+					TaskHash:  t.Hash,
+					OldValue:  oldState,
+					NewValue:  t.State,
+					Metadata:  s.buildStateChangeMetadata(t, oldProgress),
 					CreatedAt: timestamp,
 				}
 
 				// Check if task just completed (100% and not an error state)
 				if t.Progress >= 1.0 && !wasCompleted && !isErrorState(t.State) {
 					eventsChan <- &entities.Event{
-						UUID:     uuid.New(),
-						AgentID:  agentID,
-						Type:     constants.EventTypeTorrentCompleted,
-						TaskHash: t.Hash,
-						NewValue: t.State,
-						Metadata: s.buildBaseMetadata(t),
+						UUID:      uuid.New(),
+						AgentID:   agentID,
+						Type:      constants.EventTypeTorrentCompleted,
+						TaskHash:  t.Hash,
+						NewValue:  t.State,
+						Metadata:  s.buildBaseMetadata(t),
 						CreatedAt: timestamp,
 					}
 				}
@@ -172,12 +167,12 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 				// Check if task just reached 100% (not an error state)
 				if t.Progress >= 1.0 && !wasCompleted && !isErrorState(t.State) {
 					eventsChan <- &entities.Event{
-						UUID:     uuid.New(),
-						AgentID:  agentID,
-						Type:     constants.EventTypeTorrentCompleted,
-						TaskHash: t.Hash,
-						NewValue: t.State,
-						Metadata: s.buildBaseMetadata(t),
+						UUID:      uuid.New(),
+						AgentID:   agentID,
+						Type:      constants.EventTypeTorrentCompleted,
+						TaskHash:  t.Hash,
+						NewValue:  t.State,
+						Metadata:  s.buildBaseMetadata(t),
 						CreatedAt: timestamp,
 					}
 				}
@@ -197,6 +192,13 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 	return nil
 }
 
+func (s *Service) buildStateChangeMetadata(t *entities.Task, oldProgress float64) map[string]interface{} {
+	m := s.buildBaseMetadata(t)
+	m["old_progress"] = oldProgress
+	m["new_progress"] = t.Progress
+	return m
+}
+
 // buildBaseMetadata creates the common metadata map for a task
 func (s *Service) buildBaseMetadata(t *entities.Task) map[string]interface{} {
 	return map[string]interface{}{
@@ -213,9 +215,12 @@ func (s *Service) buildBaseMetadata(t *entities.Task) map[string]interface{} {
 }
 
 // processEvents handles event persistence and real-time emission
-func (s *Service) processEvents(ctx context.Context, eventsChan <-chan *entities.Event, agentID uuid.UUID) {
+func (s *Service) processEvents(ctx context.Context, eventsChan <-chan *entities.Event, agentID uuid.UUID) error {
+	var lastErr error
+
 	for event := range eventsChan {
 		if err := s.repo.CreateEvent(ctx, event); err != nil {
+			lastErr = err
 			slog.Error("failed to create event",
 				"error", err,
 				"agent_id", agentID.String(),
@@ -234,6 +239,8 @@ func (s *Service) processEvents(ctx context.Context, eventsChan <-chan *entities
 			}
 		}
 	}
+
+	return lastErr
 }
 
 // DetectRemovedTasks checks for tasks that are no longer present concurrently

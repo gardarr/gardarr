@@ -9,8 +9,8 @@ import (
 	"github.com/jfxdev/gardarr/internal/entities"
 )
 
-// getAgent retrieves an agent by ID string
-func (s *Service) getAgent(id string) (*entities.Agent, error) {
+// fetchAgent retrieves an agent by ID string
+func (s *Service) fetchAgent(id string) (*entities.Agent, error) {
 	uid, err := uuid.Parse(id)
 	if err != nil {
 		return nil, fmt.Errorf("invalid agent UUID format: %w", err)
@@ -18,7 +18,7 @@ func (s *Service) getAgent(id string) (*entities.Agent, error) {
 
 	agent, err := s.repository.GetAgentByUUID(uid)
 	if err != nil {
-		return nil, fmt.Errorf("agent not found: %w", err)
+		return nil, fmt.Errorf("failed to retrieve agent: %w", err)
 	}
 
 	return agent, nil
