@@ -215,12 +215,9 @@ func (s *Service) buildBaseMetadata(t *entities.Task) map[string]interface{} {
 }
 
 // processEvents handles event persistence and real-time emission
-func (s *Service) processEvents(ctx context.Context, eventsChan <-chan *entities.Event, agentID uuid.UUID) error {
-	var lastErr error
-
+func (s *Service) processEvents(ctx context.Context, eventsChan <-chan *entities.Event, agentID uuid.UUID) {
 	for event := range eventsChan {
 		if err := s.repo.CreateEvent(ctx, event); err != nil {
-			lastErr = err
 			slog.Error("failed to create event",
 				"error", err,
 				"agent_id", agentID.String(),
@@ -239,8 +236,6 @@ func (s *Service) processEvents(ctx context.Context, eventsChan <-chan *entities
 			}
 		}
 	}
-
-	return lastErr
 }
 
 // DetectRemovedTasks checks for tasks that are no longer present concurrently
