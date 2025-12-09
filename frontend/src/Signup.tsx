@@ -11,6 +11,56 @@ import { useAuth } from "./contexts/auth-hooks";
 import logoImage from "@/assets/img/logo/logo_64x64.png";
 import { useTranslation } from "react-i18next";
 
+const CONTAINER_CLASSES = "min-h-screen bg-gradient-to-br from-background via-background to-accent/5 flex items-center justify-center p-4";
+const MIN_PASSWORD_LENGTH = 8;
+const REDIRECT_DELAY = 2000;
+
+interface PasswordInputProps {
+  id: string;
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled: boolean;
+}
+
+function PasswordInput({ id, label, placeholder, value, onChange, disabled }: PasswordInputProps) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <div className="relative">
+        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          id={id}
+          type="password"
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="pl-10"
+          required
+          minLength={MIN_PASSWORD_LENGTH}
+          disabled={disabled}
+        />
+      </div>
+    </div>
+  );
+}
+
+interface CenteredCardProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+function CenteredCard({ children, className = "" }: CenteredCardProps) {
+  return (
+    <div className={CONTAINER_CLASSES}>
+      <Card className={`w-full max-w-md ${className}`}>
+        {children}
+      </Card>
+    </div>
+  );
+}
+
 export default function SignupPage() {
   const { t } = useTranslation();
   const { token } = useParams<{ token: string }>();
@@ -82,29 +132,34 @@ export default function SignupPage() {
     });
   }, [token]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const validateForm = () => {
     if (!token) {
       toast.error("Invalid signup link");
-      return;
+      return false;
     }
 
-    // Validate form
     if (!email || !password) {
       toast.error(t('signup.fillAllFields'));
-      return;
+      return false;
     }
 
-    if (password.length < 8) {
+    if (password.length < MIN_PASSWORD_LENGTH) {
       toast.error(t('signup.passwordTooShort'));
-      return;
+      return false;
     }
 
     if (password !== confirmPassword) {
       toast.error(t('signup.passwordMismatch'));
-      return;
+      return false;
     }
+
+    return true;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateForm() || !token) return;
 
     try {
       setSubmitting(true);
@@ -118,9 +173,7 @@ export default function SignupPage() {
         toast.error(response.error);
       } else {
         toast.success(t('signup.accountCreated'));
-        setTimeout(() => {
-          navigate("/login");
-        }, 2000);
+        setTimeout(() => navigate("/login"), REDIRECT_DELAY);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('signup.createFailed'));
@@ -131,38 +184,34 @@ export default function SignupPage() {
 
   if (loading || authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-            <p className="text-muted-foreground">{t('signup.validatingLink')}</p>
-          </CardContent>
-        </Card>
-      </div>
+      <CenteredCard>
+        <CardContent className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+          <p className="text-muted-foreground">{t('signup.validatingLink')}</p>
+        </CardContent>
+      </CenteredCard>
     );
   }
 
   if (!valid || !token) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <XCircle className="h-16 w-16 text-destructive mb-4" />
-            <h2 className="text-2xl font-bold mb-2">{t('signup.invalidLink')}</h2>
-            <p className="text-muted-foreground text-center mb-6">
-              {t('signup.invalidLinkMessage')}
-            </p>
-            <Button onClick={() => navigate("/login")}>
-              {t('signup.goToLogin')}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <CenteredCard>
+        <CardContent className="flex flex-col items-center justify-center py-12">
+          <XCircle className="h-16 w-16 text-destructive mb-4" />
+          <h2 className="text-2xl font-bold mb-2">{t('signup.invalidLink')}</h2>
+          <p className="text-muted-foreground text-center mb-6">
+            {t('signup.invalidLinkMessage')}
+          </p>
+          <Button onClick={() => navigate("/login")}>
+            {t('signup.goToLogin')}
+          </Button>
+        </CardContent>
+      </CenteredCard>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 flex items-center justify-center p-4">
+    <div className={CONTAINER_CLASSES}>
       <Toaster richColors />
       
       <Card className="w-full max-w-md border-border/50 shadow-lg">
@@ -229,41 +278,23 @@ export default function SignupPage() {
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">{t('signup.password')}</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder={t('signup.passwordPlaceholder')}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
-                  required
-                  minLength={8}
-                  disabled={submitting}
-                />
-              </div>
-            </div>
+            <PasswordInput
+              id="password"
+              label={t('signup.password')}
+              placeholder={t('signup.passwordPlaceholder')}
+              value={password}
+              onChange={setPassword}
+              disabled={submitting}
+            />
 
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">{t('signup.confirmPassword')}</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder={t('signup.confirmPasswordPlaceholder')}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="pl-10"
-                  required
-                  minLength={8}
-                  disabled={submitting}
-                />
-              </div>
-            </div>
+            <PasswordInput
+              id="confirmPassword"
+              label={t('signup.confirmPassword')}
+              placeholder={t('signup.confirmPasswordPlaceholder')}
+              value={confirmPassword}
+              onChange={setConfirmPassword}
+              disabled={submitting}
+            />
 
             <Button
               type="submit"

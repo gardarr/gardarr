@@ -10,6 +10,58 @@ import { toast, Toaster } from "sonner";
 import logoImage from "@/assets/img/logo/logo_64x64.png";
 import { useTranslation } from "react-i18next";
 
+const CONTAINER_CLASSES = "min-h-screen bg-gradient-to-br from-background via-background to-accent/5 flex items-center justify-center p-4";
+const MIN_PASSWORD_LENGTH = 8;
+const REDIRECT_DELAY = 2000;
+
+interface PasswordInputProps {
+  id: string;
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled: boolean;
+  autoFocus?: boolean;
+}
+
+function PasswordInput({ id, label, placeholder, value, onChange, disabled, autoFocus }: PasswordInputProps) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <div className="relative">
+        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          id={id}
+          type="password"
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="pl-10"
+          required
+          minLength={MIN_PASSWORD_LENGTH}
+          disabled={disabled}
+          autoFocus={autoFocus}
+        />
+      </div>
+    </div>
+  );
+}
+
+interface CenteredCardProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+function CenteredCard({ children, className = "" }: CenteredCardProps) {
+  return (
+    <div className={CONTAINER_CLASSES}>
+      <Card className={`w-full max-w-md ${className}`}>
+        {children}
+      </Card>
+    </div>
+  );
+}
+
 export default function InitialSetupPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -43,7 +95,7 @@ export default function InitialSetupPage() {
         setNeedsSetup(true);
       } else {
         toast.info(t('initialSetup.systemConfigured'));
-        setTimeout(() => navigate("/login"), 2000);
+        setTimeout(() => navigate("/login"), REDIRECT_DELAY);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to check setup status");
@@ -51,31 +103,36 @@ export default function InitialSetupPage() {
     } finally {
       setLoading(false);
     }
-  }, [navigate]);
+  }, [navigate, t]);
 
   // Check if system needs setup
   useEffect(() => {
     checkSetupStatus();
   }, [checkSetupStatus]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Validate form
+  const validateForm = () => {
     if (!email || !password) {
       toast.error(t('initialSetup.fillAllFields'));
-      return;
+      return false;
     }
 
-    if (password.length < 8) {
+    if (password.length < MIN_PASSWORD_LENGTH) {
       toast.error(t('initialSetup.passwordTooShort'));
-      return;
+      return false;
     }
 
     if (password !== confirmPassword) {
       toast.error(t('initialSetup.passwordMismatch'));
-      return;
+      return false;
     }
+
+    return true;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateForm()) return;
 
     try {
       setSubmitting(true);
@@ -88,9 +145,7 @@ export default function InitialSetupPage() {
         toast.error(response.error);
       } else {
         toast.success(t('initialSetup.accountCreated'));
-        setTimeout(() => {
-          navigate("/login");
-        }, 2000);
+        setTimeout(() => navigate("/login"), REDIRECT_DELAY);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('initialSetup.createFailed'));
@@ -101,38 +156,34 @@ export default function InitialSetupPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-            <p className="text-muted-foreground">{t('initialSetup.checkingStatus')}</p>
-          </CardContent>
-        </Card>
-      </div>
+      <CenteredCard>
+        <CardContent className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+          <p className="text-muted-foreground">{t('initialSetup.checkingStatus')}</p>
+        </CardContent>
+      </CenteredCard>
     );
   }
 
   if (!needsSetup) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Server className="h-16 w-16 text-muted-foreground mb-4" />
-            <h2 className="text-2xl font-bold mb-2">{t('initialSetup.alreadyConfigured')}</h2>
-            <p className="text-muted-foreground text-center mb-6">
-              {t('initialSetup.alreadyConfiguredMessage')}
-            </p>
-            <Button onClick={() => navigate("/login")}>
-              {t('initialSetup.goToLogin')}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <CenteredCard>
+        <CardContent className="flex flex-col items-center justify-center py-12">
+          <Server className="h-16 w-16 text-muted-foreground mb-4" />
+          <h2 className="text-2xl font-bold mb-2">{t('initialSetup.alreadyConfigured')}</h2>
+          <p className="text-muted-foreground text-center mb-6">
+            {t('initialSetup.alreadyConfiguredMessage')}
+          </p>
+          <Button onClick={() => navigate("/login")}>
+            {t('initialSetup.goToLogin')}
+          </Button>
+        </CardContent>
+      </CenteredCard>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 flex items-center justify-center p-4">
+    <div className={CONTAINER_CLASSES}>
       <Toaster richColors />
       <Card className="w-full max-w-md border-border/50 shadow-lg">
         <CardHeader className="space-y-4 pb-6">
@@ -190,41 +241,23 @@ export default function InitialSetupPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">{t('initialSetup.password')}</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder={t('initialSetup.passwordPlaceholder')}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
-                  required
-                  minLength={8}
-                  disabled={submitting}
-                />
-              </div>
-            </div>
+            <PasswordInput
+              id="password"
+              label={t('initialSetup.password')}
+              placeholder={t('initialSetup.passwordPlaceholder')}
+              value={password}
+              onChange={setPassword}
+              disabled={submitting}
+            />
 
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">{t('initialSetup.confirmPassword')}</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder={t('initialSetup.confirmPasswordPlaceholder')}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="pl-10"
-                  required
-                  minLength={8}
-                  disabled={submitting}
-                />
-              </div>
-            </div>
+            <PasswordInput
+              id="confirmPassword"
+              label={t('initialSetup.confirmPassword')}
+              placeholder={t('initialSetup.confirmPasswordPlaceholder')}
+              value={confirmPassword}
+              onChange={setConfirmPassword}
+              disabled={submitting}
+            />
 
             <Button
               type="submit"
