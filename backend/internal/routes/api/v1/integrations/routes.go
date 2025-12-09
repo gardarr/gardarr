@@ -320,8 +320,29 @@ func (m *Module) getWebhookHistory(c *gin.Context) {
 	}
 
 	// Parse pagination parameters
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	limitStr := c.DefaultQuery("limit", "50")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit parameter: must be a valid integer"})
+		return
+	}
+
+	offsetStr := c.DefaultQuery("offset", "0")
+	offset, err := strconv.Atoi(offsetStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid offset parameter: must be a valid integer"})
+		return
+	}
+
+	if limit < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit parameter: must be non-negative"})
+		return
+	}
+
+	if offset < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid offset parameter: must be non-negative"})
+		return
+	}
 
 	if limit > 100 {
 		limit = 100
@@ -355,8 +376,29 @@ func (m *Module) getWebhookHistory(c *gin.Context) {
 // listWebhookHistory retrieves all webhook history with pagination
 func (m *Module) listWebhookHistory(c *gin.Context) {
 	// Parse pagination parameters
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	limitStr := c.DefaultQuery("limit", "50")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit parameter: must be a valid integer"})
+		return
+	}
+
+	offsetStr := c.DefaultQuery("offset", "0")
+	offset, err := strconv.Atoi(offsetStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid offset parameter: must be a valid integer"})
+		return
+	}
+
+	if limit < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit parameter: must be non-negative"})
+		return
+	}
+
+	if offset < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid offset parameter: must be non-negative"})
+		return
+	}
 
 	if limit > 100 {
 		limit = 100

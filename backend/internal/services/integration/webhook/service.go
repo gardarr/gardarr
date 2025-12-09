@@ -116,7 +116,18 @@ func (s *Service) SendEvent(ctx context.Context, event *entities.Event) error {
 	defer resp.Body.Close()
 
 	// Read response body
-	respBody, _ := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		logger.Error("Failed to read webhook response body",
+			"service", "webhook",
+			"event_id", event.UUID.String(),
+			"url", s.webhookURL,
+			"status_code", resp.StatusCode,
+			"error", err,
+		)
+		// Use empty string as fallback to allow processing to continue
+		respBody = []byte{}
+	}
 	respBodyStr := string(respBody)
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
