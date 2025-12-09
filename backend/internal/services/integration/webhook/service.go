@@ -6,10 +6,13 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jfxdev/gardarr/internal/entities"
+	"github.com/jfxdev/gardarr/internal/repository/webhook_history"
 	"github.com/jfxdev/gardarr/pkg/logger"
 )
 
@@ -28,14 +31,16 @@ type Payload struct {
 // Service manages webhook delivery for events
 type Service struct {
 	webhookURL         string
+	webhookID          uuid.UUID
 	insecureSkipVerify bool
 	timeoutSeconds     int
 	httpClient         *http.Client
 	enabled            bool
+	historyRepo        *webhook_history.Repository
 }
 
 // NewService creates a new webhook service that sends events to the specified URL
-func NewService(webhookURL string, insecureSkipVerify bool, timeoutSeconds int) *Service {
+func NewService(webhookID uuid.UUID, webhookURL string, insecureSkipVerify bool, timeoutSeconds int, historyRepo *webhook_history.Repository) *Service {
 	if timeoutSeconds <= 0 {
 		timeoutSeconds = 10 // Default timeout
 	}
@@ -48,13 +53,15 @@ func NewService(webhookURL string, insecureSkipVerify bool, timeoutSeconds int) 
 
 	return &Service{
 		webhookURL:         webhookURL,
+		webhookID:          webhookID,
 		insecureSkipVerify: insecureSkipVerify,
 		timeoutSeconds:     timeoutSeconds,
 		httpClient: &http.Client{
 			Timeout:   time.Duration(timeoutSeconds) * time.Second,
 			Transport: transport,
 		},
-		enabled: true,
+		enabled:     true,
+		historyRepo: historyRepo,
 	}
 }
 
@@ -77,6 +84,7 @@ func (s *Service) SendEvent(ctx context.Context, event *entities.Event) error {
 			"event_id", event.UUID.String(),
 			"error", err,
 		)
+		s.saveHistory(ctx, event, 0, "", string(jsonData), err.Error())
 		return fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
@@ -87,6 +95,7 @@ func (s *Service) SendEvent(ctx context.Context, event *entities.Event) error {
 			"event_id", event.UUID.String(),
 			"error", err,
 		)
+		s.saveHistory(ctx, event, 0, "", string(jsonData), err.Error())
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
@@ -101,9 +110,14 @@ func (s *Service) SendEvent(ctx context.Context, event *entities.Event) error {
 			"url", s.webhookURL,
 			"error", err,
 		)
+		s.saveHistory(ctx, event, 0, "", string(jsonData), err.Error())
 		return fmt.Errorf("failed to send webhook: %w", err)
 	}
 	defer resp.Body.Close()
+
+	// Read response body
+	respBody, _ := io.ReadAll(resp.Body)
+	respBodyStr := string(respBody)
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		logger.Warn("Webhook returned non-success status",
@@ -112,8 +126,13 @@ func (s *Service) SendEvent(ctx context.Context, event *entities.Event) error {
 			"status_code", resp.StatusCode,
 			"url", s.webhookURL,
 		)
+		errMsg := fmt.Sprintf("webhook returned status %d", resp.StatusCode)
+		s.saveHistory(ctx, event, resp.StatusCode, respBodyStr, string(jsonData), errMsg)
 		return fmt.Errorf("webhook returned status %d", resp.StatusCode)
 	}
+
+	// Save successful webhook delivery
+	s.saveHistory(ctx, event, resp.StatusCode, respBodyStr, string(jsonData), "")
 
 	logger.Debug("Webhook sent successfully",
 		"service", "webhook",
@@ -147,4 +166,39 @@ func (s *Service) SetEnabled(enabled bool) {
 // Enabled returns whether the webhook service is enabled
 func (s *Service) Enabled() bool {
 	return s.enabled
+}
+
+// saveHistory saves webhook delivery attempt to history
+func (s *Service) saveHistory(ctx context.Context, event *entities.Event, statusCode int, responseBody, requestBody, errorMsg string) {
+	if s.historyRepo == nil {
+		return
+	}
+
+	// Extract task name and status from event metadata
+	taskName := ""
+	taskStatus := event.NewValue
+	if event.Metadata != nil {
+		if name, ok := event.Metadata["name"].(string); ok {
+			taskName = name
+		}
+	}
+
+	history := entities.WebhookHistory{
+		UUID:         uuid.New(),
+		WebhookID:    s.webhookID,
+		TaskHash:     event.TaskHash,
+		TaskName:     taskName,
+		TaskStatus:   taskStatus,
+		StatusCode:   statusCode,
+		ResponseBody: responseBody,
+		RequestBody:  requestBody,
+		Error:        errorMsg,
+	}
+
+	if _, err := s.historyRepo.CreateWebhookHistory(ctx, history); err != nil {
+		logger.Error("Failed to save webhook history",
+			"service", "webhook",
+			"error", err,
+		)
+	}
 }

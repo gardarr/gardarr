@@ -12,16 +12,20 @@ import (
 	"github.com/google/uuid"
 	"github.com/jfxdev/gardarr/internal/constants"
 	"github.com/jfxdev/gardarr/internal/entities"
+	"github.com/jfxdev/gardarr/internal/repository/webhook_history"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewService(t *testing.T) {
 	webhookURL := "https://example.com/webhook"
-	svc := NewService(webhookURL, false, 15)
+	webhookID := uuid.New()
+	var historyRepo *webhook_history.Repository = nil
+	svc := NewService(webhookID, webhookURL, false, 15, historyRepo)
 
 	assert.NotNil(t, svc)
 	assert.Equal(t, webhookURL, svc.webhookURL)
+	assert.Equal(t, webhookID, svc.webhookID)
 	assert.NotNil(t, svc.httpClient)
 	assert.True(t, svc.enabled)
 	assert.False(t, svc.insecureSkipVerify)
@@ -30,10 +34,13 @@ func TestNewService(t *testing.T) {
 
 func TestNewServiceInsecureSkipVerify(t *testing.T) {
 	webhookURL := "https://example.com/webhook"
-	svc := NewService(webhookURL, true, 30)
+	webhookID := uuid.New()
+	var historyRepo *webhook_history.Repository = nil
+	svc := NewService(webhookID, webhookURL, true, 30, historyRepo)
 
 	assert.NotNil(t, svc)
 	assert.Equal(t, webhookURL, svc.webhookURL)
+	assert.Equal(t, webhookID, svc.webhookID)
 	assert.NotNil(t, svc.httpClient)
 	assert.True(t, svc.enabled)
 	assert.True(t, svc.insecureSkipVerify)
@@ -42,7 +49,9 @@ func TestNewServiceInsecureSkipVerify(t *testing.T) {
 
 func TestNewServiceDefaultTimeout(t *testing.T) {
 	webhookURL := "https://example.com/webhook"
-	svc := NewService(webhookURL, false, 0)
+	webhookID := uuid.New()
+	var historyRepo *webhook_history.Repository = nil
+	svc := NewService(webhookID, webhookURL, false, 0, historyRepo)
 
 	assert.NotNil(t, svc)
 	assert.Equal(t, 10, svc.timeoutSeconds) // Should default to 10
@@ -66,7 +75,8 @@ func TestSendEventSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	svc := NewService(server.URL, false, 10)
+	webhookID := uuid.New()
+	svc := NewService(webhookID, server.URL, false, 10, nil)
 	ctx := context.Background()
 
 	testEvent := &entities.Event{
@@ -108,7 +118,8 @@ func TestSendEventSuccess(t *testing.T) {
 }
 
 func TestSendEventNilEvent(t *testing.T) {
-	svc := NewService("https://example.com/webhook", false, 10)
+	webhookID := uuid.New()
+	svc := NewService(webhookID, "https://example.com/webhook", false, 10, nil)
 	ctx := context.Background()
 
 	err := svc.SendEvent(ctx, nil)
@@ -117,7 +128,8 @@ func TestSendEventNilEvent(t *testing.T) {
 }
 
 func TestSendEventDisabled(t *testing.T) {
-	svc := NewService("https://example.com/webhook", false, 10)
+	webhookID := uuid.New()
+	svc := NewService(webhookID, "https://example.com/webhook", false, 10, nil)
 	svc.SetEnabled(false)
 	ctx := context.Background()
 
@@ -139,7 +151,8 @@ func TestSendEventServerError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	svc := NewService(server.URL, false, 10)
+	webhookID := uuid.New()
+	svc := NewService(webhookID, server.URL, false, 10, nil)
 	ctx := context.Background()
 
 	testEvent := &entities.Event{
@@ -168,7 +181,8 @@ func TestSendEventWithoutTask(t *testing.T) {
 	}))
 	defer server.Close()
 
-	svc := NewService(server.URL, false, 10)
+	webhookID := uuid.New()
+	svc := NewService(webhookID, server.URL, false, 10, nil)
 	ctx := context.Background()
 
 	testEvent := &entities.Event{
@@ -194,7 +208,8 @@ func TestSendEventWithoutTask(t *testing.T) {
 }
 
 func TestBuildPayload(t *testing.T) {
-	svc := NewService("https://example.com/webhook", false, 10)
+	webhookID := uuid.New()
+	svc := NewService(webhookID, "https://example.com/webhook", false, 10, nil)
 
 	now := time.Now()
 	eventID := uuid.New()
@@ -243,7 +258,8 @@ func TestBuildPayload(t *testing.T) {
 }
 
 func TestEnabled(t *testing.T) {
-	svc := NewService("https://example.com/webhook", false, 10)
+	webhookID := uuid.New()
+	svc := NewService(webhookID, "https://example.com/webhook", false, 10, nil)
 
 	assert.True(t, svc.Enabled())
 

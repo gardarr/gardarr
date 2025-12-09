@@ -3,7 +3,8 @@ import type { ApiResponse } from '../lib/api';
 import type {
   Webhook,
   CreateWebhookRequest,
-  UpdateWebhookRequest
+  UpdateWebhookRequest,
+  WebhookHistoryResponse
 } from '../types/webhook';
 
 /**
@@ -45,6 +46,13 @@ export class WebhookService {
    */
   async deleteWebhook(webhookId: string): Promise<ApiResponse<null>> {
     return api.delete<null>(`${this.baseEndpoint}/${webhookId}`);
+  }
+
+  /**
+   * Gets webhook history for a specific webhook
+   */
+  async getWebhookHistory(webhookId: string, limit: number = 50, offset: number = 0): Promise<ApiResponse<WebhookHistoryResponse>> {
+    return api.get<WebhookHistoryResponse>(`${this.baseEndpoint}/${webhookId}/history?limit=${limit}&offset=${offset}`);
   }
 }
 

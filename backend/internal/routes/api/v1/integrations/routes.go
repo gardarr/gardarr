@@ -3,6 +3,7 @@ package integrations
 import (
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -11,6 +12,7 @@ import (
 	"github.com/jfxdev/gardarr/internal/middlewares"
 	"github.com/jfxdev/gardarr/internal/models"
 	"github.com/jfxdev/gardarr/internal/repository/webhook"
+	"github.com/jfxdev/gardarr/internal/repository/webhook_history"
 	"github.com/jfxdev/gardarr/internal/schemas"
 	"github.com/jfxdev/gardarr/internal/services/integration"
 )
@@ -19,6 +21,7 @@ import (
 type Module struct {
 	group              *gin.RouterGroup
 	webhookRepo        *webhook.Repository
+	webhookHistoryRepo *webhook_history.Repository
 	db                 *database.Database
 	integrationService *integration.Service
 }
@@ -28,6 +31,7 @@ func NewModule(router *gin.RouterGroup, db *database.Database, integrationSvc *i
 	return &Module{
 		group:              router.Group("/integrations"),
 		webhookRepo:        webhook.NewRepository(db),
+		webhookHistoryRepo: webhook_history.NewRepository(db),
 		db:                 db,
 		integrationService: integrationSvc,
 	}
@@ -51,6 +55,14 @@ func (m *Module) Register() {
 		webhooks.GET("/:id", m.getWebhookByID)
 		webhooks.PUT("/:id", m.updateWebhook)
 		webhooks.DELETE("/:id", m.deleteWebhook)
+		webhooks.GET("/:id/history", m.getWebhookHistory)
+	}
+
+	// Webhook history routes
+	history := m.group.Group("/webhook-history")
+	{
+		history.GET("", m.listWebhookHistory)
+		history.GET("/:id", m.getWebhookHistoryByID)
 	}
 }
 
@@ -291,4 +303,126 @@ func (m *Module) toResponse(wh *entities.Webhook) models.WebhookResponse {
 	}
 
 	return response
+}
+
+// getWebhookHistory retrieves webhook history for a specific webhook
+func (m *Module) getWebhookHistory(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": errRequiredWebhookID})
+		return
+	}
+
+	webhookUUID, err := uuid.Parse(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidWebhookIDFormat})
+		return
+	}
+
+	// Parse pagination parameters
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+
+	if limit > 100 {
+		limit = 100
+	}
+
+	history, err := m.webhookHistoryRepo.ListWebhookHistory(c.Request.Context(), &webhookUUID, limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve webhook history"})
+		return
+	}
+
+	count, err := m.webhookHistoryRepo.CountWebhookHistory(c.Request.Context(), &webhookUUID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to count webhook history"})
+		return
+	}
+
+	response := make([]models.WebhookHistoryResponse, len(history))
+	for i, h := range history {
+		response[i] = m.toWebhookHistoryResponse(h)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":   response,
+		"total":  count,
+		"limit":  limit,
+		"offset": offset,
+	})
+}
+
+// listWebhookHistory retrieves all webhook history with pagination
+func (m *Module) listWebhookHistory(c *gin.Context) {
+	// Parse pagination parameters
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+
+	if limit > 100 {
+		limit = 100
+	}
+
+	history, err := m.webhookHistoryRepo.ListWebhookHistory(c.Request.Context(), nil, limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve webhook history"})
+		return
+	}
+
+	count, err := m.webhookHistoryRepo.CountWebhookHistory(c.Request.Context(), nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to count webhook history"})
+		return
+	}
+
+	response := make([]models.WebhookHistoryResponse, len(history))
+	for i, h := range history {
+		response[i] = m.toWebhookHistoryResponse(h)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":   response,
+		"total":  count,
+		"limit":  limit,
+		"offset": offset,
+	})
+}
+
+// toWebhookHistoryResponse converts an entity to a response model
+func (m *Module) toWebhookHistoryResponse(h *entities.WebhookHistory) models.WebhookHistoryResponse {
+	return models.WebhookHistoryResponse{
+		UUID:         h.UUID.String(),
+		WebhookID:    h.WebhookID.String(),
+		TaskHash:     h.TaskHash,
+		TaskName:     h.TaskName,
+		TaskStatus:   h.TaskStatus,
+		StatusCode:   h.StatusCode,
+		ResponseBody: h.ResponseBody,
+		RequestBody:  h.RequestBody,
+		Error:        h.Error,
+		CreatedAt:    h.CreatedAt,
+	}
+}
+
+// getWebhookHistoryByID retrieves a specific webhook history record by its UUID
+func (m *Module) getWebhookHistoryByID(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "History ID is required"})
+		return
+	}
+
+	historyUUID, err := uuid.Parse(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid history ID format"})
+		return
+	}
+
+	// Get the history record
+	history, err := m.webhookHistoryRepo.GetWebhookHistoryByID(c.Request.Context(), historyUUID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Webhook history not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, m.toWebhookHistoryResponse(history))
 }
