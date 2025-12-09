@@ -4,63 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Mail, Lock, UserPlus, Sparkles, Shield, Server } from "lucide-react";
+import { Loader2, Mail, UserPlus, Sparkles, Shield, Server } from "lucide-react";
 import { signupService } from "./services/signup";
 import { toast, Toaster } from "sonner";
 import logoImage from "@/assets/img/logo/logo_64x64.png";
 import { useTranslation } from "react-i18next";
-
-const CONTAINER_CLASSES = "min-h-screen bg-gradient-to-br from-background via-background to-accent/5 flex items-center justify-center p-4";
-const MIN_PASSWORD_LENGTH = 8;
-const REDIRECT_DELAY = 2000;
-
-interface PasswordInputProps {
-  id: string;
-  label: string;
-  placeholder: string;
-  value: string;
-  onChange: (value: string) => void;
-  disabled: boolean;
-  autoFocus?: boolean;
-}
-
-function PasswordInput({ id, label, placeholder, value, onChange, disabled, autoFocus }: PasswordInputProps) {
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={id}>{label}</Label>
-      <div className="relative">
-        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          id={id}
-          type="password"
-          placeholder={placeholder}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="pl-10"
-          required
-          minLength={MIN_PASSWORD_LENGTH}
-          disabled={disabled}
-          autoFocus={autoFocus}
-        />
-      </div>
-    </div>
-  );
-}
-
-interface CenteredCardProps {
-  children: React.ReactNode;
-  className?: string;
-}
-
-function CenteredCard({ children, className = "" }: CenteredCardProps) {
-  return (
-    <div className={CONTAINER_CLASSES}>
-      <Card className={`w-full max-w-md ${className}`}>
-        {children}
-      </Card>
-    </div>
-  );
-}
+import { 
+  PasswordInput, 
+  CenteredCard, 
+  CONTAINER_CLASSES, 
+  MIN_PASSWORD_LENGTH, 
+  REDIRECT_DELAY 
+} from "@/components/auth/PasswordInput";
 
 export default function InitialSetupPage() {
   const { t } = useTranslation();
