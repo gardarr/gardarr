@@ -4,13 +4,14 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestEnableRealTimeEmission(t *testing.T) {
 	// Create a minimal service for testing
 	svc := &Service{
-		taskStates: make(map[uuid.UUID]map[string]*TaskState),
+		taskStates: make(map[uuid.UUID]map[string]*entities.TaskState),
 	}
 
 	// Initially nil
@@ -24,7 +25,7 @@ func TestEnableRealTimeEmission(t *testing.T) {
 
 	// Create new service and test with custom buffer
 	svc2 := &Service{
-		taskStates: make(map[uuid.UUID]map[string]*TaskState),
+		taskStates: make(map[uuid.UUID]map[string]*entities.TaskState),
 	}
 	ch2 := svc2.EnableRealTimeEmission(50)
 	assert.NotNil(t, ch2)
@@ -46,7 +47,7 @@ func TestEnableRealTimeEmissionMultipleBufferSizes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := &Service{
-				taskStates: make(map[uuid.UUID]map[string]*TaskState),
+				taskStates: make(map[uuid.UUID]map[string]*entities.TaskState),
 			}
 			ch := svc.EnableRealTimeEmission(tt.bufferSize)
 			assert.NotNil(t, ch)

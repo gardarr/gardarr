@@ -17,29 +17,45 @@ import (
 // Service handles event tracking and state change detection
 type Service struct {
 	repo          *event.Repository
-	taskStates    map[uuid.UUID]map[string]*TaskState // agentID -> taskHash -> state
+	taskStates    map[uuid.UUID]map[string]*entities.TaskState // agentID -> taskHash -> state
 	mu            sync.RWMutex
 	retentionDays int
 	eventChan     chan *entities.Event // Optional channel for real-time event emission
 }
 
-// TaskState represents the last known state of a task
-type TaskState struct {
-	AgentID   uuid.UUID
-	Hash      string
-	State     string
-	Progress  float64
-	UpdatedAt time.Time
-}
-
 // NewService creates a new event service
 func NewService(db *database.Database) *Service {
-	return &Service{
+	s := &Service{
 		repo:          event.NewRepository(db),
-		taskStates:    make(map[uuid.UUID]map[string]*TaskState),
+		taskStates:    make(map[uuid.UUID]map[string]*entities.TaskState),
 		retentionDays: env.Get("EVENT_RETENTION_DAYS").Default(7).ValueInt(),
 		eventChan:     nil, // Initially nil, enabled via EnableRealTimeEmission
 	}
+
+	// Load existing task states from database
+	if err := s.LoadStates(context.Background()); err != nil {
+		slog.Error("failed to load task states from database", "error", err)
+	}
+
+	return s
+}
+
+// LoadStates loads all task states from the database into memory
+func (s *Service) LoadStates(ctx context.Context) error {
+	states, err := s.repo.LoadAllTaskStates(ctx)
+	if err != nil {
+		return err
+	}
+
+	s.mu.Lock()
+	s.taskStates = states
+	s.mu.Unlock()
+
+	slog.Info("task states loaded from database",
+		"agents", len(states),
+	)
+
+	return nil
 }
 
 // EnableRealTimeEmission creates and returns a channel for real-time event emission.
@@ -55,18 +71,34 @@ func (s *Service) EnableRealTimeEmission(bufferSize int) <-chan *entities.Event 
 
 // isErrorState checks if a state represents an error condition
 func isErrorState(state string) bool {
-	errorStates := []string{
-		"ERROR",
-		"MISSING_FILES",
-		"MISSINGFILES",
+	return state == constants.TaskStatusError || state == constants.TaskStatusMissingFiles
+}
+
+// isSignificantStateChange checks if a state change is significant enough to generate an event
+// Some state changes are trivial (like STALLED_UPLOAD <-> UPLOADING) and happen frequently
+func isSignificantStateChange(oldState, newState string) bool {
+	// Define state groups that are considered similar
+	uploadStates := map[string]bool{
+		constants.TaskStatusUploading:     true,
+		constants.TaskStatusStalledUpload: true,
 	}
 
-	for _, errState := range errorStates {
-		if state == errState {
-			return true
-		}
+	downloadStates := map[string]bool{
+		constants.TaskStatusDownloading:     true,
+		constants.TaskStatusStalledDownload: true,
 	}
-	return false
+
+	// If both states are in the same group, it's not significant
+	if uploadStates[oldState] && uploadStates[newState] {
+		return false
+	}
+
+	if downloadStates[oldState] && downloadStates[newState] {
+		return false
+	}
+
+	// All other state changes are significant
+	return true
 }
 
 // TrackTasks processes current tasks and detects state changes concurrently
@@ -88,14 +120,26 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 			s.mu.Lock()
 			// Ensure agent map exists
 			if s.taskStates[agentID] == nil {
-				s.taskStates[agentID] = make(map[string]*TaskState)
+				s.taskStates[agentID] = make(map[string]*entities.TaskState)
 			}
 
 			lastState, exists := s.taskStates[agentID][t.Hash]
 
+			// Debug log for state comparison
+			if exists {
+				slog.Debug("task state comparison",
+					"task_hash", t.Hash,
+					"task_name", t.Name,
+					"old_state", lastState.State,
+					"new_state", t.State,
+					"old_progress", lastState.Progress,
+					"new_progress", t.Progress,
+				)
+			}
+
 			// New task detected
 			if !exists {
-				s.taskStates[agentID][t.Hash] = &TaskState{
+				s.taskStates[agentID][t.Hash] = &entities.TaskState{
 					AgentID:   agentID,
 					Hash:      t.Hash,
 					State:     t.State,
@@ -103,6 +147,15 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 					UpdatedAt: timestamp,
 				}
 				s.mu.Unlock()
+
+				// Persist state to database
+				if err := s.repo.SaveTaskState(ctx, agentID, t.Hash, t.State, t.Progress, timestamp); err != nil {
+					slog.Error("failed to save task state",
+						"error", err,
+						"agent_id", agentID.String(),
+						"task_hash", t.Hash,
+					)
+				}
 
 				// Create task added event
 				eventsChan <- &entities.Event{
@@ -124,11 +177,55 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 				oldProgress := lastState.Progress
 				wasCompleted := lastState.Progress >= 1.0
 
+				// Check if this is a significant state change
+				if !isSignificantStateChange(oldState, t.State) {
+					slog.Debug("insignificant state change ignored",
+						"task_name", t.Name,
+						"task_hash", t.Hash,
+						"old_state", oldState,
+						"new_state", t.State,
+					)
+
+					// Update state in memory and database but don't generate event
+					lastState.State = t.State
+					lastState.Progress = t.Progress
+					lastState.UpdatedAt = timestamp
+					s.mu.Unlock()
+
+					// Persist state change to database
+					if err := s.repo.SaveTaskState(ctx, agentID, t.Hash, t.State, t.Progress, timestamp); err != nil {
+						slog.Error("failed to save task state",
+							"error", err,
+							"agent_id", agentID.String(),
+							"task_hash", t.Hash,
+						)
+					}
+					return
+				}
+
+				slog.Info("state change detected",
+					"task_name", t.Name,
+					"task_hash", t.Hash,
+					"old_state", oldState,
+					"new_state", t.State,
+					"old_progress", oldProgress,
+					"new_progress", t.Progress,
+				)
+
 				// Update state
 				lastState.State = t.State
 				lastState.Progress = t.Progress
 				lastState.UpdatedAt = timestamp
 				s.mu.Unlock()
+
+				// Persist state change to database
+				if err := s.repo.SaveTaskState(ctx, agentID, t.Hash, t.State, t.Progress, timestamp); err != nil {
+					slog.Error("failed to save task state",
+						"error", err,
+						"agent_id", agentID.String(),
+						"task_hash", t.Hash,
+					)
+				}
 
 				// Create state change event
 				eventsChan <- &entities.Event{
@@ -163,6 +260,17 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 				lastState.Progress = t.Progress
 				lastState.UpdatedAt = timestamp
 				s.mu.Unlock()
+
+				// Persist progress update to database (only if progress changed)
+				if oldProgress != t.Progress {
+					if err := s.repo.SaveTaskState(ctx, agentID, t.Hash, t.State, t.Progress, timestamp); err != nil {
+						slog.Error("failed to save task state",
+							"error", err,
+							"agent_id", agentID.String(),
+							"task_hash", t.Hash,
+						)
+					}
+				}
 
 				// Check if task just reached 100% (not an error state)
 				if t.Progress >= 1.0 && !wasCompleted && !isErrorState(t.State) {
@@ -309,10 +417,19 @@ func (s *Service) DetectRemovedTasks(ctx context.Context, currentTasks []*entiti
 	// Process events
 	s.processEvents(ctx, eventsChan, agentID)
 
-	// Remove from tracked states
+	// Remove from tracked states and database
 	s.mu.Lock()
 	for hash := range removedHashes {
 		delete(s.taskStates[agentID], hash)
+
+		// Delete from database
+		if err := s.repo.DeleteTaskState(ctx, agentID, hash); err != nil {
+			slog.Error("failed to delete task state from database",
+				"error", err,
+				"agent_id", agentID.String(),
+				"task_hash", hash,
+			)
+		}
 	}
 	s.mu.Unlock()
 
@@ -340,11 +457,18 @@ func (s *Service) PurgeOldEvents(ctx context.Context) error {
 }
 
 // CleanStaleStates removes states for tasks not seen in the last 24 hours
-func (s *Service) CleanStaleStates() {
+func (s *Service) CleanStaleStates(ctx context.Context) {
+	cutoff := time.Now().Add(-24 * time.Hour)
+
+	// Clean from database
+	if err := s.repo.DeleteOldTaskStates(ctx, cutoff); err != nil {
+		slog.Error("failed to delete old task states from database", "error", err)
+	}
+
+	// Clean from memory
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	cutoff := time.Now().Add(-24 * time.Hour)
 	for agentID, agentTasks := range s.taskStates {
 		for hash, state := range agentTasks {
 			if state.UpdatedAt.Before(cutoff) {

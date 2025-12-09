@@ -130,3 +130,96 @@ func (r *Repository) DeleteOldEvents(ctx context.Context, olderThan time.Time) e
 		Where("created_at < ?", olderThan).
 		Delete(&models.Event{}).Error
 }
+
+// SaveTaskState saves or updates a task state in the database
+func (r *Repository) SaveTaskState(ctx context.Context, agentID uuid.UUID, hash string, state string, progress float64, updatedAt time.Time) error {
+	taskState := &models.TaskState{
+		AgentID:   agentID,
+		Hash:      hash,
+		State:     state,
+		Progress:  progress,
+		UpdatedAt: updatedAt,
+	}
+
+	// Check if record exists
+	var existing models.TaskState
+	err := r.db.DB.WithContext(ctx).
+		Where("agent_id = ? AND hash = ?", agentID, hash).
+		First(&existing).Error
+
+	if err == nil {
+		// Record exists, update it
+		return r.db.DB.WithContext(ctx).
+			Model(&models.TaskState{}).
+			Where("agent_id = ? AND hash = ?", agentID, hash).
+			Updates(map[string]interface{}{
+				"state":      state,
+				"progress":   progress,
+				"updated_at": updatedAt,
+			}).Error
+	}
+
+	// Record doesn't exist, create it
+	return r.db.DB.WithContext(ctx).Create(taskState).Error
+}
+
+// LoadTaskStates loads all task states for a specific agent from the database
+func (r *Repository) LoadTaskStates(ctx context.Context, agentID uuid.UUID) (map[string]*entities.TaskState, error) {
+	var states []models.TaskState
+	if err := r.db.DB.WithContext(ctx).
+		Where("agent_id = ?", agentID).
+		Find(&states).Error; err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]*entities.TaskState, len(states))
+	for _, s := range states {
+		result[s.Hash] = &entities.TaskState{
+			AgentID:   s.AgentID,
+			Hash:      s.Hash,
+			State:     s.State,
+			Progress:  s.Progress,
+			UpdatedAt: s.UpdatedAt,
+		}
+	}
+
+	return result, nil
+}
+
+// LoadAllTaskStates loads all task states from the database grouped by agent
+func (r *Repository) LoadAllTaskStates(ctx context.Context) (map[uuid.UUID]map[string]*entities.TaskState, error) {
+	var states []models.TaskState
+	if err := r.db.DB.WithContext(ctx).Find(&states).Error; err != nil {
+		return nil, err
+	}
+
+	result := make(map[uuid.UUID]map[string]*entities.TaskState)
+	for _, s := range states {
+		if result[s.AgentID] == nil {
+			result[s.AgentID] = make(map[string]*entities.TaskState)
+		}
+		result[s.AgentID][s.Hash] = &entities.TaskState{
+			AgentID:   s.AgentID,
+			Hash:      s.Hash,
+			State:     s.State,
+			Progress:  s.Progress,
+			UpdatedAt: s.UpdatedAt,
+		}
+	}
+
+	return result, nil
+}
+
+// DeleteTaskState removes a task state from the database
+func (r *Repository) DeleteTaskState(ctx context.Context, agentID uuid.UUID, hash string) error {
+	return r.db.DB.WithContext(ctx).
+		Where("agent_id = ? AND hash = ?", agentID, hash).
+		Delete(&models.TaskState{}).Error
+}
+
+// DeleteOldTaskStates deletes task states older than the specified date
+func (r *Repository) DeleteOldTaskStates(ctx context.Context, olderThan time.Time) error {
+	return r.db.DB.WithContext(ctx).
+		Where("updated_at < ?", olderThan).
+		Delete(&models.TaskState{}).Error
+}

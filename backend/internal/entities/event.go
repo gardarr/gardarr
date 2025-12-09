@@ -17,3 +17,12 @@ type Event struct {
 	Metadata  map[string]interface{} // Contains all task details and event-specific data
 	CreatedAt time.Time
 }
+
+// TaskState represents the last known state of a task
+type TaskState struct {
+	AgentID   uuid.UUID
+	Hash      string
+	State     string
+	Progress  float64
+	UpdatedAt time.Time
+}
