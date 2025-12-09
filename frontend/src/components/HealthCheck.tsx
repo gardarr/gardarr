@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
+import { useTranslation } from 'react-i18next';
 
 interface HealthStatus {
   status: string;
@@ -8,6 +9,7 @@ interface HealthStatus {
 }
 
 export default function HealthCheck() {
+  const { t } = useTranslation();
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,10 +25,10 @@ export default function HealthCheck() {
         if (response.data) {
           setHealth(response.data);
         } else {
-          setError(response.error || 'Erro desconhecido');
+          setError(response.error || t('healthCheck.unknownError'));
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Erro ao verificar saúde da API');
+        setError(err instanceof Error ? err.message : t('healthCheck.checkError'));
       } finally {
         setLoading(false);
       }
@@ -44,7 +46,7 @@ export default function HealthCheck() {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
-        Verificando API...
+        {t('healthCheck.checking')}
       </div>
     );
   }
@@ -53,7 +55,7 @@ export default function HealthCheck() {
     return (
       <div className="flex items-center gap-2 text-sm text-red-500">
         <div className="w-2 h-2 bg-red-500 rounded-full" />
-        API Offline: {error}
+        {t('healthCheck.offline')}: {error}
       </div>
     );
   }
@@ -61,7 +63,7 @@ export default function HealthCheck() {
   return (
     <div className="flex items-center gap-2 text-sm text-green-500">
       <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-      API Online
+      {t('healthCheck.online')}
       {health?.uptime && (
         <span className="text-muted-foreground">
           ({health.uptime})

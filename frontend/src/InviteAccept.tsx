@@ -10,8 +10,10 @@ import { signupService } from "./services/signup";
 import type { Invite } from "./types/invite";
 import { toast, Toaster } from "sonner";
 import logoImage from "@/assets/img/logo/logo_64x64.png";
+import { useTranslation } from "react-i18next";
 
 function InviteAccept() {
+  const { t } = useTranslation();
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -52,7 +54,7 @@ function InviteAccept() {
       const response = await inviteService.validateInvite(code);
 
       if (response.error || !response.data) {
-        toast.error(response.error || "Invalid invite code");
+        toast.error(response.error || t('inviteAccept.invalidCode'));
         setValid(false);
       } else if (response.data.valid && response.data.invite) {
         setValid(true);
@@ -62,11 +64,11 @@ function InviteAccept() {
           setEmail(response.data.invite.email);
         }
       } else {
-        toast.error("This invite is no longer valid");
+        toast.error(t('inviteAccept.invalidInviteMessage'));
         setValid(false);
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to validate invite");
+      toast.error(err instanceof Error ? err.message : t('inviteAccept.createFailed'));
       setValid(false);
     } finally {
       setLoading(false);
@@ -86,17 +88,17 @@ function InviteAccept() {
 
     // Validate form
     if (!email || !password) {
-      toast.error("Please fill in all fields");
+      toast.error(t('inviteAccept.fillAllFields'));
       return;
     }
 
     if (password.length < 8) {
-      toast.error("Password must be at least 8 characters");
+      toast.error(t('inviteAccept.passwordTooShort'));
       return;
     }
 
     if (password !== confirmPassword) {
-      toast.error("Passwords do not match");
+      toast.error(t('inviteAccept.passwordMismatch'));
       return;
     }
 
@@ -111,13 +113,13 @@ function InviteAccept() {
       if (response.error) {
         toast.error(response.error);
       } else {
-        toast.success("Account created successfully! Redirecting to login...");
+        toast.success(t('inviteAccept.accountCreated'));
         setTimeout(() => {
           navigate("/login");
         }, 2000);
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create account");
+      toast.error(err instanceof Error ? err.message : t('inviteAccept.createFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -129,7 +131,7 @@ function InviteAccept() {
         <Card className="w-full max-w-md">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-            <p className="text-muted-foreground">Validating invite...</p>
+            <p className="text-muted-foreground">{t('inviteAccept.validatingInvite')}</p>
           </CardContent>
         </Card>
       </div>
@@ -142,12 +144,12 @@ function InviteAccept() {
         <Card className="w-full max-w-md">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <XCircle className="h-16 w-16 text-destructive mb-4" />
-            <h2 className="text-2xl font-bold mb-2">Invalid Invite</h2>
+            <h2 className="text-2xl font-bold mb-2">{t('inviteAccept.invalidInvite')}</h2>
             <p className="text-muted-foreground text-center mb-6">
-              This invite link is invalid, expired, or has already been used.
+              {t('inviteAccept.invalidInviteMessage')}
             </p>
             <Button onClick={() => navigate("/login")}>
-              Go to Login
+              {t('inviteAccept.goToLogin')}
             </Button>
           </CardContent>
         </Card>
@@ -169,9 +171,9 @@ function InviteAccept() {
             />
           </div>
           <div className="text-center">
-            <CardTitle className="text-2xl font-bold">Accept Invitation</CardTitle>
+            <CardTitle className="text-2xl font-bold">{t('inviteAccept.title')}</CardTitle>
             <p className="text-muted-foreground mt-2">
-              Create your account to get started
+              {t('inviteAccept.subtitle')}
             </p>
           </div>
         </CardHeader>
@@ -180,20 +182,20 @@ function InviteAccept() {
           <div className="mb-6 p-3 bg-accent/50 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
               <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-              <span className="text-sm font-medium">Valid Invitation</span>
+              <span className="text-sm font-medium">{t('inviteAccept.validInvitation')}</span>
             </div>
             <div className="text-xs text-muted-foreground space-y-1">
               {invite.email && (
-                <div>Email: {invite.email}</div>
+                <div>{t('inviteAccept.email')}: {invite.email}</div>
               )}
-              <div>Role: {invite.role}</div>
-              <div>Expires: {new Date(invite.expires_at).toLocaleString()}</div>
+              <div>{t('inviteAccept.role')}: {invite.role}</div>
+              <div>{t('inviteAccept.expires')}: {new Date(invite.expires_at).toLocaleString()}</div>
             </div>
           </div>
 
           <form onSubmit={handleAcceptInvite} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('inviteAccept.email')}</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -210,13 +212,13 @@ function InviteAccept() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t('inviteAccept.password')}</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="password"
                   type="password"
-                  placeholder="Minimum 8 characters"
+                  placeholder={t('inviteAccept.passwordPlaceholder')}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10"
@@ -227,13 +229,13 @@ function InviteAccept() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label htmlFor="confirmPassword">{t('inviteAccept.confirmPassword')}</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="confirmPassword"
                   type="password"
-                  placeholder="Enter your password again"
+                  placeholder={t('inviteAccept.confirmPasswordPlaceholder')}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="pl-10"
@@ -251,24 +253,24 @@ function InviteAccept() {
               {submitting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating Account...
+                  {t('inviteAccept.creatingAccount')}
                 </>
               ) : (
                 <>
                   <Link2 className="h-4 w-4 mr-2" />
-                  Accept Invite & Create Account
+                  {t('inviteAccept.acceptInvite')}
                 </>
               )}
             </Button>
 
             <div className="text-center text-sm text-muted-foreground">
-              Already have an account?{" "}
+              {t('inviteAccept.alreadyHaveAccount')}{" "}
               <Button
                 variant="link"
                 className="p-0 h-auto font-normal"
                 onClick={() => navigate("/login")}
               >
-                Sign in
+                {t('inviteAccept.signIn')}
               </Button>
             </div>
           </form>
