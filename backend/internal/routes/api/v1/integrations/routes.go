@@ -42,6 +42,63 @@ const (
 	errInvalidWebhookIDFormat = "Invalid webhook ID format"
 )
 
+// parseWebhookUUID parses and validates a webhook UUID from the request parameter
+func (m *Module) parseWebhookUUID(c *gin.Context) (uuid.UUID, bool) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": errRequiredWebhookID})
+		return uuid.Nil, false
+	}
+
+	webhookUUID, err := uuid.Parse(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidWebhookIDFormat})
+		return uuid.Nil, false
+	}
+
+	return webhookUUID, true
+}
+
+// parsePaginationParams parses and validates pagination parameters from query string
+func (m *Module) parsePaginationParams(c *gin.Context) (limit, offset int, ok bool) {
+	limitStr := c.DefaultQuery("limit", "50")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit parameter: must be a valid integer"})
+		return 0, 0, false
+	}
+
+	offsetStr := c.DefaultQuery("offset", "0")
+	offset, err = strconv.Atoi(offsetStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid offset parameter: must be a valid integer"})
+		return 0, 0, false
+	}
+
+	if limit < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit parameter: must be non-negative"})
+		return 0, 0, false
+	}
+
+	if offset < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid offset parameter: must be non-negative"})
+		return 0, 0, false
+	}
+
+	if limit > 100 {
+		limit = 100
+	}
+
+	return limit, offset, true
+}
+
+// reloadWebhooks triggers a reload of webhooks in the integration service
+func (m *Module) reloadWebhooks(c *gin.Context) {
+	if m.integrationService != nil {
+		m.integrationService.ReloadWebhooks(c.Request.Context())
+	}
+}
+
 // Register registers all integration routes
 func (m *Module) Register() {
 	// Apply authentication middleware to all routes
@@ -108,11 +165,7 @@ func (m *Module) createWebhook(c *gin.Context) {
 		return
 	}
 
-	// Reload webhooks in integration service
-	if m.integrationService != nil {
-		m.integrationService.ReloadWebhooks(c.Request.Context())
-	}
-
+	m.reloadWebhooks(c)
 	c.JSON(http.StatusCreated, m.toResponse(created))
 }
 
@@ -134,15 +187,8 @@ func (m *Module) listWebhooks(c *gin.Context) {
 
 // getWebhookByID retrieves a webhook by its UUID
 func (m *Module) getWebhookByID(c *gin.Context) {
-	id := c.Param("id")
-	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": errRequiredWebhookID})
-		return
-	}
-
-	webhookUUID, err := uuid.Parse(id)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidWebhookIDFormat})
+	webhookUUID, ok := m.parseWebhookUUID(c)
+	if !ok {
 		return
 	}
 
@@ -161,15 +207,8 @@ func (m *Module) getWebhookByID(c *gin.Context) {
 
 // updateWebhook updates an existing webhook
 func (m *Module) updateWebhook(c *gin.Context) {
-	id := c.Param("id")
-	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": errRequiredWebhookID})
-		return
-	}
-
-	webhookUUID, err := uuid.Parse(id)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidWebhookIDFormat})
+	webhookUUID, ok := m.parseWebhookUUID(c)
+	if !ok {
 		return
 	}
 
@@ -236,25 +275,14 @@ func (m *Module) updateWebhook(c *gin.Context) {
 		return
 	}
 
-	// Reload webhooks in integration service
-	if m.integrationService != nil {
-		m.integrationService.ReloadWebhooks(c.Request.Context())
-	}
-
+	m.reloadWebhooks(c)
 	c.JSON(http.StatusOK, m.toResponse(result))
 }
 
 // deleteWebhook removes a webhook by UUID
 func (m *Module) deleteWebhook(c *gin.Context) {
-	id := c.Param("id")
-	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": errRequiredWebhookID})
-		return
-	}
-
-	webhookUUID, err := uuid.Parse(id)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidWebhookIDFormat})
+	webhookUUID, ok := m.parseWebhookUUID(c)
+	if !ok {
 		return
 	}
 
@@ -267,11 +295,7 @@ func (m *Module) deleteWebhook(c *gin.Context) {
 		return
 	}
 
-	// Reload webhooks in integration service
-	if m.integrationService != nil {
-		m.integrationService.ReloadWebhooks(c.Request.Context())
-	}
-
+	m.reloadWebhooks(c)
 	c.JSON(http.StatusNoContent, nil)
 }
 
@@ -307,45 +331,14 @@ func (m *Module) toResponse(wh *entities.Webhook) models.WebhookResponse {
 
 // getWebhookHistory retrieves webhook history for a specific webhook
 func (m *Module) getWebhookHistory(c *gin.Context) {
-	id := c.Param("id")
-	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": errRequiredWebhookID})
+	webhookUUID, ok := m.parseWebhookUUID(c)
+	if !ok {
 		return
 	}
 
-	webhookUUID, err := uuid.Parse(id)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidWebhookIDFormat})
+	limit, offset, ok := m.parsePaginationParams(c)
+	if !ok {
 		return
-	}
-
-	// Parse pagination parameters
-	limitStr := c.DefaultQuery("limit", "50")
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit parameter: must be a valid integer"})
-		return
-	}
-
-	offsetStr := c.DefaultQuery("offset", "0")
-	offset, err := strconv.Atoi(offsetStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid offset parameter: must be a valid integer"})
-		return
-	}
-
-	if limit < 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit parameter: must be non-negative"})
-		return
-	}
-
-	if offset < 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid offset parameter: must be non-negative"})
-		return
-	}
-
-	if limit > 100 {
-		limit = 100
 	}
 
 	history, err := m.webhookHistoryRepo.ListWebhookHistory(c.Request.Context(), &webhookUUID, limit, offset)
@@ -375,33 +368,9 @@ func (m *Module) getWebhookHistory(c *gin.Context) {
 
 // listWebhookHistory retrieves all webhook history with pagination
 func (m *Module) listWebhookHistory(c *gin.Context) {
-	// Parse pagination parameters
-	limitStr := c.DefaultQuery("limit", "50")
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit parameter: must be a valid integer"})
+	limit, offset, ok := m.parsePaginationParams(c)
+	if !ok {
 		return
-	}
-
-	offsetStr := c.DefaultQuery("offset", "0")
-	offset, err := strconv.Atoi(offsetStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid offset parameter: must be a valid integer"})
-		return
-	}
-
-	if limit < 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit parameter: must be non-negative"})
-		return
-	}
-
-	if offset < 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid offset parameter: must be non-negative"})
-		return
-	}
-
-	if limit > 100 {
-		limit = 100
 	}
 
 	history, err := m.webhookHistoryRepo.ListWebhookHistory(c.Request.Context(), nil, limit, offset)

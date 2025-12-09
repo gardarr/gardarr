@@ -6,14 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Card, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { History, Info, AlertCircle } from 'lucide-react';
+import { WebhookHistoryItem } from '@/components/WebhookHistoryItem';
 import { EventFilter } from '@/components/EventFilter';
 import { webhookService } from '@/services/webhooks';
 import type { Webhook, UpdateWebhookRequest, WebhookHistory } from '@/types/webhook';
 import { toast } from 'sonner';
-import { formatDistanceToNow } from 'date-fns';
 import { filterToStrings, buildFilterFromStrings } from '@/utils/eventFilterUtils';
 
 interface EditIntegrationWebhookModalProps {
@@ -22,6 +20,11 @@ interface EditIntegrationWebhookModalProps {
   webhook: Webhook | null;
   onSuccess: () => void;
 }
+
+// Helper function to check if HTTP status code is successful
+const isSuccessStatus = (statusCode: number): boolean => {
+  return statusCode >= 200 && statusCode < 300;
+};
 
 export function EditIntegrationWebhookModal({
   isOpen,
@@ -48,6 +51,14 @@ export function EditIntegrationWebhookModal({
 
   const urlHasProtocol = (url: string): boolean => {
     return url.trim().startsWith('http://') || url.trim().startsWith('https://');
+  };
+
+  const updateFormField = <K extends keyof typeof formData>(field: K, value: typeof formData[K]) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const updateFilterField = <K extends keyof typeof filterData>(field: K, value: string) => {
+    setFilterData(prev => ({ ...prev, [field]: value }));
   };
 
   const showProtocolSelector = formData.url.trim() !== '' && !urlHasProtocol(formData.url);
@@ -141,7 +152,7 @@ export function EditIntegrationWebhookModal({
                 type="url"
                 placeholder="https://example.com/webhook"
                 value={formData.url}
-                onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+                onChange={(e) => updateFormField('url', e.target.value)}
               />
               {showProtocolSelector && (
                 <div className="flex items-center justify-between p-3 border rounded-md bg-muted/50">
@@ -166,7 +177,7 @@ export function EditIntegrationWebhookModal({
                       onClick={applyProtocol}
                       variant="secondary"
                     >
-                      Apply
+                      {t('common.apply') || 'Apply'}
                     </Button>
                   </div>
                 </div>
@@ -180,7 +191,7 @@ export function EditIntegrationWebhookModal({
                 min="1"
                 max="300"
                 value={formData.timeout_seconds}
-                onChange={(e) => setFormData({ ...formData, timeout_seconds: parseInt(e.target.value) || 10 })}
+                onChange={(e) => updateFormField('timeout_seconds', parseInt(e.target.value) || 10)}
               />
               <p className="text-sm text-muted-foreground">{t('webhooks.timeoutHelp')}</p>
             </div>
@@ -189,7 +200,7 @@ export function EditIntegrationWebhookModal({
               <Switch
                 id="edit-insecure"
                 checked={formData.insecure_skip_verify}
-                onCheckedChange={(checked) => setFormData({ ...formData, insecure_skip_verify: checked })}
+                onCheckedChange={(checked) => updateFormField('insecure_skip_verify', checked)}
               />
             </div>
             <p className="text-sm text-muted-foreground">{t('webhooks.insecureHelp')}</p>
@@ -199,10 +210,10 @@ export function EditIntegrationWebhookModal({
               statusFilter={filterData.statusFilter}
               categoryFilter={filterData.categoryFilter}
               nameTerms={filterData.nameTerms}
-              onEventTypeFilterChange={(value) => setFilterData({ ...filterData, eventTypeFilter: value })}
-              onStatusFilterChange={(value) => setFilterData({ ...filterData, statusFilter: value })}
-              onCategoryFilterChange={(value) => setFilterData({ ...filterData, categoryFilter: value })}
-              onNameTermsChange={(value) => setFilterData({ ...filterData, nameTerms: value })}
+              onEventTypeFilterChange={(value) => updateFilterField('eventTypeFilter', value)}
+              onStatusFilterChange={(value) => updateFilterField('statusFilter', value)}
+              onCategoryFilterChange={(value) => updateFilterField('categoryFilter', value)}
+              onNameTermsChange={(value) => updateFilterField('nameTerms', value)}
               idPrefix="edit-"
             />
           </TabsContent>
@@ -226,43 +237,11 @@ export function EditIntegrationWebhookModal({
             ) : (
               <div className="space-y-3 max-h-[400px] overflow-y-auto">
                 {webhookHistory.map((history) => (
-                  <Card key={history.uuid} className={history.status_code >= 200 && history.status_code < 300 ? 'border-green-500/50' : 'border-red-500/50'}>
-                    <CardHeader className="p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Badge variant={history.status_code >= 200 && history.status_code < 300 ? 'default' : 'destructive'}>
-                              {history.status_code || 'Error'}
-                            </Badge>
-                            <span className="text-sm text-muted-foreground">
-                              {formatDistanceToNow(new Date(history.created_at), { addSuffix: true })}
-                            </span>
-                          </div>
-                          {history.task_name && (
-                            <p className="text-sm font-medium truncate">{history.task_name}</p>
-                          )}
-                          <p className="text-xs text-muted-foreground truncate">Hash: {history.task_hash}</p>
-                          <p className="text-xs text-muted-foreground">Status: {history.task_status}</p>
-                          {history.error && (
-                            <div className="flex items-start gap-2 mt-2 p-2 bg-destructive/10 rounded text-xs">
-                              <AlertCircle className="h-3 w-3 text-destructive mt-0.5 flex-shrink-0" />
-                              <span className="text-destructive break-all">{history.error}</span>
-                            </div>
-                          )}
-                          {history.response_body && (
-                            <details className="mt-2">
-                              <summary className="text-xs cursor-pointer text-muted-foreground hover:text-foreground">
-                                Response Body
-                              </summary>
-                              <pre className="mt-1 p-2 bg-muted rounded text-xs overflow-x-auto">
-                                {history.response_body}
-                              </pre>
-                            </details>
-                          )}
-                        </div>
-                      </div>
-                    </CardHeader>
-                  </Card>
+                  <WebhookHistoryItem
+                    key={history.uuid}
+                    history={history}
+                    isSuccess={isSuccessStatus(history.status_code)}
+                  />
                 ))}
               </div>
             )}
