@@ -166,5 +166,15 @@ func Register(m *migration.Migrator) {
 				return db.Migrator().DropColumn(&models.EventFilter{}, "event_type_filter")
 			},
 		},
+		{
+			Version:     "017_create_task_states_table",
+			Description: "Cria a tabela de estados de tasks para persistir estado entre reinicializações",
+			Up: func(db *gorm.DB) error {
+				return db.AutoMigrate(&models.TaskState{})
+			},
+			Down: func(db *gorm.DB) error {
+				return db.Migrator().DropTable(&models.TaskState{})
+			},
+		},
 	})
 }
