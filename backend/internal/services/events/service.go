@@ -385,23 +385,30 @@ func (s *Service) DetectRemovedTasks(ctx context.Context, currentTasks []*entiti
 		go func(h string) {
 			defer wg.Done()
 
+			// Copy fields under lock to avoid data race
 			s.mu.RLock()
 			state, exists := s.taskStates[agentID][h]
+			var lastState string
+			var lastProgress float64
+			if exists {
+				lastState = state.State
+				lastProgress = state.Progress
+			}
 			s.mu.RUnlock()
 
 			if !exists {
 				return
 			}
 
-			// Task removed - create event
+			// Task removed - create event (using copied values)
 			eventsChan <- &entities.Event{
 				UUID:     uuid.New(),
 				AgentID:  agentID,
 				Type:     constants.EventTypeTorrentRemoved,
 				TaskHash: h,
-				OldValue: state.State,
+				OldValue: lastState,
 				Metadata: map[string]interface{}{
-					"last_progress": state.Progress,
+					"last_progress": lastProgress,
 				},
 				CreatedAt: timestamp,
 			}
