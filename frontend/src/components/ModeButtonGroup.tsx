@@ -7,6 +7,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { LimitMode } from "@/utils/limitUtils";
+import { useTranslation } from "react-i18next";
 
 interface ModeButtonGroupProps {
   mode: LimitMode;
@@ -14,6 +15,8 @@ interface ModeButtonGroupProps {
 }
 
 export function ModeButtonGroup({ mode, onModeChange }: ModeButtonGroupProps) {
+  const { t } = useTranslation();
+  
   return (
     <ButtonGroup orientation="horizontal">
       <Tooltip>
@@ -28,7 +31,7 @@ export function ModeButtonGroup({ mode, onModeChange }: ModeButtonGroupProps) {
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Unlimited</p>
+          <p>{t('modeButtonGroup.unlimited')}</p>
         </TooltipContent>
       </Tooltip>
       <Tooltip>
@@ -43,7 +46,7 @@ export function ModeButtonGroup({ mode, onModeChange }: ModeButtonGroupProps) {
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Global Limit</p>
+          <p>{t('modeButtonGroup.globalLimit')}</p>
         </TooltipContent>
       </Tooltip>
       <Tooltip>
@@ -58,7 +61,7 @@ export function ModeButtonGroup({ mode, onModeChange }: ModeButtonGroupProps) {
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Custom</p>
+          <p>{t('modeButtonGroup.custom')}</p>
         </TooltipContent>
       </Tooltip>
     </ButtonGroup>

@@ -7,8 +7,11 @@ import {
   Shield,
   Users
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function ForgotPasswordPage() {
+  const { t } = useTranslation();
+  
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
       <Card className="w-full max-w-md">
@@ -16,9 +19,9 @@ export default function ForgotPasswordPage() {
           <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
             <Mail className="h-6 w-6 text-primary" />
           </div>
-          <CardTitle className="text-2xl">Forgot Your Password?</CardTitle>
+          <CardTitle className="text-2xl">{t('forgotPassword.title')}</CardTitle>
           <p className="text-muted-foreground">
-            Contact your administrator to reset your password
+            {t('forgotPassword.subtitle')}
           </p>
         </CardHeader>
         
@@ -31,11 +34,10 @@ export default function ForgotPasswordPage() {
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
-                  Password Reset Process
+                  {t('forgotPassword.processTitle')}
                 </h3>
                 <p className="text-sm text-blue-700 dark:text-blue-300">
-                  For security reasons, password resets must be initiated by an administrator. 
-                  Please contact your system administrator to request a password reset.
+                  {t('forgotPassword.processDescription')}
                 </p>
               </div>
             </div>
@@ -43,7 +45,7 @@ export default function ForgotPasswordPage() {
 
           {/* Steps */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-gray-900 dark:text-white">What happens next?</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-white">{t('forgotPassword.whatHappensNext')}</h3>
             
             <div className="space-y-3">
               <div className="flex items-start gap-3">
@@ -52,10 +54,10 @@ export default function ForgotPasswordPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    Contact your administrator
+                    {t('forgotPassword.step1Title')}
                   </p>
                   <p className="text-xs text-gray-600 dark:text-gray-400">
-                    Reach out to your system administrator to request a password reset
+                    {t('forgotPassword.step1Description')}
                   </p>
                 </div>
               </div>
@@ -66,10 +68,10 @@ export default function ForgotPasswordPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    Receive reset link
+                    {t('forgotPassword.step2Title')}
                   </p>
                   <p className="text-xs text-gray-600 dark:text-gray-400">
-                    Your administrator will generate a secure password reset link for you
+                    {t('forgotPassword.step2Description')}
                   </p>
                 </div>
               </div>
@@ -80,10 +82,10 @@ export default function ForgotPasswordPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    Set new password
+                    {t('forgotPassword.step3Title')}
                   </p>
                   <p className="text-xs text-gray-600 dark:text-gray-400">
-                    Use the reset link to set a new password for your account
+                    {t('forgotPassword.step3Description')}
                   </p>
                 </div>
               </div>
@@ -96,10 +98,10 @@ export default function ForgotPasswordPage() {
               <Users className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                  For Administrators
+                  {t('forgotPassword.forAdmins')}
                 </p>
                 <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                  To reset a user's password, go to the Users page and use the "Generate Password Reset Link" option.
+                  {t('forgotPassword.adminInfo')}
                 </p>
               </div>
             </div>
@@ -110,7 +112,7 @@ export default function ForgotPasswordPage() {
             <Button asChild className="w-full">
               <Link to="/login">
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Login
+                {t('forgotPassword.backToLogin')}
               </Link>
             </Button>
           </div>
