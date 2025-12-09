@@ -11,11 +11,20 @@ import (
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/models"
+	"gorm.io/gorm/clause"
 )
 
 type Repository struct {
 	db *database.Database
 }
+
+const (
+	// Query conditions for task state operations
+	taskStateByAgentAndHash = "agent_id = ? AND hash = ?"
+
+	// Batch size for loading task states to prevent memory spikes
+	taskStateLoadBatchSize = 1000
+)
 
 func NewRepository(db *database.Database) *Repository {
 	return &Repository{db: db}
@@ -131,7 +140,8 @@ func (r *Repository) DeleteOldEvents(ctx context.Context, olderThan time.Time) e
 		Delete(&models.Event{}).Error
 }
 
-// SaveTaskState saves or updates a task state in the database
+// SaveTaskState saves or updates a task state in the database atomically
+// Uses UPSERT to avoid TOCTOU race conditions
 func (r *Repository) SaveTaskState(ctx context.Context, agentID uuid.UUID, hash string, state string, progress float64, updatedAt time.Time) error {
 	taskState := &models.TaskState{
 		AgentID:   agentID,
@@ -141,26 +151,16 @@ func (r *Repository) SaveTaskState(ctx context.Context, agentID uuid.UUID, hash 
 		UpdatedAt: updatedAt,
 	}
 
-	// Check if record exists
-	var existing models.TaskState
-	err := r.db.DB.WithContext(ctx).
-		Where("agent_id = ? AND hash = ?", agentID, hash).
-		First(&existing).Error
-
-	if err == nil {
-		// Record exists, update it
-		return r.db.DB.WithContext(ctx).
-			Model(&models.TaskState{}).
-			Where("agent_id = ? AND hash = ?", agentID, hash).
-			Updates(map[string]interface{}{
-				"state":      state,
-				"progress":   progress,
-				"updated_at": updatedAt,
-			}).Error
-	}
-
-	// Record doesn't exist, create it
-	return r.db.DB.WithContext(ctx).Create(taskState).Error
+	// Atomic upsert: insert or update on conflict
+	return r.db.DB.WithContext(ctx).
+		Clauses(clause.OnConflict{
+			Columns: []clause.Column{
+				{Name: "agent_id"},
+				{Name: "hash"},
+			},
+			DoUpdates: clause.AssignmentColumns([]string{"state", "progress", "updated_at"}),
+		}).
+		Create(taskState).Error
 }
 
 // LoadTaskStates loads all task states for a specific agent from the database
@@ -187,23 +187,56 @@ func (r *Repository) LoadTaskStates(ctx context.Context, agentID uuid.UUID) (map
 }
 
 // LoadAllTaskStates loads all task states from the database grouped by agent
+// Uses batching to prevent memory spikes during startup with large datasets
 func (r *Repository) LoadAllTaskStates(ctx context.Context) (map[uuid.UUID]map[string]*entities.TaskState, error) {
-	var states []models.TaskState
-	if err := r.db.DB.WithContext(ctx).Find(&states).Error; err != nil {
-		return nil, err
-	}
-
 	result := make(map[uuid.UUID]map[string]*entities.TaskState)
-	for _, s := range states {
-		if result[s.AgentID] == nil {
-			result[s.AgentID] = make(map[string]*entities.TaskState)
+	offset := 0
+
+	for {
+		var batch []models.TaskState
+		err := r.db.DB.WithContext(ctx).
+			Order("agent_id, hash").
+			Limit(taskStateLoadBatchSize).
+			Offset(offset).
+			Find(&batch).Error
+
+		if err != nil {
+			return nil, err
 		}
-		result[s.AgentID][s.Hash] = &entities.TaskState{
-			AgentID:   s.AgentID,
-			Hash:      s.Hash,
-			State:     s.State,
-			Progress:  s.Progress,
-			UpdatedAt: s.UpdatedAt,
+
+		// No more records
+		if len(batch) == 0 {
+			break
+		}
+
+		// Process batch
+		for _, s := range batch {
+			if result[s.AgentID] == nil {
+				result[s.AgentID] = make(map[string]*entities.TaskState)
+			}
+			result[s.AgentID][s.Hash] = &entities.TaskState{
+				AgentID:   s.AgentID,
+				Hash:      s.Hash,
+				State:     s.State,
+				Progress:  s.Progress,
+				UpdatedAt: s.UpdatedAt,
+			}
+		}
+
+		// Move to next batch
+		offset += taskStateLoadBatchSize
+
+		// If we got fewer records than batch size, we're done
+		if len(batch) < taskStateLoadBatchSize {
+			break
+		}
+
+		// Log progress for large datasets
+		if offset%5000 == 0 {
+			slog.Info("loading task states in progress",
+				"loaded", offset,
+				"agents", len(result),
+			)
 		}
 	}
 
@@ -213,7 +246,7 @@ func (r *Repository) LoadAllTaskStates(ctx context.Context) (map[uuid.UUID]map[s
 // DeleteTaskState removes a task state from the database
 func (r *Repository) DeleteTaskState(ctx context.Context, agentID uuid.UUID, hash string) error {
 	return r.db.DB.WithContext(ctx).
-		Where("agent_id = ? AND hash = ?", agentID, hash).
+		Where(taskStateByAgentAndHash, agentID, hash).
 		Delete(&models.TaskState{}).Error
 }
 

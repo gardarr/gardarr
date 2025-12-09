@@ -16,14 +16,14 @@ type TaskState struct {
 	UpdatedAt time.Time `gorm:"index;not null"`
 }
 
-func (ts *TaskState) BeforeCreate(tx *gorm.DB) (err error) {
+func (ts *TaskState) BeforeCreate(_ *gorm.DB) (err error) {
 	if ts.UpdatedAt.IsZero() {
 		ts.UpdatedAt = time.Now().UTC()
 	}
 	return
 }
 
-func (ts *TaskState) BeforeUpdate(tx *gorm.DB) (err error) {
+func (ts *TaskState) BeforeUpdate(_ *gorm.DB) (err error) {
 	ts.UpdatedAt = time.Now().UTC()
 	return
 }

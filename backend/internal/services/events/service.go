@@ -2,6 +2,7 @@ package events
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -14,6 +15,12 @@ import (
 	"github.com/jfxdev/gardarr/pkg/env"
 )
 
+const (
+	// Log messages
+	logMsgFailedToSaveTaskState   = "failed to save task state"
+	logMsgFailedToDeleteTaskState = "failed to delete task state from database"
+)
+
 // Service handles event tracking and state change detection
 type Service struct {
 	repo          *event.Repository
@@ -23,8 +30,9 @@ type Service struct {
 	eventChan     chan *entities.Event // Optional channel for real-time event emission
 }
 
-// NewService creates a new event service
-func NewService(db *database.Database) *Service {
+// NewService creates a new event service and loads existing state from database
+// Returns error if state loading fails to ensure consistent initialization
+func NewService(db *database.Database) (*Service, error) {
 	s := &Service{
 		repo:          event.NewRepository(db),
 		taskStates:    make(map[uuid.UUID]map[string]*entities.TaskState),
@@ -32,12 +40,12 @@ func NewService(db *database.Database) *Service {
 		eventChan:     nil, // Initially nil, enabled via EnableRealTimeEmission
 	}
 
-	// Load existing task states from database
+	// Load existing task states from database - fail fast if this fails
 	if err := s.LoadStates(context.Background()); err != nil {
-		slog.Error("failed to load task states from database", "error", err)
+		return nil, fmt.Errorf("failed to load task states from database: %w", err)
 	}
 
-	return s
+	return s, nil
 }
 
 // LoadStates loads all task states from the database into memory
@@ -101,23 +109,30 @@ func isSignificantStateChange(oldState, newState string) bool {
 	return true
 }
 
-// TrackTasks processes current tasks and detects state changes concurrently
+// stateUpdate represents a pending state update to be persisted
+type stateUpdate struct {
+	hash      string
+	state     string
+	progress  float64
+	timestamp time.Time
+}
+
+// TrackTasks processes current tasks and detects state changes
 func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentID uuid.UUID, timestamp time.Time) error {
 	if len(tasks) == 0 {
 		return nil
 	}
 
-	// Use buffered channel to collect events to create
-	eventsChan := make(chan *entities.Event, len(tasks)*2) // *2 for state change + completed
-	var wg sync.WaitGroup
+	// Channels for collecting updates and events
+	eventsChan := make(chan *entities.Event, len(tasks)*2)
+	updatesChan := make(chan stateUpdate, len(tasks))
 
-	// Process each task concurrently
+	// First pass: update in-memory state and collect changes (minimal lock time)
 	for _, task := range tasks {
-		wg.Add(1)
-		go func(t *entities.Task) {
-			defer wg.Done()
-
+		func(t *entities.Task) {
 			s.mu.Lock()
+			defer s.mu.Unlock()
+
 			// Ensure agent map exists
 			if s.taskStates[agentID] == nil {
 				s.taskStates[agentID] = make(map[string]*entities.TaskState)
@@ -146,15 +161,13 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 					Progress:  t.Progress,
 					UpdatedAt: timestamp,
 				}
-				s.mu.Unlock()
 
-				// Persist state to database
-				if err := s.repo.SaveTaskState(ctx, agentID, t.Hash, t.State, t.Progress, timestamp); err != nil {
-					slog.Error("failed to save task state",
-						"error", err,
-						"agent_id", agentID.String(),
-						"task_hash", t.Hash,
-					)
+				// Queue for persistence
+				updatesChan <- stateUpdate{
+					hash:      t.Hash,
+					state:     t.State,
+					progress:  t.Progress,
+					timestamp: timestamp,
 				}
 
 				// Create task added event
@@ -172,10 +185,22 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 
 			// State change detected
 			if lastState.State != t.State {
-				// Save old values before updating
 				oldState := lastState.State
 				oldProgress := lastState.Progress
 				wasCompleted := lastState.Progress >= 1.0
+
+				// Update state in memory
+				lastState.State = t.State
+				lastState.Progress = t.Progress
+				lastState.UpdatedAt = timestamp
+
+				// Queue for persistence
+				updatesChan <- stateUpdate{
+					hash:      t.Hash,
+					state:     t.State,
+					progress:  t.Progress,
+					timestamp: timestamp,
+				}
 
 				// Check if this is a significant state change
 				if !isSignificantStateChange(oldState, t.State) {
@@ -185,21 +210,6 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 						"old_state", oldState,
 						"new_state", t.State,
 					)
-
-					// Update state in memory and database but don't generate event
-					lastState.State = t.State
-					lastState.Progress = t.Progress
-					lastState.UpdatedAt = timestamp
-					s.mu.Unlock()
-
-					// Persist state change to database
-					if err := s.repo.SaveTaskState(ctx, agentID, t.Hash, t.State, t.Progress, timestamp); err != nil {
-						slog.Error("failed to save task state",
-							"error", err,
-							"agent_id", agentID.String(),
-							"task_hash", t.Hash,
-						)
-					}
 					return
 				}
 
@@ -211,21 +221,6 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 					"old_progress", oldProgress,
 					"new_progress", t.Progress,
 				)
-
-				// Update state
-				lastState.State = t.State
-				lastState.Progress = t.Progress
-				lastState.UpdatedAt = timestamp
-				s.mu.Unlock()
-
-				// Persist state change to database
-				if err := s.repo.SaveTaskState(ctx, agentID, t.Hash, t.State, t.Progress, timestamp); err != nil {
-					slog.Error("failed to save task state",
-						"error", err,
-						"agent_id", agentID.String(),
-						"task_hash", t.Hash,
-					)
-				}
 
 				// Create state change event
 				eventsChan <- &entities.Event{
@@ -239,7 +234,7 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 					CreatedAt: timestamp,
 				}
 
-				// Check if task just completed (100% and not an error state)
+				// Check if task just completed
 				if t.Progress >= 1.0 && !wasCompleted && !isErrorState(t.State) {
 					eventsChan <- &entities.Event{
 						UUID:      uuid.New(),
@@ -251,28 +246,23 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 						CreatedAt: timestamp,
 					}
 				}
-			} else {
-				// No state change, but check for progress completion
+			} else if lastState.Progress != t.Progress {
+				// Progress changed but state didn't
 				oldProgress := lastState.Progress
 				wasCompleted := oldProgress >= 1.0
 
-				// Update progress and timestamp
 				lastState.Progress = t.Progress
 				lastState.UpdatedAt = timestamp
-				s.mu.Unlock()
 
-				// Persist progress update to database (only if progress changed)
-				if oldProgress != t.Progress {
-					if err := s.repo.SaveTaskState(ctx, agentID, t.Hash, t.State, t.Progress, timestamp); err != nil {
-						slog.Error("failed to save task state",
-							"error", err,
-							"agent_id", agentID.String(),
-							"task_hash", t.Hash,
-						)
-					}
+				// Queue for persistence
+				updatesChan <- stateUpdate{
+					hash:      t.Hash,
+					state:     t.State,
+					progress:  t.Progress,
+					timestamp: timestamp,
 				}
 
-				// Check if task just reached 100% (not an error state)
+				// Check if task just reached 100%
 				if t.Progress >= 1.0 && !wasCompleted && !isErrorState(t.State) {
 					eventsChan <- &entities.Event{
 						UUID:      uuid.New(),
@@ -288,11 +278,25 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 		}(task)
 	}
 
-	// Close channel when all goroutines complete
-	go func() {
-		wg.Wait()
-		close(eventsChan)
-	}()
+	close(updatesChan)
+	close(eventsChan)
+
+	// Second pass: persist all updates to database (no lock held)
+	var wg sync.WaitGroup
+	for update := range updatesChan {
+		wg.Add(1)
+		go func(u stateUpdate) {
+			defer wg.Done()
+			if err := s.repo.SaveTaskState(ctx, agentID, u.hash, u.state, u.progress, u.timestamp); err != nil {
+				slog.Error(logMsgFailedToSaveTaskState,
+					"error", err,
+					"agent_id", agentID.String(),
+					"task_hash", u.hash,
+				)
+			}
+		}(update)
+	}
+	wg.Wait()
 
 	// Process events
 	s.processEvents(ctx, eventsChan, agentID)
@@ -417,21 +421,29 @@ func (s *Service) DetectRemovedTasks(ctx context.Context, currentTasks []*entiti
 	// Process events
 	s.processEvents(ctx, eventsChan, agentID)
 
-	// Remove from tracked states and database
+	// Remove from tracked states (under lock) and collect hashes for DB deletion
+	var hashesToDelete []string
 	s.mu.Lock()
-	for hash := range removedHashes {
-		delete(s.taskStates[agentID], hash)
+	if agentTasks, exists := s.taskStates[agentID]; exists {
+		for hash := range removedHashes {
+			if _, taskExists := agentTasks[hash]; taskExists {
+				delete(agentTasks, hash)
+				hashesToDelete = append(hashesToDelete, hash)
+			}
+		}
+	}
+	s.mu.Unlock()
 
-		// Delete from database
+	// Delete from database (no lock held)
+	for _, hash := range hashesToDelete {
 		if err := s.repo.DeleteTaskState(ctx, agentID, hash); err != nil {
-			slog.Error("failed to delete task state from database",
+			slog.Error(logMsgFailedToDeleteTaskState,
 				"error", err,
 				"agent_id", agentID.String(),
 				"task_hash", hash,
 			)
 		}
 	}
-	s.mu.Unlock()
 
 	return nil
 }

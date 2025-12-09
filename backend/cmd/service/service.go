@@ -127,7 +127,10 @@ func Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Events service - tracks task state changes
-	eventSvc := eventsService.NewService(db)
+	eventSvc, err := eventsService.NewService(db)
+	if err != nil {
+		return fmt.Errorf("failed to initialize events service: %w", err)
+	}
 	eventChan := eventSvc.EnableRealTimeEmission(100)
 
 	// Statistics (feature-flagged)
@@ -145,7 +148,9 @@ func Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	setRoutes(db, agentSvc, statsSvc, metaSvc, integrationSvc)
+	if err = setRoutes(db, agentSvc, statsSvc, metaSvc, integrationSvc); err != nil {
+		return err
+	}
 
 	// Initialize agent service if in standalone mode
 	if isStandalone {
@@ -314,7 +319,7 @@ func setRouter() {
 	router.Use(securityHeadersMiddleware())
 }
 
-func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statistics.Service, metaSvc *metadata.Service, integrationSvc *integration.Service) {
+func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statistics.Service, metaSvc *metadata.Service, integrationSvc *integration.Service) error {
 	// Get current working directory
 	wd, _ := os.Getwd()
 	webPath := filepath.Join(wd, "web")
@@ -374,7 +379,11 @@ func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statist
 	setup.NewModule(v1, db, statsSvc).Register()
 	settings.NewModule(v1, db).Register()
 	version.NewModule(v1, db).Register()
-	eventsRoutes.NewModule(v1, db).Register()
+	eventsModule, err := eventsRoutes.NewModule(v1, db)
+	if err != nil {
+		return fmt.Errorf("failed to initialize events module: %w", err)
+	}
+	eventsModule.Register()
 	statsroutes.NewModule(v1, db, statsSvc).Register()
 	task_metadata.NewModule(v1, db, metaSvc).Register()
 	integrations.NewModule(v1, db, integrationSvc).Register()
@@ -395,4 +404,6 @@ func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statist
 			c.JSON(http.StatusNotFound, gin.H{"error": "Frontend not found"})
 		}
 	})
+
+	return nil
 }

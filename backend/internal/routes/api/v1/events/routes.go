@@ -21,12 +21,17 @@ type Module struct {
 }
 
 // NewModule creates a new events module
-func NewModule(router *gin.RouterGroup, db *database.Database) *Module {
+func NewModule(router *gin.RouterGroup, db *database.Database) (*Module, error) {
+	eventService, err := events.NewService(db)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Module{
 		group:        router.Group("/events"),
-		eventService: events.NewService(db),
+		eventService: eventService,
 		db:           db,
-	}
+	}, nil
 }
 
 // Register registers all events routes
