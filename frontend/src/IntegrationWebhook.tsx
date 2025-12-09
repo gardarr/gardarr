@@ -14,7 +14,8 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { EventFilter } from '@/components/EventFilter';
-import { buildFilterFromStrings, filterToStrings } from '@/utils/eventFilterUtils';
+import { buildFilterFromStrings } from '@/utils/eventFilterUtils';
+import { EditIntegrationWebhookModal } from '@/components/EditIntegrationWebhookModal';
 
 export default function IntegrationWebhookPage() {
   const { t } = useTranslation();
@@ -91,34 +92,6 @@ export default function IntegrationWebhookPage() {
     }
   };
 
-  const handleEdit = async () => {
-    if (!selectedWebhook) return;
-
-    const filter = buildFilterFromStrings(
-      filterData.eventTypeFilter,
-      filterData.statusFilter,
-      filterData.categoryFilter,
-      filterData.nameTerms
-    );
-    const updateData: UpdateWebhookRequest = {
-      url: formData.url,
-      insecure_skip_verify: formData.insecure_skip_verify,
-      timeout_seconds: formData.timeout_seconds,
-      filter: filter,
-    };
-
-    const response = await webhookService.updateWebhook(selectedWebhook.uuid, updateData);
-    if (response.data) {
-      toast.success(t('webhooks.success.updated'));
-      setIsEditModalOpen(false);
-      setSelectedWebhook(null);
-      loadWebhooks();
-    } else if (response.error) {
-      toast.error(t('webhooks.errors.updateFailed'), {
-        description: response.error,
-      });
-    }
-  };
 
   const handleDelete = async () => {
     if (!selectedWebhook) return;
@@ -154,13 +127,13 @@ export default function IntegrationWebhookPage() {
 
   const openEditModal = (webhook: WebhookType) => {
     setSelectedWebhook(webhook);
-    setFormData({
-      url: webhook.url,
-      insecure_skip_verify: webhook.insecure_skip_verify,
-      timeout_seconds: webhook.timeout_seconds,
-    });
-    setFilterData(filterToStrings(webhook.filter));
     setIsEditModalOpen(true);
+  };
+
+  const handleEditSuccess = () => {
+    setIsEditModalOpen(false);
+    setSelectedWebhook(null);
+    loadWebhooks();
   };
 
   const openDeleteModal = (webhook: WebhookType) => {
@@ -169,35 +142,46 @@ export default function IntegrationWebhookPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => navigate('/integrations')}
+            className="flex-shrink-0"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Webhook className="h-6 w-6 text-primary" />
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
+              <Webhook className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
             </div>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">{t('webhooks.title')}</h1>
-              <p className="text-muted-foreground">{t('webhooks.subtitle')}</p>
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-3xl font-bold tracking-tight truncate">{t('webhooks.title')}</h1>
+              <p className="text-sm text-muted-foreground hidden sm:block">{t('webhooks.subtitle')}</p>
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setIsExampleModalOpen(true)}>
-            <FileJson />
-            {t('webhooks.examplePayload')}
+        <div className="flex gap-2 flex-wrap sm:flex-nowrap">
+          <Button 
+            variant="outline" 
+            onClick={() => setIsExampleModalOpen(true)}
+            className="flex-1 sm:flex-none"
+            size="sm"
+          >
+            <FileJson className="h-4 w-4" />
+            <span className="hidden sm:inline ml-2">{t('webhooks.examplePayload')}</span>
+            <span className="sm:hidden ml-2">Exemplo</span>
           </Button>
-          <Button onClick={() => setIsCreateModalOpen(true)}>
-            <Plus />
-            {t('webhooks.addWebhook')}
+          <Button 
+            onClick={() => setIsCreateModalOpen(true)}
+            className="flex-1 sm:flex-none"
+            size="sm"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="ml-2">{t('webhooks.addWebhook')}</span>
           </Button>
         </div>
       </div>
@@ -221,17 +205,17 @@ export default function IntegrationWebhookPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-3 sm:gap-4">
           {webhooks.map((webhook) => (
             <Card key={webhook.uuid}>
-              <CardHeader>
-                <div className="flex items-start gap-3">
+              <CardHeader className="p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-start gap-3">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
                     <div className={`p-2 rounded-lg flex-shrink-0 ${webhook.enabled ? 'bg-green-500/10' : 'bg-gray-500/10'}`}>
-                      <Webhook className={`h-5 w-5 ${webhook.enabled ? 'text-green-500' : 'text-gray-500'}`} />
+                      <Webhook className={`h-4 w-4 sm:h-5 sm:w-5 ${webhook.enabled ? 'text-green-500' : 'text-gray-500'}`} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <CardTitle className="text-base break-all">
+                      <CardTitle className="text-sm sm:text-base break-all">
                         {webhook.url}
                       </CardTitle>
                       {webhook.filter && (
@@ -262,10 +246,10 @@ export default function IntegrationWebhookPage() {
                           )}
                         </div>
                       )}
-                      <CardDescription className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2">
+                      <CardDescription className="flex flex-wrap items-center gap-2 mt-2 text-xs sm:text-sm">
                         <span className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          {webhook.timeout_seconds}s timeout
+                          {webhook.timeout_seconds}s
                         </span>
                         {webhook.insecure_skip_verify && (
                           <span className="text-orange-500">
@@ -275,12 +259,13 @@ export default function IntegrationWebhookPage() {
                       </CardDescription>
                     </div>
                   </div>
-                  <div className="flex flex-col sm:flex-row items-center gap-2 flex-shrink-0">
+                  <div className="flex flex-row sm:flex-col lg:flex-row items-center gap-2 flex-shrink-0 w-full sm:w-auto">
                     <Tooltip>
                       <TooltipTrigger asChild>
                     <Button
                       variant="outline"
-                      size="icon"
+                      size="sm"
+                      className="flex-1 sm:flex-none"
                       onClick={() => handleToggleEnabled(webhook)}
                       aria-label={webhook.enabled ? t('webhooks.enabled') : t('webhooks.disabled')}
                     >
@@ -299,7 +284,8 @@ export default function IntegrationWebhookPage() {
                       <TooltipTrigger asChild>
                     <Button
                       variant="outline"
-                      size="icon"
+                      size="sm"
+                      className="flex-1 sm:flex-none"
                       onClick={() => openEditModal(webhook)}
                     >
                       <Edit2 className="h-4 w-4" />
@@ -313,7 +299,8 @@ export default function IntegrationWebhookPage() {
                       <TooltipTrigger asChild>
                     <Button
                       variant="outline"
-                      size="icon"
+                      size="sm"
+                      className="flex-1 sm:flex-none"
                       onClick={() => openDeleteModal(webhook)}
                     >
                       <Trash2 className="h-4 w-4 text-red-500" />
@@ -394,67 +381,15 @@ export default function IntegrationWebhookPage() {
       </Dialog>
 
       {/* Edit Modal */}
-      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('webhooks.editTitle')}</DialogTitle>
-            <DialogDescription>{t('webhooks.editDescription')}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-url">{t('webhooks.urlLabel')} *</Label>
-              <Input
-                id="edit-url"
-                type="url"
-                placeholder="https://example.com/webhook"
-                value={formData.url}
-                onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-timeout">{t('webhooks.timeoutLabel')}</Label>
-              <Input
-                id="edit-timeout"
-                type="number"
-                min="1"
-                max="300"
-                value={formData.timeout_seconds}
-                onChange={(e) => setFormData({ ...formData, timeout_seconds: parseInt(e.target.value) || 10 })}
-              />
-              <p className="text-sm text-muted-foreground">{t('webhooks.timeoutHelp')}</p>
-            </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="edit-insecure">{t('webhooks.insecureLabel')}</Label>
-              <Switch
-                id="edit-insecure"
-                checked={formData.insecure_skip_verify}
-                onCheckedChange={(checked) => setFormData({ ...formData, insecure_skip_verify: checked })}
-              />
-            </div>
-            <p className="text-sm text-muted-foreground">{t('webhooks.insecureHelp')}</p>
-
-            <EventFilter
-              eventTypeFilter={filterData.eventTypeFilter}
-              statusFilter={filterData.statusFilter}
-              categoryFilter={filterData.categoryFilter}
-              nameTerms={filterData.nameTerms}
-              onEventTypeFilterChange={(value) => setFilterData({ ...filterData, eventTypeFilter: value })}
-              onStatusFilterChange={(value) => setFilterData({ ...filterData, statusFilter: value })}
-              onCategoryFilterChange={(value) => setFilterData({ ...filterData, categoryFilter: value })}
-              onNameTermsChange={(value) => setFilterData({ ...filterData, nameTerms: value })}
-              idPrefix="edit-"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
-              {t('common.cancel')}
-            </Button>
-            <Button onClick={handleEdit}>
-              {t('webhooks.save')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EditIntegrationWebhookModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedWebhook(null);
+        }}
+        webhook={selectedWebhook}
+        onSuccess={handleEditSuccess}
+      />
 
       {/* Delete Modal */}
       <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>

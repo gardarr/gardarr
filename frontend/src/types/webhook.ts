@@ -45,3 +45,23 @@ export interface UpdateWebhookRequest {
   filter?: EventFilterRequest;
 }
 
+export interface WebhookHistory {
+  uuid: string;
+  webhook_id: string;
+  task_hash: string;
+  task_name: string;
+  task_status: string;
+  status_code: number;
+  response_body?: string;
+  request_body?: string;
+  error?: string;
+  created_at: string;
+}
+
+export interface WebhookHistoryResponse {
+  data: WebhookHistory[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+

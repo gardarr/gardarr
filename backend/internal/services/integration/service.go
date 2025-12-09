@@ -3,10 +3,12 @@ package integration
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/repository/webhook"
+	"github.com/jfxdev/gardarr/internal/repository/webhook_history"
 	webhookService "github.com/jfxdev/gardarr/internal/services/integration/webhook"
 	"github.com/jfxdev/gardarr/pkg/filters"
 	"github.com/jfxdev/gardarr/pkg/logger"
@@ -17,6 +19,7 @@ type Service struct {
 	enabled         bool
 	eventChan       <-chan *entities.Event
 	webhookRepo     *webhook.Repository
+	historyRepo     *webhook_history.Repository
 	webhookServices map[string]*webhookService.Service
 	webhookFilters  map[string]*entities.EventFilter // Maps webhook UUID to its filter
 	mu              sync.RWMutex
@@ -30,6 +33,7 @@ func NewService(eventChan <-chan *entities.Event, db *database.Database) *Servic
 		enabled:         true,
 		eventChan:       eventChan,
 		webhookRepo:     webhook.NewRepository(db),
+		historyRepo:     webhook_history.NewRepository(db),
 		webhookServices: make(map[string]*webhookService.Service),
 		webhookFilters:  make(map[string]*entities.EventFilter),
 	}
@@ -45,6 +49,9 @@ func (s *Service) Start(ctx context.Context) {
 
 	// Load webhooks initially
 	s.loadWebhooks(ctx)
+
+	// Start cleanup job for old webhook history
+	s.startHistoryCleanupJob(ctx)
 
 	go func() {
 		logger.Info("Integration service started - listening for events", "service", "integration")
@@ -84,7 +91,7 @@ func (s *Service) loadWebhooks(ctx context.Context) {
 
 	// Create new services for each webhook
 	for _, wh := range webhooks {
-		service := webhookService.NewService(wh.URL, wh.InsecureSkipVerify, wh.TimeoutSeconds)
+		service := webhookService.NewService(wh.UUID, wh.URL, wh.InsecureSkipVerify, wh.TimeoutSeconds, s.historyRepo)
 		webhookID := wh.UUID.String()
 		s.webhookServices[webhookID] = service
 
@@ -231,4 +238,52 @@ func (s *Service) processEvent(ctx context.Context, event *entities.Event) {
 // Enabled returns whether the integration service is enabled
 func (s *Service) Enabled() bool {
 	return s.enabled
+}
+
+// startHistoryCleanupJob starts a background job that cleans up old webhook history
+// It runs every 24 hours and deletes records older than 7 days
+func (s *Service) startHistoryCleanupJob(ctx context.Context) {
+	go func() {
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+
+		// Run cleanup immediately on start
+		s.cleanupOldHistory(ctx)
+
+		for {
+			select {
+			case <-ticker.C:
+				s.cleanupOldHistory(ctx)
+			case <-ctx.Done():
+				logger.Info("History cleanup job stopped", "service", "integration")
+				return
+			}
+		}
+	}()
+}
+
+// cleanupOldHistory deletes webhook history records older than 7 days
+func (s *Service) cleanupOldHistory(ctx context.Context) {
+	if s.historyRepo == nil {
+		return
+	}
+
+	logger.Info("Starting webhook history cleanup", "service", "integration")
+
+	// Delete records older than 7 days
+	deleted, err := s.historyRepo.DeleteOldWebhookHistory(ctx, 7*24*time.Hour)
+	if err != nil {
+		logger.Error("Failed to cleanup old webhook history",
+			"service", "integration",
+			"error", err,
+		)
+		return
+	}
+
+	if deleted > 0 {
+		logger.Info("Webhook history cleanup completed",
+			"service", "integration",
+			"deleted_records", deleted,
+		)
+	}
 }

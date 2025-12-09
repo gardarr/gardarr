@@ -176,5 +176,15 @@ func Register(m *migration.Migrator) {
 				return db.Migrator().DropTable(&models.TaskState{})
 			},
 		},
+		{
+			Version:     "018_create_webhook_history_table",
+			Description: "Cria a tabela de histórico de webhooks",
+			Up: func(db *gorm.DB) error {
+				return db.AutoMigrate(&models.WebhookHistory{})
+			},
+			Down: func(db *gorm.DB) error {
+				return db.Migrator().DropTable(&models.WebhookHistory{})
+			},
+		},
 	})
 }
