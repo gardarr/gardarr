@@ -17,7 +17,7 @@ Crie um arquivo `.env` na raiz do projeto:
 
 ```env
 APP_PORT=3000
-APP_DOMAINS=http://localhost:5173,http://localhost:3000
+APP_URL=http://localhost:3000
 ```
 
 ## 🛠️ Executando o Desenvolvimento

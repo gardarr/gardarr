@@ -1,10 +1,9 @@
 package constants
 
 const (
-	AppDomainsEnv            = "APP_DOMAINS"
+	AppURLEnv                = "APP_URL"
 	AppPortEnv               = "APP_PORT"
 	AppModeEnv               = "APP_MODE"
-	AppURLEnv                = "APP_URL"
 	StandaloneMode           = "standalone"
 	TorrentImageUploadDirEnv = "TORRENT_IMAGE_UPLOAD_DIR"
 	WebhookURLEnv            = "WEBHOOK_URL"

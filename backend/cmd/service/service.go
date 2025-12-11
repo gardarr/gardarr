@@ -308,9 +308,8 @@ func setRouter() {
 		MaxAge:           12 * time.Hour,
 	}
 
-	// Override with environment variables if set (APP_DOMAINS takes precedence)
-	if domains := os.Getenv(constants.AppDomainsEnv); domains != "" {
-		corsConfig.AllowOrigins = strings.Split(domains, ",")
+	if appURL := env.Get(constants.AppURLEnv).Value(); appURL != "" {
+		corsConfig.AllowOrigins = []string{appURL}
 	}
 
 	router.Use(cors.New(corsConfig))

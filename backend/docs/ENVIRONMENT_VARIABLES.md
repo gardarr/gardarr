@@ -28,11 +28,11 @@ This document lists all environment variables used by Gardarr backend.
 
 ## CORS Configuration
 
-### `APP_DOMAINS`
-- **Description**: Comma-separated list of allowed origins for CORS
-- **Default**: `http://localhost:5173,http://localhost:3000`
-- **Example**: `APP_DOMAINS=https://gardarr.example.com,https://app.example.com`
-- **Production**: Set to your production domains only
+### `APP_URL`
+- **Description**: The public URL of the application. Used for CORS configuration to allow requests from the frontend.
+- **Default**: `http://localhost:3000`
+- **Example**: `APP_URL=https://gardarr.example.com`
+- **Note**: This URL is added to the list of allowed origins for CORS.
 
 ## Security Configuration
 
@@ -77,7 +77,7 @@ export APP_MODE=standalone
 ```bash
 APP_PORT=3000
 GIN_MODE=debug
-APP_DOMAINS=http://localhost:5173,http://localhost:3000
+APP_URL=http://localhost:3000
 # APP_MODE=standalone  # Uncomment to enable standalone mode
 ```
 
@@ -85,7 +85,7 @@ APP_DOMAINS=http://localhost:5173,http://localhost:3000
 ```bash
 APP_PORT=3000
 GIN_MODE=release
-APP_DOMAINS=https://gardarr.example.com
+APP_URL=https://gardarr.example.com
 # HTTPS must be configured when GIN_MODE=release (HSTS enabled)
 ```
 
