@@ -1,7 +1,7 @@
 # Gardarr
 
 <p align="center">
-  <img src="assets/logo.png" alt="Gardarr Logo" width="20%" />
+  <img src="assets/banner-lg.png" alt="Gardarr Logo" width="80%" />
 </p>
 
 <p align="center">

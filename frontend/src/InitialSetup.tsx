@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Mail, UserPlus, Sparkles, Shield, Server } from "lucide-react";
 import { signupService } from "./services/signup";
 import { toast, Toaster } from "sonner";
-import logoImage from "@/assets/img/logo/logo_64x64.png";
+import logoImage from "@/assets/img/logo/logo.png";
 import { useTranslation } from "react-i18next";
 import { 
   PasswordInput, 

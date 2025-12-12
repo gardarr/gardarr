@@ -9,7 +9,7 @@ import { inviteService } from "./services/invites";
 import { signupService } from "./services/signup";
 import type { Invite } from "./types/invite";
 import { toast, Toaster } from "sonner";
-import logoImage from "@/assets/img/logo/logo_64x64.png";
+import logoImage from "@/assets/img/logo/logo.png";
 import { useTranslation } from "react-i18next";
 
 function InviteAccept() {

@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/auth-hooks";
 import VariantColorSelectButton from "@/components/VariantColorSelectButton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import logoImage from "@/assets/img/logo/logo_64x64.png";
+import logoImage from "@/assets/img/logo/logo.png";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
