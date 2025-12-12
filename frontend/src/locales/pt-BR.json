@@ -227,7 +227,8 @@
     "links": {
       "title": "Links do Projeto",
       "repository": "Repositório GitHub",
-      "documentation": "Documentação de Desenvolvimento"
+      "documentation": "Documentação de Desenvolvimento",
+      "sponsor": "Patrocinar"
     },
     "attribution": {
       "title": "Atribuições",

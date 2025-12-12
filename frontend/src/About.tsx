@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { ExternalLink, Github, Leaf, Loader2, Heart } from "lucide-react";
+import { ExternalLink, Github, Leaf, Loader2, Heart, Book } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { versionService } from "@/services/version";
 import bannerImage from "@/assets/img/banner.png";
@@ -112,7 +112,7 @@ export default function AboutPage() {
                 className="flex items-center gap-2"
               >
                 <Heart className="h-4 w-4 fill-current" />
-                Sponsor
+                {t("about.links.sponsor")}
                 <ExternalLink className="h-3 w-3 ml-auto" />
               </a>
             </Button>
@@ -128,7 +128,7 @@ export default function AboutPage() {
                 rel="noopener noreferrer"
                 className="flex items-center gap-2"
               >
-                <ExternalLink className="h-4 w-4" />
+                <Book className="h-4 w-4" />
                 {t("about.links.documentation")}
                 <ExternalLink className="h-3 w-3 ml-auto" />
               </a>

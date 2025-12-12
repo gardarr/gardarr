@@ -25,18 +25,18 @@ Gardarr is a **modern, lightweight management and analytics platform for qBittor
 
 ## 📑 Table of Contents
 
-- [✨ Key Features](#-key-features)
-- [🏗️ Architecture](#-architecture)
-- [🎨 Customization](#-customization)
-- [🔌 Integrations & Events](#-integrations--events)
-- [🛠️ Technology Stack](#-technology-stack)
-- [📋 Requirements](#-requirements)
-- [🚀 Getting Started](#-getting-started)
-  - [Standalone Mode](#-standalone-mode)
-  - [Distributed Agent Mode](#-distributed-agent-mode)
-- [⚙️ Configuration](#-configuration)
-- [🛠️ Development](#-development)
-- [📋 Roadmap](#-roadmap)
+- [✨ Key Features](#key-features)
+- [🏗️ Architecture](#architecture)
+- [🎨 Customization](#customization)
+- [🔌 Integrations & Events](#integrations--events)
+- [🛠️ Technology Stack](#technology-stack)
+- [📋 Requirements](#requirements)
+- [🚀 Getting Started](#getting-started)
+  - [Standalone Mode](#standalone-mode)
+  - [Distributed Agent Mode](#distributed-agent-mode)
+- [⚙️ Configuration](#configuration)
+- [🛠️ Development](#development)
+- [📋 Roadmap](#roadmap)
 
 ## ✨ Key Features
 
@@ -99,21 +99,21 @@ Connect Gardarr to external services like Discord, Slack, or automation tools (n
 
 ## 🛠️ Technology Stack
 
-**Backend**
+### Backend
 - **Language**: Go 1.25+
 - **Framework**: Gin Web Framework
 - **Database**: SQLite (default) or PostgreSQL (via GORM)
 - **Authentication**: Argon2id + Secure Sessions
 - **Config**: Viper (Environment variables & file-based secrets)
 
-**Frontend**
+### Frontend
 - **Framework**: React 19 + Vite
 - **Styling**: TailwindCSS 4
 - **Charts**: Recharts
 - **State/Data**: React Query / Context API
 - **Icons**: Lucide React
 
-## � Requirements
+## 📋 Requirements
 
 - **Docker** and **Docker Compose**
 - **qBittorrent** v4.1+ (Web UI enabled)
@@ -138,7 +138,7 @@ docker-compose up -d
 ```
 Access the dashboard at `http://localhost:3000`.
 
-### � Distributed Agent Mode
+### 🔌 Distributed Agent Mode
 For managing multiple instances.
 
 1. **Deploy the Main Service**:
@@ -159,6 +159,7 @@ Gardarr is configured via environment variables. Create a `.env` file in the roo
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `APP_PORT` | Port for the web interface | `3000` |
+| `APP_URL` | Public URL of Gardarr (used for CORS and links) | `http://localhost:3000` |
 | `GIN_MODE` | `debug` or `release` | `debug` |
 | `APP_MODE` | Set to `standalone` to enable embedded agent | - |
 | `DB_TYPE` | Database type (`sqlite` or `postgres`) | `sqlite` |
@@ -175,7 +176,7 @@ POSTGRES_DB=gardarr
 POSTGRES_PORT=5432
 ```
 
-For a complete list of environment variables, see [docs/ENVIRONMENT_VARIABLES.md](backend/docs/ENVIRONMENT_VARIABLES.md).
+For a complete list of environment variables, see [backend/docs/ENVIRONMENT_VARIABLES.md](backend/docs/ENVIRONMENT_VARIABLES.md).
 
 ## 🛠️ Development
 

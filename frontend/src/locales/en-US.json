@@ -258,7 +258,8 @@
     "links": {
       "title": "Project Links",
       "repository": "GitHub Repository",
-      "documentation": "Development Documentation"
+      "documentation": "Development Documentation",
+      "sponsor": "Sponsor"
     },
     "attribution": {
       "title": "Attributions",
