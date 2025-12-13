@@ -102,7 +102,7 @@ APP_URL=https://gardarr.example.com
 Before deploying to production:
 
 - [ ] Set `GIN_MODE=release`
-- [ ] Configure `APP_DOMAINS` with production domains only
+- [ ] Configure `APP_URL` with production url only
 - [ ] Ensure HTTPS/TLS is properly configured
 - [ ] Review and test security headers
 - [ ] Configure proper database credentials

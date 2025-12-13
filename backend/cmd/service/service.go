@@ -289,14 +289,14 @@ func setRouter() {
 		schemas.RegisterCustomValidators(v)
 	}
 
-	// Get APP_URL from environment variable (default: http://localhost:3000)
-	appURL := env.Get(constants.AppURLEnv).Default("http://localhost:3000").Value()
+	// Derive the base URL once and reuse it for CORS (APP_URL → BASE_URL → APP_PORT)
+	baseURL := getBaseURL()
 
 	// CORS configuration
-	allowedOrigins := []string{appURL}
+	allowedOrigins := []string{baseURL}
 
 	// Also allow common development URLs if not explicitly set
-	if appURL == "http://localhost:3000" {
+	if baseURL == "http://localhost:3000" {
 		allowedOrigins = append(allowedOrigins, "http://localhost:5173")
 	}
 
@@ -306,10 +306,6 @@ func setRouter() {
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
-	}
-
-	if appURL := env.Get(constants.AppURLEnv).Value(); appURL != "" {
-		corsConfig.AllowOrigins = []string{appURL}
 	}
 
 	router.Use(cors.New(corsConfig))

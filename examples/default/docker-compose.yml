@@ -6,7 +6,7 @@ services:
       - "${APP_PORT:-3000}:3000"
     environment:
       APP_PORT: ${APP_PORT:-3000}
-      APP_DOMAINS: ${APP_DOMAINS:-http://localhost:3000,http://localhost:5173}
+      APP_URL: ${APP_URL:-http://localhost:3000}
       APP_MODE: standalone
       STATISTICS_ENABLED: true
       STATISTICS_INTERVAL: 5s

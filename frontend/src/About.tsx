@@ -54,6 +54,8 @@ export default function AboutPage() {
               src={bannerImage} 
               alt="Gardarr Banner" 
               className="max-w-full h-auto"
+              loading="lazy"
+              decoding="async"
             />
           </div>
           

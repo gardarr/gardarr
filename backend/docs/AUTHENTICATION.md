@@ -446,7 +446,7 @@ c.SetCookie(
 
 ### 3. **Variables de Ambiente**
 ```env
-APP_DOMAINS=https://seu-frontend.com
+APP_URL=https://your-domain.com
 DATABASE_URL=postgresql://...
 ```
 
