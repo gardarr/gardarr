@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -289,15 +290,23 @@ func setRouter() {
 		schemas.RegisterCustomValidators(v)
 	}
 
-	// Get APP_URL from environment variable (default: http://localhost:3000)
-	appURL := env.Get(constants.AppURLEnv).Default("http://localhost:3000").Value()
+	// Derive the base URL once and normalize it to a proper origin for CORS
+	baseURL := getBaseURL()
+	var allowedOrigins []string
 
-	// CORS configuration
-	allowedOrigins := []string{appURL}
+	if u, err := url.Parse(baseURL); err == nil {
+		// Build origin as scheme://host (host includes port if present)
+		origin := u.Scheme + "://" + u.Host
+		allowedOrigins = append(allowedOrigins, origin)
 
-	// Also allow common development URLs if not explicitly set
-	if appURL == "http://localhost:3000" {
-		allowedOrigins = append(allowedOrigins, "http://localhost:5173")
+		// Allow common development origins for localhost
+		host := u.Hostname()
+		if host == "localhost" || host == "127.0.0.1" {
+			allowedOrigins = append(allowedOrigins, "http://localhost:3000", "http://localhost:5173")
+		}
+	} else {
+		// Fallback if parsing fails
+		allowedOrigins = append(allowedOrigins, strings.TrimRight(baseURL, "/"))
 	}
 
 	corsConfig := cors.Config{
@@ -306,11 +315,6 @@ func setRouter() {
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
-	}
-
-	// Override with environment variables if set (APP_DOMAINS takes precedence)
-	if domains := os.Getenv(constants.AppDomainsEnv); domains != "" {
-		corsConfig.AllowOrigins = strings.Split(domains, ",")
 	}
 
 	router.Use(cors.New(corsConfig))

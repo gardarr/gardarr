@@ -1,17 +1,29 @@
 import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { ExternalLink, Github, Leaf, Loader2 } from "lucide-react";
+import { ExternalLink, Github, Loader2, Heart, Book } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { versionService } from "@/services/version";
-import logoImage from "@/assets/img/logo/logo_256x256.png";
+import bannerImage from "@/assets/img/banner.png";
 
 export default function AboutPage() {
-  const { t } = useTranslation();
+  const { t, ready } = useTranslation();
   const [version, setVersion] = useState<string>("v0.0.2"); // fallback version
   const [commit, setCommit] = useState<string>("unknown");
   const [date, setDate] = useState<string>("unknown");
   const [loadingVersion, setLoadingVersion] = useState(true);
+
+  useEffect(() => {
+    if (!ready) return;
+
+    if (commit === "unknown") {
+      setCommit(t("about.meta.unknown"));
+    }
+
+    if (date === "unknown") {
+      setDate(t("about.meta.unknown"));
+    }
+  }, [ready, t, commit, date]);
 
   useEffect(() => {
     const fetchVersion = async () => {
@@ -35,34 +47,22 @@ export default function AboutPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
-          <Leaf className="h-6 w-6 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t("about.title")}</h1>
-          <p className="text-muted-foreground mt-1">{t("about.subtitle")}</p>
-        </div>
-      </div>
-
       {/* Project Logo and Version */}
       <Card className="p-8">
         <div className="flex flex-col items-center text-center space-y-6">
-          <div className="h-24 w-24 rounded-2xl overflow-hidden flex items-center justify-center">
+          <div className="w-full rounded-2xl overflow-hidden flex items-center justify-center">
             <img 
-              src={logoImage} 
-              alt="Gardarr Logo" 
-              className="h-full w-full object-contain"
+              src={bannerImage} 
+              alt={t("about.bannerAlt")} 
+              className="max-w-full h-auto"
+              loading="eager"
+              decoding="async"
             />
           </div>
-          
-          <div>
-            <h2 className="text-4xl font-bold">Gardarr</h2>
-            <p className="text-muted-foreground mt-2">
-              {t("about.tagline")}
-            </p>
-          </div>
+
+          <p className="text-sm text-muted-foreground max-w-2xl">
+            {t("about.objective")}
+          </p>
           
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted">
@@ -80,116 +80,99 @@ export default function AboutPage() {
             {!loadingVersion && (
               <div className="flex flex-col sm:flex-row gap-2 text-xs text-muted-foreground">
                 <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted/50">
-                  <span className="font-medium">Commit:</span>
+                  <span className="font-medium">{t("about.meta.commit")}</span>
                   <span className="font-mono">{commit.substring(0, 7)}</span>
                 </div>
                 <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted/50">
-                  <span className="font-medium">Date:</span>
+                  <span className="font-medium">{t("about.meta.buildDate")}</span>
                   <span className="font-mono">{date}</span>
                 </div>
               </div>
             )}
           </div>
-        </div>
-      </Card>
 
-      {/* Project Description */}
-      <Card className="p-6">
-        <h3 className="text-xl font-semibold mb-4">{t("about.description.title")}</h3>
-        <div className="space-y-4 text-muted-foreground">
-          <p>{t("about.description.text1")}</p>
-          <p>{t("about.description.text2")}</p>
-        </div>
-      </Card>
-
-      {/* Features */}
-      <Card className="p-6">
-        <h3 className="text-xl font-semibold mb-4">{t("about.features.title")}</h3>
-        <ul className="space-y-3">
-          {[
-            "multiPlatform",
-            "automated",
-            "lightweight",
-            "openSource",
-            "mobileOptimized"
-          ].map((feature) => (
-            <li key={feature} className="flex items-start gap-3">
-              <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Leaf className="h-3 w-3 text-primary" />
-              </div>
-              <span className="text-muted-foreground">{t(`about.features.${feature}`)}</span>
-            </li>
-          ))}
-        </ul>
-      </Card>
-
-      {/* Links */}
-      <Card className="p-6">
-        <h3 className="text-xl font-semibold mb-4">{t("about.links.title")}</h3>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Button 
-            variant="outline" 
-            className="justify-start"
-            asChild
-          >
-            <a 
-              href="https://github.com/jfxdev/gardarr" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="flex items-center gap-2"
-            >
-              <Github className="h-4 w-4" />
-              {t("about.links.repository")}
-              <ExternalLink className="h-3 w-3 ml-auto" />
-            </a>
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            className="justify-start"
-            asChild
-          >
-            <a 
-              href="https://github.com/jfxdev/gardarr/blob/main/DEVELOPMENT.md" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="flex items-center gap-2"
-            >
-              <ExternalLink className="h-4 w-4" />
-              {t("about.links.documentation")}
-              <ExternalLink className="h-3 w-3 ml-auto" />
-            </a>
-          </Button>
-        </div>
-      </Card>
-
-      {/* Attribution */}
-      <Card className="p-6 bg-muted/50">
-        <h3 className="text-sm font-semibold mb-3">{t("about.attribution.title")}</h3>
-        <div className="space-y-2 text-sm text-muted-foreground">
-          <p>{t("about.attribution.logo")}</p>
-          <a 
-            href="https://www.flaticon.com/free-icons/sprout" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-primary hover:underline"
-          >
-            Sprout icons created by Freepik - Flaticon
-            <ExternalLink className="h-3 w-3" />
-          </a>
-        </div>
-      </Card>
-
-      {/* License */}
-      <Card className="p-6">
-        <h3 className="text-xl font-semibold mb-4">{t("about.license.title")}</h3>
-        <div className="space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-muted">
-            <span className="text-sm font-mono">GPL-3.0</span>
+          <div className="space-y-3 w-full">
+            <h3 className="text-xl font-semibold">{t("about.license.title")}</h3>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-muted">
+              <span className="text-sm font-mono">GPL-3.0</span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {t("about.license.description")}
+            </p>
           </div>
-          <p className="text-sm text-muted-foreground">
-            {t("about.license.description")}
-          </p>
+
+          <div className="flex flex-col sm:flex-row gap-3 pt-4">
+            <Button 
+              className="justify-start bg-[var(--color-github)] text-white hover:bg-[var(--color-github-hover)]"
+              asChild
+            >
+              <a 
+                href="https://github.com/jfxdev/gardarr" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-2"
+              >
+                <Github className="h-4 w-4" />
+                {t("about.links.repository")}
+                <ExternalLink className="h-3 w-3 ml-auto" />
+              </a>
+            </Button>
+
+            <div className="inline-flex overflow-hidden rounded-md">
+              <Button
+                className="justify-start bg-[var(--color-sponsor)] text-white hover:bg-[var(--color-sponsor-hover)] rounded-r-none"
+                asChild
+              >
+                <a
+                  href="https://github.com/sponsors/jfxdev"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2"
+                >
+                  <Heart className="h-4 w-4 fill-current" />
+                  {t("about.links.sponsor")}
+                  <ExternalLink className="h-3 w-3 ml-auto" />
+                </a>
+              </Button>
+
+              <Button
+                className="justify-start bg-[var(--color-coffee)] text-black hover:bg-[var(--color-coffee-hover)] rounded-l-none border-l border-black/20"
+                asChild
+              >
+                <a
+                  href="https://www.buymeacoffee.com/jfxdev"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2"
+                >
+                  {t("about.links.buyMeCoffee")}
+                  <ExternalLink className="h-3 w-3 ml-auto" />
+                </a>
+              </Button>
+            </div>
+
+            <Button 
+              variant="outline" 
+              className="justify-start"
+              asChild
+            >
+              <a 
+                href="https://github.com/jfxdev/gardarr/blob/main/docs/DEVELOPMENT.md" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-2"
+              >
+                <Book className="h-4 w-4" />
+                {t("about.links.documentation")}
+                <ExternalLink className="h-3 w-3 ml-auto" />
+              </a>
+            </Button>
+          </div>
+
+          <div className="pt-2 space-y-5 w-full">
+            <p className="text-sm text-muted-foreground">{t("about.thanks")}</p>
+          </div>
+
         </div>
       </Card>
 

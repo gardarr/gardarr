@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { LogIn } from "lucide-react";
-import logoImage from "@/assets/img/logo/logo_128x128.png";
+import logoImage from "@/assets/img/logo/logo.png";
 import { signupService } from "@/services/signup";
 
 export default function LoginPage() {

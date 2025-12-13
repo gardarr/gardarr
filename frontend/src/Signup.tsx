@@ -8,7 +8,7 @@ import { Loader2, CheckCircle, XCircle, Mail, UserPlus, Sparkles } from "lucide-
 import { signupService } from "./services/signup";
 import { toast, Toaster } from "sonner";
 import { useAuth } from "./contexts/auth-hooks";
-import logoImage from "@/assets/img/logo/logo_64x64.png";
+import logoImage from "@/assets/img/logo/logo.png";
 import { useTranslation } from "react-i18next";
 import { 
   PasswordInput, 

@@ -28,11 +28,19 @@ This document lists all environment variables used by Gardarr backend.
 
 ## CORS Configuration
 
-### `APP_DOMAINS`
-- **Description**: Comma-separated list of allowed origins for CORS
-- **Default**: `http://localhost:5173,http://localhost:3000`
-- **Example**: `APP_DOMAINS=https://gardarr.example.com,https://app.example.com`
-- **Production**: Set to your production domains only
+### `APP_URL`
+- **Description**: The public URL of the application. Used for CORS configuration to allow requests from the frontend.
+- **Default**: `http://localhost:3000`
+- **Format**: Origin-only (`scheme://host[:port]`) — no path, query string, or trailing slash
+- **Valid examples**:
+  - `APP_URL=http://localhost:3000`
+  - `APP_URL=https://gardarr.example.com`
+  - `APP_URL=http://192.168.1.100:8080`
+- **Invalid examples**:
+  - `APP_URL=https://gardarr.example.com/` (trailing slash)
+  - `APP_URL=https://gardarr.example.com/app` (path included)
+  - `APP_URL=https://gardarr.example.com?foo=bar` (query string)
+- **Note**: This value is matched exactly against the browser's `Origin` header for CORS. Any mismatch (extra slash, path, or query) will cause CORS failures.
 
 ## Security Configuration
 
@@ -77,15 +85,17 @@ export APP_MODE=standalone
 ```bash
 APP_PORT=3000
 GIN_MODE=debug
-APP_DOMAINS=http://localhost:5173,http://localhost:3000
+APP_URL=http://localhost:3000
 # APP_MODE=standalone  # Uncomment to enable standalone mode
 ```
+
+> **Note**: When `APP_URL=http://localhost:3000`, the backend also allows `http://localhost:5173` for the Vite dev server.
 
 ### Production (`.env.production`)
 ```bash
 APP_PORT=3000
 GIN_MODE=release
-APP_DOMAINS=https://gardarr.example.com
+APP_URL=https://gardarr.example.com
 # HTTPS must be configured when GIN_MODE=release (HSTS enabled)
 ```
 
@@ -102,7 +112,7 @@ APP_DOMAINS=https://gardarr.example.com
 Before deploying to production:
 
 - [ ] Set `GIN_MODE=release`
-- [ ] Configure `APP_DOMAINS` with production domains only
+- [ ] Configure `APP_URL` with production URL only (origin-only, no trailing slash)
 - [ ] Ensure HTTPS/TLS is properly configured
 - [ ] Review and test security headers
 - [ ] Configure proper database credentials

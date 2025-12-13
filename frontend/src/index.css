@@ -50,6 +50,12 @@
   --card-foreground: oklch(0.141 0.005 285.823);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.141 0.005 285.823);
+  --color-github: #000000;
+  --color-github-hover: #1f2937;
+  --color-sponsor: #bf3989;
+  --color-sponsor-hover: #a02f72;
+  --color-coffee: #ffdd00;
+  --color-coffee-hover: #f2d000;
   --primary: oklch(0.623 0.214 259.815);
   --primary-foreground: oklch(0.97 0.014 254.604);
   --secondary: oklch(0.967 0.001 286.375);
@@ -85,6 +91,12 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
+  --color-github: #000000;
+  --color-github-hover: #1f2937;
+  --color-sponsor: #bf3989;
+  --color-sponsor-hover: #a02f72;
+  --color-coffee: #ffdd00;
+  --color-coffee-hover: #f2d000;
   --primary: oklch(0.922 0 0);
   --primary-foreground: oklch(0.205 0 0);
   --secondary: oklch(0.269 0 0);

@@ -148,7 +148,7 @@ Expected rating: **A** or **A+**
 ### Prerequisites
 
 1. **HTTPS/TLS configured** (required for HSTS)
-2. **Domain properly configured** in `APP_DOMAINS`
+2. **Production URL properly configured** in `APP_URL` — must be origin-only (scheme + host + optional port, no path or trailing slash), e.g. `https://gardarr.example.com`. In development, when `APP_URL=http://localhost:3000`, the frontend dev server at `http://localhost:5173` is also allowed.
 3. **`GIN_MODE=release`** set
 
 ### Deployment Steps
@@ -156,7 +156,7 @@ Expected rating: **A** or **A+**
 1. Set production environment variables:
    ```bash
    export GIN_MODE=release
-   export APP_DOMAINS=https://your-domain.com
+   export APP_URL=https://your-domain.com
    ```
 
 2. Verify HTTPS is working:
