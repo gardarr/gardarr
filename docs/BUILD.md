@@ -1,42 +1,42 @@
 # Build Guide
 
-Este documento descreve como compilar o Gardarr com informações de versão dinâmicas.
+This document describes how to compile Gardarr with dynamic version information.
 
-## 🚀 Build com Versão Dinâmica
+## 🚀 Build with Dynamic Version
 
-### Usando Makefile
+### Using Makefile
 
 ```bash
-# Build completo com versão dinâmica (recomendado)
+# Full build with dynamic version (recommended)
 make build-full
 
-# Apenas o backend com versão dinâmica
+# Backend only with dynamic version
 make build-with-version
 
-# Usando o script de build
+# Using the build script
 make build-script
 ```
 
-### Usando Script de Build
+### Using Build Script
 
 ```bash
-# Build padrão (detecta versão automaticamente)
+# Standard build (auto-detects version)
 ./scripts/build.sh
 
-# Build com versão específica
+# Build with specific version
 ./scripts/build.sh "1.2.3"
 
-# Build para plataforma específica
+# Build for specific platform
 ./scripts/build.sh "1.2.3" "dist" "linux" "arm64"
 ```
 
-### Build Manual
+### Manual Build
 
 ```bash
-# Obter informações de versão
+# Get version information
 make get-version
 
-# Build com ldflags
+# Build with ldflags
 cd backend
 go build \
   -ldflags "-X github.com/jfxdev/gardarr/pkg/version.Version=1.2.3 \
@@ -46,15 +46,15 @@ go build \
   -o ../gardarr .
 ```
 
-## 🐳 Build com Docker
+## 🐳 Build with Docker
 
-### Build Local
+### Local Build
 
 ```bash
-# Build com versão padrão
+# Build with default version
 docker build -t gardarr .
 
-# Build com versão específica
+# Build with specific version
 docker build \
   --build-arg VERSION=1.2.3 \
   --build-arg COMMIT=abc1234 \
@@ -62,35 +62,35 @@ docker build \
   -t gardarr .
 ```
 
-### Build via CI/CD
+### CI/CD Build
 
-O GitHub Actions automaticamente:
-- Detecta a versão do git tag (para releases)
-- Usa commit count + hash para builds de desenvolvimento
-- Injeta informações de versão via ldflags
-- Cria binários para múltiplas plataformas
-- Gera imagens Docker com metadados
+GitHub Actions automatically:
+- Detects the version from the git tag (for releases)
+- Uses commit count + hash for development builds
+- Injects version information via ldflags
+- Creates binaries for multiple platforms
+- Generates Docker images with metadata
 
-## 📋 Informações de Versão
+## 📋 Version Information
 
-### Estrutura da Versão
+### Version Structure
 
-- **Release**: `1.2.3` (baseado na git tag)
+- **Release**: `1.2.3` (based on git tag)
 - **Development**: `0.0.0-dev+123.abc1234` (commit count + short hash)
 
-### Variáveis Injetadas
+### Injected Variables
 
-- `Version`: Versão da aplicação
-- `Commit`: Hash completo do commit
-- `Date`: Data/hora do build (UTC)
+- `Version`: Application version
+- `Commit`: Full commit hash
+- `Date`: Build date/time (UTC)
 
-### Acesso às Informações
+### Accessing Information
 
 ```bash
-# Via API (requer autenticação)
+# Via API (requires authentication)
 curl http://localhost:3000/v1/version
 
-# Resposta:
+# Response:
 {
   "version": "1.2.3",
   "commit": "abc1234567890abcdef1234567890abcdef1234",
@@ -98,20 +98,20 @@ curl http://localhost:3000/v1/version
 }
 ```
 
-## 🔧 Configuração
+## 🔧 Configuration
 
-### Variáveis de Ambiente
+### Environment Variables
 
 ```bash
-# Para override manual
+# For manual override
 export VERSION=1.2.3
 export COMMIT=abc1234
 export DATE=2025-01-18T21:30:00Z
 ```
 
-### Arquivo .version
+### .version File
 
-O Makefile gera um arquivo `.version` com as informações:
+The Makefile generates a `.version` file with the information:
 
 ```bash
 VERSION=1.2.3
@@ -119,9 +119,9 @@ COMMIT=abc1234567890abcdef1234567890abcdef1234
 DATE=2025-01-18T21:30:00Z
 ```
 
-## 🎯 Plataformas Suportadas
+## 🎯 Supported Platforms
 
-### Binários
+### Binaries
 
 - Linux (amd64, arm64)
 - Windows (amd64)
@@ -134,9 +134,9 @@ DATE=2025-01-18T21:30:00Z
 
 ## 🚨 Troubleshooting
 
-### Erro: "package github.com/jfxdev/gardarr/pkg/version not found"
+### Error: "package github.com/jfxdev/gardarr/pkg/version not found"
 
-Verifique se o módulo Go está configurado corretamente:
+Check if the Go module is configured correctly:
 
 ```bash
 cd backend
@@ -144,25 +144,25 @@ go mod tidy
 go mod verify
 ```
 
-### Erro: "ldflags: invalid syntax"
+### Error: "ldflags: invalid syntax"
 
-Verifique se as aspas estão corretas no comando ldflags:
+Check if the quotes are correct in the ldflags command:
 
 ```bash
-# ✅ Correto
+# ✅ Correct
 -ldflags "-X pkg.version.Version=1.2.3"
 
-# ❌ Incorreto
+# ❌ Incorrect
 -ldflags '-X pkg.version.Version=1.2.3'
 ```
 
-### Versão não aparece na API
+### Version does not appear in API
 
-1. Verifique se o build foi feito com ldflags
-2. Confirme se o endpoint `/v1/version` está registrado
-3. Teste com `curl http://localhost:3000/v1/version`
+1. Check if the build was done with ldflags
+2. Confirm if the `/v1/version` endpoint is registered
+3. Test with `curl http://localhost:3000/v1/version`
 
-## 📚 Referências
+## 📚 References
 
 - [Go Build Constraints](https://pkg.go.dev/cmd/go#hdr-Build_constraints)
 - [Go ldflags](https://pkg.go.dev/cmd/link)

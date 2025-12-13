@@ -16,8 +16,10 @@ Sistema completo de autenticação com sessões baseadas em cookies HTTP-only.
 
 ### Base URL
 ```
-http://localhost:3000/v1/auth
+${APP_URL}/v1/auth
 ```
+
+> **Note**: Replace `${APP_URL}` with your configured application URL (e.g., `http://localhost:3000` for development or `https://gardarr.example.com` for production). See [ENVIRONMENT_VARIABLES.md](./ENVIRONMENT_VARIABLES.md) for configuration details.
 
 ### 1. Registro de Usuário
 
@@ -184,7 +186,7 @@ http://localhost:3000/v1/auth
 // React/Next.js/Vue/etc
 async function registerUser(email, password) {
   try {
-    const response = await fetch('http://localhost:3000/v1/auth/register', {
+    const response = await fetch(`${APP_URL}/v1/auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -215,7 +217,7 @@ async function registerUser(email, password) {
 ```javascript
 async function login(email, password) {
   try {
-    const response = await fetch('http://localhost:3000/v1/auth/login', {
+    const response = await fetch(`${APP_URL}/v1/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -245,7 +247,7 @@ async function login(email, password) {
 ```javascript
 async function getCurrentUser() {
   try {
-    const response = await fetch('http://localhost:3000/v1/auth/me', {
+    const response = await fetch(`${APP_URL}/v1/auth/me`, {
       method: 'GET',
       credentials: 'include', // Envia o cookie de sessão
     });
@@ -281,7 +283,7 @@ useEffect(() => {
 ```javascript
 async function logout() {
   try {
-    const response = await fetch('http://localhost:3000/v1/auth/logout', {
+    const response = await fetch(`${APP_URL}/v1/auth/logout`, {
       method: 'POST',
       credentials: 'include',
     });
@@ -300,7 +302,7 @@ async function logout() {
 
 ```javascript
 async function getProtectedData() {
-  const response = await fetch('http://localhost:3000/v1/some-protected-endpoint', {
+  const response = await fetch(`${APP_URL}/v1/some-protected-endpoint`, {
     method: 'GET',
     credentials: 'include', // SEMPRE incluir para enviar cookies
   });
@@ -362,7 +364,7 @@ function App() {
 
   async function checkAuthentication() {
     try {
-      const response = await fetch('http://localhost:3000/v1/auth/me', {
+      const response = await fetch(`${APP_URL}/v1/auth/me`, {
         credentials: 'include',
       });
 
@@ -378,7 +380,7 @@ function App() {
   }
 
   async function handleLogin(email, password) {
-    const response = await fetch('http://localhost:3000/v1/auth/login', {
+    const response = await fetch(`${APP_URL}/v1/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -395,7 +397,7 @@ function App() {
   }
 
   async function handleLogout() {
-    await fetch('http://localhost:3000/v1/auth/logout', {
+    await fetch(`${APP_URL}/v1/auth/logout`, {
       method: 'POST',
       credentials: 'include',
     });

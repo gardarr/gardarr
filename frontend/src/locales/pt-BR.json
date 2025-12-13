@@ -210,7 +210,14 @@
     "title": "Sobre",
     "subtitle": "Informações sobre o projeto Gardarr",
     "tagline": "Ferramenta de código aberto, leve e otimizada para gerenciamento e análise do qBittorrent",
+    "bannerAlt": "Banner do Gardarr",
+    "objective": "Plataforma moderna e leve de gerenciamento e análise para qBittorrent. Monitore e controle múltiplos clientes com uma interface mobile-first.",
     "version": "Versão",
+    "meta": {
+      "commit": "Commit:",
+      "buildDate": "Data do build:",
+      "unknown": "desconhecido"
+    },
     "description": {
       "title": "Sobre o Projeto",
       "text1": "Gardarr é uma ferramenta moderna e leve de gerenciamento e análise projetada especificamente para qBittorrent. Construído com foco na otimização para dispositivos móveis, oferece uma interface intuitiva para monitorar e gerenciar seus torrents de qualquer dispositivo.",
@@ -228,7 +235,8 @@
       "title": "Links do Projeto",
       "repository": "Repositório GitHub",
       "documentation": "Documentação de Desenvolvimento",
-      "sponsor": "Patrocinar"
+      "sponsor": "Patrocinar",
+      "buyMeCoffee": "Buy me a coffee"
     },
     "attribution": {
       "title": "Atribuições",
@@ -238,6 +246,7 @@
       "title": "Licença",
       "description": "Este projeto é licenciado sob a Licença Pública Geral GNU v3.0. Você é livre para usar, modificar e distribuir este software sob os termos da licença GPL-3.0."
     },
+    "thanks": "Obrigado por usar o Gardarr! Seu apoio e feedback ajudam o projeto a evoluir.",
     "footer": "Construído com ❤️ pela comunidade"
   },
   "auth": {

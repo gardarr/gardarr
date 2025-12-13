@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -289,15 +290,23 @@ func setRouter() {
 		schemas.RegisterCustomValidators(v)
 	}
 
-	// Derive the base URL once and reuse it for CORS (APP_URL → BASE_URL → APP_PORT)
+	// Derive the base URL once and normalize it to a proper origin for CORS
 	baseURL := getBaseURL()
+	var allowedOrigins []string
 
-	// CORS configuration
-	allowedOrigins := []string{baseURL}
+	if u, err := url.Parse(baseURL); err == nil {
+		// Build origin as scheme://host (host includes port if present)
+		origin := u.Scheme + "://" + u.Host
+		allowedOrigins = append(allowedOrigins, origin)
 
-	// Also allow common development URLs if not explicitly set
-	if baseURL == "http://localhost:3000" {
-		allowedOrigins = append(allowedOrigins, "http://localhost:5173")
+		// Allow common development origins for localhost
+		host := u.Hostname()
+		if host == "localhost" || host == "127.0.0.1" {
+			allowedOrigins = append(allowedOrigins, "http://localhost:3000", "http://localhost:5173")
+		}
+	} else {
+		// Fallback if parsing fails
+		allowedOrigins = append(allowedOrigins, strings.TrimRight(baseURL, "/"))
 	}
 
 	corsConfig := cors.Config{

@@ -241,7 +241,14 @@
     "title": "About",
     "subtitle": "Information about the Gardarr project",
     "tagline": "Lightweight open-source tool for qBittorrent management and analytics",
+    "bannerAlt": "Gardarr Banner",
+    "objective": "Modern, lightweight management and analytics platform for qBittorrent. Monitor and control multiple clients with a mobile-first interface.",
     "version": "Version",
+    "meta": {
+      "commit": "Commit:",
+      "buildDate": "Build Date:",
+      "unknown": "unknown"
+    },
     "description": {
       "title": "About the Project",
       "text1": "Gardarr is a modern, lightweight management and analytics tool designed specifically for qBittorrent. Built with a focus on mobile optimization, it provides an intuitive interface for monitoring and managing your torrents from any device.",
@@ -259,7 +266,8 @@
       "title": "Project Links",
       "repository": "GitHub Repository",
       "documentation": "Development Documentation",
-      "sponsor": "Sponsor"
+      "sponsor": "Sponsor",
+      "buyMeCoffee": "Buy me a coffee"
     },
     "attribution": {
       "title": "Attributions",
@@ -269,6 +277,7 @@
       "title": "License",
       "description": "This project is licensed under the GNU General Public License v3.0. You are free to use, modify, and distribute this software under the terms of the GPL-3.0 license."
     },
+    "thanks": "Thanks for using Gardarr! Your support and feedback help keep the project improving.",
     "footer": "Built with ❤️ by the community"
   },
   "auth": {

@@ -31,8 +31,16 @@ This document lists all environment variables used by Gardarr backend.
 ### `APP_URL`
 - **Description**: The public URL of the application. Used for CORS configuration to allow requests from the frontend.
 - **Default**: `http://localhost:3000`
-- **Example**: `APP_URL=https://gardarr.example.com`
-- **Note**: This URL is added to the list of allowed origins for CORS.
+- **Format**: Origin-only (`scheme://host[:port]`) — no path, query string, or trailing slash
+- **Valid examples**:
+  - `APP_URL=http://localhost:3000`
+  - `APP_URL=https://gardarr.example.com`
+  - `APP_URL=http://192.168.1.100:8080`
+- **Invalid examples**:
+  - `APP_URL=https://gardarr.example.com/` (trailing slash)
+  - `APP_URL=https://gardarr.example.com/app` (path included)
+  - `APP_URL=https://gardarr.example.com?foo=bar` (query string)
+- **Note**: This value is matched exactly against the browser's `Origin` header for CORS. Any mismatch (extra slash, path, or query) will cause CORS failures.
 
 ## Security Configuration
 
@@ -81,6 +89,8 @@ APP_URL=http://localhost:3000
 # APP_MODE=standalone  # Uncomment to enable standalone mode
 ```
 
+> **Note**: When `APP_URL=http://localhost:3000`, the backend also allows `http://localhost:5173` for the Vite dev server.
+
 ### Production (`.env.production`)
 ```bash
 APP_PORT=3000
@@ -102,7 +112,7 @@ APP_URL=https://gardarr.example.com
 Before deploying to production:
 
 - [ ] Set `GIN_MODE=release`
-- [ ] Configure `APP_URL` with production url only
+- [ ] Configure `APP_URL` with production URL only (origin-only, no trailing slash)
 - [ ] Ensure HTTPS/TLS is properly configured
 - [ ] Review and test security headers
 - [ ] Configure proper database credentials

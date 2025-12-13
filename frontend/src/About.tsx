@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { ExternalLink, Github, Leaf, Loader2, Heart, Book } from "lucide-react";
+import { ExternalLink, Github, Loader2, Heart, Book } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { versionService } from "@/services/version";
 import bannerImage from "@/assets/img/banner.png";
@@ -9,8 +9,8 @@ import bannerImage from "@/assets/img/banner.png";
 export default function AboutPage() {
   const { t } = useTranslation();
   const [version, setVersion] = useState<string>("v0.0.2"); // fallback version
-  const [commit, setCommit] = useState<string>("unknown");
-  const [date, setDate] = useState<string>("unknown");
+  const [commit, setCommit] = useState<string>(t("about.meta.unknown"));
+  const [date, setDate] = useState<string>(t("about.meta.unknown"));
   const [loadingVersion, setLoadingVersion] = useState(true);
 
   useEffect(() => {
@@ -19,8 +19,8 @@ export default function AboutPage() {
         const response = await versionService.getVersion();
         if (response.data) {
           setVersion(`v${response.data.version}`);
-          setCommit(response.data.commit || "unknown");
-          setDate(response.data.date || "unknown");
+          setCommit(response.data.commit || t("about.meta.unknown"));
+          setDate(response.data.date || t("about.meta.unknown"));
         }
       } catch (error) {
         console.error('Failed to fetch version:', error);
@@ -35,29 +35,22 @@ export default function AboutPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
-          <Leaf className="h-6 w-6 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t("about.title")}</h1>
-          <p className="text-muted-foreground mt-1">{t("about.subtitle")}</p>
-        </div>
-      </div>
-
       {/* Project Logo and Version */}
       <Card className="p-8">
         <div className="flex flex-col items-center text-center space-y-6">
           <div className="w-full rounded-2xl overflow-hidden flex items-center justify-center">
             <img 
               src={bannerImage} 
-              alt="Gardarr Banner" 
+              alt={t("about.bannerAlt")} 
               className="max-w-full h-auto"
-              loading="lazy"
+              loading="eager"
               decoding="async"
             />
           </div>
+
+          <p className="text-sm text-muted-foreground max-w-2xl">
+            {t("about.objective")}
+          </p>
           
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted">
@@ -75,20 +68,30 @@ export default function AboutPage() {
             {!loadingVersion && (
               <div className="flex flex-col sm:flex-row gap-2 text-xs text-muted-foreground">
                 <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted/50">
-                  <span className="font-medium">Commit:</span>
+                  <span className="font-medium">{t("about.meta.commit")}</span>
                   <span className="font-mono">{commit.substring(0, 7)}</span>
                 </div>
                 <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted/50">
-                  <span className="font-medium">Date:</span>
+                  <span className="font-medium">{t("about.meta.buildDate")}</span>
                   <span className="font-mono">{date}</span>
                 </div>
               </div>
             )}
           </div>
 
+          <div className="space-y-3 w-full">
+            <h3 className="text-xl font-semibold">{t("about.license.title")}</h3>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-muted">
+              <span className="text-sm font-mono">GPL-3.0</span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {t("about.license.description")}
+            </p>
+          </div>
+
           <div className="flex flex-col sm:flex-row gap-3 pt-4">
             <Button 
-              className="justify-start bg-black text-white hover:bg-gray-800"
+              className="justify-start bg-[var(--color-github)] text-white hover:bg-[var(--color-github-hover)]"
               asChild
             >
               <a 
@@ -102,22 +105,39 @@ export default function AboutPage() {
                 <ExternalLink className="h-3 w-3 ml-auto" />
               </a>
             </Button>
-            
-            <Button 
-              className="justify-start bg-[#bf3989] text-white hover:bg-[#a02f72]"
-              asChild
-            >
-              <a 
-                href="https://github.com/sponsors/jfxdev" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center gap-2"
+
+            <div className="inline-flex overflow-hidden rounded-md">
+              <Button
+                className="justify-start bg-[var(--color-sponsor)] text-white hover:bg-[var(--color-sponsor-hover)] rounded-r-none"
+                asChild
               >
-                <Heart className="h-4 w-4 fill-current" />
-                {t("about.links.sponsor")}
-                <ExternalLink className="h-3 w-3 ml-auto" />
-              </a>
-            </Button>
+                <a
+                  href="https://github.com/sponsors/jfxdev"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2"
+                >
+                  <Heart className="h-4 w-4 fill-current" />
+                  {t("about.links.sponsor")}
+                  <ExternalLink className="h-3 w-3 ml-auto" />
+                </a>
+              </Button>
+
+              <Button
+                className="justify-start bg-[var(--color-coffee)] text-black hover:bg-[var(--color-coffee-hover)] rounded-l-none border-l border-black/20"
+                asChild
+              >
+                <a
+                  href="https://www.buymeacoffee.com/jfxdev"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2"
+                >
+                  {t("about.links.buyMeCoffee")}
+                  <ExternalLink className="h-3 w-3 ml-auto" />
+                </a>
+              </Button>
+            </div>
 
             <Button 
               variant="outline" 
@@ -137,36 +157,10 @@ export default function AboutPage() {
             </Button>
           </div>
 
-        </div>
-      </Card>
-
-      {/* Attribution */}
-      <Card className="p-6 bg-muted/50">
-        <h3 className="text-sm font-semibold mb-3">{t("about.attribution.title")}</h3>
-        <div className="space-y-2 text-sm text-muted-foreground">
-          <p>{t("about.attribution.logo")}</p>
-          <a 
-            href="https://www.flaticon.com/free-icons/sprout" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-primary hover:underline"
-          >
-            Sprout icons created by Freepik - Flaticon
-            <ExternalLink className="h-3 w-3" />
-          </a>
-        </div>
-      </Card>
-
-      {/* License */}
-      <Card className="p-6">
-        <h3 className="text-xl font-semibold mb-4">{t("about.license.title")}</h3>
-        <div className="space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-muted">
-            <span className="text-sm font-mono">GPL-3.0</span>
+          <div className="pt-2 space-y-5 w-full">
+            <p className="text-sm text-muted-foreground">{t("about.thanks")}</p>
           </div>
-          <p className="text-sm text-muted-foreground">
-            {t("about.license.description")}
-          </p>
+
         </div>
       </Card>
 
