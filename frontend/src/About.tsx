@@ -7,11 +7,23 @@ import { versionService } from "@/services/version";
 import bannerImage from "@/assets/img/banner.png";
 
 export default function AboutPage() {
-  const { t } = useTranslation();
+  const { t, ready } = useTranslation();
   const [version, setVersion] = useState<string>("v0.0.2"); // fallback version
-  const [commit, setCommit] = useState<string>(t("about.meta.unknown"));
-  const [date, setDate] = useState<string>(t("about.meta.unknown"));
+  const [commit, setCommit] = useState<string>("unknown");
+  const [date, setDate] = useState<string>("unknown");
   const [loadingVersion, setLoadingVersion] = useState(true);
+
+  useEffect(() => {
+    if (!ready) return;
+
+    if (commit === "unknown") {
+      setCommit(t("about.meta.unknown"));
+    }
+
+    if (date === "unknown") {
+      setDate(t("about.meta.unknown"));
+    }
+  }, [ready, t, commit, date]);
 
   useEffect(() => {
     const fetchVersion = async () => {
@@ -19,8 +31,8 @@ export default function AboutPage() {
         const response = await versionService.getVersion();
         if (response.data) {
           setVersion(`v${response.data.version}`);
-          setCommit(response.data.commit || t("about.meta.unknown"));
-          setDate(response.data.date || t("about.meta.unknown"));
+          setCommit(response.data.commit || "unknown");
+          setDate(response.data.date || "unknown");
         }
       } catch (error) {
         console.error('Failed to fetch version:', error);
@@ -145,7 +157,7 @@ export default function AboutPage() {
               asChild
             >
               <a 
-                href="https://github.com/jfxdev/gardarr/blob/main/DEVELOPMENT.md" 
+                href="https://github.com/jfxdev/gardarr/blob/main/docs/DEVELOPMENT.md" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="flex items-center gap-2"
