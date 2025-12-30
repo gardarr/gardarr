@@ -305,10 +305,16 @@ func securityHeadersMiddleware() gin.HandlerFunc {
 }
 
 func setRouter() {
-	// Set GIN mode based on LOG_LEVEL environment variable (case-insensitive)
-	// Default to release mode for production, only use debug when explicitly set
-	logLevel := strings.TrimSpace(env.Get("LOG_LEVEL").Default("info").Value())
-	if strings.EqualFold(logLevel, "debug") {
+	// Set GIN mode based on GIN_MODE environment variable (case-insensitive)
+	// Falls back to LOG_LEVEL for compatibility, defaults to release mode
+	ginMode := strings.TrimSpace(env.Get("GIN_MODE").Default("").Value())
+
+	if ginMode == "" {
+		// Fall back to LOG_LEVEL for compatibility
+		ginMode = strings.TrimSpace(env.Get("LOG_LEVEL").Default("release").Value())
+	}
+
+	if strings.EqualFold(ginMode, "debug") {
 		gin.SetMode(gin.DebugMode)
 	} else {
 		gin.SetMode(gin.ReleaseMode)

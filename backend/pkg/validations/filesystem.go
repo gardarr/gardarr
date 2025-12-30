@@ -51,13 +51,15 @@ func ensureDirectoryWritable(dir string) error {
 	if err != nil {
 		return fmt.Errorf("directory is not writable (permission denied): %w\nHint: Ensure the container user has write permissions to this directory", err)
 	}
-	f.Close()
+	defer f.Close()
 
 	// Clean up test file
-	if err := os.Remove(testFile); err != nil {
-		// Log but don't fail if we can't remove the test file
-		fmt.Fprintf(os.Stderr, "Warning: failed to remove test file %s: %v\n", testFile, err)
-	}
+	defer func() {
+		if err := os.Remove(testFile); err != nil {
+			// Log but don't fail if we can't remove the test file
+			fmt.Fprintf(os.Stderr, "Warning: failed to remove test file %s: %v\n", testFile, err)
+		}
+	}()
 
 	return nil
 }

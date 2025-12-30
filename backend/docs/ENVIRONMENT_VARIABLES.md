@@ -12,8 +12,8 @@ This document lists all environment variables used by Gardarr backend.
 ### `GIN_MODE`
 - **Description**: Gin framework mode
 - **Values**: `debug` (development) or `release` (production)
-- **Default**: `debug`
-- **Example**: `GIN_MODE=release`
+- **Default**: `release`
+- **Example**: `GIN_MODE=debug`
 - **Note**: In release mode, HSTS header is automatically enabled
 
 ### `APP_MODE`

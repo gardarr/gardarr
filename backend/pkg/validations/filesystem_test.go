@@ -13,6 +13,8 @@ func TestValidateDataDirectories(t *testing.T) {
 	tests := []struct {
 		name    string
 		dirs    []string
+		setup   func() error
+		cleanup func()
 		wantErr bool
 	}{
 		{
@@ -30,10 +32,35 @@ func TestValidateDataDirectories(t *testing.T) {
 			dirs:    []string{filepath.Join(tmpDir, "new-dir")},
 			wantErr: false,
 		},
+		{
+			name: "read-only directory (permission denied)",
+			dirs: []string{filepath.Join(tmpDir, "readonly")},
+			setup: func() error {
+				dir := filepath.Join(tmpDir, "readonly")
+				if err := os.MkdirAll(dir, 0755); err != nil {
+					return err
+				}
+				return os.Chmod(dir, 0555)
+			},
+			cleanup: func() {
+				dir := filepath.Join(tmpDir, "readonly")
+				os.Chmod(dir, 0755)
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.setup != nil {
+				if err := tt.setup(); err != nil {
+					t.Fatalf("setup failed: %v", err)
+				}
+			}
+			if tt.cleanup != nil {
+				defer tt.cleanup()
+			}
+
 			err := ValidateDataDirectories(tt.dirs...)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ValidateDataDirectories() error = %v, wantErr %v", err, tt.wantErr)
@@ -49,6 +76,7 @@ func TestValidateDatabasePath(t *testing.T) {
 		name    string
 		dbPath  string
 		setup   func(string) error
+		cleanup func(string)
 		wantErr bool
 	}{
 		{
@@ -64,6 +92,36 @@ func TestValidateDatabasePath(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name:   "read-only database file (permission denied)",
+			dbPath: filepath.Join(tmpDir, "readonly.db"),
+			setup: func(path string) error {
+				if err := os.WriteFile(path, []byte("test"), 0644); err != nil {
+					return err
+				}
+				return os.Chmod(path, 0444)
+			},
+			cleanup: func(path string) {
+				os.Chmod(path, 0644)
+			},
+			wantErr: true,
+		},
+		{
+			name:   "database in read-only directory",
+			dbPath: filepath.Join(tmpDir, "readonly-dir", "test.db"),
+			setup: func(path string) error {
+				dir := filepath.Dir(path)
+				if err := os.MkdirAll(dir, 0755); err != nil {
+					return err
+				}
+				return os.Chmod(dir, 0555)
+			},
+			cleanup: func(path string) {
+				dir := filepath.Dir(path)
+				os.Chmod(dir, 0755)
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -72,6 +130,9 @@ func TestValidateDatabasePath(t *testing.T) {
 				if err := tt.setup(tt.dbPath); err != nil {
 					t.Fatalf("setup failed: %v", err)
 				}
+			}
+			if tt.cleanup != nil {
+				defer tt.cleanup(tt.dbPath)
 			}
 
 			err := ValidateDatabasePath(tt.dbPath)

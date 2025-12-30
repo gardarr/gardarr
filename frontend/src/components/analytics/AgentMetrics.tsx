@@ -211,16 +211,26 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
 
             if (validStats.length > 0) {
               console.log('Aggregating stats from', validStats.length, 'agents');
+              
+              // Collect all ratios for proper aggregation
+              const allAverageRatios: number[] = [];
+              const allMedianRatios: number[] = [];
+              
               // Aggregate the stats from all active agents
               const aggregatedStats = validStats.reduce((acc, response) => {
                 const data = response!.data!;
                 console.log('Adding stats from agent:', data);
+                
+                // Collect ratios for later calculation
+                allAverageRatios.push(data.average_ratio);
+                allMedianRatios.push(data.median_ratio);
+                
                 return {
                   total_disk_size: acc.total_disk_size + data.total_disk_size,
                   current_upload_speed: acc.current_upload_speed + data.current_upload_speed,
                   current_download_speed: acc.current_download_speed + data.current_download_speed,
-                  average_ratio: (acc.average_ratio + data.average_ratio) / 2, // Average of averages
-                  median_ratio: (acc.median_ratio + data.median_ratio) / 2, // Average of medians
+                  average_ratio: 0, // Will be calculated after reduce
+                  median_ratio: 0, // Will be calculated after reduce
                   highest_ratio: Math.max(acc.highest_ratio, data.highest_ratio),
                   lowest_ratio: Math.min(acc.lowest_ratio, data.lowest_ratio),
                   active_tasks_count: acc.active_tasks_count + data.active_tasks_count,
@@ -260,6 +270,20 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
                 tags_usage: {} as Record<string, number>,
                 word_cloud: {} as Record<string, number>
               });
+
+              // Calculate proper average of average ratios
+              aggregatedStats.average_ratio = allAverageRatios.length > 0
+                ? allAverageRatios.reduce((sum, ratio) => sum + ratio, 0) / allAverageRatios.length
+                : 0;
+
+              // Calculate proper median of median ratios
+              if (allMedianRatios.length > 0) {
+                const sortedMedians = [...allMedianRatios].sort((a, b) => a - b);
+                const mid = Math.floor(sortedMedians.length / 2);
+                aggregatedStats.median_ratio = sortedMedians.length % 2 === 0
+                  ? (sortedMedians[mid - 1] + sortedMedians[mid]) / 2
+                  : sortedMedians[mid];
+              }
 
               // Fix lowest_ratio if no valid ratios were found
               if (aggregatedStats.lowest_ratio === Infinity) {
