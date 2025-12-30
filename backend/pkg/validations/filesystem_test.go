@@ -44,7 +44,7 @@ func TestValidateDataDirectories(t *testing.T) {
 			},
 			cleanup: func() {
 				dir := filepath.Join(tmpDir, "readonly")
-				os.Chmod(dir, 0755)
+				_ = os.Chmod(dir, 0755)
 			},
 			wantErr: true,
 		},
@@ -102,7 +102,7 @@ func TestValidateDatabasePath(t *testing.T) {
 				return os.Chmod(path, 0444)
 			},
 			cleanup: func(path string) {
-				os.Chmod(path, 0644)
+				_ = os.Chmod(path, 0644)
 			},
 			wantErr: true,
 		},
@@ -118,7 +118,7 @@ func TestValidateDatabasePath(t *testing.T) {
 			},
 			cleanup: func(path string) {
 				dir := filepath.Dir(path)
-				os.Chmod(dir, 0755)
+				_ = os.Chmod(dir, 0755)
 			},
 			wantErr: true,
 		},
