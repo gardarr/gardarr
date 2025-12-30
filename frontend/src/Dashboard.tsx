@@ -250,54 +250,63 @@ const Dashboard: React.FC = () => {
       <StatisticsDisabledAlert statisticsEnabled={statisticsEnabled} />
 
       {/* Agent Metrics or Setup Prompt */}
-      {isLoadingAgents ? (
-        <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">{t("dashboard.loadingAgents")}</p>
-        </div>
-      ) : hasActiveAgents === false ? (
-        <Card className="border-dashed">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-              <Settings className="h-8 w-8 text-primary" />
+      {(() => {
+        if (isLoadingAgents) {
+          return (
+            <div className="flex items-center justify-center h-64">
+              <p className="text-muted-foreground">{t("dashboard.loadingAgents")}</p>
             </div>
-            <CardTitle>
-              {hasErrorAgents ? t("dashboard.agentsWithError") : t("dashboard.noAgentsConfigured")}
-            </CardTitle>
-            <CardDescription>
-              {hasErrorAgents 
-                ? t("dashboard.agentsWithErrorDesc")
-                : t("dashboard.noAgentsConfiguredDesc")
-              }
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex justify-center pb-6">
-            <Button onClick={() => navigate('/agents')} className="gap-2">
-              {hasErrorAgents ? (
-                <>
-                  <Settings className="h-4 w-4" />
-                  {t("dashboard.fixAgents")}
-                </>
-              ) : (
-                <>
-                  <Plus className="h-4 w-4" />
-                  {t("dashboard.configureAgents")}
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-6">
-          <AgentMetrics 
-            fromDate={fromDate}
-            toDate={toDate}
-            selectedAgentId={selectedAgentId || ''}
-            topUploaded={topUploaded}
-            taskNameById={taskNameById}
-            onAgentChange={handleAgentChange}
-          />
-        </div>
-      )}
+          );
+        }
+
+        if (hasActiveAgents === false) {
+          const cardTitle = hasErrorAgents 
+            ? t("dashboard.agentsWithError") 
+            : t("dashboard.noAgentsConfigured");
+          
+          const cardDescription = hasErrorAgents 
+            ? t("dashboard.agentsWithErrorDesc")
+            : t("dashboard.noAgentsConfiguredDesc");
+          
+          const buttonIcon = hasErrorAgents ? Settings : Plus;
+          const ButtonIcon = buttonIcon;
+          
+          const buttonText = hasErrorAgents 
+            ? t("dashboard.fixAgents")
+            : t("dashboard.configureAgents");
+
+          return (
+            <Card className="border-dashed">
+              <CardHeader className="text-center">
+                <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Settings className="h-8 w-8 text-primary" />
+                </div>
+                <CardTitle>{cardTitle}</CardTitle>
+                <CardDescription>{cardDescription}</CardDescription>
+              </CardHeader>
+              <CardContent className="flex justify-center pb-6">
+                <Button onClick={() => navigate('/agents')} className="gap-2">
+                  <ButtonIcon className="h-4 w-4" />
+                  {buttonText}
+                </Button>
+              </CardContent>
+            </Card>
+          );
+        }
+
+        return (
+          <div className="space-y-6">
+            <AgentMetrics 
+              fromDate={fromDate}
+              toDate={toDate}
+              selectedAgentId={selectedAgentId || ''}
+              topUploaded={topUploaded}
+              taskNameById={taskNameById}
+              onAgentChange={handleAgentChange}
+            />
+          </div>
+        );
+      })()}
     </div>
   );
 };

@@ -277,17 +277,14 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
                   setActiveUploadAmount(uploadSum);
                   setTasks(allTasks as Task[]);
                 }
-              } else {
-                // No valid stats available
-                if (isMounted) setStats(null);
               }
-            } else {
+            } else if (isMounted) {
               // No valid stats available
-              if (isMounted) setStats(null);
+              setStats(null);
             }
-          } else {
+          } else if (isMounted) {
             // No active agents
-            if (isMounted) setStats(null);
+            setStats(null);
           }
           return;
         }
@@ -359,9 +356,10 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
     if (currentSelectedAgentId && agents.length > 0) {
       const agent = agents.find(a => a.uuid === currentSelectedAgentId);
       setSelectedAgent(agent || null);
-    } else {
-      setSelectedAgent(null);
+      return;
     }
+    
+    setSelectedAgent(null);
   }, [currentSelectedAgentId, agents]);
 
 
