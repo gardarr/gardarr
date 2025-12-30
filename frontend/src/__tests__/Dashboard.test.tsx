@@ -127,8 +127,10 @@ describe('Dashboard Component', () => {
 
     expect(screen.getByText('Real-time analytics and insights for your torrent agents and tasks')).toBeInTheDocument();
     
-    // Check that child components are rendered
-    expect(screen.getByTestId('agent-metrics')).toBeInTheDocument();
+    // Wait for agent metrics to be rendered after agents are loaded
+    await waitFor(() => {
+      expect(screen.getByTestId('agent-metrics')).toBeInTheDocument();
+    }, { timeout: 2000 });
   });
 
   it('renders with date range picker and refresh button', async () => {

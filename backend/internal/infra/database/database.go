@@ -103,8 +103,8 @@ func ensureSQLiteFile(filePath string) error {
 	// Extract directory from file path
 	dir := filepath.Dir(absPath)
 
-	// Create directory if it doesn't exist
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	// Create directory if it doesn't exist with restricted permissions
+	if err := os.MkdirAll(dir, 0700); err != nil {
 		return fmt.Errorf("failed to create database directory: %w", err)
 	}
 
@@ -118,8 +118,8 @@ func ensureSQLiteFile(filePath string) error {
 		if err := file.Close(); err != nil {
 			return fmt.Errorf("failed to close database file: %w", err)
 		}
-		// Set appropriate permissions (read/write for owner, read for group and others)
-		if err := os.Chmod(absPath, 0644); err != nil {
+		// Set secure permissions (read/write for owner only)
+		if err := os.Chmod(absPath, 0600); err != nil {
 			return fmt.Errorf("failed to set database file permissions: %w", err)
 		}
 	}

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -106,6 +107,15 @@ func Run(cmd *cobra.Command, args []string) error {
 }
 
 func setRouter() error {
+	// Set GIN mode based on LOG_LEVEL environment variable (case-insensitive)
+	// Default to release mode for production, only use debug when explicitly set
+	logLevel := strings.TrimSpace(env.Get("LOG_LEVEL").Default("info").Value())
+	if strings.EqualFold(logLevel, "debug") {
+		gin.SetMode(gin.DebugMode)
+	} else {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
 	router = gin.Default()
 
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {

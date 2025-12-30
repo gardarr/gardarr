@@ -176,7 +176,7 @@ func TestEnsureSQLiteFileAbsolutePath(t *testing.T) {
 		t.Fatalf("Failed to stat file: %v", err)
 	}
 	mode := info.Mode()
-	expectedMode := os.FileMode(0644)
+	expectedMode := os.FileMode(0600)
 	if mode.Perm() != expectedMode {
 		t.Errorf("Expected file permissions %v, got %v", expectedMode, mode.Perm())
 	}
