@@ -5,7 +5,7 @@
 # Define build arguments for image tags and port
 ARG GO_IMAGE=golang:1.25.3-alpine
 ARG NODE_IMAGE=node:24.10.0-alpine
-ARG APP_PORT=3000
+ARG APP_PORT=3200
 
 # Version build arguments (with defaults for local development)
 ARG VERSION=0.0.0-dev
@@ -102,7 +102,7 @@ RUN mkdir -p /data && \
     chmod 755 /data
 
 # Set build argument for port
-ARG APP_PORT=3000
+ARG APP_PORT=3200
 
 # Set the working directory
 WORKDIR /app

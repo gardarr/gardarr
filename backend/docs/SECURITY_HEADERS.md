@@ -113,7 +113,7 @@ You can test the security headers using:
 
 Example using curl:
 ```bash
-curl -I http://localhost:3000
+curl -I http://localhost:3200
 ```
 
 ## Maintenance

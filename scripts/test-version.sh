@@ -78,7 +78,7 @@ if kill -0 $BINARY_PID 2>/dev/null; then
     
     # Try to curl the version endpoint
     if command -v curl >/dev/null 2>&1; then
-        VERSION_RESPONSE=$(curl -s http://localhost:3000/v1/version 2>/dev/null || echo "")
+        VERSION_RESPONSE=$(curl -s http://localhost:3200/v1/version 2>/dev/null || echo "")
         if [ -n "$VERSION_RESPONSE" ]; then
             echo "✅ Version endpoint responded:"
             echo "$VERSION_RESPONSE" | python3 -m json.tool 2>/dev/null || echo "$VERSION_RESPONSE"

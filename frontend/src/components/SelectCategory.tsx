@@ -5,6 +5,7 @@ import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { AddCategoryModal } from "@/components/AddCategoryModal";
 import { categoryService } from "@/services/categories";
 import { Folder, ChevronsUpDown, Check, Plus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { Category, CreateCategoryRequest } from "@/types/category";
 
 interface SelectCategoryProps {
@@ -22,7 +23,7 @@ interface SelectCategoryProps {
 export function SelectCategory({
   selectedCategoryId,
   onCategoryChange,
-  label = "Categoria",
+  label,
   required = false,
   error,
   className = "",
@@ -30,6 +31,7 @@ export function SelectCategory({
   onCategoryCreated,
   autoLoad = true
 }: SelectCategoryProps) {
+  const { t } = useTranslation();
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
@@ -103,7 +105,7 @@ export function SelectCategory({
     <div className={`space-y-2 ${className}`}>
       <Label className="flex items-center gap-2">
         <Folder className="h-4 w-4" />
-        {label} {required && <span className="text-destructive">*</span>}
+        {(label ?? t("torrents.addModal.category.label"))} {required && <span className="text-destructive">*</span>}
       </Label>
       
       <div className="flex gap-2">
@@ -125,7 +127,7 @@ export function SelectCategory({
                 <Folder className="h-4 w-4 text-muted-foreground" />
               )}
               <span className="truncate">
-                {selectedCategory?.name || "Selecione uma categoria"}
+                {selectedCategory?.name || t("selectCategory.placeholder")}
               </span>
             </div>
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -135,7 +137,7 @@ export function SelectCategory({
             <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-auto">
               {categories.length === 0 ? (
                 <div className="px-3 py-2 text-sm text-muted-foreground">
-                  Nenhuma categoria disponível
+                  {t("selectCategory.empty")}
                 </div>
               ) : (
                 categories.map((cat) => (
@@ -167,7 +169,7 @@ export function SelectCategory({
             variant="default"
             size="sm"
             className="h-10 px-3"
-            title="Adicionar Categoria"
+            title={t("selectCategory.add")}
             onClick={handleAddCategoryClick}
           >
             <Plus className="h-4 w-4" />

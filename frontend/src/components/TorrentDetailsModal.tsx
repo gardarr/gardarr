@@ -299,10 +299,10 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
             <div className="flex-1">
               <DialogTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
-                {t('torrentDetails.title', { defaultValue: 'Detalhes do Torrent' })}
+                {t('torrentDetails.title')}
               </DialogTitle>
               <DialogDescription>
-                {t('torrentDetails.subtitle', { defaultValue: 'Informações completas sobre o torrent selecionado' })}
+                {t('torrentDetails.subtitle')}
               </DialogDescription>
             </div>
             {/* Botões de ação - Desktop apenas */}
@@ -468,13 +468,13 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                   size="icon"
                   onClick={() => onForceDownload(torrent.id)}
                   className="h-12 w-12 flex-shrink-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-950 dark:text-orange-400 dark:hover:text-orange-300"
-                  aria-label="Force Download"
+                  aria-label={t('torrentDetails.actions.forceDownload')}
                 >
                   <Zap className="h-5 w-5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                Force Download
+                {t('torrentDetails.actions.forceDownload')}
               </TooltipContent>
             </Tooltip>
           )}
@@ -486,13 +486,13 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                   size="icon"
                   onClick={() => onForceReannounce(torrent.id)}
                   className="h-12 w-12 flex-shrink-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950 dark:text-blue-400 dark:hover:text-blue-300"
-                  aria-label="Force Reannounce"
+                  aria-label={t('torrentDetails.actions.forceReannounce')}
                 >
                   <Radio className="h-5 w-5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                Force Reannounce
+                {t('torrentDetails.actions.forceReannounce')}
               </TooltipContent>
             </Tooltip>
           )}
@@ -504,13 +504,13 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                   size="icon"
                   onClick={() => onForceRecheck(torrent.id)}
                   className="h-12 w-12 flex-shrink-0 text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-950 dark:text-purple-400 dark:hover:text-purple-300"
-                  aria-label="Force Recheck"
+                  aria-label={t('torrentDetails.actions.forceRecheck')}
                 >
                   <CheckCircle className="h-5 w-5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                Force Recheck
+                {t('torrentDetails.actions.forceRecheck')}
               </TooltipContent>
             </Tooltip>
           )}
@@ -539,11 +539,11 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="details" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
-              {t('torrentDetails.tabs.details', { defaultValue: 'Detalhes' })}
+              {t('torrentDetails.tabs.details')}
             </TabsTrigger>
             <TabsTrigger value="images" className="flex items-center gap-2">
               <Image className="h-4 w-4" />
-              {t('torrentDetails.tabs.images', { defaultValue: 'Imagens' })}
+              {t('torrentDetails.tabs.images')}
             </TabsTrigger>
           </TabsList>
 

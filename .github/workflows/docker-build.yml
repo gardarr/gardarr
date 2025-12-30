@@ -52,10 +52,6 @@ jobs:
             goarch: amd64
             cc: ""
             output: gardarr-amd64
-          - arch: arm64
-            goarch: arm64
-            cc: aarch64-linux-gnu-gcc
-            output: gardarr-arm64
 
     steps:
     - name: Checkout repository
@@ -113,8 +109,8 @@ jobs:
     - name: Set up QEMU for cross-compilation
       uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130
       with:
-        platforms: linux/amd64,linux/arm64
-
+        platforms: linux/amd64
+ 
     - name: Build Go binary for ${{ matrix.arch }} using Alpine
       run: |
         # Create dist directory
@@ -184,7 +180,7 @@ jobs:
 
     - name: Verify binary artifacts
       run: |
-        for arch in amd64 arm64; do
+        for arch in amd64; do
           binary="backend/dist/gardarr-$arch"
           if [ ! -f "$binary" ]; then
             echo "❌ Missing binary for $arch: $binary"
@@ -214,7 +210,7 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
       with:
-        platforms: linux/amd64,linux/arm64
+        platforms: linux/amd64
         driver-opts: |
           image=moby/buildkit:buildx-stable-1
 
@@ -247,9 +243,9 @@ jobs:
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
-        platforms: linux/amd64,linux/arm64
+        platforms: linux/amd64
         build-args: |
-          APP_PORT=3000
+          APP_PORT=3200
         provenance: true
 
     - name: Make package public
@@ -258,7 +254,7 @@ jobs:
       run: |
         echo "Package published to: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
         echo "Tags: ${{ steps.meta.outputs.tags }}"
-        echo "Platforms: linux/amd64,linux/arm64"
+        echo "Platforms: linux/amd64"
         
         # Get the package name from the repository name
         PACKAGE_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)

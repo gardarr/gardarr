@@ -66,7 +66,7 @@ Lista eventos com filtros opcionais
 
 **Exemplo:**
 ```bash
-curl -X GET "http://localhost:3000/v1/events?agent_id=abc-123&type=torrent.state_change&limit=10"
+curl -X GET "http://localhost:3200/v1/events?agent_id=abc-123&type=torrent.state_change&limit=10"
 ```
 
 **Response:**
@@ -97,7 +97,7 @@ Obtém um evento específico por UUID
 
 **Exemplo:**
 ```bash
-curl -X GET "http://localhost:3000/v1/events/event-uuid"
+curl -X GET "http://localhost:3200/v1/events/event-uuid"
 ```
 
 ## Integração com Statistics

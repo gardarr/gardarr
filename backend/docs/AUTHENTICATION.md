@@ -19,7 +19,7 @@ Sistema completo de autenticação com sessões baseadas em cookies HTTP-only.
 ${APP_URL}/v1/auth
 ```
 
-> **Note**: Replace `${APP_URL}` with your configured application URL (e.g., `http://localhost:3000` for development or `https://gardarr.example.com` for production). See [ENVIRONMENT_VARIABLES.md](./ENVIRONMENT_VARIABLES.md) for configuration details.
+> **Note**: Replace `${APP_URL}` with your configured application URL (e.g., `http://localhost:3200` for development or `https://gardarr.example.com` for production). See [ENVIRONMENT_VARIABLES.md](./ENVIRONMENT_VARIABLES.md) for configuration details.
 
 ### 1. Registro de Usuário
 

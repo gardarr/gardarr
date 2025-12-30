@@ -6,7 +6,7 @@ This document lists all environment variables used by Gardarr backend.
 
 ### `APP_PORT`
 - **Description**: Port number where the server will listen
-- **Default**: `3000`
+- **Default**: `3200`
 - **Example**: `APP_PORT=8080`
 
 ### `GIN_MODE`
@@ -30,10 +30,10 @@ This document lists all environment variables used by Gardarr backend.
 
 ### `APP_URL`
 - **Description**: The public URL of the application. Used for CORS configuration to allow requests from the frontend.
-- **Default**: `http://localhost:3000`
+- **Default**: `http://localhost:3200`
 - **Format**: Origin-only (`scheme://host[:port]`) — no path, query string, or trailing slash
 - **Valid examples**:
-  - `APP_URL=http://localhost:3000`
+  - `APP_URL=http://localhost:3200`
   - `APP_URL=https://gardarr.example.com`
   - `APP_URL=http://192.168.1.100:8080`
 - **Invalid examples**:
@@ -57,14 +57,14 @@ When `APP_MODE=standalone` is set, the application will:
 1. **Start both services**: The main service and the agent service run together
 2. **Add mock agent**: A standalone agent is automatically added to the agents list
 3. **Use different ports**: 
-   - Service runs on the port specified by `APP_PORT` (default: 3000)
+   - Service runs on the port specified by `APP_PORT` (default: 3200)
    - Agent runs on the port specified by `AGENT_PORT` (default: 3100)
 4. **Automatic setup**: No need to manually start the agent service
 
 ### Standalone Mode Configuration
 ```bash
 APP_MODE=standalone
-APP_PORT=3000
+APP_PORT=3200
 AGENT_PORT=3100
 AGENT_SECRET=standalone-secret-key
 ```
@@ -83,17 +83,17 @@ export APP_MODE=standalone
 
 ### Development (`.env.development`)
 ```bash
-APP_PORT=3000
+APP_PORT=3200
 GIN_MODE=debug
-APP_URL=http://localhost:3000
+APP_URL=http://localhost:3200
 # APP_MODE=standalone  # Uncomment to enable standalone mode
 ```
 
-> **Note**: When `APP_URL=http://localhost:3000`, the backend also allows `http://localhost:5173` for the Vite dev server.
+> **Note**: When `APP_URL=http://localhost:3200`, the backend also allows `http://localhost:5173` for the Vite dev server.
 
 ### Production (`.env.production`)
 ```bash
-APP_PORT=3000
+APP_PORT=3200
 GIN_MODE=release
 APP_URL=https://gardarr.example.com
 # HTTPS must be configured when GIN_MODE=release (HSTS enabled)

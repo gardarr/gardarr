@@ -7,18 +7,11 @@ import { AgentIcon } from "@/components/ui/AgentIcon";
 import { SelectCategory } from "@/components/SelectCategory";
 import { SelectTags } from "@/components/SelectTags";
 import { convertMagnetUriToTaskMagnetLink } from "@/services/torrents";
+import { formatBytes } from "@/utils/bytes";
+import { useTranslation } from "react-i18next";
 import type { Agent } from "@/types/agent";
 import type { CreateTaskRequest, TaskMagnetLink } from "@/types/torrent";
 import type { Category } from "@/types/category";
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  const value = bytes / Math.pow(k, i);
-  return `${value.toFixed(value >= 100 ? 0 : value >= 10 ? 1 : 2)} ${sizes[i]}`;
-}
 
 interface AddTorrentModalProps {
   isOpen: boolean;
@@ -28,6 +21,7 @@ interface AddTorrentModalProps {
 }
 
 export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorrentModalProps) {
+  const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
   const [magnetUri, setMagnetUri] = useState("");
@@ -134,21 +128,21 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
     const newErrors: Record<string, string> = {};
 
     if (!selectedAgentId) {
-      newErrors.agent = "Selecione um agente";
+      newErrors.agent = t("torrents.addModal.errors.agentRequired");
     }
 
     if (!magnetUri.trim()) {
-      newErrors.magnetUri = "Magnet URI é obrigatório";
+      newErrors.magnetUri = t("torrents.addModal.errors.magnetRequired");
     } else if (!magnetUri.startsWith("magnet:")) {
-      newErrors.magnetUri = "Magnet URI deve começar com 'magnet:'";
+      newErrors.magnetUri = t("torrents.addModal.errors.magnetInvalidPrefix");
     }
 
     if (!selectedCategoryId) {
-      newErrors.category = "Selecione uma categoria";
+      newErrors.category = t("torrents.addModal.errors.categoryRequired");
     }
 
     if (tags.length === 0) {
-      newErrors.tags = "Adicione pelo menos uma tag";
+      newErrors.tags = t("torrents.addModal.errors.tagsRequired");
     }
 
     setErrors(newErrors);
@@ -198,7 +192,7 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
             <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
               <Download className="h-4 w-4 text-primary" />
             </div>
-            <h2 className="text-2xl font-bold">Adicionar Torrent</h2>
+            <h2 className="text-2xl font-bold">{t("torrents.addTorrent")}</h2>
           </div>
           <Button
             variant="ghost"
@@ -216,12 +210,12 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
           <div className="space-y-2">
             <Label htmlFor="magnetUri" className="flex items-center gap-2">
               <Link className="h-4 w-4" />
-              Magnet URI <span className="text-destructive">*</span>
+              {t("torrents.addModal.magnetUri.label")} <span className="text-destructive">*</span>
             </Label>
             <Input
               id="magnetUri"
               type="text"
-              placeholder="magnet:?xt=urn:btih:..."
+              placeholder={t("torrents.addModal.magnetUri.placeholder")}
               value={magnetUri}
               onChange={(e) => {
                 setMagnetUri(e.target.value);
@@ -238,7 +232,7 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
               <div className="mt-3 p-4 bg-muted/50 rounded-lg border">
                 <div className="flex items-center gap-2 mb-3">
                   <Database className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium text-foreground">Informações do Torrent</span>
+                  <span className="text-sm font-medium text-foreground">{t("torrents.addModal.magnetInfo.title")}</span>
                 </div>
                 
                 <div className="space-y-2">
@@ -246,7 +240,7 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
                   {parsedMagnetLink.display_name && (
                     <div className="flex items-center gap-2">
                       <FileText className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">Nome:</span>
+                      <span className="text-xs text-muted-foreground">{t("torrents.addModal.magnetInfo.name")}:</span>
                       <span className="text-xs font-medium text-foreground truncate">
                         {parsedMagnetLink.display_name}
                       </span>
@@ -257,9 +251,9 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
                   {parsedMagnetLink.trackers.length > 0 && (
                     <div className="flex items-center gap-2">
                       <Globe className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">Trackers:</span>
+                      <span className="text-xs text-muted-foreground">{t("torrents.addModal.magnetInfo.trackers")}:</span>
                       <span className="text-xs font-medium text-foreground">
-                        {parsedMagnetLink.trackers.length} encontrado(s)
+                        {t("torrents.addModal.magnetInfo.trackersCount", { count: parsedMagnetLink.trackers.length })}
                       </span>
                     </div>
                   )}
@@ -268,7 +262,7 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
                   {parsedMagnetLink.exact_length && (
                     <div className="flex items-center gap-2">
                       <HardDrive className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">Tamanho:</span>
+                      <span className="text-xs text-muted-foreground">{t("torrents.addModal.magnetInfo.size")}:</span>
                       <span className="text-xs font-medium text-foreground">
                         {formatBytes(parseInt(parsedMagnetLink.exact_length))}
                       </span>
@@ -284,7 +278,7 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
           <SelectCategory
             selectedCategoryId={selectedCategoryId}
             onCategoryChange={handleCategoryChange}
-            label="Categoria"
+            label={t("torrents.addModal.category.label")}
             required={true}
             error={errors.category}
             showAddButton={true}
@@ -294,15 +288,15 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
           <div className="space-y-2">
             <Label htmlFor="directory" className="flex items-center gap-2">
               <Folder className="h-4 w-4" />
-              Diretório <span className="text-muted-foreground text-xs">(opcional)</span>
+              {t("torrents.addModal.directory.label")} <span className="text-muted-foreground text-xs">({t("torrents.addModal.directory.optional")})</span>
               {selectedCategoryId && (
-                <span className="text-xs text-blue-600 ml-2">(preenchido automaticamente)</span>
+                <span className="text-xs text-blue-600 ml-2">({t("torrents.addModal.directory.autoFilled")})</span>
               )}
             </Label>
             <Input
               id="directory"
               type="text"
-              placeholder="Ex: /downloads/movies"
+              placeholder={t("torrents.addModal.directory.placeholder")}
               value={directory}
               onChange={(e) => setDirectory(e.target.value)}
             />
@@ -312,19 +306,19 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
           <SelectTags
             tags={tags}
             onTagsChange={setTags}
-            label="Tags"
+            label={t("torrents.addModal.tags.label")}
             required={true}
             error={errors.tags}
-            placeholder="Digite uma tag e pressione Enter"
+            placeholder={t("torrents.addModal.tags.placeholder")}
             showHelp={!!(selectedCategoryId && tags.length > 0)}
-            helpText="(preenchidas automaticamente)"
+            helpText={`(${t("torrents.addModal.tags.autoFilled")})`}
           />
 
           {/* Agent Selection */}
           <div className="space-y-2">
             <Label htmlFor="agent" className="flex items-center gap-2">
               <Server className="h-4 w-4" />
-              Agente <span className="text-destructive">*</span>
+              {t("torrents.addModal.agent.label")} <span className="text-destructive">*</span>
             </Label>
             <div className="relative" ref={agentDropdownRef}>
               <Button
@@ -355,8 +349,8 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
                     {selectedAgentId 
                       ? activeAgents.find(agent => agent.uuid === selectedAgentId)?.name 
                       : activeAgents.length === 0 
-                        ? "Nenhum agente ativo disponível"
-                        : "Selecione um agente"
+                        ? t("torrents.addModal.agent.noneAvailable")
+                        : t("torrents.addModal.agent.select")
                     }
                   </span>
                 </div>
@@ -392,7 +386,7 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
             {selectedAgentId && freeSpace > 0 && (
               <div className="mt-1 text-xs text-muted-foreground flex items-center gap-1">
                 <HardDrive className="h-3 w-3" />
-                <span>Espaço livre em disco: {formatBytes(freeSpace)}</span>
+                <span>{t("torrents.addModal.agent.freeSpace")} {formatBytes(freeSpace)}</span>
               </div>
             )}
           </div>
@@ -405,13 +399,13 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
               onClick={onClose}
               disabled={isSubmitting}
             >
-              Cancelar
+              {t("common.cancel")}
             </Button>
             <Button
               type="submit"
               disabled={isSubmitting || activeAgents.length === 0}
             >
-              {isSubmitting ? "Adicionando..." : "Adicionar"}
+              {isSubmitting ? t("torrents.addModal.submitting") : t("torrents.addModal.submit")}
             </Button>
           </div>
         </form>
