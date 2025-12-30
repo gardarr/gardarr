@@ -47,6 +47,7 @@ import (
 
 	"github.com/jfxdev/gardarr/pkg/env"
 	"github.com/jfxdev/gardarr/pkg/gen"
+	"github.com/jfxdev/gardarr/pkg/validations"
 	"github.com/pkg/errors"
 )
 
@@ -77,6 +78,26 @@ func getMediaDirectory() string {
 }
 
 func Run(cmd *cobra.Command, args []string) error {
+	// Validate filesystem permissions before starting
+	// Get all directory paths from environment variables
+	mediaDir := getMediaDirectory()
+	dbPath := env.Get("DATABASE_FILE_PATH").Default("/data/gardarr_database.db").Value()
+	statsDir := env.Get("STATISTICS_DIR").Default("/data/statistics").Value()
+
+	// Validate all data directories (media and statistics)
+	if err := validations.ValidateDataDirectories(mediaDir, statsDir); err != nil {
+		log.Printf("❌ Filesystem validation failed: %v", err)
+		return fmt.Errorf("filesystem validation failed: %w", err)
+	}
+
+	// Validate database path (this will also validate the database directory)
+	if err := validations.ValidateDatabasePath(dbPath); err != nil {
+		log.Printf("❌ Database path validation failed: %v", err)
+		return fmt.Errorf("database path validation failed: %w", err)
+	}
+
+	log.Println("✅ Filesystem validation passed - all directories are writable")
+
 	// Check if APP_MODE is set to standalone
 	appMode := env.Get(constants.AppModeEnv).Value()
 	isStandalone := appMode == constants.StandaloneMode
@@ -284,6 +305,15 @@ func securityHeadersMiddleware() gin.HandlerFunc {
 }
 
 func setRouter() {
+	// Set GIN mode based on LOG_LEVEL environment variable (case-insensitive)
+	// Default to release mode for production, only use debug when explicitly set
+	logLevel := strings.TrimSpace(env.Get("LOG_LEVEL").Default("info").Value())
+	if strings.EqualFold(logLevel, "debug") {
+		gin.SetMode(gin.DebugMode)
+	} else {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
 	router = gin.Default()
 
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {

@@ -2,6 +2,9 @@ services:
   gardarr:
     image: ghcr.io/jfxdev/gardarr:latest
     container_name: gardarr
+    # Run as host user to ensure proper filesystem permissions
+    # Use: user: "1000:1000" or user: "${UID}:${GID}" in .env file
+    user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "${APP_PORT:-3200}:3200"
     environment:
@@ -30,7 +33,9 @@ services:
   gardarr-agent:
     image: ghcr.io/jfxdev/gardarr:latest
     container_name: gardarr-agent
-    command: ["./main", "agent"]
+    # Run as host user to ensure proper filesystem permissions
+    user: "${UID:-1000}:${GID:-1000}"
+    command: ["/app/main", "agent"]
     ports:
       - "${AGENT_PORT:-3100}:3100"
     environment:

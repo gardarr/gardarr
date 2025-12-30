@@ -21,96 +21,6 @@ import DownloadSpeedWidget from '@/components/widgets/DownloadSpeedWidget';
 import UploadSpeedWidget from '@/components/widgets/UploadSpeedWidget';
 import { torrentService } from '../../services/torrents';
 
-// Mock data for analytics
-const mockTaskStats: TaskStats = {
-  total_disk_size: 2.4 * 1024 * 1024 * 1024 * 1024, // 2.4 TB
-  current_upload_speed: 15.2 * 1024 * 1024, // 15.2 MB/s
-  current_download_speed: 45.8 * 1024 * 1024, // 45.8 MB/s
-  average_ratio: 1.24,
-  median_ratio: 1.15,
-  highest_ratio: 3.67,
-  lowest_ratio: 0.12,
-  active_tasks_count: 23,
-  total_tasks_count: 45,
-  active_seeds: 156,
-  active_peers: 89,
-  swarm_seeders: 320,
-  swarm_leechers: 210,
-  category_usage: {
-    'movies': 45,
-    'tv-shows': 32,
-    'music': 18,
-    'software': 12,
-    'books': 8
-  },
-  tags_usage: {
-    '4k': 15,
-    '1080p': 28,
-    '720p': 12,
-    'hdr': 8,
-    'dolby-atmos': 6
-  },
-  word_cloud: {
-    'movie': 15,
-    'series': 12,
-    'episode': 10,
-    'season': 8,
-    'hd': 7,
-    'bluray': 6,
-    'x264': 5,
-    '1080p': 4,
-    'hdtv': 3,
-    'webrip': 2,
-    'torrent': 8,
-    'download': 5,
-    'complete': 4,
-    'rip': 3,
-    'quality': 2
-  }
-};
-
-const mockAgents: Agent[] = [
-  {
-    uuid: '1',
-    name: 'qBittorrent',
-    address: 'http://localhost:8080',
-    status: 'ACTIVE',
-    icon: '⚡',
-    color: '#ff6b6b',
-    instance: {
-      application: { version: '4.6.0', api_version: '2.0' },
-      server: { free_space_on_disk: 500 * 1024 * 1024 * 1024 },
-      transfer: {
-        all_time_downloaded: 1.2 * 1024 * 1024 * 1024 * 1024,
-        all_time_uploaded: 1.5 * 1024 * 1024 * 1024 * 1024,
-        global_ratio: 1.25,
-        last_external_address_v4: '192.168.1.100',
-        last_external_address_v6: '::1'
-      }
-    }
-  },
-  {
-    uuid: '2',
-    name: 'Transmission',
-    address: 'http://localhost:9091',
-    status: 'ACTIVE',
-    icon: '🌊',
-    color: '#4ecdc4',
-    instance: {
-      application: { version: '4.0.3', api_version: '1.0' },
-      server: { free_space_on_disk: 300 * 1024 * 1024 * 1024 },
-      transfer: {
-        all_time_downloaded: 800 * 1024 * 1024 * 1024,
-        all_time_uploaded: 900 * 1024 * 1024 * 1024,
-        global_ratio: 1.12,
-        last_external_address_v4: '192.168.1.101',
-        last_external_address_v6: '::1'
-      }
-    }
-  }
-];
-
-
 // Utility functions
 const formatBytes = (bytes: number): string => {
   if (bytes === 0) return '0 Bytes';
@@ -367,14 +277,17 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
                   setActiveUploadAmount(uploadSum);
                   setTasks(allTasks as Task[]);
                 }
+              } else {
+                // No valid stats available
+                if (isMounted) setStats(null);
               }
             } else {
-              // Fallback to mock data if no valid stats
-              if (isMounted) setStats(mockTaskStats);
+              // No valid stats available
+              if (isMounted) setStats(null);
             }
           } else {
-            // No active agents, use mock data
-            if (isMounted) setStats(mockTaskStats);
+            // No active agents
+            if (isMounted) setStats(null);
           }
           return;
         }
@@ -423,10 +336,10 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
         }
       } catch (error) {
         console.error('Failed to fetch agent metrics:', error);
-        // Set fallback data
+        // Don't set fallback mock data - let the component handle null state
         if (isMounted) {
-          setStats(mockTaskStats);
-          setAgents(mockAgents);
+          setStats(null);
+          setAgents([]);
         }
       } finally {
         if (isMounted) setIsLoading(false);

@@ -141,13 +141,32 @@ Access the dashboard at `http://localhost:3200`.
 ### 🔌 Distributed Agent Mode
 For managing multiple instances.
 
-1. **Deploy the Main Service**:
+1. **Generate an Agent Secret**:
+   
+   The `AGENT_SECRET` is used to secure communication between the main service and remote agents. Generate a secure random key using one of these methods:
+
+   **Option 1: Using OpenSSL**
+   ```bash
+   openssl rand -hex 32
+   ```
+
+   **Option 2: Using Docker**
+   ```bash
+   docker run --rm ghcr.io/jfxdev/gardarr:latest generate key
+   ```
+
+   Copy the generated key and add it to your `.env` file:
+   ```bash
+   AGENT_SECRET=your_generated_secret_here
+   ```
+
+2. **Deploy the Main Service**:
    ```bash
    cp examples/default/docker-compose.yml docker-compose.yml
    docker-compose up -d
    ```
 
-2. **Register Agents**:
+3. **Register Agents**:
    - Go to the UI → Settings → Agents.
    - Generate a new Agent Key.
    - Deploy a Gardarr Agent container on your remote server using the generated key.

@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
-  Activity
+  Activity,
+  Settings,
+  Plus
 } from 'lucide-react';
 import DateRangePicker from '@/components/DateRangePicker';
 import AgentMetrics from '@/components/analytics/AgentMetrics';
@@ -13,6 +15,7 @@ import { agentService } from '@/services/agents';
 import { SelectAgent } from '@/components/SelectAgent';
 import { setupService } from '@/services/setup';
 import StatisticsDisabledAlert from '@/components/StatisticsDisabledAlert';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 
 // Main Dashboard Component
@@ -28,6 +31,9 @@ const Dashboard: React.FC = () => {
   const [topUploaded, setTopUploaded] = useState<AgentTask[]>([]);
   const [taskNameById, setTaskNameById] = useState<Record<string, string>>({});
   const [statisticsEnabled, setStatisticsEnabled] = useState<boolean>(true);
+  const [hasActiveAgents, setHasActiveAgents] = useState<boolean | null>(null);
+  const [hasErrorAgents, setHasErrorAgents] = useState<boolean>(false);
+  const [isLoadingAgents, setIsLoadingAgents] = useState<boolean>(true);
 
   // Manual refresh anchored to now, preserving current range duration
   const handleRefreshNow = () => {
@@ -50,7 +56,7 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // Check setup status to determine if statistics are enabled
+  // Check setup status and available agents
   useEffect(() => {
     const checkStatisticsStatus = async () => {
       try {
@@ -62,7 +68,27 @@ const Dashboard: React.FC = () => {
         setStatisticsEnabled(true);
       }
     };
+    
+    const checkActiveAgents = async () => {
+      setIsLoadingAgents(true);
+      try {
+        const response = await agentService.listAgents();
+        const allAgents = response.data || [];
+        const activeAgents = allAgents.filter(a => a.status === 'ACTIVE');
+        const errorAgents = allAgents.filter(a => a.status === 'ERRORED');
+        setHasActiveAgents(activeAgents.length > 0);
+        setHasErrorAgents(errorAgents.length > 0 && activeAgents.length === 0);
+      } catch (error) {
+        console.error('Failed to check active agents:', error);
+        setHasActiveAgents(false);
+        setHasErrorAgents(false);
+      } finally {
+        setIsLoadingAgents(false);
+      }
+    };
+    
     checkStatisticsStatus();
+    checkActiveAgents();
   }, []);
 
   // Handle URL parameters and sync with component state
@@ -223,17 +249,55 @@ const Dashboard: React.FC = () => {
       {/* Statistics Warning */}
       <StatisticsDisabledAlert statisticsEnabled={statisticsEnabled} />
 
-      {/* Agent Metrics */}
-      <div className="space-y-6">
-        <AgentMetrics 
-          fromDate={fromDate}
-          toDate={toDate}
-          selectedAgentId={selectedAgentId || ''}
-          topUploaded={topUploaded}
-          taskNameById={taskNameById}
-          onAgentChange={handleAgentChange}
-        />
-      </div>
+      {/* Agent Metrics or Setup Prompt */}
+      {isLoadingAgents ? (
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">{t("dashboard.loadingAgents")}</p>
+        </div>
+      ) : hasActiveAgents === false ? (
+        <Card className="border-dashed">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+              <Settings className="h-8 w-8 text-primary" />
+            </div>
+            <CardTitle>
+              {hasErrorAgents ? t("dashboard.agentsWithError") : t("dashboard.noAgentsConfigured")}
+            </CardTitle>
+            <CardDescription>
+              {hasErrorAgents 
+                ? t("dashboard.agentsWithErrorDesc")
+                : t("dashboard.noAgentsConfiguredDesc")
+              }
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center pb-6">
+            <Button onClick={() => navigate('/agents')} className="gap-2">
+              {hasErrorAgents ? (
+                <>
+                  <Settings className="h-4 w-4" />
+                  {t("dashboard.fixAgents")}
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4" />
+                  {t("dashboard.configureAgents")}
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-6">
+          <AgentMetrics 
+            fromDate={fromDate}
+            toDate={toDate}
+            selectedAgentId={selectedAgentId || ''}
+            topUploaded={topUploaded}
+            taskNameById={taskNameById}
+            onAgentChange={handleAgentChange}
+          />
+        </div>
+      )}
     </div>
   );
 };
