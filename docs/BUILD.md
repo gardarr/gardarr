@@ -88,7 +88,7 @@ GitHub Actions automatically:
 
 ```bash
 # Via API (requires authentication)
-curl http://localhost:3000/v1/version
+curl http://localhost:3200/v1/version
 
 # Response:
 {
@@ -160,7 +160,7 @@ Check if the quotes are correct in the ldflags command:
 
 1. Check if the build was done with ldflags
 2. Confirm if the `/v1/version` endpoint is registered
-3. Test with `curl http://localhost:3000/v1/version`
+3. Test with `curl http://localhost:3200/v1/version`
 
 ## 📚 References
 

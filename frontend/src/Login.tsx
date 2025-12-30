@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { LogIn } from "lucide-react";
-import logoImage from "@/assets/img/logo/logo.png";
+import bannerImage from "@/assets/img/banner.png";
 import { signupService } from "@/services/signup";
 
 export default function LoginPage() {
@@ -84,11 +84,11 @@ export default function LoginPage() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-accent/5 p-4">
         <div className="w-full max-w-md space-y-6">
           <div className="flex flex-col items-center space-y-3">
-            <div className="h-16 w-16 rounded-2xl overflow-hidden flex items-center justify-center bg-primary/10 p-2.5">
+            <div className="w-full flex items-center justify-center">
               <img 
-                src={logoImage} 
-                alt="Gardarr Logo" 
-                className="h-full w-full object-contain"
+                src={bannerImage} 
+                alt="Gardarr Banner" 
+                className="w-[70%] h-auto object-contain"
               />
             </div>
             <p className="text-muted-foreground">{t("common.loading")}</p>
@@ -103,14 +103,13 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-6">
         {/* Logo and title */}
         <div className="flex flex-col items-center space-y-3">
-          <div className="h-16 w-16 rounded-2xl overflow-hidden flex items-center justify-center bg-primary/10 p-2.5">
+          <div className="w-full flex items-center justify-center">
             <img 
-              src={logoImage} 
-              alt="Gardarr Logo" 
-              className="h-full w-full object-contain"
+              src={bannerImage}
+              alt="Gardarr Banner" 
+              className="w-[70%] h-auto object-contain"
             />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Gardarr</h1>
         </div>
 
         {/* Login form */}

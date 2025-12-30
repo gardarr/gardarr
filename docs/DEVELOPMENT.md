@@ -16,8 +16,8 @@ make install
 Create a `.env` file in the project root:
 
 ```env
-APP_PORT=3000
-APP_URL=http://localhost:3000
+APP_PORT=3200
+APP_URL=http://localhost:3200
 ```
 
 ## 🛠️ Running Development
@@ -28,8 +28,8 @@ APP_URL=http://localhost:3000
 ```bash
 make run-backend
 ```
-- Backend will run at: http://localhost:3000
-- API available at: http://localhost:3000/v1/*
+- Backend will run at: http://localhost:3200
+- API available at: http://localhost:3200/v1/*
 
 **Terminal 2 - Frontend:**
 ```bash
@@ -52,11 +52,11 @@ make dev
 ### CORS
 The backend is configured to accept requests from:
 - `http://localhost:5173` (Vite dev server)
-- `http://localhost:3000` (Backend)
+- `http://localhost:3200` (Backend)
 
 ### Vite Proxy
 Vite is configured to automatically redirect:
-- `/v1/*` → `http://localhost:3000/v1/*`
+- `/v1/*` → `http://localhost:3200/v1/*`
 
 ### API Client
 Use the API client configured in `src/lib/api.ts`:
@@ -97,11 +97,11 @@ seedbox/
 ## 🐛 Troubleshooting
 
 ### Backend does not start
-- Check if port 3000 is available
+- Check if port 3200 is available
 - Run `make install-backend` to reinstall Go dependencies
 
 ### Frontend does not connect to backend
-- Check if the backend is running on port 3000
+- Check if the backend is running on port 3200
 - Confirm if the `.env` file is configured correctly
 - Check the browser console for CORS errors
 

@@ -68,7 +68,7 @@ func getBaseURL() string {
 	}
 
 	// Default: construct from APP_PORT
-	port := env.Get(constants.AppPortEnv).Default("3000").Value()
+	port := env.Get(constants.AppPortEnv).Default("3200").Value()
 	return fmt.Sprintf("http://localhost:%s", port)
 }
 
@@ -169,7 +169,7 @@ func Run(cmd *cobra.Command, args []string) error {
 	}
 
 	srv := &http.Server{
-		Addr:    fmt.Sprintf(":%s", env.Get(constants.AppPortEnv).Default("3000").Value()),
+		Addr:    fmt.Sprintf(":%s", env.Get(constants.AppPortEnv).Default("3200").Value()),
 		Handler: router,
 		// set timeout due CWE-400 - Potential Slowloris Attack
 		ReadHeaderTimeout: 5 * time.Second,
@@ -302,7 +302,7 @@ func setRouter() {
 		// Allow common development origins for localhost
 		host := u.Hostname()
 		if host == "localhost" || host == "127.0.0.1" {
-			allowedOrigins = append(allowedOrigins, "http://localhost:3000", "http://localhost:5173")
+			allowedOrigins = append(allowedOrigins, "http://localhost:3200", "http://localhost:5173")
 		}
 	} else {
 		// Fallback if parsing fails

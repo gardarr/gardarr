@@ -1,5 +1,5 @@
 # Define build arguments for image tags and port
-ARG APP_PORT=3000
+ARG APP_PORT=3200
 
 # Version build arguments
 ARG VERSION=0.0.0
@@ -44,7 +44,7 @@ FROM alpine:3.20
 
 # Install curl and ca-certificates for healthchecks and HTTPS
 # Note: The binary is statically linked, so no runtime libraries are needed
-RUN apk add --no-cache curl ca-certificates && \
+RUN apk add --no-cache curl ca-certificates su-exec && \
     rm -rf /var/cache/apk/*
 
 # Create a non-root user
@@ -62,7 +62,7 @@ RUN mkdir -p /media/uploads/images && \
     chmod 750 -R /media
 
 # Set build argument for port
-ARG APP_PORT=3000
+ARG APP_PORT=3200
 
 # Set the working directory
 WORKDIR /app
@@ -89,9 +89,6 @@ VOLUME ["/data", "/media"]
 # Expose the application port (default service port)
 # Agent port (3100) should be exposed separately when running in agent mode
 EXPOSE ${APP_PORT}
-
-# Run the Go application as non-root user
-USER nonroot:nonroot
 
 # Use entrypoint script to allow agent mode
 ENTRYPOINT ["/app/entrypoint.sh"]

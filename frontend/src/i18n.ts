@@ -20,12 +20,13 @@ i18n
   .init({
     resources,
     fallbackLng: "en-US",
+    supportedLngs: ["en-US", "pt-BR"],
     defaultNS: "translation",
     interpolation: {
       escapeValue: false, // React already handles escaping
     },
     detection: {
-      order: ["localStorage", "navigator"],
+      order: ["localStorage"],
       caches: ["localStorage"],
       lookupLocalStorage: "app_language",
     },

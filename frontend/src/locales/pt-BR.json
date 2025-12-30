@@ -92,6 +92,11 @@
   "theme": {
     "toggle": "Alternar tema"
   },
+  "selectCategory": {
+    "placeholder": "Selecione uma categoria",
+    "empty": "Nenhuma categoria disponível",
+    "add": "Adicionar Categoria"
+  },
   "dashboard": {
     "title": "Dashboard",
     "subtitle": "Visão geral do seu servidor Gardarr",
@@ -489,6 +494,48 @@
     "title": "Torrents",
     "subtitle": "Gerencie seus downloads e uploads",
     "addTorrent": "Adicionar Torrent",
+    "addModal": {
+      "magnetUri": {
+        "label": "Magnet URI",
+        "placeholder": "magnet:?xt=urn:btih:..."
+      },
+      "magnetInfo": {
+        "title": "Informações do Torrent",
+        "name": "Nome",
+        "trackers": "Trackers",
+        "trackersCount": "{{count}} encontrado(s)",
+        "size": "Tamanho"
+      },
+      "category": {
+        "label": "Categoria"
+      },
+      "directory": {
+        "label": "Diretório",
+        "optional": "opcional",
+        "autoFilled": "preenchido automaticamente",
+        "placeholder": "Ex: /downloads/movies"
+      },
+      "tags": {
+        "label": "Tags",
+        "placeholder": "Digite uma tag e pressione Enter",
+        "autoFilled": "preenchidas automaticamente"
+      },
+      "agent": {
+        "label": "Agente",
+        "noneAvailable": "Nenhum agente ativo disponível",
+        "select": "Selecione um agente",
+        "freeSpace": "Espaço livre em disco:"
+      },
+      "submit": "Adicionar",
+      "submitting": "Adicionando...",
+      "errors": {
+        "agentRequired": "Selecione um agente",
+        "magnetRequired": "Magnet URI é obrigatório",
+        "magnetInvalidPrefix": "Magnet URI deve começar com 'magnet:'",
+        "categoryRequired": "Selecione uma categoria",
+        "tagsRequired": "Adicione pelo menos uma tag"
+      }
+    },
     "search": "Buscar torrents...",
     "itemsPerPage": "Itens por página",
     "update": "Atualizar",
@@ -789,6 +836,10 @@
   "torrentDetails": {
     "title": "Detalhes do Torrent",
     "subtitle": "Informações completas sobre o torrent selecionado",
+    "tabs": {
+      "details": "Detalhes",
+      "images": "Imagens"
+    },
     "actions": {
       "forceDownload": "Forçar Download",
       "forceReannounce": "Forçar Reannounce",

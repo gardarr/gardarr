@@ -123,6 +123,11 @@
   "theme": {
     "toggle": "Toggle theme"
   },
+  "selectCategory": {
+    "placeholder": "Select a category",
+    "empty": "No categories available",
+    "add": "Add Category"
+  },
   "dashboard": {
     "title": "Dashboard",
     "subtitle": "Overview of your Gardarr server",
@@ -497,6 +502,48 @@
     "title": "Torrents",
     "subtitle": "Manage your downloads and uploads",
     "addTorrent": "Add Torrent",
+    "addModal": {
+      "magnetUri": {
+        "label": "Magnet URI",
+        "placeholder": "magnet:?xt=urn:btih:..."
+      },
+      "magnetInfo": {
+        "title": "Torrent information",
+        "name": "Name",
+        "trackers": "Trackers",
+        "trackersCount": "{{count}} found",
+        "size": "Size"
+      },
+      "category": {
+        "label": "Category"
+      },
+      "directory": {
+        "label": "Directory",
+        "optional": "optional",
+        "autoFilled": "auto-filled",
+        "placeholder": "e.g. /downloads/movies"
+      },
+      "tags": {
+        "label": "Tags",
+        "placeholder": "Type a tag and press Enter",
+        "autoFilled": "auto-filled"
+      },
+      "agent": {
+        "label": "Agent",
+        "noneAvailable": "No active agent available",
+        "select": "Select an agent",
+        "freeSpace": "Free disk space:"
+      },
+      "submit": "Add",
+      "submitting": "Adding...",
+      "errors": {
+        "agentRequired": "Select an agent",
+        "magnetRequired": "Magnet URI is required",
+        "magnetInvalidPrefix": "Magnet URI must start with 'magnet:'",
+        "categoryRequired": "Select a category",
+        "tagsRequired": "Add at least one tag"
+      }
+    },
     "search": "Search torrents...",
     "itemsPerPage": "Items per page",
     "update": "Update",
@@ -797,6 +844,10 @@
   "torrentDetails": {
     "title": "Torrent Details",
     "subtitle": "Complete information about the selected torrent",
+    "tabs": {
+      "details": "Details",
+      "images": "Images"
+    },
     "actions": {
       "forceDownload": "Force Download",
       "forceReannounce": "Force Reannounce",

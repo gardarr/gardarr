@@ -6,14 +6,14 @@
 
 echo "🚀 Starting Gardarr in STANDALONE mode..."
 echo "📋 This will start:"
-echo "   - Service on port 3000 (default)"
+echo "   - Service on port 3200 (default)"
 echo "   - Agent on port 3100"
 echo "   - Mock standalone agent will be available"
 echo ""
 
 # Set environment variables for standalone mode
 export APP_MODE=standalone
-export APP_PORT=3000
+export APP_PORT=3200
 export AGENT_PORT=3100
 export AGENT_SECRET=standalone-secret-key
 
@@ -42,7 +42,7 @@ echo ""
 
 # Start the application
 echo "🚀 Starting Gardarr service..."
-echo "   Service will be available at: http://localhost:3000"
+echo "   Service will be available at: http://localhost:3200"
 echo "   Agent will be available at: http://localhost:3100"
 echo "   Mock standalone agent will be included in the agents list"
 echo ""

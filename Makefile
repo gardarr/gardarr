@@ -83,6 +83,27 @@ build-full-script: build-frontend copy-frontend build-script
 docker-build:
 	docker build -t $(BINARY_NAME) .
 
+# Comando para build local no estilo do pipeline (gera artefatos e usa o Dockerfile)
+docker-build-pipeline: get-version build-frontend
+	@echo "Building artifacts like CI pipeline (linux/amd64)..."
+	@mkdir -p $(BACKEND_DIR)/dist
+	@source .version && \
+	docker run --rm --platform linux/amd64 \
+		-v "$(PWD)/$(BACKEND_DIR):/src" \
+		-v "$(PWD)/$(BACKEND_DIR)/dist:/dist" \
+		-w /src \
+		golang:1.25.3-alpine \
+		sh -c "apk add --no-cache gcc musl-dev sqlite-dev && \
+		CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
+			-ldflags='-X github.com/jfxdev/gardarr/pkg/version.Version=$$VERSION \
+					-X github.com/jfxdev/gardarr/pkg/version.Commit=$$COMMIT \
+					-X github.com/jfxdev/gardarr/pkg/version.Date=$$DATE \
+					-w -s -linkmode external -extldflags \"-static\"' \
+			-tags 'osusergo netgo sqlite_omit_load_extension' \
+			-o /dist/gardarr-amd64 ."
+	@echo "Building Docker image from pipeline artifacts..."
+	docker build -t 10.0.0.100:5555/gardarr:pipeline0 --build-arg APP_PORT=3200 .
+	docker push 10.0.0.100:5555/gardarr:pipeline0
 # Comando para build local com Docker (compila tudo dentro do container)
 docker-build-local:
 	docker build -f Dockerfile.local -t $(BINARY_NAME):local .
@@ -159,7 +180,7 @@ clean-all: clean clean-deps
 dev:
 	@echo "Iniciando desenvolvimento..."
 	@echo "Frontend: http://localhost:5173"
-	@echo "Backend: http://localhost:3000"
+	@echo "Backend: http://localhost:3200"
 	@echo "Pressione Ctrl+C para parar"
 	@trap 'kill %1 %2' INT; \
 	cd $(FRONTEND_DIR) && npm run dev & \
@@ -173,15 +194,15 @@ dev-separate:
 	@echo "Terminal 2: make run-frontend"
 	@echo ""
 	@echo "Frontend: http://localhost:5173"
-	@echo "Backend: http://localhost:3000"
+	@echo "Backend: http://localhost:3200"
 
 # Comando para build de produção com Docker
 docker-prod: docker-build
-	docker run -p 3000:3000 $(BINARY_NAME)
+	docker run -p 3200:3200 $(BINARY_NAME)
 
 # Comando para build e executar localmente com Docker
 docker-run-local: docker-build-local
-	docker run -p 3000:3000 $(BINARY_NAME):local
+	docker run -p 3200:3200 $(BINARY_NAME):local
 
 # Comando para parar containers Docker
 docker-stop:
@@ -203,6 +224,7 @@ help:
 	@echo "  make dev-separate     - Instruções para desenvolvimento separado"
 	@echo "  make build-full       - Build completo para produção"
 	@echo "  make docker-build     - Build com Docker (CI/CD)"
+	@echo "  make docker-build-pipeline - Build local igual ao pipeline (artefatos + Dockerfile)"
 	@echo "  make docker-build-local - Build local com Docker (compila tudo)"
 	@echo "  make docker-run-local - Build e executar local com Docker"
 	@echo "  make docker-prod      - Build e executar com Docker"
@@ -212,7 +234,7 @@ help:
 	@echo "  make help             - Mostrar esta ajuda"
 	@echo ""
 	@echo "Desenvolvimento Local:"
-	@echo "  Terminal 1: make run-backend   (Backend na porta 3000)"
+	@echo "  Terminal 1: make run-backend   (Backend na porta 3200)"
 	@echo "  Terminal 2: make run-frontend  (Frontend na porta 5173)"
 
-.PHONY: build-frontend copy-frontend build-full docker-build docker-build-local docker-run-local run-local run-backend run-frontend test-backend build-linux build-darwin build-darwin-arm64 build-windows build-windows-arm64 build-all install-frontend install-backend install test-integration clean clean-deps clean-all dev dev-separate docker-prod docker-stop docker-clean help
+.PHONY: build-frontend copy-frontend build-full docker-build docker-build-pipeline docker-build-local docker-run-local run-local run-backend run-frontend test-backend build-linux build-darwin build-darwin-arm64 build-windows build-windows-arm64 build-all install-frontend install-backend install test-integration clean clean-deps clean-all dev dev-separate docker-prod docker-stop docker-clean help
