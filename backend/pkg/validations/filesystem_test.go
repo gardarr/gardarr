@@ -6,8 +6,26 @@ import (
 	"testing"
 )
 
+const setupFailedMsg = "setup failed: %v"
+
+func setupReadOnlyDir(tmpDir string) func() error {
+	return func() error {
+		dir := filepath.Join(tmpDir, "readonly")
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return err
+		}
+		return os.Chmod(dir, 0555)
+	}
+}
+
+func cleanupReadOnlyDir(tmpDir string) func() {
+	return func() {
+		dir := filepath.Join(tmpDir, "readonly")
+		_ = os.Chmod(dir, 0755)
+	}
+}
+
 func TestValidateDataDirectories(t *testing.T) {
-	// Create a temporary directory for testing
 	tmpDir := t.TempDir()
 
 	tests := []struct {
@@ -33,19 +51,10 @@ func TestValidateDataDirectories(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "read-only directory (permission denied)",
-			dirs: []string{filepath.Join(tmpDir, "readonly")},
-			setup: func() error {
-				dir := filepath.Join(tmpDir, "readonly")
-				if err := os.MkdirAll(dir, 0755); err != nil {
-					return err
-				}
-				return os.Chmod(dir, 0555)
-			},
-			cleanup: func() {
-				dir := filepath.Join(tmpDir, "readonly")
-				_ = os.Chmod(dir, 0755)
-			},
+			name:    "read-only directory (permission denied)",
+			dirs:    []string{filepath.Join(tmpDir, "readonly")},
+			setup:   setupReadOnlyDir(tmpDir),
+			cleanup: cleanupReadOnlyDir(tmpDir),
 			wantErr: true,
 		},
 	}
@@ -54,7 +63,7 @@ func TestValidateDataDirectories(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.setup != nil {
 				if err := tt.setup(); err != nil {
-					t.Fatalf("setup failed: %v", err)
+					t.Fatalf(setupFailedMsg, err)
 				}
 			}
 			if tt.cleanup != nil {
@@ -66,6 +75,44 @@ func TestValidateDataDirectories(t *testing.T) {
 				t.Errorf("ValidateDataDirectories() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func setupExistingDBFile() func(string) error {
+	return func(path string) error {
+		return os.WriteFile(path, []byte("test"), 0644)
+	}
+}
+
+func setupReadOnlyDBFile() func(string) error {
+	return func(path string) error {
+		if err := os.WriteFile(path, []byte("test"), 0644); err != nil {
+			return err
+		}
+		return os.Chmod(path, 0444)
+	}
+}
+
+func cleanupReadOnlyDBFile() func(string) {
+	return func(path string) {
+		_ = os.Chmod(path, 0644)
+	}
+}
+
+func setupReadOnlyDBDir() func(string) error {
+	return func(path string) error {
+		dir := filepath.Dir(path)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return err
+		}
+		return os.Chmod(dir, 0555)
+	}
+}
+
+func cleanupReadOnlyDBDir() func(string) {
+	return func(path string) {
+		dir := filepath.Dir(path)
+		_ = os.Chmod(dir, 0755)
 	}
 }
 
@@ -85,41 +132,23 @@ func TestValidateDatabasePath(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:   "existing database file",
-			dbPath: filepath.Join(tmpDir, "existing.db"),
-			setup: func(path string) error {
-				return os.WriteFile(path, []byte("test"), 0644)
-			},
+			name:    "existing database file",
+			dbPath:  filepath.Join(tmpDir, "existing.db"),
+			setup:   setupExistingDBFile(),
 			wantErr: false,
 		},
 		{
-			name:   "read-only database file (permission denied)",
-			dbPath: filepath.Join(tmpDir, "readonly.db"),
-			setup: func(path string) error {
-				if err := os.WriteFile(path, []byte("test"), 0644); err != nil {
-					return err
-				}
-				return os.Chmod(path, 0444)
-			},
-			cleanup: func(path string) {
-				_ = os.Chmod(path, 0644)
-			},
+			name:    "read-only database file (permission denied)",
+			dbPath:  filepath.Join(tmpDir, "readonly.db"),
+			setup:   setupReadOnlyDBFile(),
+			cleanup: cleanupReadOnlyDBFile(),
 			wantErr: true,
 		},
 		{
-			name:   "database in read-only directory",
-			dbPath: filepath.Join(tmpDir, "readonly-dir", "test.db"),
-			setup: func(path string) error {
-				dir := filepath.Dir(path)
-				if err := os.MkdirAll(dir, 0755); err != nil {
-					return err
-				}
-				return os.Chmod(dir, 0555)
-			},
-			cleanup: func(path string) {
-				dir := filepath.Dir(path)
-				_ = os.Chmod(dir, 0755)
-			},
+			name:    "database in read-only directory",
+			dbPath:  filepath.Join(tmpDir, "readonly-dir", "test.db"),
+			setup:   setupReadOnlyDBDir(),
+			cleanup: cleanupReadOnlyDBDir(),
 			wantErr: true,
 		},
 	}
@@ -128,7 +157,7 @@ func TestValidateDatabasePath(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.setup != nil {
 				if err := tt.setup(tt.dbPath); err != nil {
-					t.Fatalf("setup failed: %v", err)
+					t.Fatalf(setupFailedMsg, err)
 				}
 			}
 			if tt.cleanup != nil {
@@ -176,7 +205,7 @@ func TestEnsureDirectoryWritable(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.setup != nil {
 				if err := tt.setup(tt.dir); err != nil {
-					t.Fatalf("setup failed: %v", err)
+					t.Fatalf(setupFailedMsg, err)
 				}
 			}
 

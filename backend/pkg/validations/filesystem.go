@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/jfxdev/gardarr/pkg/logger"
 )
 
 // ValidateDataDirectories ensures that required data directories exist and are writable.
@@ -33,15 +35,11 @@ func ensureDirectoryWritable(dir string) error {
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return fmt.Errorf("failed to create directory: %w", err)
 		}
-		return nil
-	}
-
-	if err != nil {
+		// Directory created, fall through to writability test
+	} else if err != nil {
 		return fmt.Errorf("failed to stat directory: %w", err)
-	}
-
-	// Verify it's a directory
-	if !info.IsDir() {
+	} else if !info.IsDir() {
+		// Verify it's a directory
 		return fmt.Errorf("path exists but is not a directory")
 	}
 
@@ -57,7 +55,9 @@ func ensureDirectoryWritable(dir string) error {
 	defer func() {
 		if err := os.Remove(testFile); err != nil {
 			// Log but don't fail if we can't remove the test file
-			fmt.Fprintf(os.Stderr, "Warning: failed to remove test file %s: %v\n", testFile, err)
+			logger.Logger.Warn("failed to remove test file",
+				"path", testFile,
+				"error", err)
 		}
 	}()
 
@@ -85,7 +85,8 @@ func ValidateDatabasePath(dbPath string) error {
 	// If the database file exists, check if it's writable
 	if _, err := os.Stat(dbPath); err == nil {
 		// File exists, try to open it for writing
-		f, err := os.OpenFile(dbPath, os.O_WRONLY|os.O_APPEND, 0644)
+		// Note: perm argument (0) is ignored when opening existing files (only used with O_CREATE)
+		f, err := os.OpenFile(dbPath, os.O_WRONLY|os.O_APPEND, 0)
 		if err != nil {
 			return fmt.Errorf("database file exists but is not writable: %w", err)
 		}

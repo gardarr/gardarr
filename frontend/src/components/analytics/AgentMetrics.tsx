@@ -176,11 +176,8 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
     const fetchAgentMetrics = async () => {
       setIsLoading(true);
       try {
-        console.log('Fetching metrics for selectedAgentId:', currentSelectedAgentId, 'Type:', typeof currentSelectedAgentId);
-
         // Early return if no selectedAgentId to avoid unnecessary processing
         if (!currentSelectedAgentId || currentSelectedAgentId.trim() === '') {
-          console.log('No selectedAgentId, loading aggregated data from all agents');
           // Fetch agents list
           const agentsResponse = await agentService.listAgents();
           if (!isMounted) return; // Check if still mounted
@@ -210,8 +207,6 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
               .flat();
 
             if (validStats.length > 0) {
-              console.log('Aggregating stats from', validStats.length, 'agents');
-              
               // Collect all ratios for proper aggregation
               const allAverageRatios: number[] = [];
               const allMedianRatios: number[] = [];
@@ -219,7 +214,6 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
               // Aggregate the stats from all active agents
               const aggregatedStats = validStats.reduce((acc, response) => {
                 const data = response!.data!;
-                console.log('Adding stats from agent:', data);
                 
                 // Collect ratios for later calculation
                 allAverageRatios.push(data.average_ratio);
@@ -290,7 +284,6 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
                 aggregatedStats.lowest_ratio = 0;
               }
 
-              console.log('Final aggregated stats:', aggregatedStats);
               if (isMounted) setStats(aggregatedStats);
               // Compute active download/upload amounts from tasks
               if (allTasks && Array.isArray(allTasks)) {
@@ -315,7 +308,6 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
 
         // If a specific agent is selected, fetch its stats, agent details and windowed data
         if (currentSelectedAgentId && currentSelectedAgentId.trim() !== '') {
-          console.log('Loading single agent data for:', currentSelectedAgentId);
           const [statsResponse, agentResponse, tasksResponse] = await Promise.all([
             agentService.getAgentTaskStats(currentSelectedAgentId),
             agentService.getAgent(currentSelectedAgentId),
@@ -324,7 +316,6 @@ const AgentMetrics: React.FC<AgentMetricsProps> = ({ fromDate, toDate, selectedA
 
           if (!isMounted) return; // Check if still mounted
 
-          console.log('Single agent stats:', statsResponse.data);
           setStats(statsResponse.data || null);
 
           // Update the agent with real storage information
