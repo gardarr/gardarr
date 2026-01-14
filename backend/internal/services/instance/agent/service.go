@@ -35,7 +35,7 @@ func (s *service) GetStatus(ctx context.Context) string {
 	return s.repository.GetStatus()
 }
 
-func (s *service) GetConnectionStatus(ctx context.Context) *entities.ConnectionStatus {
+func (s *service) GetConnectionStatus(_ context.Context) *entities.ConnectionStatus {
 	return s.repository.GetConnectionStatus()
 }
 
