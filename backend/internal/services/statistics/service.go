@@ -411,7 +411,7 @@ func (s *Service) DiscoverFiles(ctx context.Context, agentID string, from, to ti
 // discoverFilesFromFS discovers statistics files directly from the filesystem
 func (s *Service) discoverFilesFromFS(agentID string, from, to time.Time, fromDate, toDate string) []string {
 	// Validate agentID to prevent path traversal attacks
-	if err := validations.ValidateSafePathComponent(agentID); err != nil {
+	if validations.ValidateSafePathComponent(agentID) != nil {
 		return nil
 	}
 

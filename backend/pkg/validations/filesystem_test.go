@@ -6,7 +6,10 @@ import (
 	"testing"
 )
 
-const setupFailedMsg = "setup failed: %v"
+const (
+	setupFailedMsg = "setup failed: %v"
+	testFileName   = "file.txt"
+)
 
 func setupReadOnlyDir(tmpDir string) func() error {
 	return func() error {
@@ -193,7 +196,7 @@ func TestEnsureDirectoryWritable(t *testing.T) {
 		},
 		{
 			name: "file instead of directory",
-			dir:  filepath.Join(tmpDir, "file.txt"),
+			dir:  filepath.Join(tmpDir, testFileName),
 			setup: func(path string) error {
 				return os.WriteFile(path, []byte("test"), 0644)
 			},
@@ -231,13 +234,13 @@ func TestIsPathWithinBase(t *testing.T) {
 		{
 			name:   "path within base",
 			base:   tmpDir,
-			path:   filepath.Join(tmpDir, "file.txt"),
+			path:   filepath.Join(tmpDir, testFileName),
 			expect: true,
 		},
 		{
 			name:   "path in subdirectory",
 			base:   tmpDir,
-			path:   filepath.Join(tmpDir, "subdir", "file.txt"),
+			path:   filepath.Join(tmpDir, "subdir", testFileName),
 			expect: true,
 		},
 		{
@@ -284,7 +287,7 @@ func TestValidatePathComponent(t *testing.T) {
 	}{
 		{
 			name:      "valid filename",
-			component: "file.txt",
+			component: testFileName,
 			wantErr:   nil,
 		},
 		{
@@ -411,13 +414,13 @@ func TestSafeJoinPath(t *testing.T) {
 		{
 			name:       "simple join",
 			base:       tmpDir,
-			components: []string{"subdir", "file.txt"},
+			components: []string{"subdir", testFileName},
 			wantErr:    false,
 		},
 		{
 			name:       "single component",
 			base:       tmpDir,
-			components: []string{"file.txt"},
+			components: []string{testFileName},
 			wantErr:    false,
 		},
 		{
@@ -435,7 +438,7 @@ func TestSafeJoinPath(t *testing.T) {
 		{
 			name:       "empty component",
 			base:       tmpDir,
-			components: []string{"valid", "", "file.txt"},
+			components: []string{"valid", "", testFileName},
 			wantErr:    true,
 		},
 	}
