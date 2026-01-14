@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -197,97 +196,72 @@ func classifyHTTPStatusCode(statusCode int) *AgentError {
 }
 
 // classifyAgentError classifies an HTTP request error into an AgentError
+// using the go-qbt error classification and mapping to agent error codes
 func classifyAgentError(err error) *AgentError {
 	if err == nil {
 		return nil
 	}
 
-	errStr := strings.ToLower(err.Error())
+	// Use go-qbt's ClassifyError to get the classification
+	clientErr := qbt.ClassifyError(err)
 
-	// DNS errors
-	var dnsErr *net.DNSError
-	if errors.As(err, &dnsErr) {
-		return &AgentError{
-			Code:      entities.AgentErrorCodeDNS,
-			Message:   fmt.Sprintf("DNS resolution failed: %s", dnsErr.Name),
-			Permanent: true,
-		}
-	}
-
-	// Network operation errors
-	var opErr *net.OpError
-	if errors.As(err, &opErr) {
-		if opErr.Timeout() {
-			return &AgentError{
-				Code:      entities.AgentErrorCodeTimeout,
-				Message:   "Connection timed out",
-				Permanent: false,
-			}
-		}
-		if strings.Contains(opErr.Error(), "connection refused") {
-			return &AgentError{
-				Code:      entities.AgentErrorCodeConnectionRefused,
-				Message:   "Connection refused - agent may be down",
-				Permanent: false,
-			}
-		}
-	}
-
-	// URL errors with timeout
-	var urlErr *url.Error
-	if errors.As(err, &urlErr) {
-		if urlErr.Timeout() {
-			return &AgentError{
-				Code:      entities.AgentErrorCodeTimeout,
-				Message:   "Request timed out",
-				Permanent: false,
-			}
-		}
-	}
-
-	// Timeout patterns
-	if strings.Contains(errStr, "timeout") || strings.Contains(errStr, "deadline exceeded") {
-		return &AgentError{
-			Code:      entities.AgentErrorCodeTimeout,
-			Message:   "Connection timed out",
-			Permanent: false,
-		}
-	}
-
-	// SSL/TLS errors
-	if strings.Contains(errStr, "certificate") || strings.Contains(errStr, "tls") ||
-		strings.Contains(errStr, "ssl") || strings.Contains(errStr, "x509") {
-		return &AgentError{
-			Code:      entities.AgentErrorCodeSSLError,
-			Message:   "SSL/TLS connection failed",
-			Permanent: true,
-		}
-	}
-
-	// HTTP/HTTPS mismatch
-	if strings.Contains(errStr, "malformed http response") ||
-		strings.Contains(errStr, "first record does not look like a tls handshake") {
-		return &AgentError{
-			Code:      entities.AgentErrorCodeHTTPSRequired,
-			Message:   "Protocol mismatch - try using HTTPS",
-			Permanent: true,
-		}
-	}
-
-	// Connection refused
-	if strings.Contains(errStr, "connection refused") {
-		return &AgentError{
-			Code:      entities.AgentErrorCodeConnectionRefused,
-			Message:   "Connection refused - agent may be down",
-			Permanent: false,
-		}
-	}
-
-	// Default
+	// Map qbt error codes to agent error codes
 	return &AgentError{
-		Code:      entities.AgentErrorCodeAgentUnreachable,
-		Message:   fmt.Sprintf("Agent unreachable: %s", err.Error()),
-		Permanent: false,
+		Code:      mapQbtErrorCode(clientErr.Code),
+		Message:   clientErr.Message,
+		Permanent: clientErr.Permanent,
+	}
+}
+
+// mapQbtErrorCode maps a qbt.ErrorCode to an entities.AgentErrorCode
+func mapQbtErrorCode(code qbt.ErrorCode) entities.AgentErrorCode {
+	switch code {
+	case qbt.ErrorCodeAuthFailure:
+		return entities.AgentErrorCodeAuthFailure
+	case qbt.ErrorCodeTimeout:
+		return entities.AgentErrorCodeTimeout
+	case qbt.ErrorCodeDNS:
+		return entities.AgentErrorCodeDNS
+	case qbt.ErrorCodeHTTPSRequired:
+		return entities.AgentErrorCodeHTTPSRequired
+	case qbt.ErrorCodeSSLError:
+		return entities.AgentErrorCodeSSLError
+	case qbt.ErrorCodeVersionIncompatible:
+		return entities.AgentErrorCodeVersionIncompatible
+	case qbt.ErrorCodeConnectionRefused:
+		return entities.AgentErrorCodeConnectionRefused
+	case qbt.ErrorCodeNetworkUnreachable:
+		return entities.AgentErrorCodeNetworkUnreachable
+	case qbt.ErrorCodeBadGateway:
+		return entities.AgentErrorCodeBadGateway
+	case qbt.ErrorCodeServiceUnavailable:
+		return entities.AgentErrorCodeServiceUnavailable
+	case qbt.ErrorCodeUnknown:
+		return entities.AgentErrorCodeUnknown
+	default:
+		return entities.AgentErrorCodeAgentUnreachable
+	}
+}
+
+// isValidAgentErrorCode validates if a given code is a known AgentErrorCode constant
+func isValidAgentErrorCode(code entities.AgentErrorCode) bool {
+	switch code {
+	case entities.AgentErrorCodeNone,
+		entities.AgentErrorCodeAuthFailure,
+		entities.AgentErrorCodeTimeout,
+		entities.AgentErrorCodeDNS,
+		entities.AgentErrorCodeHTTPSRequired,
+		entities.AgentErrorCodeSSLError,
+		entities.AgentErrorCodeVersionIncompatible,
+		entities.AgentErrorCodeConnectionRefused,
+		entities.AgentErrorCodeNetworkUnreachable,
+		entities.AgentErrorCodeAgentUnreachable,
+		entities.AgentErrorCodeBadGateway,
+		entities.AgentErrorCodeServiceUnavailable,
+		entities.AgentErrorCodeUnknown:
+		return true
+	default:
+		return false
 	}
 }
 
@@ -335,7 +309,12 @@ func (r *Repository) CheckAgentAvailability(agent *entities.Agent) error {
 	var handler models.AgentLivenessResponse
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		agentErr := classifyAgentError(err)
+		// Body read errors are I/O issues, not network errors
+		agentErr := &AgentError{
+			Code:      entities.AgentErrorCodeUnknown,
+			Message:   fmt.Sprintf("failed to read response body: %v", err),
+			Permanent: false,
+		}
 		logger.Error("failed to read agent response",
 			"agent", agent.Name,
 			"error", err.Error(),
@@ -344,7 +323,12 @@ func (r *Repository) CheckAgentAvailability(agent *entities.Agent) error {
 	}
 
 	if err := json.Unmarshal(body, &handler); err != nil {
-		agentErr := classifyAgentError(err)
+		// JSON parse errors are data format issues, not network errors
+		agentErr := &AgentError{
+			Code:      entities.AgentErrorCodeUnknown,
+			Message:   fmt.Sprintf("failed to parse response: %v", err),
+			Permanent: false,
+		}
 		logger.Error("failed to parse agent response",
 			"agent", agent.Name,
 			"error", err.Error(),
@@ -368,15 +352,28 @@ func (r *Repository) CheckAgentAvailability(agent *entities.Agent) error {
 	case qbt.StatusUnaccessible:
 		// Use the detailed error from the response if available
 		if handler.ErrorCode != "" {
+			candidateCode := entities.AgentErrorCode(handler.ErrorCode)
+			errorCode := entities.AgentErrorCodeConnectionRefused // Safe default
+
+			if isValidAgentErrorCode(candidateCode) {
+				errorCode = candidateCode
+			} else {
+				logger.Warn("unknown agent error code received, using fallback",
+					"agent", agent.Name,
+					"received_code", handler.ErrorCode,
+					"fallback_code", errorCode,
+				)
+			}
+
 			logger.Error("qBittorrent not accessible",
 				"agent", agent.Name,
 				"address", agent.Address,
-				"error_code", handler.ErrorCode,
+				"error_code", errorCode,
 				"message", handler.Message,
 				"permanent", handler.Permanent,
 			)
 			return &AgentError{
-				Code:      entities.AgentErrorCode(handler.ErrorCode),
+				Code:      errorCode,
 				Message:   handler.Message,
 				Permanent: handler.Permanent,
 			}

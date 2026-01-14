@@ -107,7 +107,7 @@ func Run(cmd *cobra.Command, args []string) error {
 	// Initializing the server in a goroutine so that
 	// it won't block the graceful shutdown handling below
 	go func() {
-		logger.Info("agent server started",
+		logger.Info("agent server starting",
 			"component", "agent",
 			"port", port,
 			"address", srv.Addr,

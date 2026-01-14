@@ -35,6 +35,15 @@ func NewService(db *database.Database, c *crypto.CryptoService, baseURL, uploadD
 	}, nil
 }
 
+// extractAgentError extracts error code and permanent flag from an error.
+// Returns AgentErrorCodeUnknown and false if the error is not an AgentError.
+func extractAgentError(err error) (entities.AgentErrorCode, bool) {
+	if agentErr, ok := err.(*agentrepository.AgentError); ok {
+		return agentErr.Code, agentErr.Permanent
+	}
+	return entities.AgentErrorCodeUnknown, false
+}
+
 func (s *Service) CreateAgent(ctx context.Context, schema *schemas.AgentCreateSchema) (*entities.Agent, error) {
 	input := entities.Agent{
 		Name:    schema.Name,
@@ -86,15 +95,7 @@ func (s *Service) ListAgents() ([]*entities.Agent, error) {
 				a.Status = entities.AgentStatusErrored
 				a.Error = err.Error()
 				a.Instance = nil
-
-				// Extract error code and permanent flag from typed error
-				if agentErr, ok := err.(*agentrepository.AgentError); ok {
-					a.ErrorCode = agentErr.Code
-					a.Permanent = agentErr.Permanent
-				} else {
-					a.ErrorCode = entities.AgentErrorCodeUnknown
-					a.Permanent = false
-				}
+				a.ErrorCode, a.Permanent = extractAgentError(err)
 
 				agentChan <- a
 				return
@@ -252,15 +253,7 @@ func (s *Service) GetAgent(ctx context.Context, id string) (*entities.Agent, err
 			agent.Status = entities.AgentStatusErrored
 			agent.Instance = nil
 			agent.Error = err.Error()
-
-			// Extract error code from typed error
-			if agentErr, ok := err.(*agentrepository.AgentError); ok {
-				agent.ErrorCode = agentErr.Code
-				agent.Permanent = agentErr.Permanent
-			} else {
-				agent.ErrorCode = entities.AgentErrorCodeUnknown
-				agent.Permanent = false
-			}
+			agent.ErrorCode, agent.Permanent = extractAgentError(err)
 			return agent, nil
 		}
 	}
@@ -286,15 +279,7 @@ func (s *Service) GetAgent(ctx context.Context, id string) (*entities.Agent, err
 			agent.Status = entities.AgentStatusErrored
 			agent.Instance = nil
 			agent.Error = err.Error()
-
-			// Extract error code from typed error
-			if agentErr, ok := err.(*agentrepository.AgentError); ok {
-				agent.ErrorCode = agentErr.Code
-				agent.Permanent = agentErr.Permanent
-			} else {
-				agent.ErrorCode = entities.AgentErrorCodeUnknown
-				agent.Permanent = false
-			}
+			agent.ErrorCode, agent.Permanent = extractAgentError(err)
 			return agent, nil
 		}
 	}
