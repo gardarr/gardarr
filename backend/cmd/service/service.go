@@ -365,7 +365,7 @@ func createMediaHandler(absMediaPath string) gin.HandlerFunc {
 		requestedFile := strings.TrimPrefix(c.Param("filepath"), "/")
 
 		// Security: validate path components to prevent traversal attacks
-		if err := validateMediaPath(requestedFile); err != nil {
+		if validateMediaPath(requestedFile) != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file path"})
 			return
 		}
