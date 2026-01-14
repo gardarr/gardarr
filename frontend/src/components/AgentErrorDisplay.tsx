@@ -25,19 +25,19 @@ const ERROR_ICONS: Record<AgentErrorCode, React.ComponentType<{ className?: stri
 };
 
 // Permanent error codes that require user intervention
-const PERMANENT_ERROR_CODES: AgentErrorCode[] = [
+const PERMANENT_ERROR_CODES = new Set<AgentErrorCode>([
   'AUTH_FAILURE',
   'DNS_ERROR',
   'HTTPS_REQUIRED',
   'SSL_ERROR',
   'VERSION_INCOMPATIBLE',
-];
+]);
 
 function isPermanentError(code: AgentErrorCode): boolean {
-  return PERMANENT_ERROR_CODES.includes(code);
+  return PERMANENT_ERROR_CODES.has(code);
 }
 
-export function AgentErrorDisplay({ agent, className = '' }: AgentErrorDisplayProps) {
+export function AgentErrorDisplay({ agent, className = '' }: Readonly<AgentErrorDisplayProps>) {
   const { t } = useTranslation();
 
   // Only show if there's an error
@@ -73,7 +73,7 @@ export function AgentErrorDisplay({ agent, className = '' }: AgentErrorDisplayPr
 }
 
 // Compact version for card display
-export function AgentErrorBadge({ agent }: { agent: Agent }) {
+export function AgentErrorBadge({ agent }: Readonly<{ agent: Agent }>) {
   const { t } = useTranslation();
 
   if (agent.status !== 'ERRORED' || !agent.error_code) {

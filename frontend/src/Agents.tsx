@@ -495,9 +495,7 @@ function Agents() {
                             </p>
                           </div>
 
-                          {agent.status === 'ERRORED' && (
-                            <AgentErrorBadge agent={agent} />
-                          )}
+                          <AgentErrorBadge agent={agent} />
 
                           {agent.instance && agent.status === 'ACTIVE' && (
                             <div className="flex items-center gap-3 text-xs text-muted-foreground">
