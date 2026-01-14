@@ -108,20 +108,18 @@ func ensureSQLiteFile(filePath string) error {
 		return fmt.Errorf("failed to create database directory: %w", err)
 	}
 
-	// Check if file already exists
-	if _, err := os.Stat(absPath); os.IsNotExist(err) {
-		// Create an empty file
-		file, err := os.Create(absPath)
-		if err != nil {
-			return fmt.Errorf("failed to create database file: %w", err)
+	// Atomically create the file if it doesn't exist using O_CREATE|O_EXCL
+	// This eliminates the race condition between checking existence and creating
+	file, err := os.OpenFile(absPath, os.O_RDONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if err != nil {
+		if os.IsExist(err) {
+			// File already exists, nothing to do
+			return nil
 		}
-		if err := file.Close(); err != nil {
-			return fmt.Errorf("failed to close database file: %w", err)
-		}
-		// Set secure permissions (read/write for owner only)
-		if err := os.Chmod(absPath, 0600); err != nil {
-			return fmt.Errorf("failed to set database file permissions: %w", err)
-		}
+		return fmt.Errorf("failed to create database file: %w", err)
+	}
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("failed to close database file: %w", err)
 	}
 
 	return nil

@@ -371,29 +371,50 @@ func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statist
 
 	// Serve uploaded media files with authentication required
 	mediaPath := getMediaDirectory()
+	// Resolve mediaPath to absolute form once for consistent validation
+	absMediaPath, _ := filepath.Abs(filepath.Clean(mediaPath))
+
 	router.GET("/media/*filepath", middlewares.SessionMiddleware(db), func(c *gin.Context) {
 		// Get the requested file path
 		requestedFile := strings.TrimPrefix(c.Param("filepath"), "/")
 
-		// Security: prevent path traversal attacks
-		requestedFile = filepath.Clean(requestedFile)
-		if requestedFile == "." || strings.HasPrefix(requestedFile, "..") || strings.Contains(requestedFile, "/../") || strings.Contains(requestedFile, `\..\\`) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file path"})
-			return
+		// Security: validate path components to prevent traversal attacks
+		// Split the path and validate each component individually
+		pathComponents := strings.Split(requestedFile, "/")
+		for _, comp := range pathComponents {
+			if comp == "" {
+				continue
+			}
+			if err := validations.ValidatePathComponent(comp); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file path"})
+				return
+			}
 		}
 
-		// Build full file path
-		fullPath := filepath.Join(mediaPath, requestedFile)
+		// Build full file path using safe join
+		fullPath := filepath.Join(absMediaPath, filepath.Clean(requestedFile))
 		fullPath = filepath.Clean(fullPath)
 
-		if !strings.HasPrefix(fullPath, mediaPath+string(os.PathSeparator)) && fullPath != mediaPath {
+		// Verify the resolved path is within the media directory
+		if !validations.IsPathWithinBase(absMediaPath, fullPath) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file path"})
 			return
 		}
 
 		// Check if file exists
-		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+		info, err := os.Stat(fullPath)
+		if os.IsNotExist(err) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+			return
+		}
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to access file"})
+			return
+		}
+
+		// Ensure it's a file, not a directory
+		if info.IsDir() {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot serve directories"})
 			return
 		}
 

@@ -19,6 +19,7 @@ import (
 	agentmanager "github.com/jfxdev/gardarr/internal/services/agentmanager"
 	"github.com/jfxdev/gardarr/internal/services/events"
 	"github.com/jfxdev/gardarr/pkg/env"
+	"github.com/jfxdev/gardarr/pkg/validations"
 )
 
 type Service struct {
@@ -409,6 +410,11 @@ func (s *Service) DiscoverFiles(ctx context.Context, agentID string, from, to ti
 
 // discoverFilesFromFS discovers statistics files directly from the filesystem
 func (s *Service) discoverFilesFromFS(agentID string, from, to time.Time, fromDate, toDate string) []string {
+	// Validate agentID to prevent path traversal attacks
+	if err := validations.ValidateSafePathComponent(agentID); err != nil {
+		return nil
+	}
+
 	base := s.baseDir
 	if _, err := os.Stat(base); err != nil {
 		if _, err2 := os.Stat("./data"); err2 == nil {

@@ -154,7 +154,7 @@ func (m *Module) logout(c *gin.Context) {
 	}
 
 	// Clear cookie
-	c.SetCookie(sessionCookieName, "", -1, "/", "", false, true)
+	c.SetCookie(sessionCookieName, "", -1, "/", "", middlewares.IsSecureCookie(), true)
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
 }
 
@@ -173,7 +173,7 @@ func (m *Module) logoutAll(c *gin.Context) {
 	}
 
 	// Clear cookie
-	c.SetCookie(sessionCookieName, "", -1, "/", "", false, true)
+	c.SetCookie(sessionCookieName, "", -1, "/", "", middlewares.IsSecureCookie(), true)
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out from all devices"})
 }
 
@@ -212,15 +212,15 @@ func (m *Module) setSessionCookie(c *gin.Context, token string, expiresAt int64)
 	maxAge := sessionMaxAge
 
 	// Set secure cookie
-	// In production, set Secure to true when using HTTPS
+	// Secure attribute is automatically set based on APP_URL scheme (https = secure)
 	c.SetCookie(
 		sessionCookieName,
 		token,
 		maxAge,
 		"/",
-		"",    // domain
-		false, // secure - set to true in production with HTTPS
-		true,  // httpOnly
+		"",                          // domain
+		middlewares.IsSecureCookie(), // secure - true when APP_URL uses HTTPS
+		true,                         // httpOnly
 	)
 }
 
