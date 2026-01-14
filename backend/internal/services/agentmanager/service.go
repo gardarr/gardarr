@@ -7,19 +7,19 @@ import (
 
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/infra/database"
-	repository "github.com/jfxdev/gardarr/internal/repository/agent"
+	agentrepository "github.com/jfxdev/gardarr/internal/repository/agent"
 	"github.com/jfxdev/gardarr/internal/schemas"
 	"github.com/jfxdev/gardarr/internal/services/crypto"
 	metadata "github.com/jfxdev/gardarr/internal/services/task_metadata"
 )
 
 type Service struct {
-	repository      repository.RepositoryInterface
+	repository      agentrepository.RepositoryInterface
 	metadataService *metadata.Service
 }
 
 func NewService(db *database.Database, c *crypto.CryptoService, baseURL, uploadDir string) (*Service, error) {
-	repository, err := repository.NewRepository(db, c)
+	repository, err := agentrepository.NewRepository(db, c)
 	if err != nil {
 		return nil, err
 	}
@@ -86,12 +86,24 @@ func (s *Service) ListAgents() ([]*entities.Agent, error) {
 				a.Status = entities.AgentStatusErrored
 				a.Error = err.Error()
 				a.Instance = nil
+
+				// Extract error code and permanent flag from typed error
+				if agentErr, ok := err.(*agentrepository.AgentError); ok {
+					a.ErrorCode = agentErr.Code
+					a.Permanent = agentErr.Permanent
+				} else {
+					a.ErrorCode = entities.AgentErrorCodeUnknown
+					a.Permanent = false
+				}
+
 				agentChan <- a
 				return
 			}
 
-			// Success - set instance
+			// Success - set instance and clear any previous errors
 			a.Instance = instance
+			a.ErrorCode = entities.AgentErrorCodeNone
+			a.Permanent = false
 
 			// Send the processed agent to the channel
 			agentChan <- a
@@ -232,12 +244,23 @@ func (s *Service) GetAgent(ctx context.Context, id string) (*entities.Agent, err
 			agent.Status = entities.AgentStatusErrored
 			agent.Instance = nil
 			agent.Error = "request cancelled or timeout"
+			agent.ErrorCode = entities.AgentErrorCodeTimeout
+			agent.Permanent = false
 			return agent, nil
 		default:
 			// Agent is not available - abort execution and return agent with error status
 			agent.Status = entities.AgentStatusErrored
 			agent.Instance = nil
 			agent.Error = err.Error()
+
+			// Extract error code from typed error
+			if agentErr, ok := err.(*agentrepository.AgentError); ok {
+				agent.ErrorCode = agentErr.Code
+				agent.Permanent = agentErr.Permanent
+			} else {
+				agent.ErrorCode = entities.AgentErrorCodeUnknown
+				agent.Permanent = false
+			}
 			return agent, nil
 		}
 	}
@@ -254,6 +277,8 @@ func (s *Service) GetAgent(ctx context.Context, id string) (*entities.Agent, err
 			agent.Status = entities.AgentStatusErrored
 			agent.Instance = nil
 			agent.Error = "request cancelled or timeout"
+			agent.ErrorCode = entities.AgentErrorCodeTimeout
+			agent.Permanent = false
 			return agent, nil
 		default:
 			// Error from GetInstance (could be from isAvailable or instance fetch)
@@ -261,12 +286,23 @@ func (s *Service) GetAgent(ctx context.Context, id string) (*entities.Agent, err
 			agent.Status = entities.AgentStatusErrored
 			agent.Instance = nil
 			agent.Error = err.Error()
+
+			// Extract error code from typed error
+			if agentErr, ok := err.(*agentrepository.AgentError); ok {
+				agent.ErrorCode = agentErr.Code
+				agent.Permanent = agentErr.Permanent
+			} else {
+				agent.ErrorCode = entities.AgentErrorCodeUnknown
+				agent.Permanent = false
+			}
 			return agent, nil
 		}
 	}
 
-	// Success - set instance
+	// Success - set instance and clear any previous errors
 	agent.Instance = instance
+	agent.ErrorCode = entities.AgentErrorCodeNone
+	agent.Permanent = false
 
 	return agent, nil
 }

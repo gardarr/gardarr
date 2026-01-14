@@ -39,3 +39,11 @@ type InstanceTransfer struct {
 	LastExternalAddressV4 string
 	LastExternalAddressV6 string
 }
+
+// ConnectionStatus represents the detailed connection state
+type ConnectionStatus struct {
+	Status    string         // connected, unauthorized, unaccessible, initializing, pending
+	ErrorCode AgentErrorCode // Specific error code
+	Message   string         // Human-readable error message
+	Permanent bool           // True if error requires user intervention
+}

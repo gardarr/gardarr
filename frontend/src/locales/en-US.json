@@ -432,6 +432,56 @@
       "failedToUpdate": "Failed to update agent",
       "noChangesDetected": "No changes detected"
     },
+    "errorCodes": {
+      "AUTH_FAILURE": {
+        "title": "Authentication Failed",
+        "description": "The qBittorrent server rejected the provided credentials. Verify that the username and password are correct."
+      },
+      "TIMEOUT": {
+        "title": "Connection Timeout",
+        "description": "The connection to qBittorrent timed out. The server may be slow, overloaded, or unreachable."
+      },
+      "DNS_ERROR": {
+        "title": "DNS Resolution Failed",
+        "description": "Cannot resolve the hostname. Verify that the address is correct and DNS is properly configured."
+      },
+      "HTTPS_REQUIRED": {
+        "title": "Protocol Mismatch",
+        "description": "The server expects a different protocol. Try switching between HTTP and HTTPS in the address."
+      },
+      "SSL_ERROR": {
+        "title": "SSL/TLS Error",
+        "description": "Failed to establish a secure connection. The SSL certificate may be invalid or expired."
+      },
+      "VERSION_INCOMPATIBLE": {
+        "title": "Incompatible Version",
+        "description": "The qBittorrent version is not compatible. Gardarr requires qBittorrent v5.0.0 or later."
+      },
+      "CONNECTION_REFUSED": {
+        "title": "Connection Refused",
+        "description": "The server actively refused the connection. Verify that qBittorrent is running and the port is correct."
+      },
+      "NETWORK_UNREACHABLE": {
+        "title": "Network Unreachable",
+        "description": "Cannot reach the server on the network. Check network connectivity and firewall rules."
+      },
+      "AGENT_UNREACHABLE": {
+        "title": "Agent Unreachable",
+        "description": "The Gardarr agent is not responding. Verify the agent is running and the address is correct."
+      },
+      "BAD_GATEWAY": {
+        "title": "Bad Gateway",
+        "description": "The server returned a 502 error. If using a reverse proxy, verify its configuration and that qBittorrent is running."
+      },
+      "SERVICE_UNAVAILABLE": {
+        "title": "Service Unavailable",
+        "description": "The service is temporarily unavailable (503). qBittorrent may be starting up or overloaded."
+      },
+      "UNKNOWN": {
+        "title": "Connection Error",
+        "description": "An unexpected error occurred while connecting to qBittorrent."
+      }
+    },
     "success": {
       "deleted": "Agent deleted successfully",
       "created": "Agent created successfully",
@@ -453,7 +503,9 @@
       "active": "Active",
       "errored": "Errored",
       "inactive": "Inactive",
-      "unknown": "Unknown"
+      "unknown": "Unknown",
+      "initializing": "Initializing",
+      "pending": "Pending"
     },
     "details": "Details",
     "limits": "Limits",

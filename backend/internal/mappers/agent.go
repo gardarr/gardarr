@@ -16,6 +16,8 @@ func ToAgentResponse(e *entities.Agent) *models.AgentResponse {
 		Address:    e.Address,
 		Status:     e.Status,
 		Error:      e.Error,
+		ErrorCode:  string(e.ErrorCode),
+		Permanent:  e.Permanent,
 		Icon:       e.Icon,
 		Color:      e.Color,
 		Standalone: e.Standalone,

@@ -3,7 +3,6 @@ package agent
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -24,6 +23,7 @@ import (
 	instanceService "github.com/jfxdev/gardarr/internal/services/instance/agent"
 	taskService "github.com/jfxdev/gardarr/internal/services/task/agent"
 	"github.com/jfxdev/gardarr/pkg/env"
+	"github.com/jfxdev/gardarr/pkg/logger"
 	"github.com/jfxdev/go-qbt"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -43,27 +43,56 @@ func Command() *cobra.Command {
 }
 
 func Run(cmd *cobra.Command, args []string) error {
+	logger.Info("agent starting",
+		"component", "agent",
+	)
+
 	if err := setRouter(); err != nil {
+		logger.Error("failed to initialize router",
+			"component", "agent",
+			"error", err.Error(),
+		)
 		return err
 	}
+	logger.Debug("router initialized", "component", "agent")
+
+	// Get qBittorrent configuration
+	qbtBaseURL := env.Get(constants.QBittorrentBaseURLEnv).Value()
+	qbtTimeout := time.Duration(env.Get(constants.QBittorrentRequestTimeoutSecondsEnv).Default(3).ValueInt()) * time.Second
+	qbtMaxRetries := env.Get(constants.QBittorrentMaxRetriesEnv).Default(0).ValueInt()
+
+	logger.Info("initializing qBittorrent client",
+		"component", "agent",
+		"base_url", qbtBaseURL,
+		"timeout", qbtTimeout.String(),
+		"max_retries", qbtMaxRetries,
+	)
 
 	client, err := qbt.New(qbt.Config{
-		BaseURL:        env.Get(constants.QBittorrentBaseURLEnv).Value(),
+		BaseURL:        qbtBaseURL,
 		Username:       env.Get(constants.QBittorrentUsernameEnv).Value(),
 		Password:       env.Get(constants.QBittorrentPasswordEnv).Value(),
-		RequestTimeout: time.Duration(env.Get(constants.QBittorrentRequestTimeoutSecondsEnv).Default(3).ValueInt()) * time.Second,
-		MaxRetries:     env.Get(constants.QBittorrentMaxRetriesEnv).Default(0).ValueInt(),
+		RequestTimeout: qbtTimeout,
+		MaxRetries:     qbtMaxRetries,
 		RetryBackoff:   time.Duration(env.Get(constants.QBittorrentRetryBackoffEnv).Default(1).ValueInt()) * time.Second,
 	})
 	if err != nil {
+		logger.Error("failed to create qBittorrent client",
+			"component", "agent",
+			"error", err.Error(),
+		)
 		return err
 	}
+	logger.Info("qBittorrent client created", "component", "agent")
 
 	taskSvc := taskService.New(client)
+	logger.Debug("task service initialized", "component", "agent")
 
 	instanceSvc := instanceService.New(client)
+	logger.Debug("instance service initialized", "component", "agent")
 
 	setRoutes(taskSvc, instanceSvc)
+	logger.Debug("routes registered", "component", "agent")
 
 	// Create server with timeout
 	port := env.Get(constants.AgentPortEnv).Default("3100").Value()
@@ -78,8 +107,16 @@ func Run(cmd *cobra.Command, args []string) error {
 	// Initializing the server in a goroutine so that
 	// it won't block the graceful shutdown handling below
 	go func() {
+		logger.Info("agent server started",
+			"component", "agent",
+			"port", port,
+			"address", srv.Addr,
+		)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen: %s\n", err)
+			logger.Error("agent server failed",
+				"component", "agent",
+				"error", err.Error(),
+			)
 		}
 	}()
 
@@ -91,17 +128,22 @@ func Run(cmd *cobra.Command, args []string) error {
 	// kill -9 is syscall.SIGKILL but can't be catch, so don't need add it
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	log.Println("Shutting down server...")
+
+	logger.Info("shutting down agent server", "component", "agent")
 
 	// The context is used to inform the server it has 5 seconds to finish
 	// the request it is currently handling
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
+		logger.Error("agent server forced to shutdown",
+			"component", "agent",
+			"error", err.Error(),
+		)
 		return errors.Wrap(err, "Server forced to shutdown: ")
 	}
 
-	log.Println("Server exiting")
+	logger.Info("agent server stopped", "component", "agent")
 
 	return nil
 }

@@ -37,6 +37,7 @@ import { availableIcons, availableColors } from "./utils/agentUtils";
 import { QBittorrentIcon } from "./components/ui/QBittorrentIcon";
 import { AgentDetailsModal } from "./components/AgentDetailsModal";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./components/ui/tooltip";
+import { AgentErrorBadge } from "./components/AgentErrorDisplay";
 
 function Agents() {
   const { t } = useTranslation();
@@ -494,10 +495,8 @@ function Agents() {
                             </p>
                           </div>
 
-                          {agent.error && agent.status === 'ERRORED' && (
-                            <div className="text-xs text-red-600 bg-red-50 dark:bg-red-950/20 px-2 py-1 rounded cursor-pointer">
-                              {t('agents.clickToViewDetails', 'Click to view error details')}
-                            </div>
+                          {agent.status === 'ERRORED' && (
+                            <AgentErrorBadge agent={agent} />
                           )}
 
                           {agent.instance && agent.status === 'ACTIVE' && (

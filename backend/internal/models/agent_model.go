@@ -39,6 +39,8 @@ type AgentResponse struct {
 	Address    string           `json:"address"`
 	Status     string           `json:"status"`
 	Error      string           `json:"error,omitempty"`
+	ErrorCode  string           `json:"error_code,omitempty"`
+	Permanent  bool             `json:"permanent,omitempty"`
 	Icon       string           `json:"icon,omitempty"`
 	Color      string           `json:"color,omitempty"`
 	Standalone bool             `json:"standalone,omitempty"`
@@ -52,5 +54,8 @@ type AgentVersionResponse struct {
 }
 
 type AgentLivenessResponse struct {
-	Status string `json:"status"`
+	Status    string `json:"status"`
+	ErrorCode string `json:"error_code,omitempty"`
+	Message   string `json:"message,omitempty"`
+	Permanent bool   `json:"permanent,omitempty"`
 }

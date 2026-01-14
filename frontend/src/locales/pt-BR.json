@@ -401,6 +401,56 @@
       "failedToUpdate": "Falha ao atualizar agente",
       "noChangesDetected": "Nenhuma alteração detectada"
     },
+    "errorCodes": {
+      "AUTH_FAILURE": {
+        "title": "Falha na Autenticação",
+        "description": "O servidor qBittorrent rejeitou as credenciais fornecidas. Verifique se o usuário e senha estão corretos."
+      },
+      "TIMEOUT": {
+        "title": "Tempo Limite Excedido",
+        "description": "A conexão com o qBittorrent expirou. O servidor pode estar lento, sobrecarregado ou inacessível."
+      },
+      "DNS_ERROR": {
+        "title": "Falha na Resolução DNS",
+        "description": "Não foi possível resolver o hostname. Verifique se o endereço está correto e se o DNS está configurado."
+      },
+      "HTTPS_REQUIRED": {
+        "title": "Protocolo Incompatível",
+        "description": "O servidor espera um protocolo diferente. Tente alternar entre HTTP e HTTPS no endereço."
+      },
+      "SSL_ERROR": {
+        "title": "Erro SSL/TLS",
+        "description": "Falha ao estabelecer conexão segura. O certificado SSL pode ser inválido ou expirado."
+      },
+      "VERSION_INCOMPATIBLE": {
+        "title": "Versão Incompatível",
+        "description": "A versão do qBittorrent não é compatível. O Gardarr requer qBittorrent v5.0.0 ou posterior."
+      },
+      "CONNECTION_REFUSED": {
+        "title": "Conexão Recusada",
+        "description": "O servidor recusou ativamente a conexão. Verifique se o qBittorrent está em execução e se a porta está correta."
+      },
+      "NETWORK_UNREACHABLE": {
+        "title": "Rede Inacessível",
+        "description": "Não foi possível alcançar o servidor na rede. Verifique a conectividade e as regras de firewall."
+      },
+      "AGENT_UNREACHABLE": {
+        "title": "Agente Inacessível",
+        "description": "O agente Gardarr não está respondendo. Verifique se o agente está em execução e se o endereço está correto."
+      },
+      "BAD_GATEWAY": {
+        "title": "Bad Gateway",
+        "description": "O servidor retornou erro 502. Se estiver usando proxy reverso, verifique sua configuração e se o qBittorrent está em execução."
+      },
+      "SERVICE_UNAVAILABLE": {
+        "title": "Serviço Indisponível",
+        "description": "O serviço está temporariamente indisponível (503). O qBittorrent pode estar iniciando ou sobrecarregado."
+      },
+      "UNKNOWN": {
+        "title": "Erro de Conexão",
+        "description": "Ocorreu um erro inesperado ao conectar ao qBittorrent."
+      }
+    },
     "success": {
       "deleted": "Agente excluído com sucesso",
       "created": "Agente criado com sucesso",
@@ -445,7 +495,9 @@
       "active": "Ativo",
       "errored": "Com Erro",
       "inactive": "Inativo",
-      "unknown": "Desconhecido"
+      "unknown": "Desconhecido",
+      "initializing": "Inicializando",
+      "pending": "Pendente"
     },
     "details": "Detalhes",
     "limits": "Limites",

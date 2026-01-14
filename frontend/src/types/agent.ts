@@ -6,6 +6,8 @@ export interface Agent {
   address: string;
   status: AgentStatus;
   error?: string;
+  error_code?: AgentErrorCode;
+  permanent?: boolean;
   instance: Instance;
   icon?: string;
   color?: string;
@@ -19,7 +21,22 @@ export interface Version {
   date: string;
 }
 
-export type AgentStatus = 'ACTIVE' | 'ERRORED' | 'INACTIVE';
+export type AgentStatus = 'ACTIVE' | 'ERRORED' | 'INACTIVE' | 'INITIALIZING' | 'PENDING';
+
+// Agent error codes for specific error handling
+export type AgentErrorCode =
+  | 'AUTH_FAILURE'        // Invalid username/password - requires user intervention
+  | 'TIMEOUT'             // Connection or request timeout - can retry
+  | 'DNS_ERROR'           // DNS resolution failure - check hostname
+  | 'HTTPS_REQUIRED'      // HTTP was used but HTTPS is required
+  | 'SSL_ERROR'           // SSL/TLS certificate or connection error
+  | 'VERSION_INCOMPATIBLE' // Incompatible qBittorrent version
+  | 'CONNECTION_REFUSED'  // Server actively refused connection
+  | 'NETWORK_UNREACHABLE' // Network routing issues
+  | 'AGENT_UNREACHABLE'   // Gardarr agent is unreachable
+  | 'BAD_GATEWAY'         // Proxy/gateway error (502)
+  | 'SERVICE_UNAVAILABLE' // Service temporarily unavailable (503)
+  | 'UNKNOWN';            // Unclassified error
 
 export interface Instance {
   application: InstanceApplication;
