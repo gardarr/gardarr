@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -25,7 +26,7 @@ import (
 	"github.com/jfxdev/gardarr/pkg/env"
 	"github.com/jfxdev/gardarr/pkg/logger"
 	"github.com/jfxdev/go-qbt"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -112,7 +113,7 @@ func Run(cmd *cobra.Command, args []string) error {
 			"port", port,
 			"address", srv.Addr,
 		)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("agent server failed",
 				"component", "agent",
 				"error", err.Error(),
@@ -140,7 +141,7 @@ func Run(cmd *cobra.Command, args []string) error {
 			"component", "agent",
 			"error", err.Error(),
 		)
-		return errors.Wrap(err, "Server forced to shutdown: ")
+		return pkgerrors.Wrap(err, "server forced to shutdown")
 	}
 
 	logger.Info("agent server stopped", "component", "agent")
@@ -165,7 +166,7 @@ func setRouter() error {
 	}
 
 	if env.Get(constants.AgentSecretEnv).Value() == "" {
-		return errors.New("AGENT_SECRET is not set")
+		return pkgerrors.New("AGENT_SECRET is not set")
 	}
 
 	// Setup Security Headers

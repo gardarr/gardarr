@@ -2,6 +2,7 @@ package agentmanager
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 
@@ -37,8 +38,10 @@ func NewService(db *database.Database, c *crypto.CryptoService, baseURL, uploadD
 
 // extractAgentError extracts error code and permanent flag from an error.
 // Returns AgentErrorCodeUnknown and false if the error is not an AgentError.
+// Supports wrapped errors using errors.As.
 func extractAgentError(err error) (entities.AgentErrorCode, bool) {
-	if agentErr, ok := err.(*agentrepository.AgentError); ok {
+	var agentErr *agentrepository.AgentError
+	if errors.As(err, &agentErr) {
 		return agentErr.Code, agentErr.Permanent
 	}
 	return entities.AgentErrorCodeUnknown, false
