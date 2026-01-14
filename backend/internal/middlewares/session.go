@@ -3,12 +3,15 @@ package middlewares
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jfxdev/gardarr/internal/constants"
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/services/ratelimit"
 	"github.com/jfxdev/gardarr/internal/services/session"
+	"github.com/jfxdev/gardarr/pkg/env"
 )
 
 const (
@@ -21,6 +24,13 @@ var (
 	// Global rate limiter instance
 	rateLimiter = ratelimit.NewDefaultService()
 )
+
+// IsSecureCookie returns true if cookies should be set with the Secure attribute.
+// This is determined by checking if APP_URL starts with "https://".
+func IsSecureCookie() bool {
+	appURL := env.Get(constants.AppURLEnv).Value()
+	return strings.HasPrefix(strings.ToLower(appURL), "https://")
+}
 
 // SessionMiddleware validates the session token from cookies with rate limiting
 func SessionMiddleware(db *database.Database) gin.HandlerFunc {
@@ -57,7 +67,7 @@ func SessionMiddleware(db *database.Database) gin.HandlerFunc {
 			rateLimiter.RecordAttempt(identifier)
 
 			// Clear invalid cookie
-			c.SetCookie(SessionCookieName, "", -1, "/", "", false, true)
+			c.SetCookie(SessionCookieName, "", -1, "/", "", IsSecureCookie(), true)
 
 			// Log suspicious activity
 			attemptCount := rateLimiter.GetAttemptCount(identifier)
@@ -97,7 +107,7 @@ func OptionalSessionMiddleware(db *database.Database) gin.HandlerFunc {
 		user, sessionEntity, err := sessionService.ValidateSession(c.Request.Context(), token)
 		if err != nil {
 			// Clear invalid cookie
-			c.SetCookie(SessionCookieName, "", -1, "/", "", false, true)
+			c.SetCookie(SessionCookieName, "", -1, "/", "", IsSecureCookie(), true)
 			c.Next()
 			return
 		}

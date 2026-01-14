@@ -359,6 +359,77 @@ func setRouter() {
 	router.Use(securityHeadersMiddleware())
 }
 
+// createMediaHandler returns a handler for serving authenticated media files
+func createMediaHandler(absMediaPath string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		requestedFile := strings.TrimPrefix(c.Param("filepath"), "/")
+
+		// Security: validate path components to prevent traversal attacks
+		if validateMediaPath(requestedFile) != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file path"})
+			return
+		}
+
+		// Build and validate full file path
+		fullPath := filepath.Clean(filepath.Join(absMediaPath, filepath.Clean(requestedFile)))
+
+		if !validations.IsPathWithinBase(absMediaPath, fullPath) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file path"})
+			return
+		}
+
+		// Check file exists and is not a directory
+		// Path already validated, so no need to validate again
+		info, err := os.Stat(fullPath)
+		if os.IsNotExist(err) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+			return
+		}
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to access file"})
+			return
+		}
+		if info.IsDir() {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot serve directories"})
+			return
+		}
+
+		// Set no-cache headers and serve file
+		c.Header("Cache-Control", "no-cache, no-store, must-revalidate, private")
+		c.Header("Pragma", "no-cache")
+		c.Header("Expires", "0")
+		c.File(fullPath)
+	}
+}
+
+// validateMediaPath validates each component of a media file path
+func validateMediaPath(requestedFile string) error {
+	for _, comp := range strings.Split(requestedFile, "/") {
+		if comp == "" {
+			continue
+		}
+		if err := validations.ValidatePathComponent(comp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// spaFallbackHandler serves the SPA index.html for non-API routes
+func spaFallbackHandler(c *gin.Context) {
+	if strings.HasPrefix(c.Request.URL.Path, "/v1/") {
+		c.JSON(http.StatusNotFound, gin.H{"error": "API endpoint not found"})
+		return
+	}
+
+	indexPath := filepath.Join("./web", "index.html")
+	if _, err := os.Stat(indexPath); err == nil {
+		c.File(indexPath)
+	} else {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Frontend not found"})
+	}
+}
+
 func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statistics.Service, metaSvc *metadata.Service, integrationSvc *integration.Service) error {
 	// Get current working directory
 	wd, _ := os.Getwd()
@@ -371,43 +442,13 @@ func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statist
 
 	// Serve uploaded media files with authentication required
 	mediaPath := getMediaDirectory()
-	router.GET("/media/*filepath", middlewares.SessionMiddleware(db), func(c *gin.Context) {
-		// Get the requested file path
-		requestedFile := strings.TrimPrefix(c.Param("filepath"), "/")
-
-		// Security: prevent path traversal attacks
-		requestedFile = filepath.Clean(requestedFile)
-		if requestedFile == "." || strings.HasPrefix(requestedFile, "..") || strings.Contains(requestedFile, "/../") || strings.Contains(requestedFile, `\..\\`) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file path"})
-			return
-		}
-
-		// Build full file path
-		fullPath := filepath.Join(mediaPath, requestedFile)
-		fullPath = filepath.Clean(fullPath)
-
-		if !strings.HasPrefix(fullPath, mediaPath+string(os.PathSeparator)) && fullPath != mediaPath {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file path"})
-			return
-		}
-
-		// Check if file exists
-		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
-			return
-		}
-
-		// Set headers to prevent caching - force browser to always check authentication
-		c.Header("Cache-Control", "no-cache, no-store, must-revalidate, private")
-		c.Header("Pragma", "no-cache")
-		c.Header("Expires", "0")
-
-		// Serve the file
-		c.File(fullPath)
-	})
+	absMediaPath, err := filepath.Abs(filepath.Clean(mediaPath))
+	if err != nil {
+		return fmt.Errorf("failed to resolve media directory path: %w", err)
+	}
+	router.GET("/media/*filepath", middlewares.SessionMiddleware(db), createMediaHandler(absMediaPath))
 
 	// API routes
-
 	v1 := router.Group("/v1")
 	health.NewModule(v1, db).Register()
 	auth.NewModule(v1, db).Register()
@@ -429,21 +470,7 @@ func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statist
 	integrations.NewModule(v1, db, integrationSvc).Register()
 
 	// Serve the main index.html for all non-API routes (SPA fallback)
-	router.NoRoute(func(c *gin.Context) {
-		// Check if the request is for an API route
-		if strings.HasPrefix(c.Request.URL.Path, "/v1/") {
-			c.JSON(http.StatusNotFound, gin.H{"error": "API endpoint not found"})
-			return
-		}
-
-		// For all other routes, serve the index.html (SPA fallback)
-		indexPath := filepath.Join("./web", "index.html")
-		if _, err := os.Stat(indexPath); err == nil {
-			c.File(indexPath)
-		} else {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Frontend not found"})
-		}
-	})
+	router.NoRoute(spaFallbackHandler)
 
 	return nil
 }
