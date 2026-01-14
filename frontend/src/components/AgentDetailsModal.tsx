@@ -6,7 +6,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatBytes } from "../utils/bytes";
 import {
   Server,
-  XCircle,
   Trash2,
   Loader2,
   HardDrive,
@@ -27,6 +26,7 @@ import { QBittorrentIcon } from "./ui/QBittorrentIcon";
 import { agentService } from "../services/agents";
 import { versionService } from "../services/version";
 import { AgentLimits } from "./AgentLimits";
+import { AgentErrorDisplay } from "./AgentErrorDisplay";
 
 interface AgentDetailsModalProps {
   isOpen: boolean;
@@ -385,16 +385,8 @@ export function AgentDetailsModal({
                       </div>
                     </div>
 
-                    {agent?.error && (
-                      <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-lg">
-                        <div className="flex items-start gap-2">
-                          <XCircle className="h-4 w-4 text-red-500 mt-0.5" />
-                          <div>
-                            <h4 className="text-sm font-medium text-red-900 dark:text-red-100">{t('agents.error', 'Error')}</h4>
-                            <p className="text-sm text-red-700 dark:text-red-300">{agent.error}</p>
-                          </div>
-                        </div>
-                      </div>
+                    {agent?.status === 'ERRORED' && (
+                      <AgentErrorDisplay agent={agent} />
                     )}
 
                     {agent?.status === 'ERRORED' && (

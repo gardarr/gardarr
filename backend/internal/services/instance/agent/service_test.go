@@ -54,6 +54,19 @@ func (m *mockInstanceRepository) GetStatus() string {
 	return m.status
 }
 
+func (m *mockInstanceRepository) GetConnectionStatus() *entities.ConnectionStatus {
+	status := m.status
+	if status == "" {
+		status = entities.ConnectionStatusConnected
+	}
+	return &entities.ConnectionStatus{
+		Status:    status,
+		ErrorCode: entities.AgentErrorCodeNone,
+		Message:   "",
+		Permanent: false,
+	}
+}
+
 func (m *mockInstanceRepository) GetPreferences(ctx context.Context) (*entities.InstancePreferences, error) {
 	return m.preferences, nil
 }

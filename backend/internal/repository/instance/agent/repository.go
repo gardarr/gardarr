@@ -110,6 +110,46 @@ func (s *Repository) GetStatus() string {
 	return s.client.GetStatus()
 }
 
+func (s *Repository) GetConnectionStatus() *entities.ConnectionStatus {
+	connStatus := s.client.GetConnectionStatus()
+
+	// Map qbt error codes to entity error codes
+	var errorCode entities.AgentErrorCode
+	switch connStatus.ErrorCode {
+	case qbt.ErrorCodeAuthFailure:
+		errorCode = entities.AgentErrorCodeAuthFailure
+	case qbt.ErrorCodeTimeout:
+		errorCode = entities.AgentErrorCodeTimeout
+	case qbt.ErrorCodeDNS:
+		errorCode = entities.AgentErrorCodeDNS
+	case qbt.ErrorCodeHTTPSRequired:
+		errorCode = entities.AgentErrorCodeHTTPSRequired
+	case qbt.ErrorCodeSSLError:
+		errorCode = entities.AgentErrorCodeSSLError
+	case qbt.ErrorCodeVersionIncompatible:
+		errorCode = entities.AgentErrorCodeVersionIncompatible
+	case qbt.ErrorCodeConnectionRefused:
+		errorCode = entities.AgentErrorCodeConnectionRefused
+	case qbt.ErrorCodeNetworkUnreachable:
+		errorCode = entities.AgentErrorCodeNetworkUnreachable
+	case qbt.ErrorCodeBadGateway:
+		errorCode = entities.AgentErrorCodeBadGateway
+	case qbt.ErrorCodeServiceUnavailable:
+		errorCode = entities.AgentErrorCodeServiceUnavailable
+	case qbt.ErrorCodeUnknown:
+		errorCode = entities.AgentErrorCodeUnknown
+	default:
+		errorCode = entities.AgentErrorCodeNone
+	}
+
+	return &entities.ConnectionStatus{
+		Status:    connStatus.Status,
+		ErrorCode: errorCode,
+		Message:   connStatus.Message,
+		Permanent: connStatus.Permanent,
+	}
+}
+
 func (s *Repository) SetDownloadSpeedLimit(limit int) error {
 	if err := s.client.SetGlobalDownloadSpeedLimit(limit); err != nil {
 		return errors.Wrap(err, "failed to set download speed limit")

@@ -1,5 +1,14 @@
 package entities
 
+const (
+	// ConnectionStatus status values
+	ConnectionStatusConnected    = "connected"
+	ConnectionStatusUnauthorized = "unauthorized"
+	ConnectionStatusUnaccessible = "unaccessible"
+	ConnectionStatusInitializing = "initializing"
+	ConnectionStatusPending      = "pending"
+)
+
 type Instance struct {
 	Server      InstanceServer
 	Application InstanceApplication
@@ -38,4 +47,12 @@ type InstanceTransfer struct {
 	GlobalRatio           float64
 	LastExternalAddressV4 string
 	LastExternalAddressV6 string
+}
+
+// ConnectionStatus represents the detailed connection state
+type ConnectionStatus struct {
+	Status    string         // One of ConnectionStatus* constants
+	ErrorCode AgentErrorCode // Specific error code
+	Message   string         // Human-readable error message
+	Permanent bool           // True if error requires user intervention
 }

@@ -2,24 +2,25 @@ package agentmanager
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/infra/database"
-	repository "github.com/jfxdev/gardarr/internal/repository/agent"
+	agentrepository "github.com/jfxdev/gardarr/internal/repository/agent"
 	"github.com/jfxdev/gardarr/internal/schemas"
 	"github.com/jfxdev/gardarr/internal/services/crypto"
 	metadata "github.com/jfxdev/gardarr/internal/services/task_metadata"
 )
 
 type Service struct {
-	repository      repository.RepositoryInterface
+	repository      agentrepository.RepositoryInterface
 	metadataService *metadata.Service
 }
 
 func NewService(db *database.Database, c *crypto.CryptoService, baseURL, uploadDir string) (*Service, error) {
-	repository, err := repository.NewRepository(db, c)
+	repository, err := agentrepository.NewRepository(db, c)
 	if err != nil {
 		return nil, err
 	}
@@ -33,6 +34,17 @@ func NewService(db *database.Database, c *crypto.CryptoService, baseURL, uploadD
 		repository:      repository,
 		metadataService: meta,
 	}, nil
+}
+
+// extractAgentError extracts error code and permanent flag from an error.
+// Returns AgentErrorCodeUnknown and false if the error is not an AgentError.
+// Supports wrapped errors using errors.As.
+func extractAgentError(err error) (entities.AgentErrorCode, bool) {
+	var agentErr *agentrepository.AgentError
+	if errors.As(err, &agentErr) {
+		return agentErr.Code, agentErr.Permanent
+	}
+	return entities.AgentErrorCodeUnknown, false
 }
 
 func (s *Service) CreateAgent(ctx context.Context, schema *schemas.AgentCreateSchema) (*entities.Agent, error) {
@@ -86,12 +98,16 @@ func (s *Service) ListAgents() ([]*entities.Agent, error) {
 				a.Status = entities.AgentStatusErrored
 				a.Error = err.Error()
 				a.Instance = nil
+				a.ErrorCode, a.Permanent = extractAgentError(err)
+
 				agentChan <- a
 				return
 			}
 
-			// Success - set instance
+			// Success - set instance and clear any previous errors
 			a.Instance = instance
+			a.ErrorCode = entities.AgentErrorCodeNone
+			a.Permanent = false
 
 			// Send the processed agent to the channel
 			agentChan <- a
@@ -232,12 +248,15 @@ func (s *Service) GetAgent(ctx context.Context, id string) (*entities.Agent, err
 			agent.Status = entities.AgentStatusErrored
 			agent.Instance = nil
 			agent.Error = "request cancelled or timeout"
+			agent.ErrorCode = entities.AgentErrorCodeTimeout
+			agent.Permanent = false
 			return agent, nil
 		default:
 			// Agent is not available - abort execution and return agent with error status
 			agent.Status = entities.AgentStatusErrored
 			agent.Instance = nil
 			agent.Error = err.Error()
+			agent.ErrorCode, agent.Permanent = extractAgentError(err)
 			return agent, nil
 		}
 	}
@@ -254,6 +273,8 @@ func (s *Service) GetAgent(ctx context.Context, id string) (*entities.Agent, err
 			agent.Status = entities.AgentStatusErrored
 			agent.Instance = nil
 			agent.Error = "request cancelled or timeout"
+			agent.ErrorCode = entities.AgentErrorCodeTimeout
+			agent.Permanent = false
 			return agent, nil
 		default:
 			// Error from GetInstance (could be from isAvailable or instance fetch)
@@ -261,12 +282,15 @@ func (s *Service) GetAgent(ctx context.Context, id string) (*entities.Agent, err
 			agent.Status = entities.AgentStatusErrored
 			agent.Instance = nil
 			agent.Error = err.Error()
+			agent.ErrorCode, agent.Permanent = extractAgentError(err)
 			return agent, nil
 		}
 	}
 
-	// Success - set instance
+	// Success - set instance and clear any previous errors
 	agent.Instance = instance
+	agent.ErrorCode = entities.AgentErrorCodeNone
+	agent.Permanent = false
 
 	return agent, nil
 }
