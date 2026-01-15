@@ -32,22 +32,12 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
 # Copy pre-built frontend from GitHub Actions
 COPY frontend/dist ./web
 
-# Stage 2: Minimal runtime image with curl for healthcheck
-FROM debian:bookworm-slim
+# Stage 2: Minimal runtime image with wget for healthcheck
+FROM alpine:3.23.2
 
-# Install ca-certificates and curl for healthcheck
-# Clean up apt cache to reduce image size
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        ca-certificates \
-        curl && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# Create data and media directories
-# For proper permissions with custom users, use bind mounts in docker-compose
-# Example: ./data:/data and ./media:/media (directories owned by your host user)
-RUN mkdir -p /data /media
+# Install ca-certificates and wget for healthcheck
+RUN apk add --no-cache ca-certificates wget && \
+    mkdir -p /data /media
 
 # Set build argument for port
 ARG APP_PORT=3200
@@ -76,8 +66,8 @@ EXPOSE ${APP_PORT}
 # If not specified, container runs as root (UID 0)
 
 # Healthcheck should be defined in docker-compose based on the running mode:
-# - Standalone: curl -f http://localhost:3200/v1/health
-# - Agent: curl -f http://localhost:3100/health
+# - Standalone: wget -q --spider http://localhost:3200/v1/health
+# - Agent: wget -q --spider http://localhost:3100/v1/health
 
 # Default command runs the service
 CMD ["/app/main"]

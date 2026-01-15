@@ -32,7 +32,8 @@ import {
   ArrowRightLeft,
   RefreshCw,
   Filter,
-  Search
+  Search,
+  HelpCircle
 } from "lucide-react";
 
 export type FilterType = EventType | "all";
@@ -316,10 +317,27 @@ export function EventList({
                       </div>
                       
                       {/* Torrent Name - Subtitle */}
-                      {event.metadata?.name && (
+                      {event.metadata?.name ? (
                         <p className="text-sm text-foreground truncate leading-snug" title={event.metadata.name}>
                           {event.metadata.name}
                         </p>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center gap-1.5 text-sm text-muted-foreground cursor-help">
+                                <HelpCircle className="h-4 w-4 text-muted-foreground/70" />
+                                <span className="italic">{t("history.events.unknownTorrent")}</span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-xs">
+                              <p className="text-xs">
+                                <span className="font-semibold">Hash:</span>{" "}
+                                <span className="font-mono break-all">{event.task_hash}</span>
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
                       )}
                       
                       {/* Description */}

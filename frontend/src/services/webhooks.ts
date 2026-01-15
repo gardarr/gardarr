@@ -54,6 +54,33 @@ export class WebhookService {
   async getWebhookHistory(webhookId: string, limit: number = 50, offset: number = 0): Promise<ApiResponse<WebhookHistoryResponse>> {
     return api.get<WebhookHistoryResponse>(`${this.baseEndpoint}/${webhookId}/history?limit=${limit}&offset=${offset}`);
   }
+
+  /**
+   * Tests a webhook by sending a test event
+   */
+  async testWebhook(webhookId: string): Promise<ApiResponse<{
+    success: boolean;
+    message: string;
+    error?: string;
+    event?: {
+      event_id: string;
+      event_type: string;
+      task_hash: string;
+      timestamp: string;
+    };
+  }>> {
+    return api.post<{
+      success: boolean;
+      message: string;
+      error?: string;
+      event?: {
+        event_id: string;
+        event_type: string;
+        task_hash: string;
+        timestamp: string;
+      };
+    }>(`${this.baseEndpoint}/${webhookId}/test`, {});
+  }
 }
 
 // Default service instance

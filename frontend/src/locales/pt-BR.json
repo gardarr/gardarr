@@ -8,7 +8,9 @@
     "error": "Erro",
     "success": "Sucesso",
     "selectAll": "Selecionar todos",
-    "clearAll": "Limpar todos"
+    "clearAll": "Limpar todos",
+    "close": "Fechar",
+    "refresh": "Atualizar"
   },
   "ratio": "Ratio",
   "nota": "Nota",
@@ -856,6 +858,7 @@
     "addWebhook": "Adicionar Webhook",
     "addFirstWebhook": "Adicionar Seu Primeiro Webhook",
     "noWebhooks": "Nenhum webhook configurado ainda. Crie seu primeiro webhook para receber notificações de eventos.",
+    "documentation": "Documentação",
     "examplePayload": "Exemplo de Payload",
     "examplePayloadTitle": "Exemplo de Payload",
     "examplePayloadDescription": "Exemplo do payload JSON que será enviado para seu endpoint webhook",
@@ -907,19 +910,23 @@
       "nameCount": "{{count}} termo",
       "nameCount_plural": "{{count}} termos"
     },
+    "test": "Testar",
     "success": {
       "created": "Webhook criado com sucesso",
       "updated": "Webhook atualizado com sucesso",
       "deleted": "Webhook excluído com sucesso",
       "enabled": "Webhook habilitado",
-      "disabled": "Webhook desabilitado"
+      "disabled": "Webhook desabilitado",
+      "testSuccess": "Webhook de teste enviado com sucesso",
+      "testSuccessDescription": "O evento de teste foi entregue ao seu endpoint webhook"
     },
     "errors": {
       "loadFailed": "Falha ao carregar webhooks",
       "createFailed": "Falha ao criar webhook",
       "updateFailed": "Falha ao atualizar webhook",
       "deleteFailed": "Falha ao excluir webhook",
-      "urlRequired": "URL do webhook é obrigatória"
+      "urlRequired": "URL do webhook é obrigatória",
+      "testFailed": "Falha ao enviar webhook de teste"
     }
   },
   "torrentDetails": {
@@ -1081,6 +1088,9 @@
     "subtitle": "Acompanhe eventos e mudanças de estado dos torrents",
     "refresh": "Atualizar",
     "showEvents": "Exibir Eventos",
+    "stats": {
+      "totalEvents": "Total de Eventos"
+    },
     "filter": {
       "all": "Todos os Eventos"
     },
@@ -1091,7 +1101,8 @@
       "title": "Eventos Recentes",
       "description": "Mostrando {{total}} eventos",
       "noEvents": "Nenhum evento encontrado",
-      "noResults": "Nenhum evento encontrado para sua busca"
+      "noResults": "Nenhum evento encontrado para sua busca",
+      "unknownTorrent": "Torrent Desconhecido"
     },
     "event": {
       "stateChange": "Torrent mudou de estado",

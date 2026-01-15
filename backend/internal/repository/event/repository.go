@@ -256,3 +256,13 @@ func (r *Repository) DeleteOldTaskStates(ctx context.Context, olderThan time.Tim
 		Where("updated_at < ?", olderThan).
 		Delete(&models.TaskState{}).Error
 }
+
+// HasCompletedEvent checks if a torrent.completed event already exists for the given task hash
+func (r *Repository) HasCompletedEvent(ctx context.Context, agentID uuid.UUID, taskHash string) (bool, error) {
+	var count int64
+	err := r.db.DB.WithContext(ctx).
+		Model(&models.Event{}).
+		Where("agent_id = ? AND task_hash = ? AND type = ?", agentID, taskHash, "torrent.completed").
+		Count(&count).Error
+	return count > 0, err
+}
