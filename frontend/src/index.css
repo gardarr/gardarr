@@ -361,6 +361,26 @@ html.dark[data-color-variant="silver"] {
   --container-content-background: oklch(0.269 0 0) !important;
 }
 
+/* Custom Palettes - Light Mode */
+html[data-color-variant="custom"]:not(.dark) {
+  --primary: var(--custom-primary) !important;
+  --primary-foreground: oklch(0.98 0.01 0) !important;
+  --secondary: var(--custom-secondary) !important;
+  --accent: var(--custom-accent) !important;
+  --muted: var(--custom-muted) !important;
+  --container-content-background: oklch(0.967 0.001 286.375) !important;
+}
+
+/* Custom Palettes - Dark Mode */
+html.dark[data-color-variant="custom"] {
+  --primary: var(--custom-primary) !important;
+  --primary-foreground: oklch(0.205 0 0) !important;
+  --secondary: var(--custom-secondary) !important;
+  --accent: var(--custom-accent) !important;
+  --muted: var(--custom-muted) !important;
+  --container-content-background: oklch(0.269 0 0) !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

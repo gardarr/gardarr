@@ -10,7 +10,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { formatBytes, formatBytesPerSecond } from "@/utils/bytes";
 import { truncateText, isTextTruncated } from "@/utils/textUtils";
 import taskDefaultBg from "@/assets/img/common/task-default-background.png";
-import { Download, Upload } from "lucide-react";
+import { Download, Upload, Image as ImageIcon } from "lucide-react";
 import SeedersAndPeersBadge from "@/components/SeedersAndPeersBadge";
 import type { TaskMetadata } from "@/types/torrent";
 import { preferencesService } from "@/services/preferences";
@@ -151,15 +151,19 @@ export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove,
             </CardHeader>
             <CardContent className="px-3 pt-0 pb-3 relative z-10">
               <div className="flex gap-2 items-center">
-                {hasImage && (
-                  <div className="flex-shrink-0">
+                <div className="flex-shrink-0">
+                  {hasImage ? (
                     <img
                       src={encodedImageUrl!}
                       alt={torrent.name}
                       className="w-16 h-16 object-cover rounded-md"
                     />
-                  </div>
-                )}
+                  ) : (
+                    <div className="w-16 h-16 rounded-md bg-muted flex items-center justify-center">
+                      <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
                 <div className="flex-1 flex flex-col gap-1.5 text-[11px] text-muted-foreground">
                   <StatBadge
                     icon={Upload}
@@ -229,15 +233,19 @@ export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove,
             </CardHeader>
             <CardContent className="px-4 pt-1 pb-6 relative z-10">
               <div className="flex gap-3 items-center">
-                {hasImage && (
-                  <div className="flex-shrink-0">
+                <div className="flex-shrink-0">
+                  {hasImage ? (
                     <img
                       src={encodedImageUrl!}
                       alt={torrent.name}
                       className="w-24 h-24 object-cover rounded-md"
                     />
-                  </div>
-                )}
+                  ) : (
+                    <div className="w-24 h-24 rounded-md bg-muted flex items-center justify-center">
+                      <ImageIcon className="h-12 w-12 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
                 <div className="flex-1 flex flex-col gap-2 text-xs text-muted-foreground">
                   <StatBadge
                     icon={Upload}

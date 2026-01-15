@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Palette, Check, SwatchBook, Paintbrush } from "lucide-react";
+import { Palette, Check, SwatchBook, Paintbrush, Sparkles } from "lucide-react";
+import { preferencesService } from "@/services/preferences";
 
 const COLOR_VARIANTS = [
   { value: "default", label: "settings.colorVariant.variants.default", color: "oklch(0.623 0.214 259.815)" },
@@ -28,11 +29,53 @@ export default function VariantColorSelectButton() {
   const [colorVariantDropdownOpen, setColorVariantDropdownOpen] = useState(false);
   const [isDark, setIsDark] = useState<boolean>(false);
   const colorVariantDropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Custom palettes state
+  const [customPalettes, setCustomPalettes] = useState<{
+    palette1: { primary: string; secondary: string; accent: string; muted: string };
+    palette2: { primary: string; secondary: string; accent: string; muted: string };
+    palette3: { primary: string; secondary: string; accent: string; muted: string };
+  }>({
+    palette1: { primary: "#3b82f6", secondary: "#8b5cf6", accent: "#10b981", muted: "#6b7280" },
+    palette2: { primary: "#ef4444", secondary: "#f59e0b", accent: "#ec4899", muted: "#78716c" },
+    palette3: { primary: "#06b6d4", secondary: "#14b8a6", accent: "#a855f7", muted: "#64748b" },
+  });
 
   useEffect(() => {
     // Load saved color variant from localStorage
     const storedVariant = localStorage.getItem("app_color_variant") || "default";
     setColorVariant(storedVariant);
+    
+    // Load custom palettes from preferences
+    const prefs = preferencesService.load();
+    if (prefs) {
+      setCustomPalettes({
+        palette1: {
+          primary: prefs.color_palette_1_primary,
+          secondary: prefs.color_palette_1_secondary,
+          accent: prefs.color_palette_1_accent,
+          muted: prefs.color_palette_1_muted,
+        },
+        palette2: {
+          primary: prefs.color_palette_2_primary,
+          secondary: prefs.color_palette_2_secondary,
+          accent: prefs.color_palette_2_accent,
+          muted: prefs.color_palette_2_muted,
+        },
+        palette3: {
+          primary: prefs.color_palette_3_primary,
+          secondary: prefs.color_palette_3_secondary,
+          accent: prefs.color_palette_3_accent,
+          muted: prefs.color_palette_3_muted,
+        },
+      });
+      
+      // Apply custom palette if it's the active variant
+      if (storedVariant.startsWith("custom-")) {
+        applyCustomPalette(storedVariant, prefs);
+      }
+    }
+    
     document.documentElement.setAttribute("data-color-variant", storedVariant);
     
     // Check if dark theme is active
@@ -41,7 +84,13 @@ export default function VariantColorSelectButton() {
 
   // Apply color variant in real-time
   useEffect(() => {
-    document.documentElement.setAttribute("data-color-variant", colorVariant);
+    // For custom palettes, we need to apply the CSS variables first
+    if (colorVariant.startsWith("custom-")) {
+      applyCustomPalette(colorVariant);
+    } else {
+      document.documentElement.setAttribute("data-color-variant", colorVariant);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [colorVariant]);
 
   // Listen for theme changes
@@ -61,6 +110,51 @@ export default function VariantColorSelectButton() {
 
     return () => observer.disconnect();
   }, []);
+  
+  // Listen for preference changes to update custom palettes
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const prefs = preferencesService.load();
+      if (prefs) {
+        setCustomPalettes({
+          palette1: {
+            primary: prefs.color_palette_1_primary,
+            secondary: prefs.color_palette_1_secondary,
+            accent: prefs.color_palette_1_accent,
+            muted: prefs.color_palette_1_muted,
+          },
+          palette2: {
+            primary: prefs.color_palette_2_primary,
+            secondary: prefs.color_palette_2_secondary,
+            accent: prefs.color_palette_2_accent,
+            muted: prefs.color_palette_2_muted,
+          },
+          palette3: {
+            primary: prefs.color_palette_3_primary,
+            secondary: prefs.color_palette_3_secondary,
+            accent: prefs.color_palette_3_accent,
+            muted: prefs.color_palette_3_muted,
+          },
+        });
+        
+        // Re-apply custom palette if it's active
+        const currentVariant = localStorage.getItem("app_color_variant") || "default";
+        if (currentVariant.startsWith("custom-")) {
+          applyCustomPalette(currentVariant, prefs);
+        }
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    // Also listen to custom event for same-tab updates
+    window.addEventListener('preferencesUpdated', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('preferencesUpdated', handleStorageChange);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Close color variant dropdown when clicking outside
   useEffect(() => {
@@ -76,9 +170,51 @@ export default function VariantColorSelectButton() {
     }
   }, [colorVariantDropdownOpen]);
 
+  const applyCustomPalette = (variantValue: string, prefs?: ReturnType<typeof preferencesService.load>) => {
+    const preferences = prefs || preferencesService.load();
+    if (!preferences) return;
+    
+    const paletteNumber = variantValue.replace("custom-", "");
+    let primary, secondary, accent, muted;
+    
+    if (paletteNumber === "1") {
+      primary = preferences.color_palette_1_primary;
+      secondary = preferences.color_palette_1_secondary;
+      accent = preferences.color_palette_1_accent;
+      muted = preferences.color_palette_1_muted;
+    } else if (paletteNumber === "2") {
+      primary = preferences.color_palette_2_primary;
+      secondary = preferences.color_palette_2_secondary;
+      accent = preferences.color_palette_2_accent;
+      muted = preferences.color_palette_2_muted;
+    } else {
+      primary = preferences.color_palette_3_primary;
+      secondary = preferences.color_palette_3_secondary;
+      accent = preferences.color_palette_3_accent;
+      muted = preferences.color_palette_3_muted;
+    }
+    
+    // Apply custom colors as CSS variables
+    const root = document.documentElement;
+    root.style.setProperty('--custom-primary', primary);
+    root.style.setProperty('--custom-secondary', secondary);
+    root.style.setProperty('--custom-accent', accent);
+    root.style.setProperty('--custom-muted', muted);
+    
+    // Set variant to custom which uses these variables
+    root.setAttribute("data-color-variant", "custom");
+  };
+
   const handleColorVariantChange = (variantValue: string) => {
     setColorVariant(variantValue);
     localStorage.setItem("app_color_variant", variantValue);
+    
+    // If it's a custom palette, apply the custom colors
+    if (variantValue.startsWith("custom-")) {
+      applyCustomPalette(variantValue);
+    } else {
+      document.documentElement.setAttribute("data-color-variant", variantValue);
+    }
     // Keep dropdown open - only close on outside click
   };
 
@@ -143,6 +279,61 @@ export default function VariantColorSelectButton() {
                       </TooltipContent>
                     </Tooltip>
                   ))}
+                </div>
+              </div>
+              
+              {/* Separator */}
+              <Separator />
+              
+              {/* Custom Palettes Section */}
+              <div className="space-y-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <h4 className="text-xs text-foreground/80 flex items-center gap-1.5 cursor-help">
+                      <Sparkles className={`h-4 w-4 ${isDark ? 'text-foreground/30' : 'text-foreground/50'}`} />
+                      {t("settings.colorVariant.custom.title")}
+                    </h4>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-[200px] text-center">
+                    <p className="text-xs">{t("settings.colorVariant.custom.hint")}</p>
+                  </TooltipContent>
+                </Tooltip>
+                <div className="grid grid-cols-3 gap-2">
+                  {[1, 2, 3].map((paletteNum) => {
+                    const paletteKey = `palette${paletteNum}` as keyof typeof customPalettes;
+                    const palette = customPalettes[paletteKey];
+                    const variantValue = `custom-${paletteNum}`;
+                    const isActive = colorVariant === variantValue;
+                    
+                    return (
+                      <Tooltip key={paletteNum}>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={() => handleColorVariantChange(variantValue)}
+                            className={`relative p-2 rounded-lg border-2 transition-all hover:scale-105 ${
+                              isActive ? "border-primary bg-primary/5" : "border-border/50 hover:border-border"
+                            }`}
+                          >
+                            <div className="flex gap-0.5">
+                              <div className="h-4 flex-1 rounded-sm" style={{ backgroundColor: palette.primary }} />
+                              <div className="h-4 flex-1 rounded-sm" style={{ backgroundColor: palette.secondary }} />
+                              <div className="h-4 flex-1 rounded-sm" style={{ backgroundColor: palette.accent }} />
+                              <div className="h-4 flex-1 rounded-sm" style={{ backgroundColor: palette.muted }} />
+                            </div>
+                            {isActive && (
+                              <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
+                                <Check className="h-2.5 w-2.5 text-primary-foreground" />
+                              </div>
+                            )}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{t(`settings.colorVariant.custom.palette${paletteNum}`)}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
                 </div>
               </div>
               

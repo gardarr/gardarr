@@ -6,17 +6,11 @@ ARG VERSION=0.0.0
 ARG COMMIT=unknown
 ARG DATE=unknown
 
-# Stage 1: Copy pre-compiled Go binary
-FROM alpine:3.20 AS build
+# Stage 1: Prepare pre-compiled Go binary
+FROM debian:bookworm-slim AS build
 
 # BuildKit automatically provides these variables for multi-platform builds
-ARG TARGETPLATFORM
 ARG TARGETARCH
-ARG TARGETOS
-
-# Install necessary dependencies
-RUN apk add --no-cache ca-certificates && \
-    rm -rf /var/cache/apk/*
 
 # Set the working directory inside the container
 WORKDIR /app
@@ -25,7 +19,6 @@ WORKDIR /app
 COPY backend/dist/ ./binaries/
 
 # Select the correct binary based on target architecture
-# TARGETARCH is automatically set by BuildKit (amd64, arm64, etc.)
 RUN if [ "$TARGETARCH" = "amd64" ]; then \
     cp binaries/gardarr-amd64 ./main; \
     elif [ "$TARGETARCH" = "arm64" ]; then \
@@ -39,30 +32,22 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
 # Copy pre-built frontend from GitHub Actions
 COPY frontend/dist ./web
 
-# Stage 2: Prepare runtime dependencies
-FROM alpine:3.20 AS runtime-prep
+# Stage 2: Minimal runtime image with curl for healthcheck
+FROM debian:bookworm-slim
 
-# Install ca-certificates and copy necessary files
-RUN apk add --no-cache ca-certificates
+# Install ca-certificates and curl for healthcheck
+# Clean up apt cache to reduce image size
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-# Create necessary directories and passwd/group files for scratch
-RUN mkdir -p /tmp-root/etc /tmp-root/tmp /tmp-root/data /tmp-root/media && \
-    echo "nobody:x:65534:65534:Nobody:/:/sbin/nologin" > /tmp-root/etc/passwd && \
-    echo "nobody:x:65534:" > /tmp-root/etc/group && \
-    chmod 1777 /tmp-root/tmp
-
-# Stage 3: Create minimal scratch runtime image
-FROM scratch
-
-# Copy CA certificates from runtime-prep
-COPY --from=runtime-prep /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-
-# Copy passwd and group files for user mapping
-COPY --from=runtime-prep /tmp-root/etc/passwd /etc/passwd
-COPY --from=runtime-prep /tmp-root/etc/group /etc/group
-
-# Copy tmp directory
-COPY --from=runtime-prep /tmp-root/tmp /tmp
+# Create data and media directories
+# For proper permissions with custom users, use bind mounts in docker-compose
+# Example: ./data:/data and ./media:/media (directories owned by your host user)
+RUN mkdir -p /data /media
 
 # Set build argument for port
 ARG APP_PORT=3200
@@ -86,8 +71,13 @@ VOLUME ["/data", "/media"]
 # Agent port (3100) should be exposed separately when running in agent mode
 EXPOSE ${APP_PORT}
 
-# Run as nobody user by default (can be overridden with --user flag)
-USER 65534:65534
+# User can be specified at runtime via docker-compose 'user:' directive
+# Example: user: "${UID:-1000}:${GID:-1000}"
+# If not specified, container runs as root (UID 0)
+
+# Healthcheck should be defined in docker-compose based on the running mode:
+# - Standalone: curl -f http://localhost:3200/v1/health
+# - Agent: curl -f http://localhost:3100/health
 
 # Default command runs the service
 CMD ["/app/main"]

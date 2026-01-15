@@ -59,7 +59,25 @@
       "compactMode": "Modo Compacto",
       "compactModeDesc": "Reduz o espaçamento e mostra mais conteúdo na tela",
       "blurIntensity": "Desfoque da Imagem de Fundo",
-      "blurIntensityDesc": "Ajuste a intensidade do desfoque nas imagens de fundo (0-100)"
+      "blurIntensityDesc": "Ajuste a intensidade do desfoque nas imagens de fundo (0-100)",
+      "preferencesSaved": "Preferências salvas com sucesso",
+      "displayModeChanged": "Modo de visualização alterado para {{mode}}",
+      "compactModeEnabled": "Modo compacto ativado",
+      "compactModeDisabled": "Modo compacto desativado",
+      "blurIntensityUpdated": "Intensidade do desfoque atualizada para {{value}}",
+      "preferencesError": "Falha ao salvar preferências",
+      "colorPalettes": "Paletas de Cores",
+      "colorPalettesDesc": "Personalize 3 paletas de cores com suas cores preferidas",
+      "palette1": "Paleta 1",
+      "palette2": "Paleta 2",
+      "palette3": "Paleta 3",
+      "primary": "Primária",
+      "secondary": "Secundária",
+      "accent": "Destaque",
+      "muted": "Neutro",
+      "previewTitle": "Card de Prévia",
+      "previewText": "Veja como suas cores ficam",
+      "customize": "Personalizar"
     },
     "security": {
       "title": "Segurança",
@@ -165,7 +183,14 @@
       }
     },
     "colorVariant": {
-      "title": "Variante de Cor",
+      "title": "Tema de Cores",
+      "custom": {
+        "title": "Paletas Personalizadas",
+        "hint": "Paletas personalizadas podem ser editadas nas preferências do perfil",
+        "palette1": "Paleta Personalizada 1",
+        "palette2": "Paleta Personalizada 2",
+        "palette3": "Paleta Personalizada 3"
+      },
       "description": "Personalize a paleta de cores da interface",
       "selectLabel": "Selecione a Variante de Cor",
       "current": "Variante Atual",
@@ -598,6 +623,11 @@
     "search": "Buscar torrents...",
     "itemsPerPage": "Itens por página",
     "update": "Atualizar",
+    "refresh": {
+      "pause": "Pausar atualização automática",
+      "resume": "Retomar atualização automática",
+      "paused": "Pausado"
+    },
     "agent": "Agente",
     "agents": "Agentes",
     "of": "de",

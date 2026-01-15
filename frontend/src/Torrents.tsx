@@ -28,6 +28,7 @@ import { TorrentMetricsModal } from "@/components/TorrentMetricsModal";
 import { TorrentLimitModal } from "@/components/TorrentLimitModal";
 import TorrentListMobile from "@/components/TorrentListMobile";
 import TorrentsTable from "@/components/TorrentsTable";
+import TorrentListCompact from "@/components/TorrentListCompact";
 import { RatioBadge } from "@/components/RatioBadge";
 import { toast } from "sonner";
 import { getStatusIcon, getStatusColor, type TorrentStatus } from "@/components/TorrentStatusIcon";
@@ -132,6 +133,7 @@ export default function TorrentsPage() {
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [selectedGrades, setSelectedGrades] = useState<Set<string>>(new Set());
   const [refreshIntervalSec, setRefreshIntervalSec] = useState<number>(5);
+  const [isRefreshPaused, setIsRefreshPaused] = useState(false);
   const [selectedTorrent, setSelectedTorrent] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [originalTasks, setOriginalTasks] = useState<Task[]>([]);
@@ -150,7 +152,7 @@ export default function TorrentsPage() {
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false);
   const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
   const [compact, setCompact] = useState(false);
-  const [displayMode, setDisplayMode] = useState<"default" | "card">("default");
+  const [displayMode, setDisplayMode] = useState<"table" | "card" | "list">("card");
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [lastNonEmptyTorrents, setLastNonEmptyTorrents] = useState<Torrent[]>([]);
@@ -744,19 +746,20 @@ export default function TorrentsPage() {
 
   // Intervalo de atualização automática com debounce e otimização de visibilidade
   useEffect(() => {
-    if (refreshIntervalSec <= 0) return;
+    // Skip if paused or interval is 0
+    if (isRefreshPaused || refreshIntervalSec <= 0) return;
 
-    // Não iniciar atualização automática até que os agentes tenham sido carregados
+    // Don't start auto-refresh until agents have been loaded
     if (agentsLoading) return;
 
-    // Pausar atualização se não há agentes funcionais
+    // Pause refresh if there are no functional agents
     const hasFunctionalAgents = agents.some(agent => agent.status !== 'ERRORED');
     if (!hasFunctionalAgents) return;
 
     let timeoutId: NodeJS.Timeout;
-    let isPageVisible = true;
+    let isPageVisible = !document.hidden;
 
-    // Pausar auto refresh quando a página não está visível
+    // Pause auto refresh when page is not visible
     const handleVisibilityChange = () => {
       isPageVisible = !document.hidden;
     };
@@ -764,14 +767,14 @@ export default function TorrentsPage() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     const id = setInterval(() => {
-      // Só atualiza se a página estiver visível
+      // Only update if page is visible and not paused
       if (!isPageVisible) return;
 
-      // Debounce para evitar atualizações excessivas
+      // Debounce to prevent excessive updates
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         refreshTorrentsSilently();
-      }, 100); // 100ms de debounce
+      }, 100); // 100ms debounce
     }, refreshIntervalSec * 1000);
 
     return () => {
@@ -779,7 +782,7 @@ export default function TorrentsPage() {
       clearTimeout(timeoutId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [refreshIntervalSec, refreshTorrentsSilently, agentsLoading, agents]);
+  }, [refreshIntervalSec, refreshTorrentsSilently, agentsLoading, agents, isRefreshPaused]);
 
   // Handle clicking outside the add dropdown
   useEffect(() => {
@@ -826,9 +829,9 @@ export default function TorrentsPage() {
   });
 
   // Calcular dados de paginação ou lazy loading baseado no displayMode
-  const useCardLazyLoading = displayMode === "card";
+  const useCardLazyLoading = displayMode === "card" || displayMode === "list";
 
-  // Para card view (desktop) e mobile: usar lazy loading
+  // Para card/list view (desktop) e mobile: usar lazy loading
   // Para table view (desktop): usar paginação tradicional
   const displayedTorrents = (useCardLazyLoading || isMobile)
     ? filteredTorrents.slice(0, displayedItemsCount)
@@ -1118,20 +1121,27 @@ export default function TorrentsPage() {
 
             {/* Controles */}
             <div className="flex items-center gap-4 flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">{t('torrents.update')}:</span>
+              <div className="flex items-center gap-1">
+                <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <DropdownSelect
-                  value={refreshIntervalSec}
-                  onChange={setRefreshIntervalSec}
-                  options={[3, 5, 10, 15, 30, 60]}
-                  formatLabel={(v) => `${v}s`}
-                  ariaLabel={`Atualizar a cada ${refreshIntervalSec}s`}
-                  title={t('torrents.updateInterval.title', { seconds: refreshIntervalSec })}
-                  minWidth="60px"
+                  value={isRefreshPaused ? 0 : refreshIntervalSec}
+                  onChange={(v) => {
+                    if (v === 0) {
+                      setIsRefreshPaused(true);
+                    } else {
+                      setIsRefreshPaused(false);
+                      setRefreshIntervalSec(v);
+                    }
+                  }}
+                  options={[0, 3, 5, 10, 15, 30, 60]}
+                  formatLabel={(v) => v === 0 ? t('torrents.refresh.paused') : `${v}s`}
+                  ariaLabel={isRefreshPaused ? t('torrents.refresh.paused') : `${t('torrents.update')} ${refreshIntervalSec}s`}
+                  title={isRefreshPaused ? t('torrents.refresh.paused') : t('torrents.updateInterval.title', { seconds: refreshIntervalSec })}
+                  minWidth="80px"
                   disabled={isInitialLoading}
                 />
               </div>
-              {displayMode !== "card" && (
+              {displayMode === "table" && (
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">{t('torrents.itemsPerPage')}:</span>
                   <DropdownSelect
@@ -1221,17 +1231,24 @@ export default function TorrentsPage() {
               <div className="flex items-center gap-1 flex-shrink-0">
                 <Clock className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                 <DropdownSelect
-                  value={refreshIntervalSec}
-                  onChange={setRefreshIntervalSec}
-                  options={[3, 5, 10, 15, 30, 60]}
-                  formatLabel={(v) => `${v}s`}
-                  ariaLabel={`Atualizar a cada ${refreshIntervalSec}s`}
-                  title={t('torrents.updateInterval.title', { seconds: refreshIntervalSec })}
-                  minWidth="60px"
+                  value={isRefreshPaused ? 0 : refreshIntervalSec}
+                  onChange={(v) => {
+                    if (v === 0) {
+                      setIsRefreshPaused(true);
+                    } else {
+                      setIsRefreshPaused(false);
+                      setRefreshIntervalSec(v);
+                    }
+                  }}
+                  options={[0, 3, 5, 10, 15, 30, 60]}
+                  formatLabel={(v) => v === 0 ? t('torrents.refresh.paused') : `${v}s`}
+                  ariaLabel={isRefreshPaused ? t('torrents.refresh.paused') : `${t('torrents.update')} ${refreshIntervalSec}s`}
+                  title={isRefreshPaused ? t('torrents.refresh.paused') : t('torrents.updateInterval.title', { seconds: refreshIntervalSec })}
+                  minWidth="80px"
                   disabled={isInitialLoading}
                 />
               </div>
-              {displayMode !== "card" && (
+              {displayMode === "table" && (
                 <>
                   <div className="w-px bg-border self-stretch flex-shrink-0" />
                   <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -1341,9 +1358,9 @@ export default function TorrentsPage() {
       {/* Conteúdo principal - apenas quando há agentes funcionais e torrents */}
       {!isInitialLoading && agents.length > 0 && agents.some(agent => agent.status !== 'ERRORED') && torrents.length > 0 && (
         <>
-          {/* Layout para desktop - Tabela ou Cards baseado na preferência */}
+          {/* Layout para desktop - Tabela, Cards ou Lista baseado na preferência */}
           <div className="hidden md:block w-full">
-            {displayMode === "default" ? (
+            {displayMode === "table" ? (
               <TorrentsTable
                 torrents={paginatedTorrents}
                 sortType={sortType}
@@ -1370,6 +1387,50 @@ export default function TorrentsPage() {
                 onToggleSelect={handleToggleSelect}
                 onRequestDelete={openDeleteModal}
               />
+            ) : displayMode === "list" ? (
+              // List view for desktop
+              <>
+                {/* Desktop sorting controls for list view */}
+                <div className="mb-4">
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-muted-foreground">{t('torrents.sortedBy')}:</span>
+                      <span className="text-sm text-muted-foreground">
+                        {t(`torrents.sortBy.${getSortTypeKey(sortType)}`)} {sortDirection === "asc" ? "↑" : "↓"}
+                      </span>
+                    </div>
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">
+                      {filteredTorrents.length} {t('torrents.of')} {torrents.length}
+                    </span>
+                  </div>
+                </div>
+
+                <TorrentListCompact
+                  torrents={paginatedTorrents}
+                  onShowDetails={handleShowDetails}
+                  onStart={handlePlayTorrent}
+                  onStop={handlePauseTorrent}
+                  onMetrics={handleShowMetrics}
+                  onRemove={(id) => handleDeleteTorrent(id, false)}
+                  onForceDownload={handleForceDownloadTorrent}
+                  onForceReannounce={handleForceReannounceTorrent}
+                  onForceRecheck={handleForceRecheckTorrent}
+                  onLimits={handleShowLimits}
+                  onMetadataUpdate={handleMetadataUpdate}
+                  compact={compact}
+                  selectionMode={selectionMode}
+                  selectedIds={selectedIds}
+                  onToggleSelect={handleToggleSelect}
+                  onRequestDelete={openDeleteModal}
+                />
+
+                {/* Lazy loading sentinel for list view */}
+                {useCardLazyLoading && displayedItemsCount < filteredTorrents.length && (
+                  <div ref={sentinelRef} className="flex items-center justify-center py-4">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+              </>
             ) : (
               // Card view for desktop
               <>

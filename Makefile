@@ -102,8 +102,8 @@ docker-build-pipeline: get-version build-frontend
 			-tags 'osusergo netgo sqlite_omit_load_extension' \
 			-o /dist/gardarr-amd64 ."
 	@echo "Building Docker image from pipeline artifacts..."
-	docker build -t 10.0.0.100:5555/gardarr:pipeline0 --build-arg APP_PORT=3200 .
-	docker push 10.0.0.100:5555/gardarr:pipeline0
+	docker build -t 10.0.0.100:5555/gardarr:pipeline5 --build-arg APP_PORT=3200 .
+	docker push 10.0.0.100:5555/gardarr:pipeline5
 # Comando para build local com Docker (compila tudo dentro do container)
 docker-build-local:
 	docker build -f Dockerfile.local -t $(BINARY_NAME):local .

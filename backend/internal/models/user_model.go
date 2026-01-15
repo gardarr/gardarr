@@ -70,7 +70,23 @@ type TorrentDisplayModeResponse struct {
 
 // PreferencesResponse represents the response body for user preferences
 type PreferencesResponse struct {
-	TorrentDisplayMode          string `json:"torrent_display_mode"`
-	Compact                     bool   `json:"compact"`
+	TorrentDisplayMode           string `json:"torrent_display_mode"`
+	Compact                      bool   `json:"compact"`
 	BackgroundImageBlurIntensity int    `json:"background_image_blur_intensity"`
+	ActiveColorPalette           int    `json:"active_color_palette"`
+	// Color Palette 1
+	ColorPalette1Primary   string `json:"color_palette_1_primary"`
+	ColorPalette1Secondary string `json:"color_palette_1_secondary"`
+	ColorPalette1Accent    string `json:"color_palette_1_accent"`
+	ColorPalette1Muted     string `json:"color_palette_1_muted"`
+	// Color Palette 2
+	ColorPalette2Primary   string `json:"color_palette_2_primary"`
+	ColorPalette2Secondary string `json:"color_palette_2_secondary"`
+	ColorPalette2Accent    string `json:"color_palette_2_accent"`
+	ColorPalette2Muted     string `json:"color_palette_2_muted"`
+	// Color Palette 3
+	ColorPalette3Primary   string `json:"color_palette_3_primary"`
+	ColorPalette3Secondary string `json:"color_palette_3_secondary"`
+	ColorPalette3Accent    string `json:"color_palette_3_accent"`
+	ColorPalette3Muted     string `json:"color_palette_3_muted"`
 }
