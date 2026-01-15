@@ -95,6 +95,11 @@
       "blurIntensityDesc": "Adjust the blur intensity for background images (0-100)",
       "preferencesSaved": "Preferences saved successfully",
       "displayModeChanged": "Display mode changed to {{mode}}",
+      "modes": {
+        "table": "Table",
+        "card": "Card",
+        "list": "List"
+      },
       "compactModeEnabled": "Compact mode enabled",
       "compactModeDisabled": "Compact mode disabled",
       "blurIntensityUpdated": "Blur intensity updated to {{value}}",

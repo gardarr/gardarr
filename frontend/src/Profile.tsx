@@ -319,12 +319,14 @@ export default function ProfilePage() {
         // Show success feedback based on preference changed
         let message = t("profile.display.preferencesSaved");
         if (key === "torrent_display_mode") {
-          const modeNames: Record<string, string> = {
-            table: "Table",
-            card: "Card",
-            list: "List"
+          const modeKeys: Record<string, string> = {
+            table: "profile.display.modes.table",
+            card: "profile.display.modes.card",
+            list: "profile.display.modes.list"
           };
-          message = t("profile.display.displayModeChanged", { mode: modeNames[value as string] || value as string });
+          const modeKey = modeKeys[value as string];
+          const modeName = modeKey ? t(modeKey) : (value as string);
+          message = t("profile.display.displayModeChanged", { mode: modeName });
         } else if (key === "compact") {
           message = value ? t("profile.display.compactModeEnabled") : t("profile.display.compactModeDisabled");
         } else if (key === "background_image_blur_intensity") {

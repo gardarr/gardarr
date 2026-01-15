@@ -69,7 +69,7 @@ export function TorrentListCompact({
     <div className="w-full space-y-2">
       {torrents.map((torrent) => {
         const hasImage = !!torrent.metadata?.image_url;
-        const encodedImageUrl = hasImage && torrent.metadata?.image_url ? encodeURI(torrent.metadata.image_url) : null;
+        const encodedImageUrl = hasImage && torrent.metadata?.image_url ? encodeURI(torrent.metadata.image_url) : undefined;
 
         return (
           <TorrentContextMenu

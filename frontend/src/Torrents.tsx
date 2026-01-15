@@ -1416,7 +1416,6 @@ export default function TorrentsPage() {
                   onForceReannounce={handleForceReannounceTorrent}
                   onForceRecheck={handleForceRecheckTorrent}
                   onLimits={handleShowLimits}
-                  onMetadataUpdate={handleMetadataUpdate}
                   compact={compact}
                   selectionMode={selectionMode}
                   selectedIds={selectedIds}

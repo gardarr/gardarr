@@ -185,12 +185,13 @@ func Register(m *migration.Migrator) {
 					Where("torrent_display_mode = ?", "default").
 					Update("torrent_display_mode", "table").Error
 			},
-			Down: func(db *gorm.DB) error {
-				// Rollback: change 'table' back to 'default'
-				return db.Model(&models.UserPreferences{}).
-					Where("torrent_display_mode = ?", "table").
-					Update("torrent_display_mode", "default").Error
-			},
+		Down: func(db *gorm.DB) error {
+			// No-op: reverting torrent_display_mode changes is intentionally disabled.
+			// Rolling back would overwrite user-set preferences (table/card/list) with "default",
+			// which is destructive and irreversible. Users who manually changed their display
+			// mode would lose their preference.
+			return nil
+		},
 		},
 		{
 			Version:     "019_create_webhook_history_table",

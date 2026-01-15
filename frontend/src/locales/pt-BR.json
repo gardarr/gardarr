@@ -64,6 +64,11 @@
       "blurIntensityDesc": "Ajuste a intensidade do desfoque nas imagens de fundo (0-100)",
       "preferencesSaved": "Preferências salvas com sucesso",
       "displayModeChanged": "Modo de visualização alterado para {{mode}}",
+      "modes": {
+        "table": "Tabela",
+        "card": "Cartão",
+        "list": "Lista"
+      },
       "compactModeEnabled": "Modo compacto ativado",
       "compactModeDisabled": "Modo compacto desativado",
       "blurIntensityUpdated": "Intensidade do desfoque atualizada para {{value}}",
