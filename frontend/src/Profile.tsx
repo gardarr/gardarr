@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/auth-hooks";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -122,19 +122,27 @@ export default function ProfilePage() {
   const [blurIntensity, setBlurIntensity] = useState(50);
   const [isLoadingPreferences, setIsLoadingPreferences] = useState(false);
 
-  // Color Palettes state
-  const [palette1Primary, setPalette1Primary] = useState("#3b82f6");
-  const [palette1Secondary, setPalette1Secondary] = useState("#8b5cf6");
-  const [palette1Accent, setPalette1Accent] = useState("#10b981");
-  const [palette1Muted, setPalette1Muted] = useState("#6b7280");
-  const [palette2Primary, setPalette2Primary] = useState("#ef4444");
-  const [palette2Secondary, setPalette2Secondary] = useState("#f59e0b");
-  const [palette2Accent, setPalette2Accent] = useState("#ec4899");
-  const [palette2Muted, setPalette2Muted] = useState("#78716c");
-  const [palette3Primary, setPalette3Primary] = useState("#06b6d4");
-  const [palette3Secondary, setPalette3Secondary] = useState("#14b8a6");
-  const [palette3Accent, setPalette3Accent] = useState("#a855f7");
-  const [palette3Muted, setPalette3Muted] = useState("#64748b");
+  // Color Palettes state - consolidated into structured objects for cleaner state management
+  const [palettes, setPalettes] = useState({
+    palette1: {
+      primary: "#3b82f6",
+      secondary: "#8b5cf6",
+      accent: "#10b981",
+      muted: "#6b7280"
+    },
+    palette2: {
+      primary: "#ef4444",
+      secondary: "#f59e0b",
+      accent: "#ec4899",
+      muted: "#78716c"
+    },
+    palette3: {
+      primary: "#06b6d4",
+      secondary: "#14b8a6",
+      accent: "#a855f7",
+      muted: "#64748b"
+    }
+  });
 
   useEffect(() => {
     loadSessions();
@@ -177,18 +185,26 @@ export default function ProfilePage() {
       setDisplayMode(cached.torrent_display_mode);
       setCompact(cached.compact);
       setBlurIntensity(cached.background_image_blur_intensity);
-      setPalette1Primary(cached.color_palette_1_primary);
-      setPalette1Secondary(cached.color_palette_1_secondary);
-      setPalette1Accent(cached.color_palette_1_accent);
-      setPalette1Muted(cached.color_palette_1_muted);
-      setPalette2Primary(cached.color_palette_2_primary);
-      setPalette2Secondary(cached.color_palette_2_secondary);
-      setPalette2Accent(cached.color_palette_2_accent);
-      setPalette2Muted(cached.color_palette_2_muted);
-      setPalette3Primary(cached.color_palette_3_primary);
-      setPalette3Secondary(cached.color_palette_3_secondary);
-      setPalette3Accent(cached.color_palette_3_accent);
-      setPalette3Muted(cached.color_palette_3_muted);
+      setPalettes({
+        palette1: {
+          primary: cached.color_palette_1_primary,
+          secondary: cached.color_palette_1_secondary,
+          accent: cached.color_palette_1_accent,
+          muted: cached.color_palette_1_muted
+        },
+        palette2: {
+          primary: cached.color_palette_2_primary,
+          secondary: cached.color_palette_2_secondary,
+          accent: cached.color_palette_2_accent,
+          muted: cached.color_palette_2_muted
+        },
+        palette3: {
+          primary: cached.color_palette_3_primary,
+          secondary: cached.color_palette_3_secondary,
+          accent: cached.color_palette_3_accent,
+          muted: cached.color_palette_3_muted
+        }
+      });
     }
 
     // Then fetch from API to ensure data is up to date
@@ -216,18 +232,26 @@ export default function ProfilePage() {
         setDisplayMode(displayMode);
         setCompact(response.data.compact);
         setBlurIntensity(response.data.background_image_blur_intensity);
-        setPalette1Primary(response.data.color_palette_1_primary);
-        setPalette1Secondary(response.data.color_palette_1_secondary);
-        setPalette1Accent(response.data.color_palette_1_accent);
-        setPalette1Muted(response.data.color_palette_1_muted);
-        setPalette2Primary(response.data.color_palette_2_primary);
-        setPalette2Secondary(response.data.color_palette_2_secondary);
-        setPalette2Accent(response.data.color_palette_2_accent);
-        setPalette2Muted(response.data.color_palette_2_muted);
-        setPalette3Primary(response.data.color_palette_3_primary);
-        setPalette3Secondary(response.data.color_palette_3_secondary);
-        setPalette3Accent(response.data.color_palette_3_accent);
-        setPalette3Muted(response.data.color_palette_3_muted);
+        setPalettes({
+          palette1: {
+            primary: response.data.color_palette_1_primary,
+            secondary: response.data.color_palette_1_secondary,
+            accent: response.data.color_palette_1_accent,
+            muted: response.data.color_palette_1_muted
+          },
+          palette2: {
+            primary: response.data.color_palette_2_primary,
+            secondary: response.data.color_palette_2_secondary,
+            accent: response.data.color_palette_2_accent,
+            muted: response.data.color_palette_2_muted
+          },
+          palette3: {
+            primary: response.data.color_palette_3_primary,
+            secondary: response.data.color_palette_3_secondary,
+            accent: response.data.color_palette_3_accent,
+            muted: response.data.color_palette_3_muted
+          }
+        });
         // Save to localStorage
         preferencesService.save({
           torrent_display_mode: displayMode,
@@ -252,6 +276,37 @@ export default function ProfilePage() {
       console.error("Failed to load preferences:", error);
     }
   };
+
+  // Debounce timer ref for color updates to reduce API calls during rapid changes
+  const colorDebounceTimers = useRef<Record<string, NodeJS.Timeout>>({});
+
+  // Debounced color update handler - waits 500ms after the last change before making API call
+  const updateColorDebounced = useCallback((key: string, value: string) => {
+    // Clear existing timer for this key
+    if (colorDebounceTimers.current[key]) {
+      clearTimeout(colorDebounceTimers.current[key]);
+    }
+
+    // Update local state immediately for responsive UI
+    setPalettes(prev => {
+      const [, paletteNum, colorType] = key.match(/color_palette_(\d+)_(\w+)/) || [];
+      if (!paletteNum || !colorType) return prev;
+      
+      const paletteKey = `palette${paletteNum}` as 'palette1' | 'palette2' | 'palette3';
+      return {
+        ...prev,
+        [paletteKey]: {
+          ...prev[paletteKey],
+          [colorType]: value
+        }
+      };
+    });
+
+    // Debounce the API call
+    colorDebounceTimers.current[key] = setTimeout(() => {
+      updatePreference(key, value);
+    }, 500);
+  }, []);
 
   const updatePreference = async (key: string, value: unknown) => {
     setIsLoadingPreferences(true);
@@ -281,18 +336,26 @@ export default function ProfilePage() {
         setDisplayMode(displayMode);
         setCompact(response.data.compact);
         setBlurIntensity(response.data.background_image_blur_intensity);
-        setPalette1Primary(response.data.color_palette_1_primary);
-        setPalette1Secondary(response.data.color_palette_1_secondary);
-        setPalette1Accent(response.data.color_palette_1_accent);
-        setPalette1Muted(response.data.color_palette_1_muted);
-        setPalette2Primary(response.data.color_palette_2_primary);
-        setPalette2Secondary(response.data.color_palette_2_secondary);
-        setPalette2Accent(response.data.color_palette_2_accent);
-        setPalette2Muted(response.data.color_palette_2_muted);
-        setPalette3Primary(response.data.color_palette_3_primary);
-        setPalette3Secondary(response.data.color_palette_3_secondary);
-        setPalette3Accent(response.data.color_palette_3_accent);
-        setPalette3Muted(response.data.color_palette_3_muted);
+        setPalettes({
+          palette1: {
+            primary: response.data.color_palette_1_primary,
+            secondary: response.data.color_palette_1_secondary,
+            accent: response.data.color_palette_1_accent,
+            muted: response.data.color_palette_1_muted
+          },
+          palette2: {
+            primary: response.data.color_palette_2_primary,
+            secondary: response.data.color_palette_2_secondary,
+            accent: response.data.color_palette_2_accent,
+            muted: response.data.color_palette_2_muted
+          },
+          palette3: {
+            primary: response.data.color_palette_3_primary,
+            secondary: response.data.color_palette_3_secondary,
+            accent: response.data.color_palette_3_accent,
+            muted: response.data.color_palette_3_muted
+          }
+        });
 
         preferencesService.save({
           torrent_display_mode: displayMode,
@@ -762,10 +825,10 @@ export default function ProfilePage() {
                     <AccordionTrigger className="hover:no-underline py-3">
                       <div className="flex items-center gap-3">
                         <div className="flex gap-1">
-                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palette1Primary }} />
-                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palette1Secondary }} />
-                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palette1Accent }} />
-                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palette1Muted }} />
+                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palettes.palette1.primary }} />
+                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palettes.palette1.secondary }} />
+                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palettes.palette1.accent }} />
+                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palettes.palette1.muted }} />
                         </div>
                         <span className="text-sm font-medium">{t("profile.display.palette1")}</span>
                       </div>
@@ -774,26 +837,26 @@ export default function ProfilePage() {
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
                         <ColorPicker
                           label={t("profile.display.primary")}
-                          value={palette1Primary}
-                          onChange={(c) => updatePreference("color_palette_1_primary", c)}
+                          value={palettes.palette1.primary}
+                          onChange={(c) => updateColorDebounced("color_palette_1_primary", c)}
                           disabled={isLoadingPreferences}
                         />
                         <ColorPicker
                           label={t("profile.display.secondary")}
-                          value={palette1Secondary}
-                          onChange={(c) => updatePreference("color_palette_1_secondary", c)}
+                          value={palettes.palette1.secondary}
+                          onChange={(c) => updateColorDebounced("color_palette_1_secondary", c)}
                           disabled={isLoadingPreferences}
                         />
                         <ColorPicker
                           label={t("profile.display.accent")}
-                          value={palette1Accent}
-                          onChange={(c) => updatePreference("color_palette_1_accent", c)}
+                          value={palettes.palette1.accent}
+                          onChange={(c) => updateColorDebounced("color_palette_1_accent", c)}
                           disabled={isLoadingPreferences}
                         />
                         <ColorPicker
                           label={t("profile.display.muted")}
-                          value={palette1Muted}
-                          onChange={(c) => updatePreference("color_palette_1_muted", c)}
+                          value={palettes.palette1.muted}
+                          onChange={(c) => updateColorDebounced("color_palette_1_muted", c)}
                           disabled={isLoadingPreferences}
                         />
                       </div>
@@ -802,37 +865,37 @@ export default function ProfilePage() {
                         <div className="p-3 flex items-center gap-3 border-b">
                           <div 
                             className="w-8 h-8 rounded-md flex items-center justify-center"
-                            style={{ backgroundColor: palette1Primary }}
+                            style={{ backgroundColor: palettes.palette1.primary }}
                           >
                             <Sparkles className="h-4 w-4 text-white" />
                           </div>
                           <div>
                             <p className="text-sm font-medium">{t("profile.display.previewTitle")}</p>
-                            <p className="text-xs" style={{ color: palette1Muted }}>{t("profile.display.previewText")}</p>
+                            <p className="text-xs" style={{ color: palettes.palette1.muted }}>{t("profile.display.previewText")}</p>
                           </div>
                         </div>
                         <div className="p-3 flex flex-wrap gap-2">
                           <button
                             className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
-                            style={{ backgroundColor: palette1Primary, color: '#fff' }}
+                            style={{ backgroundColor: palettes.palette1.primary, color: '#fff' }}
                           >
                             {t("profile.display.primary")}
                           </button>
                           <button
                             className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
-                            style={{ backgroundColor: palette1Secondary, color: '#fff' }}
+                            style={{ backgroundColor: palettes.palette1.secondary, color: '#fff' }}
                           >
                             {t("profile.display.secondary")}
                           </button>
                           <button
                             className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
-                            style={{ backgroundColor: palette1Accent, color: '#fff' }}
+                            style={{ backgroundColor: palettes.palette1.accent, color: '#fff' }}
                           >
                             {t("profile.display.accent")}
                           </button>
                           <button
                             className="px-3 py-1.5 text-xs font-medium rounded-md border transition-opacity hover:opacity-80"
-                            style={{ backgroundColor: palette1Muted + '20', color: palette1Muted, borderColor: palette1Muted }}
+                            style={{ backgroundColor: palettes.palette1.muted + '20', color: palettes.palette1.muted, borderColor: palettes.palette1.muted }}
                           >
                             {t("profile.display.muted")}
                           </button>
@@ -846,10 +909,10 @@ export default function ProfilePage() {
                     <AccordionTrigger className="hover:no-underline py-3">
                       <div className="flex items-center gap-3">
                         <div className="flex gap-1">
-                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palette2Primary }} />
-                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palette2Secondary }} />
-                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palette2Accent }} />
-                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palette2Muted }} />
+                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palettes.palette2.primary }} />
+                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palettes.palette2.secondary }} />
+                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palettes.palette2.accent }} />
+                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palettes.palette2.muted }} />
                         </div>
                         <span className="text-sm font-medium">{t("profile.display.palette2")}</span>
                       </div>
@@ -858,26 +921,26 @@ export default function ProfilePage() {
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
                         <ColorPicker
                           label={t("profile.display.primary")}
-                          value={palette2Primary}
-                          onChange={(c) => updatePreference("color_palette_2_primary", c)}
+                          value={palettes.palette2.primary}
+                          onChange={(c) => updateColorDebounced("color_palette_2_primary", c)}
                           disabled={isLoadingPreferences}
                         />
                         <ColorPicker
                           label={t("profile.display.secondary")}
-                          value={palette2Secondary}
-                          onChange={(c) => updatePreference("color_palette_2_secondary", c)}
+                          value={palettes.palette2.secondary}
+                          onChange={(c) => updateColorDebounced("color_palette_2_secondary", c)}
                           disabled={isLoadingPreferences}
                         />
                         <ColorPicker
                           label={t("profile.display.accent")}
-                          value={palette2Accent}
-                          onChange={(c) => updatePreference("color_palette_2_accent", c)}
+                          value={palettes.palette2.accent}
+                          onChange={(c) => updateColorDebounced("color_palette_2_accent", c)}
                           disabled={isLoadingPreferences}
                         />
                         <ColorPicker
                           label={t("profile.display.muted")}
-                          value={palette2Muted}
-                          onChange={(c) => updatePreference("color_palette_2_muted", c)}
+                          value={palettes.palette2.muted}
+                          onChange={(c) => updateColorDebounced("color_palette_2_muted", c)}
                           disabled={isLoadingPreferences}
                         />
                       </div>
@@ -886,37 +949,37 @@ export default function ProfilePage() {
                         <div className="p-3 flex items-center gap-3 border-b">
                           <div 
                             className="w-8 h-8 rounded-md flex items-center justify-center"
-                            style={{ backgroundColor: palette2Primary }}
+                            style={{ backgroundColor: palettes.palette2.primary }}
                           >
                             <Sparkles className="h-4 w-4 text-white" />
                           </div>
                           <div>
                             <p className="text-sm font-medium">{t("profile.display.previewTitle")}</p>
-                            <p className="text-xs" style={{ color: palette2Muted }}>{t("profile.display.previewText")}</p>
+                            <p className="text-xs" style={{ color: palettes.palette2.muted }}>{t("profile.display.previewText")}</p>
                           </div>
                         </div>
                         <div className="p-3 flex flex-wrap gap-2">
                           <button
                             className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
-                            style={{ backgroundColor: palette2Primary, color: '#fff' }}
+                            style={{ backgroundColor: palettes.palette2.primary, color: '#fff' }}
                           >
                             {t("profile.display.primary")}
                           </button>
                           <button
                             className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
-                            style={{ backgroundColor: palette2Secondary, color: '#fff' }}
+                            style={{ backgroundColor: palettes.palette2.secondary, color: '#fff' }}
                           >
                             {t("profile.display.secondary")}
                           </button>
                           <button
                             className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
-                            style={{ backgroundColor: palette2Accent, color: '#fff' }}
+                            style={{ backgroundColor: palettes.palette2.accent, color: '#fff' }}
                           >
                             {t("profile.display.accent")}
                           </button>
                           <button
                             className="px-3 py-1.5 text-xs font-medium rounded-md border transition-opacity hover:opacity-80"
-                            style={{ backgroundColor: palette2Muted + '20', color: palette2Muted, borderColor: palette2Muted }}
+                            style={{ backgroundColor: palettes.palette2.muted + '20', color: palettes.palette2.muted, borderColor: palettes.palette2.muted }}
                           >
                             {t("profile.display.muted")}
                           </button>
@@ -930,10 +993,10 @@ export default function ProfilePage() {
                     <AccordionTrigger className="hover:no-underline py-3">
                       <div className="flex items-center gap-3">
                         <div className="flex gap-1">
-                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palette3Primary }} />
-                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palette3Secondary }} />
-                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palette3Accent }} />
-                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palette3Muted }} />
+                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palettes.palette3.primary }} />
+                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palettes.palette3.secondary }} />
+                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palettes.palette3.accent }} />
+                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palettes.palette3.muted }} />
                         </div>
                         <span className="text-sm font-medium">{t("profile.display.palette3")}</span>
                       </div>
@@ -942,26 +1005,26 @@ export default function ProfilePage() {
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
                         <ColorPicker
                           label={t("profile.display.primary")}
-                          value={palette3Primary}
-                          onChange={(c) => updatePreference("color_palette_3_primary", c)}
+                          value={palettes.palette3.primary}
+                          onChange={(c) => updateColorDebounced("color_palette_3_primary", c)}
                           disabled={isLoadingPreferences}
                         />
                         <ColorPicker
                           label={t("profile.display.secondary")}
-                          value={palette3Secondary}
-                          onChange={(c) => updatePreference("color_palette_3_secondary", c)}
+                          value={palettes.palette3.secondary}
+                          onChange={(c) => updateColorDebounced("color_palette_3_secondary", c)}
                           disabled={isLoadingPreferences}
                         />
                         <ColorPicker
                           label={t("profile.display.accent")}
-                          value={palette3Accent}
-                          onChange={(c) => updatePreference("color_palette_3_accent", c)}
+                          value={palettes.palette3.accent}
+                          onChange={(c) => updateColorDebounced("color_palette_3_accent", c)}
                           disabled={isLoadingPreferences}
                         />
                         <ColorPicker
                           label={t("profile.display.muted")}
-                          value={palette3Muted}
-                          onChange={(c) => updatePreference("color_palette_3_muted", c)}
+                          value={palettes.palette3.muted}
+                          onChange={(c) => updateColorDebounced("color_palette_3_muted", c)}
                           disabled={isLoadingPreferences}
                         />
                       </div>
@@ -970,37 +1033,37 @@ export default function ProfilePage() {
                         <div className="p-3 flex items-center gap-3 border-b">
                           <div 
                             className="w-8 h-8 rounded-md flex items-center justify-center"
-                            style={{ backgroundColor: palette3Primary }}
+                            style={{ backgroundColor: palettes.palette3.primary }}
                           >
                             <Sparkles className="h-4 w-4 text-white" />
                           </div>
                           <div>
                             <p className="text-sm font-medium">{t("profile.display.previewTitle")}</p>
-                            <p className="text-xs" style={{ color: palette3Muted }}>{t("profile.display.previewText")}</p>
+                            <p className="text-xs" style={{ color: palettes.palette3.muted }}>{t("profile.display.previewText")}</p>
                           </div>
                         </div>
                         <div className="p-3 flex flex-wrap gap-2">
                           <button
                             className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
-                            style={{ backgroundColor: palette3Primary, color: '#fff' }}
+                            style={{ backgroundColor: palettes.palette3.primary, color: '#fff' }}
                           >
                             {t("profile.display.primary")}
                           </button>
                           <button
                             className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
-                            style={{ backgroundColor: palette3Secondary, color: '#fff' }}
+                            style={{ backgroundColor: palettes.palette3.secondary, color: '#fff' }}
                           >
                             {t("profile.display.secondary")}
                           </button>
                           <button
                             className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
-                            style={{ backgroundColor: palette3Accent, color: '#fff' }}
+                            style={{ backgroundColor: palettes.palette3.accent, color: '#fff' }}
                           >
                             {t("profile.display.accent")}
                           </button>
                           <button
                             className="px-3 py-1.5 text-xs font-medium rounded-md border transition-opacity hover:opacity-80"
-                            style={{ backgroundColor: palette3Muted + '20', color: palette3Muted, borderColor: palette3Muted }}
+                            style={{ backgroundColor: palettes.palette3.muted + '20', color: palettes.palette3.muted, borderColor: palettes.palette3.muted }}
                           >
                             {t("profile.display.muted")}
                           </button>

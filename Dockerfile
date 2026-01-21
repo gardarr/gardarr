@@ -37,7 +37,10 @@ FROM alpine:3.23.2
 
 # Install ca-certificates and wget for healthcheck
 RUN apk add --no-cache ca-certificates wget && \
-    mkdir -p /data /media
+    addgroup -g 1000 appgroup && \
+    adduser -u 1000 -G appgroup -D appuser && \
+    mkdir -p /data /media && \
+    chown -R appuser:appgroup /data /media /app
 
 # Set build argument for port
 ARG APP_PORT=3200
@@ -61,9 +64,9 @@ VOLUME ["/data", "/media"]
 # Agent port (3100) should be exposed separately when running in agent mode
 EXPOSE ${APP_PORT}
 
-# User can be specified at runtime via docker-compose 'user:' directive
+# Default user is 'appuser' (UID 1000). Override via docker-compose 'user:' directive
 # Example: user: "${UID:-1000}:${GID:-1000}"
-# If not specified, container runs as root (UID 0)
+USER appuser
 
 # Healthcheck should be defined in docker-compose based on the running mode:
 # - Standalone: wget -q --spider http://localhost:3200/v1/health

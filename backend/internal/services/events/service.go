@@ -240,20 +240,10 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 					CreatedAt: timestamp,
 				}
 
-				// Check if task just completed - queue for verification to prevent duplicates on restart
-				if t.Progress >= 1.0 && !wasCompleted && !isErrorState(t.State) {
-					completionChecksChan <- completionCheck{
-						event: &entities.Event{
-							UUID:      uuid.New(),
-							AgentID:   agentID,
-							Type:      constants.EventTypeTorrentCompleted,
-							TaskHash:  t.Hash,
-							NewValue:  t.State,
-							Metadata:  s.buildBaseMetadata(t),
-							CreatedAt: timestamp,
-						},
-					}
-				}
+			// Check if task just completed - queue for verification to prevent duplicates on restart
+			if t.Progress >= 1.0 && !wasCompleted && !isErrorState(t.State) {
+				completionChecksChan <- s.buildCompletionCheck(agentID, t, timestamp)
+			}
 			} else if lastState.Progress != t.Progress {
 				// Progress changed but state didn't
 				oldProgress := lastState.Progress
@@ -270,20 +260,10 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 					timestamp: timestamp,
 				}
 
-				// Check if task just reached 100% - queue for verification to prevent duplicates on restart
-				if t.Progress >= 1.0 && !wasCompleted && !isErrorState(t.State) {
-					completionChecksChan <- completionCheck{
-						event: &entities.Event{
-							UUID:      uuid.New(),
-							AgentID:   agentID,
-							Type:      constants.EventTypeTorrentCompleted,
-							TaskHash:  t.Hash,
-							NewValue:  t.State,
-							Metadata:  s.buildBaseMetadata(t),
-							CreatedAt: timestamp,
-						},
-					}
-				}
+			// Check if task just reached 100% - queue for verification to prevent duplicates on restart
+			if t.Progress >= 1.0 && !wasCompleted && !isErrorState(t.State) {
+				completionChecksChan <- s.buildCompletionCheck(agentID, t, timestamp)
+			}
 			}
 		}(task)
 	}
@@ -388,6 +368,21 @@ func (s *Service) buildBaseMetadata(t *entities.Task) map[string]interface{} {
 		"size":      t.Size,
 		"progress":  t.Progress,
 		"ratio":     t.Ratio,
+	}
+}
+
+// buildCompletionCheck creates a completion check for a completed task
+func (s *Service) buildCompletionCheck(agentID uuid.UUID, t *entities.Task, timestamp time.Time) completionCheck {
+	return completionCheck{
+		event: &entities.Event{
+			UUID:      uuid.New(),
+			AgentID:   agentID,
+			Type:      constants.EventTypeTorrentCompleted,
+			TaskHash:  t.Hash,
+			NewValue:  t.State,
+			Metadata:  s.buildBaseMetadata(t),
+			CreatedAt: timestamp,
+		},
 	}
 }
 

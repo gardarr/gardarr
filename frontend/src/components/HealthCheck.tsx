@@ -40,7 +40,7 @@ export default function HealthCheck() {
     const interval = setInterval(checkHealth, 30000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [t]);
 
   if (loading) {
     return (

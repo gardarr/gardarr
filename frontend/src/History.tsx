@@ -52,7 +52,9 @@ export default function HistoryPage() {
     loadEvents();
   }, [loadEvents]);
 
-  // Stats calculations
+  // IMPORTANT: These stats are calculated from the current page of events only (up to 50 events),
+  // not from the total event history. They represent counts within the currently displayed page.
+  // The 'total' variable contains the aggregate count across all pages.
   const completedCount = events.filter(e => e.type === 'torrent.completed').length;
   const addedCount = events.filter(e => e.type === 'torrent.added').length;
   const stateChangeCount = events.filter(e => e.type === 'torrent.state_change').length;
@@ -96,6 +98,9 @@ export default function HistoryPage() {
             <p className="text-xs text-muted-foreground mt-1">
               {t('history.badge.completed')}
             </p>
+            <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+              (Current Page)
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -104,6 +109,9 @@ export default function HistoryPage() {
             <p className="text-xs text-muted-foreground mt-1">
               {t('history.badge.added')}
             </p>
+            <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+              (Current Page)
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -111,6 +119,9 @@ export default function HistoryPage() {
             <div className="text-2xl font-bold text-blue-500">{stateChangeCount}</div>
             <p className="text-xs text-muted-foreground mt-1">
               {t('history.badge.stateChange')}
+            </p>
+            <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+              (Current Page)
             </p>
           </CardContent>
         </Card>

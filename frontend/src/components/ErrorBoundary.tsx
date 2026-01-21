@@ -84,11 +84,6 @@ export class ErrorBoundary extends Component<Props, State> {
 }
 
 // Functional wrapper for easier use with hooks
-interface ErrorBoundaryWrapperProps {
-  children: ReactNode;
-  fallback?: ReactNode;
-}
-
 export function withErrorBoundary<P extends object>(
   WrappedComponent: React.ComponentType<P>,
   fallback?: ReactNode

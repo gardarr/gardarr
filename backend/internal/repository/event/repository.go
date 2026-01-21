@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jfxdev/gardarr/internal/constants"
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/models"
@@ -259,10 +260,14 @@ func (r *Repository) DeleteOldTaskStates(ctx context.Context, olderThan time.Tim
 
 // HasCompletedEvent checks if a torrent.completed event already exists for the given task hash
 func (r *Repository) HasCompletedEvent(ctx context.Context, agentID uuid.UUID, taskHash string) (bool, error) {
-	var count int64
-	err := r.db.DB.WithContext(ctx).
+	result := r.db.DB.WithContext(ctx).
 		Model(&models.Event{}).
-		Where("agent_id = ? AND task_hash = ? AND type = ?", agentID, taskHash, "torrent.completed").
-		Count(&count).Error
-	return count > 0, err
+		Select("1").
+		Where("agent_id = ? AND task_hash = ? AND type = ?", agentID, taskHash, constants.EventTypeTorrentCompleted).
+		Limit(1).
+		Find(&models.Event{})
+	if result.Error != nil {
+		return false, result.Error
+	}
+	return result.RowsAffected > 0, nil
 }
