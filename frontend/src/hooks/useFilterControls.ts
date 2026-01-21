@@ -5,7 +5,7 @@ import { useCallback } from "react";
  * Reduz duplicação de código para múltiplos filtros
  */
 export function useFilterControls<T>(
-  selectedItems: Set<T>,
+  _selectedItems: Set<T>,
   setSelectedItems: React.Dispatch<React.SetStateAction<Set<T>>>,
   availableItems: T[]
 ) {

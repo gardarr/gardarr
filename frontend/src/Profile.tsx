@@ -280,34 +280,6 @@ export default function ProfilePage() {
   // Debounce timer ref for color updates to reduce API calls during rapid changes
   const colorDebounceTimers = useRef<Record<string, NodeJS.Timeout>>({});
 
-  // Debounced color update handler - waits 500ms after the last change before making API call
-  const updateColorDebounced = useCallback((key: string, value: string) => {
-    // Clear existing timer for this key
-    if (colorDebounceTimers.current[key]) {
-      clearTimeout(colorDebounceTimers.current[key]);
-    }
-
-    // Update local state immediately for responsive UI
-    setPalettes(prev => {
-      const [, paletteNum, colorType] = key.match(/color_palette_(\d+)_(\w+)/) || [];
-      if (!paletteNum || !colorType) return prev;
-      
-      const paletteKey = `palette${paletteNum}` as 'palette1' | 'palette2' | 'palette3';
-      return {
-        ...prev,
-        [paletteKey]: {
-          ...prev[paletteKey],
-          [colorType]: value
-        }
-      };
-    });
-
-    // Debounce the API call
-    colorDebounceTimers.current[key] = setTimeout(() => {
-      updatePreference(key, value);
-    }, 500);
-  }, [updatePreference]);
-
   const updatePreference = useCallback(async (key: string, value: unknown) => {
     setIsLoadingPreferences(true);
     try {
@@ -408,6 +380,34 @@ export default function ProfilePage() {
       setIsLoadingPreferences(false);
     }
   }, [t]);
+
+  // Debounced color update handler - waits 500ms after the last change before making API call
+  const updateColorDebounced = useCallback((key: string, value: string) => {
+    // Clear existing timer for this key
+    if (colorDebounceTimers.current[key]) {
+      clearTimeout(colorDebounceTimers.current[key]);
+    }
+
+    // Update local state immediately for responsive UI
+    setPalettes(prev => {
+      const [, paletteNum, colorType] = key.match(/color_palette_(\d+)_(\w+)/) || [];
+      if (!paletteNum || !colorType) return prev;
+      
+      const paletteKey = `palette${paletteNum}` as 'palette1' | 'palette2' | 'palette3';
+      return {
+        ...prev,
+        [paletteKey]: {
+          ...prev[paletteKey],
+          [colorType]: value
+        }
+      };
+    });
+
+    // Debounce the API call
+    colorDebounceTimers.current[key] = setTimeout(() => {
+      updatePreference(key, value);
+    }, 500);
+  }, [updatePreference]);
 
   const handleLogoutAll = async () => {
     if (confirm(t("profile.confirmLogoutAll"))) {

@@ -40,6 +40,20 @@ import { getRatioGrade } from "@/utils/ratioUtils";
 
 type SortType = "priority" | "alphabetical" | "size" | "progress" | "download_speed" | "upload_speed" | "downloaded" | "uploaded";
 
+// Helper function to convert sort type to translation key
+const getSortTypeKey = (type: string): string => {
+  switch (type) {
+    case "priority": return "priority";
+    case "alphabetical": return "alphabetical";
+    case "size": return "size";
+    case "progress": return "progress";
+    case "download_speed": return "downloadSpeed";
+    case "upload_speed": return "uploadSpeed";
+    case "downloaded": return "downloaded";
+    case "uploaded": return "uploaded";
+    default: return "alphabetical";
+  }
+};
 
 type Torrent = {
   id: string;
