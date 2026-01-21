@@ -306,9 +306,9 @@ export default function ProfilePage() {
     colorDebounceTimers.current[key] = setTimeout(() => {
       updatePreference(key, value);
     }, 500);
-  }, []);
+  }, [updatePreference]);
 
-  const updatePreference = async (key: string, value: unknown) => {
+  const updatePreference = useCallback(async (key: string, value: unknown) => {
     setIsLoadingPreferences(true);
     try {
       const payload = { [key]: value };
@@ -407,7 +407,7 @@ export default function ProfilePage() {
     } finally {
       setIsLoadingPreferences(false);
     }
-  };
+  }, [t]);
 
   const handleLogoutAll = async () => {
     if (confirm(t("profile.confirmLogoutAll"))) {

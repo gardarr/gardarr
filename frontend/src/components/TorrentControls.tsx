@@ -4,7 +4,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Search, Clock, SlidersHorizontal, CheckSquare, Square } from "lucide-react";
 import { DropdownSelect } from "@/components/ui/DropdownSelect";
 import { useTranslation } from "react-i18next";
-import type { TorrentStatus } from "@/components/TorrentStatusIcon";
 
 interface TorrentControlsProps {
   // Search

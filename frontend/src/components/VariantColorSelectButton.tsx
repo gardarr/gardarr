@@ -90,7 +90,6 @@ export default function VariantColorSelectButton() {
     } else {
       document.documentElement.setAttribute("data-color-variant", colorVariant);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [colorVariant]);
 
   // Listen for theme changes
@@ -153,7 +152,6 @@ export default function VariantColorSelectButton() {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('preferencesUpdated', handleStorageChange);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Close color variant dropdown when clicking outside
