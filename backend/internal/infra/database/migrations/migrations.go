@@ -177,13 +177,153 @@ func Register(m *migration.Migrator) {
 			},
 		},
 		{
-			Version:     "018_create_webhook_history_table",
+			Version:     "018_migrate_display_mode_default_to_table",
+			Description: "Updates user preferences display mode from 'default' to 'table'",
+			Up: func(db *gorm.DB) error {
+				// Update all existing records with 'default' to 'table'
+				return db.Model(&models.UserPreferences{}).
+					Where("torrent_display_mode = ?", "default").
+					Update("torrent_display_mode", "table").Error
+			},
+		Down: func(db *gorm.DB) error {
+			// No-op: reverting torrent_display_mode changes is intentionally disabled.
+			// Rolling back would overwrite user-set preferences (table/card/list) with "default",
+			// which is destructive and irreversible. Users who manually changed their display
+			// mode would lose their preference.
+			return nil
+		},
+		},
+		{
+			Version:     "019_create_webhook_history_table",
 			Description: "Cria a tabela de histórico de webhooks",
 			Up: func(db *gorm.DB) error {
 				return db.AutoMigrate(&models.WebhookHistory{})
 			},
 			Down: func(db *gorm.DB) error {
 				return db.Migrator().DropTable(&models.WebhookHistory{})
+			},
+		},
+		{
+			Version:     "020_add_color_palettes_to_user_preferences",
+			Description: "Adiciona colunas de paletas de cores customizáveis nas preferências do usuário",
+			Up: func(db *gorm.DB) error {
+				// Add color palette columns if they don't exist
+				if !db.Migrator().HasColumn(&models.UserPreferences{}, "ColorPalette1Primary") {
+					if err := db.Migrator().AddColumn(&models.UserPreferences{}, "ColorPalette1Primary"); err != nil {
+						return err
+					}
+				}
+				if !db.Migrator().HasColumn(&models.UserPreferences{}, "ColorPalette1Secondary") {
+					if err := db.Migrator().AddColumn(&models.UserPreferences{}, "ColorPalette1Secondary"); err != nil {
+						return err
+					}
+				}
+				if !db.Migrator().HasColumn(&models.UserPreferences{}, "ColorPalette1Accent") {
+					if err := db.Migrator().AddColumn(&models.UserPreferences{}, "ColorPalette1Accent"); err != nil {
+						return err
+					}
+				}
+				if !db.Migrator().HasColumn(&models.UserPreferences{}, "ColorPalette2Primary") {
+					if err := db.Migrator().AddColumn(&models.UserPreferences{}, "ColorPalette2Primary"); err != nil {
+						return err
+					}
+				}
+				if !db.Migrator().HasColumn(&models.UserPreferences{}, "ColorPalette2Secondary") {
+					if err := db.Migrator().AddColumn(&models.UserPreferences{}, "ColorPalette2Secondary"); err != nil {
+						return err
+					}
+				}
+				if !db.Migrator().HasColumn(&models.UserPreferences{}, "ColorPalette2Accent") {
+					if err := db.Migrator().AddColumn(&models.UserPreferences{}, "ColorPalette2Accent"); err != nil {
+						return err
+					}
+				}
+				if !db.Migrator().HasColumn(&models.UserPreferences{}, "ColorPalette3Primary") {
+					if err := db.Migrator().AddColumn(&models.UserPreferences{}, "ColorPalette3Primary"); err != nil {
+						return err
+					}
+				}
+				if !db.Migrator().HasColumn(&models.UserPreferences{}, "ColorPalette3Secondary") {
+					if err := db.Migrator().AddColumn(&models.UserPreferences{}, "ColorPalette3Secondary"); err != nil {
+						return err
+					}
+				}
+				if !db.Migrator().HasColumn(&models.UserPreferences{}, "ColorPalette3Accent") {
+					if err := db.Migrator().AddColumn(&models.UserPreferences{}, "ColorPalette3Accent"); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			Down: func(db *gorm.DB) error {
+				// Remove color palette columns
+				columns := []string{
+					"color_palette_1_primary", "color_palette_1_secondary", "color_palette_1_accent",
+					"color_palette_2_primary", "color_palette_2_secondary", "color_palette_2_accent",
+					"color_palette_3_primary", "color_palette_3_secondary", "color_palette_3_accent",
+				}
+				for _, col := range columns {
+					if err := db.Migrator().DropColumn(&models.UserPreferences{}, col); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		},
+		{
+			Version:     "021_add_active_color_palette_to_user_preferences",
+			Description: "Adiciona coluna para selecionar a paleta de cores ativa (1, 2 ou 3)",
+			Up: func(db *gorm.DB) error {
+				// Add active_color_palette column if it doesn't exist
+				if !db.Migrator().HasColumn(&models.UserPreferences{}, "ActiveColorPalette") {
+					if err := db.Migrator().AddColumn(&models.UserPreferences{}, "ActiveColorPalette"); err != nil {
+						return err
+					}
+				}
+				// Set default value to 1 for existing records
+				return db.Model(&models.UserPreferences{}).Where("active_color_palette = ?", 0).Update("active_color_palette", 1).Error
+			},
+			Down: func(db *gorm.DB) error {
+				return db.Migrator().DropColumn(&models.UserPreferences{}, "active_color_palette")
+			},
+		},
+		{
+			Version:     "022_add_muted_color_to_palettes",
+			Description: "Adiciona a 4ª cor (muted) para cada paleta customizada",
+			Up: func(db *gorm.DB) error {
+				// Add muted color for palette 1
+				if !db.Migrator().HasColumn(&models.UserPreferences{}, "ColorPalette1Muted") {
+					if err := db.Migrator().AddColumn(&models.UserPreferences{}, "ColorPalette1Muted"); err != nil {
+						return err
+					}
+				}
+				// Add muted color for palette 2
+				if !db.Migrator().HasColumn(&models.UserPreferences{}, "ColorPalette2Muted") {
+					if err := db.Migrator().AddColumn(&models.UserPreferences{}, "ColorPalette2Muted"); err != nil {
+						return err
+					}
+				}
+				// Add muted color for palette 3
+				if !db.Migrator().HasColumn(&models.UserPreferences{}, "ColorPalette3Muted") {
+					if err := db.Migrator().AddColumn(&models.UserPreferences{}, "ColorPalette3Muted"); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			Down: func(db *gorm.DB) error {
+				// Remove muted columns
+				columns := []string{
+					"color_palette_1_muted",
+					"color_palette_2_muted",
+					"color_palette_3_muted",
+				}
+				for _, col := range columns {
+					if err := db.Migrator().DropColumn(&models.UserPreferences{}, col); err != nil {
+						return err
+					}
+				}
+				return nil
 			},
 		},
 	})

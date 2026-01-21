@@ -117,6 +117,11 @@ type stateUpdate struct {
 	timestamp time.Time
 }
 
+// completionCheck represents a pending completion event that needs database verification
+type completionCheck struct {
+	event *entities.Event
+}
+
 // TrackTasks processes current tasks and detects state changes
 func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentID uuid.UUID, timestamp time.Time) error {
 	if len(tasks) == 0 {
@@ -126,6 +131,7 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 	// Channels for collecting updates and events
 	eventsChan := make(chan *entities.Event, len(tasks)*2)
 	updatesChan := make(chan stateUpdate, len(tasks))
+	completionChecksChan := make(chan completionCheck, len(tasks))
 
 	// First pass: update in-memory state and collect changes (minimal lock time)
 	for _, task := range tasks {
@@ -234,18 +240,10 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 					CreatedAt: timestamp,
 				}
 
-				// Check if task just completed
-				if t.Progress >= 1.0 && !wasCompleted && !isErrorState(t.State) {
-					eventsChan <- &entities.Event{
-						UUID:      uuid.New(),
-						AgentID:   agentID,
-						Type:      constants.EventTypeTorrentCompleted,
-						TaskHash:  t.Hash,
-						NewValue:  t.State,
-						Metadata:  s.buildBaseMetadata(t),
-						CreatedAt: timestamp,
-					}
-				}
+			// Check if task just completed - queue for verification to prevent duplicates on restart
+			if t.Progress >= 1.0 && !wasCompleted && !isErrorState(t.State) {
+				completionChecksChan <- s.buildCompletionCheck(agentID, t, timestamp)
+			}
 			} else if lastState.Progress != t.Progress {
 				// Progress changed but state didn't
 				oldProgress := lastState.Progress
@@ -262,24 +260,17 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 					timestamp: timestamp,
 				}
 
-				// Check if task just reached 100%
-				if t.Progress >= 1.0 && !wasCompleted && !isErrorState(t.State) {
-					eventsChan <- &entities.Event{
-						UUID:      uuid.New(),
-						AgentID:   agentID,
-						Type:      constants.EventTypeTorrentCompleted,
-						TaskHash:  t.Hash,
-						NewValue:  t.State,
-						Metadata:  s.buildBaseMetadata(t),
-						CreatedAt: timestamp,
-					}
-				}
+			// Check if task just reached 100% - queue for verification to prevent duplicates on restart
+			if t.Progress >= 1.0 && !wasCompleted && !isErrorState(t.State) {
+				completionChecksChan <- s.buildCompletionCheck(agentID, t, timestamp)
+			}
 			}
 		}(task)
 	}
 
 	close(updatesChan)
 	close(eventsChan)
+	close(completionChecksChan)
 
 	// Second pass: persist all updates to database (no lock held)
 	var wg sync.WaitGroup
@@ -301,7 +292,61 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 	// Process events
 	s.processEvents(ctx, eventsChan, agentID)
 
+	// Process completion events with deduplication check
+	// This prevents false "completed" events after app restart when the persisted
+	// progress was less than 100% but the torrent was already completed
+	s.processCompletionEvents(ctx, completionChecksChan, agentID)
+
 	return nil
+}
+
+// processCompletionEvents handles completion events with deduplication
+// It checks if a completion event already exists in the database before creating a new one
+func (s *Service) processCompletionEvents(ctx context.Context, checksChan <-chan completionCheck, agentID uuid.UUID) {
+	for check := range checksChan {
+		// Verify if this torrent already has a completion event
+		hasExisting, err := s.repo.HasCompletedEvent(ctx, agentID, check.event.TaskHash)
+		if err != nil {
+			slog.Error("failed to check for existing completion event",
+				"error", err,
+				"agent_id", agentID.String(),
+				"task_hash", check.event.TaskHash,
+			)
+			continue
+		}
+
+		if hasExisting {
+			slog.Debug("skipping duplicate completion event",
+				"task_hash", check.event.TaskHash,
+				"agent_id", agentID.String(),
+			)
+			continue
+		}
+
+		// No existing completion event, create new one
+		if err := s.repo.CreateEvent(ctx, check.event); err != nil {
+			slog.Error("failed to create completion event",
+				"error", err,
+				"agent_id", agentID.String(),
+				"task_hash", check.event.TaskHash,
+			)
+			continue
+		}
+
+		slog.Info("torrent completed",
+			"task_hash", check.event.TaskHash,
+			"task_name", check.event.Metadata["name"],
+		)
+
+		// Emit to real-time channel if enabled (non-blocking)
+		if s.eventChan != nil {
+			select {
+			case s.eventChan <- check.event:
+			default:
+				// Channel full - skip emission to prevent blocking
+			}
+		}
+	}
 }
 
 func (s *Service) buildStateChangeMetadata(t *entities.Task, oldProgress float64) map[string]interface{} {
@@ -323,6 +368,21 @@ func (s *Service) buildBaseMetadata(t *entities.Task) map[string]interface{} {
 		"size":      t.Size,
 		"progress":  t.Progress,
 		"ratio":     t.Ratio,
+	}
+}
+
+// buildCompletionCheck creates a completion check for a completed task
+func (s *Service) buildCompletionCheck(agentID uuid.UUID, t *entities.Task, timestamp time.Time) completionCheck {
+	return completionCheck{
+		event: &entities.Event{
+			UUID:      uuid.New(),
+			AgentID:   agentID,
+			Type:      constants.EventTypeTorrentCompleted,
+			TaskHash:  t.Hash,
+			NewValue:  t.State,
+			Metadata:  s.buildBaseMetadata(t),
+			CreatedAt: timestamp,
+		},
 	}
 }
 

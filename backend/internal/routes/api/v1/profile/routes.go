@@ -5,9 +5,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/infra/database"
+	"github.com/jfxdev/gardarr/internal/mappers"
 	"github.com/jfxdev/gardarr/internal/middlewares"
 	"github.com/jfxdev/gardarr/internal/models"
 	"github.com/jfxdev/gardarr/internal/schemas"
@@ -43,18 +43,27 @@ func (m *Module) Register() {
 	protected.GET("/torrent-display-mode", m.getTorrentDisplayMode)
 }
 
+// Helper functions
+
+// getUserFromContext extracts the authenticated user from gin context
+func getUserFromContext(c *gin.Context) (*entities.User, error) {
+	user, exists := c.Get(middlewares.UserContextKey)
+	if !exists {
+		return nil, errors.New("authentication required")
+	}
+	return user.(*entities.User), nil
+}
+
 // changePassword allows the authenticated user to change their own password
 func (m *Module) changePassword(c *gin.Context) {
 	// Get the current user from context
-	user, exists := c.Get(middlewares.UserContextKey)
-	if !exists {
+	currentUser, err := getUserFromContext(c)
+	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Authentication required",
+			"error": err.Error(),
 		})
 		return
 	}
-
-	currentUser := user.(*entities.User)
 
 	// Parse request body
 	var req schemas.ChangePasswordRequest
@@ -67,7 +76,7 @@ func (m *Module) changePassword(c *gin.Context) {
 	}
 
 	// Verify current password
-	_, err := m.userService.VerifyPassword(c.Request.Context(), currentUser.Email, req.CurrentPassword)
+	_, err = m.userService.VerifyPassword(c.Request.Context(), currentUser.Email, req.CurrentPassword)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "Current password is incorrect",
@@ -92,27 +101,21 @@ func (m *Module) changePassword(c *gin.Context) {
 // getPreferences returns the user's preferences
 func (m *Module) getPreferences(c *gin.Context) {
 	// Get the current user from context
-	user, exists := c.Get(middlewares.UserContextKey)
-	if !exists {
+	currentUser, err := getUserFromContext(c)
+	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Authentication required",
+			"error": err.Error(),
 		})
 		return
 	}
 
-	currentUser := user.(*entities.User)
-
 	// Get or create user preferences
 	var preferences models.UserPreferences
-	err := m.db.DB.Where("user_uuid = ?", currentUser.UUID).First(&preferences).Error
+	err = m.db.DB.Where("user_uuid = ?", currentUser.UUID).First(&preferences).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Return default if preferences don't exist yet
-			c.JSON(http.StatusOK, models.PreferencesResponse{
-				TorrentDisplayMode:           "default",
-				Compact:                      false,
-				BackgroundImageBlurIntensity: 50,
-			})
+			c.JSON(http.StatusOK, mappers.GetDefaultPreferencesResponse())
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -121,34 +124,28 @@ func (m *Module) getPreferences(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.PreferencesResponse{
-		TorrentDisplayMode:           preferences.TorrentDisplayMode,
-		Compact:                      preferences.Compact,
-		BackgroundImageBlurIntensity: preferences.BackgroundImageBlurIntensity,
-	})
+	c.JSON(http.StatusOK, mappers.ToPreferencesResponse(preferences))
 }
 
 // getTorrentDisplayMode returns the user's torrent display mode preference (legacy endpoint)
 func (m *Module) getTorrentDisplayMode(c *gin.Context) {
 	// Get the current user from context
-	user, exists := c.Get(middlewares.UserContextKey)
-	if !exists {
+	currentUser, err := getUserFromContext(c)
+	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Authentication required",
+			"error": err.Error(),
 		})
 		return
 	}
 
-	currentUser := user.(*entities.User)
-
 	// Get or create user preferences
 	var preferences models.UserPreferences
-	err := m.db.DB.Where("user_uuid = ?", currentUser.UUID).First(&preferences).Error
+	err = m.db.DB.Where("user_uuid = ?", currentUser.UUID).First(&preferences).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Return default if preferences don't exist yet
 			c.JSON(http.StatusOK, models.TorrentDisplayModeResponse{
-				DisplayMode: "default",
+				DisplayMode: "card",
 			})
 			return
 		}
@@ -166,15 +163,13 @@ func (m *Module) getTorrentDisplayMode(c *gin.Context) {
 // updatePreferences updates the user's preferences
 func (m *Module) updatePreferences(c *gin.Context) {
 	// Get the current user from context
-	user, exists := c.Get(middlewares.UserContextKey)
-	if !exists {
+	currentUser, err := getUserFromContext(c)
+	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Authentication required",
+			"error": err.Error(),
 		})
 		return
 	}
-
-	currentUser := user.(*entities.User)
 
 	// Parse request body
 	var req schemas.UpdatePreferencesRequest
@@ -188,27 +183,13 @@ func (m *Module) updatePreferences(c *gin.Context) {
 
 	// Get or create user preferences
 	var preferences models.UserPreferences
-	err := m.db.DB.Where("user_uuid = ?", currentUser.UUID).First(&preferences).Error
+	err = m.db.DB.Where("user_uuid = ?", currentUser.UUID).First(&preferences).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Create new preferences with defaults
-			preferences = models.UserPreferences{
-				UUID:                         uuid.New(),
-				UserUUID:                     currentUser.UUID,
-				TorrentDisplayMode:           "default",
-				Compact:                      false,
-				BackgroundImageBlurIntensity: 50,
-			}
+			preferences = mappers.GetDefaultPreferences(currentUser.UUID)
 			// Apply updates from request
-			if req.TorrentDisplayMode != nil {
-				preferences.TorrentDisplayMode = *req.TorrentDisplayMode
-			}
-			if req.Compact != nil {
-				preferences.Compact = *req.Compact
-			}
-			if req.BackgroundImageBlurIntensity != nil {
-				preferences.BackgroundImageBlurIntensity = *req.BackgroundImageBlurIntensity
-			}
+			mappers.ApplyPreferenceUpdates(&preferences, req)
 			if err := m.db.DB.Create(&preferences).Error; err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "Failed to create preferences",
@@ -223,15 +204,7 @@ func (m *Module) updatePreferences(c *gin.Context) {
 		}
 	} else {
 		// Update existing preferences
-		if req.TorrentDisplayMode != nil {
-			preferences.TorrentDisplayMode = *req.TorrentDisplayMode
-		}
-		if req.Compact != nil {
-			preferences.Compact = *req.Compact
-		}
-		if req.BackgroundImageBlurIntensity != nil {
-			preferences.BackgroundImageBlurIntensity = *req.BackgroundImageBlurIntensity
-		}
+		mappers.ApplyPreferenceUpdates(&preferences, req)
 		if err := m.db.DB.Save(&preferences).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Failed to update preferences",
@@ -240,9 +213,5 @@ func (m *Module) updatePreferences(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, models.PreferencesResponse{
-		TorrentDisplayMode:           preferences.TorrentDisplayMode,
-		Compact:                      preferences.Compact,
-		BackgroundImageBlurIntensity: preferences.BackgroundImageBlurIntensity,
-	})
+	c.JSON(http.StatusOK, mappers.ToPreferencesResponse(preferences))
 }

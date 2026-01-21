@@ -2,11 +2,13 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import AppLayout from './AppLayout'
 import TorrentsPage from './Torrents'
 import AgentsPage from './Agents'
 import CategoriesPage from './Categories'
 import DashboardPage from './Dashboard'
+import HistoryPage from './History'
 import IntegrationsPage from './Integrations'
 import IntegrationWebhookPage from './IntegrationWebhook'
 import SettingsPage from './Settings'
@@ -23,10 +25,11 @@ import { Toaster } from './components/ui/sonner'
 
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <Toaster richColors />
-        <Routes>
+    <ErrorBoundary>
+      <Router>
+        <AuthProvider>
+          <Toaster richColors />
+          <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/setup" element={<InitialSetupPage />} />
           <Route path="/signup/:token" element={<SignupPage />} />
@@ -49,6 +52,7 @@ function App() {
             <Route path="torrents" element={<TorrentsPage />} />
             <Route path="agents" element={<AgentsPage />} />
             <Route path="categories" element={<CategoriesPage />} />
+            <Route path="history" element={<HistoryPage />} />
             <Route path="integrations" element={<IntegrationsPage />} />
             <Route path="integrations/webhooks" element={<IntegrationWebhookPage />} />
             <Route path="users" element={<UsersPage />} />
@@ -59,8 +63,9 @@ function App() {
           {/* Catch-all route for 404 - redirect to home */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </AuthProvider>
-    </Router>
+        </AuthProvider>
+      </Router>
+    </ErrorBoundary>
   )
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/auth-hooks";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -6,9 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Monitor, Globe, Moon, Sun, LogOut, Lock, Eye, EyeOff, Settings, Palette, Minimize2 } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { User, Monitor, Globe, Moon, Sun, LogOut, Lock, Eye, EyeOff, Settings, Palette, Minimize2, Check, Sparkles } from "lucide-react";
 import { api } from "@/lib/api";
 import { preferencesService } from "@/services/preferences";
+import { toast } from "sonner";
+import { ColorPicker } from "@/components/ColorPicker";
 
 interface Session {
   id: string;
@@ -114,10 +117,32 @@ export default function ProfilePage() {
   const [passwordSuccess, setPasswordSuccess] = useState("");
 
   // Preferences state
-  const [displayMode, setDisplayMode] = useState<"default" | "card">("default");
+  const [displayMode, setDisplayMode] = useState<"table" | "card" | "list">("card");
   const [compact, setCompact] = useState(false);
   const [blurIntensity, setBlurIntensity] = useState(50);
   const [isLoadingPreferences, setIsLoadingPreferences] = useState(false);
+
+  // Color Palettes state - consolidated into structured objects for cleaner state management
+  const [palettes, setPalettes] = useState({
+    palette1: {
+      primary: "#3b82f6",
+      secondary: "#8b5cf6",
+      accent: "#10b981",
+      muted: "#6b7280"
+    },
+    palette2: {
+      primary: "#ef4444",
+      secondary: "#f59e0b",
+      accent: "#ec4899",
+      muted: "#78716c"
+    },
+    palette3: {
+      primary: "#06b6d4",
+      secondary: "#14b8a6",
+      accent: "#a855f7",
+      muted: "#64748b"
+    }
+  });
 
   useEffect(() => {
     loadSessions();
@@ -160,21 +185,91 @@ export default function ProfilePage() {
       setDisplayMode(cached.torrent_display_mode);
       setCompact(cached.compact);
       setBlurIntensity(cached.background_image_blur_intensity);
+      setPalettes({
+        palette1: {
+          primary: cached.color_palette_1_primary,
+          secondary: cached.color_palette_1_secondary,
+          accent: cached.color_palette_1_accent,
+          muted: cached.color_palette_1_muted
+        },
+        palette2: {
+          primary: cached.color_palette_2_primary,
+          secondary: cached.color_palette_2_secondary,
+          accent: cached.color_palette_2_accent,
+          muted: cached.color_palette_2_muted
+        },
+        palette3: {
+          primary: cached.color_palette_3_primary,
+          secondary: cached.color_palette_3_secondary,
+          accent: cached.color_palette_3_accent,
+          muted: cached.color_palette_3_muted
+        }
+      });
     }
 
     // Then fetch from API to ensure data is up to date
     try {
-      const response = await api.get<{ torrent_display_mode: string; compact: boolean; background_image_blur_intensity: number }>("/profile/preferences");
+      const response = await api.get<{
+        torrent_display_mode: string;
+        compact: boolean;
+        background_image_blur_intensity: number;
+        active_color_palette: number;
+        color_palette_1_primary: string;
+        color_palette_1_secondary: string;
+        color_palette_1_accent: string;
+        color_palette_1_muted: string;
+        color_palette_2_primary: string;
+        color_palette_2_secondary: string;
+        color_palette_2_accent: string;
+        color_palette_2_muted: string;
+        color_palette_3_primary: string;
+        color_palette_3_secondary: string;
+        color_palette_3_accent: string;
+        color_palette_3_muted: string;
+      }>("/profile/preferences");
       if (response.data) {
-        const displayMode = response.data.torrent_display_mode as "default" | "card";
+        const displayMode = response.data.torrent_display_mode as "table" | "card" | "list";
         setDisplayMode(displayMode);
         setCompact(response.data.compact);
         setBlurIntensity(response.data.background_image_blur_intensity);
+        setPalettes({
+          palette1: {
+            primary: response.data.color_palette_1_primary,
+            secondary: response.data.color_palette_1_secondary,
+            accent: response.data.color_palette_1_accent,
+            muted: response.data.color_palette_1_muted
+          },
+          palette2: {
+            primary: response.data.color_palette_2_primary,
+            secondary: response.data.color_palette_2_secondary,
+            accent: response.data.color_palette_2_accent,
+            muted: response.data.color_palette_2_muted
+          },
+          palette3: {
+            primary: response.data.color_palette_3_primary,
+            secondary: response.data.color_palette_3_secondary,
+            accent: response.data.color_palette_3_accent,
+            muted: response.data.color_palette_3_muted
+          }
+        });
         // Save to localStorage
         preferencesService.save({
           torrent_display_mode: displayMode,
           compact: response.data.compact,
-          background_image_blur_intensity: response.data.background_image_blur_intensity
+          background_image_blur_intensity: response.data.background_image_blur_intensity,
+          active_color_palette: response.data.active_color_palette,
+          color_palette_1_primary: response.data.color_palette_1_primary,
+          color_palette_1_secondary: response.data.color_palette_1_secondary,
+          color_palette_1_accent: response.data.color_palette_1_accent,
+          color_palette_1_muted: response.data.color_palette_1_muted,
+          color_palette_2_primary: response.data.color_palette_2_primary,
+          color_palette_2_secondary: response.data.color_palette_2_secondary,
+          color_palette_2_accent: response.data.color_palette_2_accent,
+          color_palette_2_muted: response.data.color_palette_2_muted,
+          color_palette_3_primary: response.data.color_palette_3_primary,
+          color_palette_3_secondary: response.data.color_palette_3_secondary,
+          color_palette_3_accent: response.data.color_palette_3_accent,
+          color_palette_3_muted: response.data.color_palette_3_muted,
         });
       }
     } catch (error) {
@@ -182,30 +277,137 @@ export default function ProfilePage() {
     }
   };
 
-  const updatePreference = async (key: string, value: unknown) => {
+  // Debounce timer ref for color updates to reduce API calls during rapid changes
+  const colorDebounceTimers = useRef<Record<string, NodeJS.Timeout>>({});
+
+  const updatePreference = useCallback(async (key: string, value: unknown) => {
     setIsLoadingPreferences(true);
     try {
       const payload = { [key]: value };
-      const response = await api.put<{ torrent_display_mode: string; compact: boolean; background_image_blur_intensity: number }>("/profile/preferences", payload);
-
+      const response = await api.put<{
+        torrent_display_mode: string;
+        compact: boolean;
+        background_image_blur_intensity: number;
+        active_color_palette: number;
+        color_palette_1_primary: string;
+        color_palette_1_secondary: string;
+        color_palette_1_accent: string;
+        color_palette_1_muted: string;
+        color_palette_2_primary: string;
+        color_palette_2_secondary: string;
+        color_palette_2_accent: string;
+        color_palette_2_muted: string;
+        color_palette_3_primary: string;
+        color_palette_3_secondary: string;
+        color_palette_3_accent: string;
+        color_palette_3_muted: string;
+      }>("/profile/preferences", payload);
+      
       if (response.data) {
-        const displayMode = response.data.torrent_display_mode as "default" | "card";
+        const displayMode = response.data.torrent_display_mode as "table" | "card" | "list";
         setDisplayMode(displayMode);
         setCompact(response.data.compact);
         setBlurIntensity(response.data.background_image_blur_intensity);
+        setPalettes({
+          palette1: {
+            primary: response.data.color_palette_1_primary,
+            secondary: response.data.color_palette_1_secondary,
+            accent: response.data.color_palette_1_accent,
+            muted: response.data.color_palette_1_muted
+          },
+          palette2: {
+            primary: response.data.color_palette_2_primary,
+            secondary: response.data.color_palette_2_secondary,
+            accent: response.data.color_palette_2_accent,
+            muted: response.data.color_palette_2_muted
+          },
+          palette3: {
+            primary: response.data.color_palette_3_primary,
+            secondary: response.data.color_palette_3_secondary,
+            accent: response.data.color_palette_3_accent,
+            muted: response.data.color_palette_3_muted
+          }
+        });
 
         preferencesService.save({
           torrent_display_mode: displayMode,
           compact: response.data.compact,
-          background_image_blur_intensity: response.data.background_image_blur_intensity
+          background_image_blur_intensity: response.data.background_image_blur_intensity,
+          active_color_palette: response.data.active_color_palette,
+          color_palette_1_primary: response.data.color_palette_1_primary,
+          color_palette_1_secondary: response.data.color_palette_1_secondary,
+          color_palette_1_accent: response.data.color_palette_1_accent,
+          color_palette_1_muted: response.data.color_palette_1_muted,
+          color_palette_2_primary: response.data.color_palette_2_primary,
+          color_palette_2_secondary: response.data.color_palette_2_secondary,
+          color_palette_2_accent: response.data.color_palette_2_accent,
+          color_palette_2_muted: response.data.color_palette_2_muted,
+          color_palette_3_primary: response.data.color_palette_3_primary,
+          color_palette_3_secondary: response.data.color_palette_3_secondary,
+          color_palette_3_accent: response.data.color_palette_3_accent,
+          color_palette_3_muted: response.data.color_palette_3_muted,
+        });
+        
+        // Dispatch custom event to notify other components
+        window.dispatchEvent(new Event('preferencesUpdated'));
+
+        // Show success feedback based on preference changed
+        let message = t("profile.display.preferencesSaved");
+        if (key === "torrent_display_mode") {
+          const modeKeys: Record<string, string> = {
+            table: "profile.display.modes.table",
+            card: "profile.display.modes.card",
+            list: "profile.display.modes.list"
+          };
+          const modeKey = modeKeys[value as string];
+          const modeName = modeKey ? t(modeKey) : (value as string);
+          message = t("profile.display.displayModeChanged", { mode: modeName });
+        } else if (key === "compact") {
+          message = value ? t("profile.display.compactModeEnabled") : t("profile.display.compactModeDisabled");
+        } else if (key === "background_image_blur_intensity") {
+          message = t("profile.display.blurIntensityUpdated", { value: value as number });
+        }
+
+        toast.success(message, {
+          icon: <Check className="h-4 w-4" />,
+          duration: 2000,
         });
       }
     } catch (error) {
       console.error(`Failed to update ${key}:`, error);
+      toast.error(t("profile.display.preferencesError"));
     } finally {
       setIsLoadingPreferences(false);
     }
-  };
+  }, [t]);
+
+  // Debounced color update handler - waits 500ms after the last change before making API call
+  const updateColorDebounced = useCallback((key: string, value: string) => {
+    // Clear existing timer for this key
+    if (colorDebounceTimers.current[key]) {
+      clearTimeout(colorDebounceTimers.current[key]);
+    }
+
+    // Update local state immediately for responsive UI
+    setPalettes(prev => {
+      const [, paletteNum, colorType] = key.match(/color_palette_(\d+)_(\w+)/) || [];
+      if (!paletteNum || !colorType) return prev;
+      
+      const paletteKey = `palette${paletteNum}` as 'palette1' | 'palette2' | 'palette3';
+      return {
+        ...prev,
+        [paletteKey]: {
+          ...prev[paletteKey],
+          [colorType]: value
+        }
+      };
+    });
+
+    // Debounce the API call
+    colorDebounceTimers.current[key] = setTimeout(() => {
+      updatePreference(key, value);
+    }, 500);
+  }, [updatePreference]);
 
   const handleLogoutAll = async () => {
     if (confirm(t("profile.confirmLogoutAll"))) {
@@ -442,25 +644,25 @@ export default function ProfilePage() {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Default Mode */}
+                <div className="grid grid-cols-3 gap-3">
+                  {/* Table Mode */}
                   <button
-                    onClick={() => updatePreference("torrent_display_mode", "default")}
+                    onClick={() => updatePreference("torrent_display_mode", "table")}
                     disabled={isLoadingPreferences}
-                    className={`relative p-4 rounded-lg border-2 transition-all hover:border-primary/50 ${displayMode === "default"
+                    className={`relative p-4 rounded-lg border-2 transition-all hover:border-primary/50 ${displayMode === "table"
                       ? "border-primary bg-primary/5"
                       : "border-border"
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
                     <div className="space-y-2">
-                      <div className="font-medium text-sm">Default</div>
+                      <div className="font-medium text-sm">Table</div>
                       <div className="space-y-1.5">
                         <div className="h-2 bg-primary/20 rounded w-full"></div>
                         <div className="h-2 bg-primary/20 rounded w-full"></div>
                         <div className="h-2 bg-primary/20 rounded w-full"></div>
                       </div>
                     </div>
-                    {displayMode === "default" && (
+                    {displayMode === "table" && (
                       <div className="absolute top-2 right-2 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
                         <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -486,6 +688,41 @@ export default function ProfilePage() {
                       </div>
                     </div>
                     {displayMode === "card" && (
+                      <div className="absolute top-2 right-2 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
+                        <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+
+                  {/* List Mode */}
+                  <button
+                    onClick={() => updatePreference("torrent_display_mode", "list")}
+                    disabled={isLoadingPreferences}
+                    className={`relative p-4 rounded-lg border-2 transition-all hover:border-primary/50 ${displayMode === "list"
+                      ? "border-primary bg-primary/5"
+                      : "border-border"
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    <div className="space-y-2">
+                      <div className="font-medium text-sm">List</div>
+                      <div className="space-y-1.5">
+                        <div className="flex gap-1">
+                          <div className="h-2 w-2 bg-primary/20 rounded"></div>
+                          <div className="h-2 flex-1 bg-primary/20 rounded"></div>
+                        </div>
+                        <div className="flex gap-1">
+                          <div className="h-2 w-2 bg-primary/20 rounded"></div>
+                          <div className="h-2 flex-1 bg-primary/20 rounded"></div>
+                        </div>
+                        <div className="flex gap-1">
+                          <div className="h-2 w-2 bg-primary/20 rounded"></div>
+                          <div className="h-2 flex-1 bg-primary/20 rounded"></div>
+                        </div>
+                      </div>
+                    </div>
+                    {displayMode === "list" && (
                       <div className="absolute top-2 right-2 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
                         <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -564,6 +801,277 @@ export default function ProfilePage() {
                     {blurIntensity}
                   </span>
                 </div>
+              </div>
+
+              <Separator />
+
+              {/* Color Palettes */}
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Palette className="h-4 w-4 text-muted-foreground" />
+                    <label className="text-sm font-medium">
+                      {t("profile.display.colorPalettes")}
+                    </label>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {t("profile.display.colorPalettesDesc")}
+                  </p>
+                </div>
+
+                <Accordion type="single" collapsible className="w-full">
+                  {/* Palette 1 */}
+                  <AccordionItem value="palette-1" className="border rounded-lg px-4">
+                    <AccordionTrigger className="hover:no-underline py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex gap-1">
+                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palettes.palette1.primary }} />
+                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palettes.palette1.secondary }} />
+                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palettes.palette1.accent }} />
+                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palettes.palette1.muted }} />
+                        </div>
+                        <span className="text-sm font-medium">{t("profile.display.palette1")}</span>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-4 space-y-4">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
+                        <ColorPicker
+                          label={t("profile.display.primary")}
+                          value={palettes.palette1.primary}
+                          onChange={(c) => updateColorDebounced("color_palette_1_primary", c)}
+                          disabled={isLoadingPreferences}
+                        />
+                        <ColorPicker
+                          label={t("profile.display.secondary")}
+                          value={palettes.palette1.secondary}
+                          onChange={(c) => updateColorDebounced("color_palette_1_secondary", c)}
+                          disabled={isLoadingPreferences}
+                        />
+                        <ColorPicker
+                          label={t("profile.display.accent")}
+                          value={palettes.palette1.accent}
+                          onChange={(c) => updateColorDebounced("color_palette_1_accent", c)}
+                          disabled={isLoadingPreferences}
+                        />
+                        <ColorPicker
+                          label={t("profile.display.muted")}
+                          value={palettes.palette1.muted}
+                          onChange={(c) => updateColorDebounced("color_palette_1_muted", c)}
+                          disabled={isLoadingPreferences}
+                        />
+                      </div>
+                      {/* Preview Card */}
+                      <div className="rounded-lg border bg-card">
+                        <div className="p-3 flex items-center gap-3 border-b">
+                          <div 
+                            className="w-8 h-8 rounded-md flex items-center justify-center"
+                            style={{ backgroundColor: palettes.palette1.primary }}
+                          >
+                            <Sparkles className="h-4 w-4 text-white" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">{t("profile.display.previewTitle")}</p>
+                            <p className="text-xs" style={{ color: palettes.palette1.muted }}>{t("profile.display.previewText")}</p>
+                          </div>
+                        </div>
+                        <div className="p-3 flex flex-wrap gap-2">
+                          <button
+                            className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
+                            style={{ backgroundColor: palettes.palette1.primary, color: '#fff' }}
+                          >
+                            {t("profile.display.primary")}
+                          </button>
+                          <button
+                            className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
+                            style={{ backgroundColor: palettes.palette1.secondary, color: '#fff' }}
+                          >
+                            {t("profile.display.secondary")}
+                          </button>
+                          <button
+                            className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
+                            style={{ backgroundColor: palettes.palette1.accent, color: '#fff' }}
+                          >
+                            {t("profile.display.accent")}
+                          </button>
+                          <button
+                            className="px-3 py-1.5 text-xs font-medium rounded-md border transition-opacity hover:opacity-80"
+                            style={{ backgroundColor: palettes.palette1.muted + '20', color: palettes.palette1.muted, borderColor: palettes.palette1.muted }}
+                          >
+                            {t("profile.display.muted")}
+                          </button>
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  {/* Palette 2 */}
+                  <AccordionItem value="palette-2" className="border rounded-lg px-4 mt-2">
+                    <AccordionTrigger className="hover:no-underline py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex gap-1">
+                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palettes.palette2.primary }} />
+                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palettes.palette2.secondary }} />
+                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palettes.palette2.accent }} />
+                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palettes.palette2.muted }} />
+                        </div>
+                        <span className="text-sm font-medium">{t("profile.display.palette2")}</span>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-4 space-y-4">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
+                        <ColorPicker
+                          label={t("profile.display.primary")}
+                          value={palettes.palette2.primary}
+                          onChange={(c) => updateColorDebounced("color_palette_2_primary", c)}
+                          disabled={isLoadingPreferences}
+                        />
+                        <ColorPicker
+                          label={t("profile.display.secondary")}
+                          value={palettes.palette2.secondary}
+                          onChange={(c) => updateColorDebounced("color_palette_2_secondary", c)}
+                          disabled={isLoadingPreferences}
+                        />
+                        <ColorPicker
+                          label={t("profile.display.accent")}
+                          value={palettes.palette2.accent}
+                          onChange={(c) => updateColorDebounced("color_palette_2_accent", c)}
+                          disabled={isLoadingPreferences}
+                        />
+                        <ColorPicker
+                          label={t("profile.display.muted")}
+                          value={palettes.palette2.muted}
+                          onChange={(c) => updateColorDebounced("color_palette_2_muted", c)}
+                          disabled={isLoadingPreferences}
+                        />
+                      </div>
+                      {/* Preview Card */}
+                      <div className="rounded-lg border bg-card">
+                        <div className="p-3 flex items-center gap-3 border-b">
+                          <div 
+                            className="w-8 h-8 rounded-md flex items-center justify-center"
+                            style={{ backgroundColor: palettes.palette2.primary }}
+                          >
+                            <Sparkles className="h-4 w-4 text-white" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">{t("profile.display.previewTitle")}</p>
+                            <p className="text-xs" style={{ color: palettes.palette2.muted }}>{t("profile.display.previewText")}</p>
+                          </div>
+                        </div>
+                        <div className="p-3 flex flex-wrap gap-2">
+                          <button
+                            className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
+                            style={{ backgroundColor: palettes.palette2.primary, color: '#fff' }}
+                          >
+                            {t("profile.display.primary")}
+                          </button>
+                          <button
+                            className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
+                            style={{ backgroundColor: palettes.palette2.secondary, color: '#fff' }}
+                          >
+                            {t("profile.display.secondary")}
+                          </button>
+                          <button
+                            className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
+                            style={{ backgroundColor: palettes.palette2.accent, color: '#fff' }}
+                          >
+                            {t("profile.display.accent")}
+                          </button>
+                          <button
+                            className="px-3 py-1.5 text-xs font-medium rounded-md border transition-opacity hover:opacity-80"
+                            style={{ backgroundColor: palettes.palette2.muted + '20', color: palettes.palette2.muted, borderColor: palettes.palette2.muted }}
+                          >
+                            {t("profile.display.muted")}
+                          </button>
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  {/* Palette 3 */}
+                  <AccordionItem value="palette-3" className="border rounded-lg px-4 mt-2">
+                    <AccordionTrigger className="hover:no-underline py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex gap-1">
+                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palettes.palette3.primary }} />
+                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palettes.palette3.secondary }} />
+                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palettes.palette3.accent }} />
+                          <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: palettes.palette3.muted }} />
+                        </div>
+                        <span className="text-sm font-medium">{t("profile.display.palette3")}</span>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-4 space-y-4">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
+                        <ColorPicker
+                          label={t("profile.display.primary")}
+                          value={palettes.palette3.primary}
+                          onChange={(c) => updateColorDebounced("color_palette_3_primary", c)}
+                          disabled={isLoadingPreferences}
+                        />
+                        <ColorPicker
+                          label={t("profile.display.secondary")}
+                          value={palettes.palette3.secondary}
+                          onChange={(c) => updateColorDebounced("color_palette_3_secondary", c)}
+                          disabled={isLoadingPreferences}
+                        />
+                        <ColorPicker
+                          label={t("profile.display.accent")}
+                          value={palettes.palette3.accent}
+                          onChange={(c) => updateColorDebounced("color_palette_3_accent", c)}
+                          disabled={isLoadingPreferences}
+                        />
+                        <ColorPicker
+                          label={t("profile.display.muted")}
+                          value={palettes.palette3.muted}
+                          onChange={(c) => updateColorDebounced("color_palette_3_muted", c)}
+                          disabled={isLoadingPreferences}
+                        />
+                      </div>
+                      {/* Preview Card */}
+                      <div className="rounded-lg border bg-card">
+                        <div className="p-3 flex items-center gap-3 border-b">
+                          <div 
+                            className="w-8 h-8 rounded-md flex items-center justify-center"
+                            style={{ backgroundColor: palettes.palette3.primary }}
+                          >
+                            <Sparkles className="h-4 w-4 text-white" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">{t("profile.display.previewTitle")}</p>
+                            <p className="text-xs" style={{ color: palettes.palette3.muted }}>{t("profile.display.previewText")}</p>
+                          </div>
+                        </div>
+                        <div className="p-3 flex flex-wrap gap-2">
+                          <button
+                            className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
+                            style={{ backgroundColor: palettes.palette3.primary, color: '#fff' }}
+                          >
+                            {t("profile.display.primary")}
+                          </button>
+                          <button
+                            className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
+                            style={{ backgroundColor: palettes.palette3.secondary, color: '#fff' }}
+                          >
+                            {t("profile.display.secondary")}
+                          </button>
+                          <button
+                            className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
+                            style={{ backgroundColor: palettes.palette3.accent, color: '#fff' }}
+                          >
+                            {t("profile.display.accent")}
+                          </button>
+                          <button
+                            className="px-3 py-1.5 text-xs font-medium rounded-md border transition-opacity hover:opacity-80"
+                            style={{ backgroundColor: palettes.palette3.muted + '20', color: palettes.palette3.muted, borderColor: palettes.palette3.muted }}
+                          >
+                            {t("profile.display.muted")}
+                          </button>
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
               </div>
             </CardContent>
           </Card>

@@ -24,7 +24,7 @@ services:
     networks:
       - gardarr-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3200/v1/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3200/v1/health"]
       interval: 15s
       timeout: 5s
       retries: 3

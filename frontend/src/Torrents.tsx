@@ -3,9 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { LoadingBar } from "@/components/ui/LoadingBar";
-import { Search, Loader2, ChevronDown, SortAsc, SortDesc, Plus, SlidersHorizontal, Download, Clock, Server, Activity, Folder, Tag, FileUp, AlertTriangle, Star, CheckSquare, Square, X } from "lucide-react";
+import { ChevronDown, SortAsc, SortDesc, Plus, Download, Server, Activity, Folder, Tag, FileUp, AlertTriangle, Star, X, Search, CheckSquare } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -19,8 +18,8 @@ import AgentFilter from "@/components/ui/AgentFilter";
 import StatusFilter from "@/components/ui/StatusFilter";
 import { ListFilter } from "@/components/ui/ListFilter";
 import { FilterSidebar } from "@/components/ui/FilterSidebar";
-import { DropdownSelect } from "@/components/ui/DropdownSelect";
 import { useAutoSelectFilters } from "@/hooks/useAutoSelectFilters";
+import { useFilterControls } from "@/hooks/useFilterControls";
 import { TorrentDetailsModal } from "@/components/TorrentDetailsModal";
 import { TorrentDeleteModal } from "@/components/TorrentDeleteModal";
 import { AddTorrentModal } from "@/components/AddTorrentModal";
@@ -28,7 +27,11 @@ import { TorrentMetricsModal } from "@/components/TorrentMetricsModal";
 import { TorrentLimitModal } from "@/components/TorrentLimitModal";
 import TorrentListMobile from "@/components/TorrentListMobile";
 import TorrentsTable from "@/components/TorrentsTable";
+import TorrentListCompact from "@/components/TorrentListCompact";
 import { RatioBadge } from "@/components/RatioBadge";
+import { TorrentControls } from "@/components/TorrentControls";
+import { TorrentSortingHeader } from "@/components/TorrentSortingHeader";
+import { LazyLoadingSentinel } from "@/components/LazyLoadingSentinel";
 import { toast } from "sonner";
 import { getStatusIcon, getStatusColor, type TorrentStatus } from "@/components/TorrentStatusIcon";
 import { normalizeTaskStatus } from "@/utils/statusUtils";
@@ -37,6 +40,20 @@ import { getRatioGrade } from "@/utils/ratioUtils";
 
 type SortType = "priority" | "alphabetical" | "size" | "progress" | "download_speed" | "upload_speed" | "downloaded" | "uploaded";
 
+// Helper function to convert sort type to translation key
+const getSortTypeKey = (type: string): string => {
+  switch (type) {
+    case "priority": return "priority";
+    case "alphabetical": return "alphabetical";
+    case "size": return "size";
+    case "progress": return "progress";
+    case "download_speed": return "downloadSpeed";
+    case "upload_speed": return "uploadSpeed";
+    case "downloaded": return "downloaded";
+    case "uploaded": return "uploaded";
+    default: return "alphabetical";
+  }
+};
 
 type Torrent = {
   id: string;
@@ -98,21 +115,6 @@ function mapTaskToTorrent(task: Task): Torrent {
   };
 }
 
-// Função para obter chave de tradução do tipo de ordenação
-function getSortTypeKey(sortType: SortType): string {
-  switch (sortType) {
-    case "priority": return "priority";
-    case "alphabetical": return "alphabetical";
-    case "size": return "size";
-    case "progress": return "progress";
-    case "download_speed": return "downloadSpeed";
-    case "upload_speed": return "uploadSpeed";
-    case "downloaded": return "downloaded";
-    case "uploaded": return "uploaded";
-    default: return "alphabetical";
-  }
-}
-
 // Desktop table moved to components/TorrentsTable
 
 export default function TorrentsPage() {
@@ -132,6 +134,7 @@ export default function TorrentsPage() {
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [selectedGrades, setSelectedGrades] = useState<Set<string>>(new Set());
   const [refreshIntervalSec, setRefreshIntervalSec] = useState<number>(5);
+  const [isRefreshPaused, setIsRefreshPaused] = useState(false);
   const [selectedTorrent, setSelectedTorrent] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [originalTasks, setOriginalTasks] = useState<Task[]>([]);
@@ -150,7 +153,7 @@ export default function TorrentsPage() {
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false);
   const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
   const [compact, setCompact] = useState(false);
-  const [displayMode, setDisplayMode] = useState<"default" | "card">("default");
+  const [displayMode, setDisplayMode] = useState<"table" | "card" | "list">("card");
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [lastNonEmptyTorrents, setLastNonEmptyTorrents] = useState<Torrent[]>([]);
@@ -253,6 +256,13 @@ export default function TorrentsPage() {
   useAutoSelectFilters(availableCategories, selectedCategories, setSelectedCategories);
   useAutoSelectFilters(availableTags, selectedTags, setSelectedTags);
   useAutoSelectFilters(availableGrades, selectedGrades, setSelectedGrades);
+
+  // Filter controls using custom hook
+  const agentControls = useFilterControls(selectedAgentIds, setSelectedAgentIds, agents.map(a => a.uuid));
+  const statusControls = useFilterControls(selectedStatuses, setSelectedStatuses, availableStatuses);
+  const categoryControls = useFilterControls(selectedCategories, setSelectedCategories, availableCategories);
+  const tagControls = useFilterControls(selectedTags, setSelectedTags, availableTags);
+  const gradeControls = useFilterControls(selectedGrades, setSelectedGrades, availableGrades);
 
   // Carregar torrents da API
   const loadTorrents = useCallback(async () => {
@@ -744,19 +754,20 @@ export default function TorrentsPage() {
 
   // Intervalo de atualização automática com debounce e otimização de visibilidade
   useEffect(() => {
-    if (refreshIntervalSec <= 0) return;
+    // Skip if paused or interval is 0
+    if (isRefreshPaused || refreshIntervalSec <= 0) return;
 
-    // Não iniciar atualização automática até que os agentes tenham sido carregados
+    // Don't start auto-refresh until agents have been loaded
     if (agentsLoading) return;
 
-    // Pausar atualização se não há agentes funcionais
+    // Pause refresh if there are no functional agents
     const hasFunctionalAgents = agents.some(agent => agent.status !== 'ERRORED');
     if (!hasFunctionalAgents) return;
 
     let timeoutId: NodeJS.Timeout;
-    let isPageVisible = true;
+    let isPageVisible = !document.hidden;
 
-    // Pausar auto refresh quando a página não está visível
+    // Pause auto refresh when page is not visible
     const handleVisibilityChange = () => {
       isPageVisible = !document.hidden;
     };
@@ -764,14 +775,14 @@ export default function TorrentsPage() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     const id = setInterval(() => {
-      // Só atualiza se a página estiver visível
+      // Only update if page is visible and not paused
       if (!isPageVisible) return;
 
-      // Debounce para evitar atualizações excessivas
+      // Debounce to prevent excessive updates
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         refreshTorrentsSilently();
-      }, 100); // 100ms de debounce
+      }, 100); // 100ms debounce
     }, refreshIntervalSec * 1000);
 
     return () => {
@@ -779,7 +790,7 @@ export default function TorrentsPage() {
       clearTimeout(timeoutId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [refreshIntervalSec, refreshTorrentsSilently, agentsLoading, agents]);
+  }, [refreshIntervalSec, refreshTorrentsSilently, agentsLoading, agents, isRefreshPaused]);
 
   // Handle clicking outside the add dropdown
   useEffect(() => {
@@ -826,9 +837,9 @@ export default function TorrentsPage() {
   });
 
   // Calcular dados de paginação ou lazy loading baseado no displayMode
-  const useCardLazyLoading = displayMode === "card";
+  const useCardLazyLoading = displayMode === "card" || displayMode === "list";
 
-  // Para card view (desktop) e mobile: usar lazy loading
+  // Para card/list view (desktop) e mobile: usar lazy loading
   // Para table view (desktop): usar paginação tradicional
   const displayedTorrents = (useCardLazyLoading || isMobile)
     ? filteredTorrents.slice(0, displayedItemsCount)
@@ -886,96 +897,6 @@ export default function TorrentsPage() {
   // Função para lidar com mudança de itens por página
   const handleItemsPerPageChange = (newItemsPerPage: number) => {
     setItemsPerPage(newItemsPerPage);
-  };
-
-  // Alternar seleção de agente
-  const toggleAgent = (agentId: string) => {
-    setSelectedAgentIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(agentId)) next.delete(agentId); else next.add(agentId);
-      return next;
-    });
-  };
-
-  // Selecionar ou limpar todos agentes
-  const setAllAgents = (checked: boolean) => {
-    if (checked) {
-      setSelectedAgentIds(new Set(agents.map((a) => a.uuid)));
-    } else {
-      setSelectedAgentIds(new Set());
-    }
-  };
-
-  // Alternar seleção de status
-  const toggleStatus = (status: TorrentStatus) => {
-    setSelectedStatuses((prev) => {
-      const next = new Set(prev);
-      if (next.has(status)) next.delete(status); else next.add(status);
-      return next;
-    });
-  };
-
-  // Selecionar ou limpar todos status
-  const setAllStatuses = (checked: boolean) => {
-    if (checked) {
-      setSelectedStatuses(new Set(availableStatuses));
-    } else {
-      setSelectedStatuses(new Set());
-    }
-  };
-
-  // Alternar seleção de categoria
-  const toggleCategory = (category: string) => {
-    setSelectedCategories((prev) => {
-      const next = new Set(prev);
-      if (next.has(category)) next.delete(category); else next.add(category);
-      return next;
-    });
-  };
-
-  // Selecionar ou limpar todas categorias
-  const setAllCategories = (checked: boolean) => {
-    if (checked) {
-      setSelectedCategories(new Set(availableCategories));
-    } else {
-      setSelectedCategories(new Set());
-    }
-  };
-
-  // Alternar seleção de tag
-  const toggleTag = (tag: string) => {
-    setSelectedTags((prev) => {
-      const next = new Set(prev);
-      if (next.has(tag)) next.delete(tag); else next.add(tag);
-      return next;
-    });
-  };
-
-  // Selecionar ou limpar todas tags
-  const setAllTags = (checked: boolean) => {
-    if (checked) {
-      setSelectedTags(new Set(availableTags));
-    } else {
-      setSelectedTags(new Set());
-    }
-  };
-
-  // Alternar seleção de ratio grade
-  const toggleGrade = (grade: string) => {
-    setSelectedGrades((prev) => {
-      const next = new Set(prev);
-      if (next.has(grade)) next.delete(grade); else next.add(grade);
-      return next;
-    });
-  };
-
-  // Selecionar ou limpar todos os ratio grades
-  const setAllGrades = (checked: boolean) => {
-    if (checked) {
-      setSelectedGrades(new Set(availableGrades));
-    } else {
-      setSelectedGrades(new Set());
-    }
   };
 
   // Função para alterar tipo de ordenação
@@ -1083,90 +1004,41 @@ export default function TorrentsPage() {
       {/* Filtro de busca e controles - sempre exibir, desabilitar durante loading */}
       {(isInitialLoading || (agents.length > 0 && agents.some(agent => agent.status !== 'ERRORED'))) && (
         <div className="flex flex-col gap-4 w-full sm:gap-4 gap-0">
-          {/* Busca e controles - desktop na mesma linha */}
-          <div className="hidden sm:flex items-center gap-4 w-full">
-            {/* Select All (left of search) */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={selectionMode ? "default" : "outline"}
-                  size="icon"
-                  className="h-9 w-9 flex-shrink-0"
-                  onClick={handleToggleSelectAll}
-                  disabled={isInitialLoading}
-                  aria-label={!selectionMode ? t('torrents.selection.enable') : (!allSelected ? t('torrents.selection.selectAll') : t('torrents.selection.disable'))}
-                >
-                  {allSelected ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{!selectionMode ? t('torrents.selection.enable') : (!allSelected ? t('torrents.selection.selectAll') : t('torrents.selection.disable'))}</p>
-              </TooltipContent>
-            </Tooltip>
-
-            {/* Busca */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder={t('torrents.search')}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-                disabled={isInitialLoading}
-              />
-            </div>
-
-            {/* Controles */}
-            <div className="flex items-center gap-4 flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">{t('torrents.update')}:</span>
-                <DropdownSelect
-                  value={refreshIntervalSec}
-                  onChange={setRefreshIntervalSec}
-                  options={[3, 5, 10, 15, 30, 60]}
-                  formatLabel={(v) => `${v}s`}
-                  ariaLabel={`Atualizar a cada ${refreshIntervalSec}s`}
-                  title={t('torrents.updateInterval.title', { seconds: refreshIntervalSec })}
-                  minWidth="60px"
-                  disabled={isInitialLoading}
-                />
-              </div>
-              {displayMode !== "card" && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">{t('torrents.itemsPerPage')}:</span>
-                  <DropdownSelect
-                    value={itemsPerPage}
-                    onChange={handleItemsPerPageChange}
-                    options={[5, 10, 20, 50, 100]}
-                    ariaLabel={`Itens por página: ${itemsPerPage}`}
-                    minWidth="80px"
-                    disabled={isInitialLoading}
-                  />
-                </div>
-              )}
-              <Button
-                variant="outline"
-                onClick={() => setIsFilterSidebarOpen(true)}
-                disabled={isInitialLoading}
-                className="flex items-center gap-2 min-w-[120px]"
-              >
-                <SlidersHorizontal className="h-4 w-4" />
-                <span className="text-sm">{t('torrents.filters.title')}</span>
-                {(selectedAgentIds.size < agents.length ||
-                  selectedStatuses.size < availableStatuses.length ||
-                  selectedCategories.size < availableCategories.length ||
-                  selectedTags.size < availableTags.length ||
-                  selectedGrades.size < availableGrades.length) && (
-                    <span className="ml-auto h-2 w-2 rounded-full bg-primary flex-shrink-0" />
-                  )}
-              </Button>
-              <div className="text-sm text-muted-foreground">
-                {filteredTorrents.length} {t('torrents.of')} {torrents.length} {t('torrents.torrents')}
-                <span className="ml-2 text-xs">
-                  ({t('torrents.sortedBy')} {t(`torrents.sortBy.${getSortTypeKey(sortType)}`)} {sortDirection === "asc" ? "↑" : "↓"})
-                </span>
-              </div>
-            </div>
+          {/* Desktop controls */}
+          <div className="hidden sm:block">
+            <TorrentControls
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              selectionMode={selectionMode}
+              allSelected={allSelected}
+              onToggleSelectAll={handleToggleSelectAll}
+              refreshIntervalSec={refreshIntervalSec}
+              isRefreshPaused={isRefreshPaused}
+              onRefreshIntervalChange={(v) => {
+                if (v === 0) {
+                  setIsRefreshPaused(true);
+                } else {
+                  setIsRefreshPaused(false);
+                  setRefreshIntervalSec(v);
+                }
+              }}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={handleItemsPerPageChange}
+              showItemsPerPage={displayMode === "table"}
+              onOpenFilters={() => setIsFilterSidebarOpen(true)}
+              hasActiveFilters={
+                selectedAgentIds.size < agents.length ||
+                selectedStatuses.size < availableStatuses.length ||
+                selectedCategories.size < availableCategories.length ||
+                selectedTags.size < availableTags.length ||
+                selectedGrades.size < availableGrades.length
+              }
+              filteredCount={filteredTorrents.length}
+              totalCount={torrents.length}
+              sortType={sortType}
+              sortDirection={sortDirection}
+              isLoading={isInitialLoading}
+            />
           </div>
 
           {/* Aviso de erro nos agentes - mobile (mostrar mesmo durante loading) */}
@@ -1197,74 +1069,42 @@ export default function TorrentsPage() {
             </div>
           )}
 
-          {/* Controles mobile */}
+          {/* Mobile controls */}
           <div className="sm:hidden mb-1">
-            <div className="flex items-stretch gap-1.5">
-              {/* Select All (left of refresh) */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={selectionMode ? "default" : "outline"}
-                    size="icon"
-                    className="flex-shrink-0 h-8 w-8"
-                    onClick={handleToggleSelectAll}
-                    disabled={isInitialLoading}
-                    aria-label={!selectionMode ? t('torrents.selection.enable') : (!allSelected ? t('torrents.selection.selectAll') : t('torrents.selection.disable'))}
-                  >
-                    {allSelected ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{!selectionMode ? t('torrents.selection.enable') : (!allSelected ? t('torrents.selection.selectAll') : t('torrents.selection.disable'))}</p>
-                </TooltipContent>
-              </Tooltip>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <Clock className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                <DropdownSelect
-                  value={refreshIntervalSec}
-                  onChange={setRefreshIntervalSec}
-                  options={[3, 5, 10, 15, 30, 60]}
-                  formatLabel={(v) => `${v}s`}
-                  ariaLabel={`Atualizar a cada ${refreshIntervalSec}s`}
-                  title={t('torrents.updateInterval.title', { seconds: refreshIntervalSec })}
-                  minWidth="60px"
-                  disabled={isInitialLoading}
-                />
-              </div>
-              {displayMode !== "card" && (
-                <>
-                  <div className="w-px bg-border self-stretch flex-shrink-0" />
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span className="text-xs text-muted-foreground">{t('torrents.itemsPerPage').split(' ')[0]}:</span>
-                    <DropdownSelect
-                      value={itemsPerPage}
-                      onChange={handleItemsPerPageChange}
-                      options={[5, 10, 20, 50, 100]}
-                      ariaLabel={`Itens por página: ${itemsPerPage}`}
-                      minWidth="80px"
-                      disabled={isInitialLoading}
-                    />
-                  </div>
-                  <div className="w-px bg-border self-stretch flex-shrink-0" />
-                </>
-              )}
-              <Button
-                variant="outline"
-                onClick={() => setIsFilterSidebarOpen(true)}
-                disabled={isInitialLoading}
-                className="flex items-center gap-2 flex-1 min-w-0"
-              >
-                <SlidersHorizontal className="h-4 w-4 flex-shrink-0" />
-                <span className="text-sm">{t('torrents.filters.title')}</span>
-                {(selectedAgentIds.size < agents.length ||
-                  selectedStatuses.size < availableStatuses.length ||
-                  selectedCategories.size < availableCategories.length ||
-                  selectedTags.size < availableTags.length ||
-                  selectedGrades.size < availableGrades.length) && (
-                    <span className="ml-auto h-2 w-2 rounded-full bg-primary flex-shrink-0" />
-                  )}
-              </Button>
-            </div>
+            <TorrentControls
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              selectionMode={selectionMode}
+              allSelected={allSelected}
+              onToggleSelectAll={handleToggleSelectAll}
+              refreshIntervalSec={refreshIntervalSec}
+              isRefreshPaused={isRefreshPaused}
+              onRefreshIntervalChange={(v) => {
+                if (v === 0) {
+                  setIsRefreshPaused(true);
+                } else {
+                  setIsRefreshPaused(false);
+                  setRefreshIntervalSec(v);
+                }
+              }}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={handleItemsPerPageChange}
+              showItemsPerPage={displayMode === "table"}
+              onOpenFilters={() => setIsFilterSidebarOpen(true)}
+              hasActiveFilters={
+                selectedAgentIds.size < agents.length ||
+                selectedStatuses.size < availableStatuses.length ||
+                selectedCategories.size < availableCategories.length ||
+                selectedTags.size < availableTags.length ||
+                selectedGrades.size < availableGrades.length
+              }
+              filteredCount={filteredTorrents.length}
+              totalCount={torrents.length}
+              sortType={sortType}
+              sortDirection={sortDirection}
+              isLoading={isInitialLoading}
+              isMobile={true}
+            />
           </div>
 
         </div>
@@ -1341,9 +1181,9 @@ export default function TorrentsPage() {
       {/* Conteúdo principal - apenas quando há agentes funcionais e torrents */}
       {!isInitialLoading && agents.length > 0 && agents.some(agent => agent.status !== 'ERRORED') && torrents.length > 0 && (
         <>
-          {/* Layout para desktop - Tabela ou Cards baseado na preferência */}
+          {/* Layout para desktop - Tabela, Cards ou Lista baseado na preferência */}
           <div className="hidden md:block w-full">
-            {displayMode === "default" ? (
+            {displayMode === "table" ? (
               <TorrentsTable
                 torrents={paginatedTorrents}
                 sortType={sortType}
@@ -1370,23 +1210,49 @@ export default function TorrentsPage() {
                 onToggleSelect={handleToggleSelect}
                 onRequestDelete={openDeleteModal}
               />
+            ) : displayMode === "list" ? (
+              // List view for desktop
+              <>
+                <TorrentSortingHeader
+                  sortType={sortType}
+                  sortDirection={sortDirection}
+                  filteredCount={filteredTorrents.length}
+                  totalCount={torrents.length}
+                />
+
+                <TorrentListCompact
+                  torrents={paginatedTorrents}
+                  onShowDetails={handleShowDetails}
+                  onStart={handlePlayTorrent}
+                  onStop={handlePauseTorrent}
+                  onMetrics={handleShowMetrics}
+                  onRemove={(id) => handleDeleteTorrent(id, false)}
+                  onForceDownload={handleForceDownloadTorrent}
+                  onForceReannounce={handleForceReannounceTorrent}
+                  onForceRecheck={handleForceRecheckTorrent}
+                  onLimits={handleShowLimits}
+                  compact={compact}
+                  selectionMode={selectionMode}
+                  selectedIds={selectedIds}
+                  onToggleSelect={handleToggleSelect}
+                  onRequestDelete={openDeleteModal}
+                />
+
+                {/* Lazy loading sentinel for list view */}
+                <LazyLoadingSentinel
+                  ref={sentinelRef}
+                  show={useCardLazyLoading && displayedItemsCount < filteredTorrents.length}
+                />
+              </>
             ) : (
               // Card view for desktop
               <>
-                {/* Desktop sorting controls for card view */}
-                <div className="mb-4">
-                  <div className="flex items-center justify-between gap-2 mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-muted-foreground">{t('torrents.sortedBy')}:</span>
-                      <span className="text-sm text-muted-foreground">
-                        {t(`torrents.sortBy.${getSortTypeKey(sortType)}`)} {sortDirection === "asc" ? "↑" : "↓"}
-                      </span>
-                    </div>
-                    <span className="text-sm text-muted-foreground whitespace-nowrap">
-                      {filteredTorrents.length} {t('torrents.of')} {torrents.length}
-                    </span>
-                  </div>
-                </div>
+                <TorrentSortingHeader
+                  sortType={sortType}
+                  sortDirection={sortDirection}
+                  filteredCount={filteredTorrents.length}
+                  totalCount={torrents.length}
+                />
 
                 <TorrentListMobile
                   torrents={paginatedTorrents}
@@ -1408,31 +1274,23 @@ export default function TorrentsPage() {
                 />
 
                 {/* Lazy loading sentinel for card view */}
-                {useCardLazyLoading && displayedItemsCount < filteredTorrents.length && (
-                  <div ref={sentinelRef} className="flex items-center justify-center py-4">
-                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                  </div>
-                )}
+                <LazyLoadingSentinel
+                  ref={sentinelRef}
+                  show={useCardLazyLoading && displayedItemsCount < filteredTorrents.length}
+                />
               </>
             )}
           </div>
 
           {/* Layout para mobile - Cards em coluna única */}
           <div className="md:hidden w-full">
-            {/* Mobile sorting controls */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between gap-2 mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-muted-foreground">{t('torrents.sortedBy')}:</span>
-                  <span className="text-xs text-muted-foreground">
-                    {t(`torrents.sortBy.${getSortTypeKey(sortType)}`)} {sortDirection === "asc" ? "↑" : "↓"}
-                  </span>
-                </div>
-                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                  {filteredTorrents.length} {t('torrents.of')} {torrents.length}
-                </span>
-              </div>
-            </div>
+            <TorrentSortingHeader
+              sortType={sortType}
+              sortDirection={sortDirection}
+              filteredCount={filteredTorrents.length}
+              totalCount={torrents.length}
+              isMobile={true}
+            />
 
             <TorrentListMobile
               torrents={paginatedTorrents}
@@ -1454,11 +1312,10 @@ export default function TorrentsPage() {
             />
 
             {/* Lazy loading sentinel for mobile */}
-            {displayedItemsCount < filteredTorrents.length && (
-              <div ref={mobileSentinelRef} className="flex items-center justify-center py-4">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-              </div>
-            )}
+            <LazyLoadingSentinel
+              ref={mobileSentinelRef}
+              show={displayedItemsCount < filteredTorrents.length}
+            />
           </div>
         </>
       )}
@@ -1589,8 +1446,8 @@ export default function TorrentsPage() {
               <AgentFilter
                 agents={agents}
                 selectedAgentIds={selectedAgentIds}
-                onToggleAgent={toggleAgent}
-                onSetAll={setAllAgents}
+                onToggleAgent={agentControls.toggle}
+                onSetAll={agentControls.setAll}
               />
             </div>
 
@@ -1606,8 +1463,8 @@ export default function TorrentsPage() {
               <StatusFilter
                 availableStatuses={availableStatuses}
                 selectedStatuses={selectedStatuses}
-                onToggleStatus={toggleStatus}
-                onSetAll={setAllStatuses}
+                onToggleStatus={statusControls.toggle}
+                onSetAll={statusControls.setAll}
                 getStatusIcon={getStatusIcon}
                 getStatusColor={getStatusColor}
               />
@@ -1626,8 +1483,8 @@ export default function TorrentsPage() {
                 label="categorias"
                 availableItems={availableCategories}
                 selectedItems={selectedCategories}
-                onToggleItem={toggleCategory}
-                onSetAll={setAllCategories}
+                onToggleItem={categoryControls.toggle}
+                onSetAll={categoryControls.setAll}
               />
             </div>
 
@@ -1644,8 +1501,8 @@ export default function TorrentsPage() {
                 label="tags"
                 availableItems={availableTags}
                 selectedItems={selectedTags}
-                onToggleItem={toggleTag}
-                onSetAll={setAllTags}
+                onToggleItem={tagControls.toggle}
+                onSetAll={tagControls.setAll}
                 useTagBadge={true}
               />
             </div>
@@ -1677,7 +1534,7 @@ export default function TorrentsPage() {
                     <button
                       key={grade}
                       type="button"
-                      onClick={() => toggleGrade(grade)}
+                      onClick={() => gradeControls.toggle(grade)}
                       className={`inline-flex items-center gap-2 rounded-md border px-2 py-1 transition-colors ${selected ? 'bg-accent text-accent-foreground border-border' : 'hover:bg-accent hover:text-accent-foreground border-border'}`}
                       aria-pressed={selected}
                       title={grade}
@@ -1688,10 +1545,10 @@ export default function TorrentsPage() {
                 })}
               </div>
               <div className="flex items-center gap-2 pt-1">
-                <Button size="sm" variant="outline" onClick={() => setAllGrades(true)} className="h-7 px-2">
+                <Button size="sm" variant="outline" onClick={() => gradeControls.setAll(true)} className="h-7 px-2">
                   {t('common.selectAll')}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => setAllGrades(false)} className="h-7 px-2">
+                <Button size="sm" variant="outline" onClick={() => gradeControls.setAll(false)} className="h-7 px-2">
                   {t('common.clearAll')}
                 </Button>
               </div>

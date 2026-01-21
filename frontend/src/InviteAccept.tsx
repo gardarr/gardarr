@@ -73,7 +73,7 @@ function InviteAccept() {
     } finally {
       setLoading(false);
     }
-  }, [code]);
+  }, [code, t]);
 
   useEffect(() => {
     if (code) {

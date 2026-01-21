@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Webhook, Trash2, Edit2, Plus, ArrowLeft, CheckCircle, XCircle, Clock, Filter, FileJson } from 'lucide-react';
+import { Webhook, Trash2, Edit2, Plus, ArrowLeft, CheckCircle, XCircle, Clock, Filter, FileJson, Send, Loader2, BookOpen } from 'lucide-react';
 import { webhookService } from '@/services/webhooks';
 import type { Webhook as WebhookType, CreateWebhookRequest, UpdateWebhookRequest } from '@/types/webhook';
 import { toast } from 'sonner';
@@ -16,6 +16,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { EventFilter } from '@/components/EventFilter';
 import { buildFilterFromStrings } from '@/utils/eventFilterUtils';
 import { EditIntegrationWebhookModal } from '@/components/EditIntegrationWebhookModal';
+import { WebhookDocumentationModal } from '@/components/WebhookDocumentationModal';
 
 export default function IntegrationWebhookPage() {
   const { t } = useTranslation();
@@ -26,6 +27,7 @@ export default function IntegrationWebhookPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isExampleModalOpen, setIsExampleModalOpen] = useState(false);
+  const [isDocumentationModalOpen, setIsDocumentationModalOpen] = useState(false);
   const [selectedWebhook, setSelectedWebhook] = useState<WebhookType | null>(null);
   const [formData, setFormData] = useState<CreateWebhookRequest>({
     url: '',
@@ -43,6 +45,7 @@ export default function IntegrationWebhookPage() {
     categoryFilter: '',
     nameTerms: '',
   });
+  const [testingWebhookId, setTestingWebhookId] = useState<string | null>(null);
 
   const loadWebhooks = useCallback(async () => {
     setLoading(true);
@@ -141,6 +144,26 @@ export default function IntegrationWebhookPage() {
     setIsDeleteModalOpen(true);
   };
 
+  const handleTestWebhook = async (webhookId: string) => {
+    setTestingWebhookId(webhookId);
+    try {
+      const response = await webhookService.testWebhook(webhookId);
+      if (response.data?.success) {
+        toast.success(t('webhooks.success.testSuccess'), {
+          description: t('webhooks.success.testSuccessDescription'),
+        });
+      } else {
+        toast.error(t('webhooks.errors.testFailed'), {
+          description: response.data?.error || response.error,
+        });
+      }
+    } catch {
+      toast.error(t('webhooks.errors.testFailed'));
+    } finally {
+      setTestingWebhookId(null);
+    }
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
@@ -165,6 +188,16 @@ export default function IntegrationWebhookPage() {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap sm:flex-nowrap">
+          <Button 
+            variant="outline" 
+            onClick={() => setIsDocumentationModalOpen(true)}
+            className="flex-1 sm:flex-none"
+            size="sm"
+          >
+            <BookOpen className="h-4 w-4" />
+            <span className="hidden sm:inline ml-2">{t('webhooks.documentation')}</span>
+            <span className="sm:hidden ml-2">Docs</span>
+          </Button>
           <Button 
             variant="outline" 
             onClick={() => setIsExampleModalOpen(true)}
@@ -262,19 +295,39 @@ export default function IntegrationWebhookPage() {
                   <div className="flex flex-row sm:flex-col lg:flex-row items-center gap-2 flex-shrink-0 w-full sm:w-auto">
                     <Tooltip>
                       <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 sm:flex-none"
-                      onClick={() => handleToggleEnabled(webhook)}
-                      aria-label={webhook.enabled ? t('webhooks.enabled') : t('webhooks.disabled')}
-                    >
-                      {webhook.enabled ? (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <XCircle className="h-4 w-4" />
-                      )}
-                    </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 sm:flex-none"
+                          onClick={() => handleTestWebhook(webhook.uuid)}
+                          disabled={testingWebhookId === webhook.uuid}
+                        >
+                          {testingWebhookId === webhook.uuid ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Send className="h-4 w-4 text-blue-500" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {t('webhooks.test')}
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 sm:flex-none"
+                          onClick={() => handleToggleEnabled(webhook)}
+                          aria-label={webhook.enabled ? t('webhooks.enabled') : t('webhooks.disabled')}
+                        >
+                          {webhook.enabled ? (
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <XCircle className="h-4 w-4" />
+                          )}
+                        </Button>
                       </TooltipTrigger>
                       <TooltipContent>
                         {webhook.enabled ? t('webhooks.disable') : t('webhooks.enable')}
@@ -282,14 +335,14 @@ export default function IntegrationWebhookPage() {
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 sm:flex-none"
-                      onClick={() => openEditModal(webhook)}
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 sm:flex-none"
+                          onClick={() => openEditModal(webhook)}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
                       </TooltipTrigger>
                       <TooltipContent>
                         {t('webhooks.edit')}
@@ -297,14 +350,14 @@ export default function IntegrationWebhookPage() {
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 sm:flex-none"
-                      onClick={() => openDeleteModal(webhook)}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 sm:flex-none"
+                          onClick={() => openDeleteModal(webhook)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
                       </TooltipTrigger>
                       <TooltipContent>
                         {t('common.delete')}
@@ -471,6 +524,12 @@ export default function IntegrationWebhookPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Documentation Modal */}
+      <WebhookDocumentationModal
+        isOpen={isDocumentationModalOpen}
+        onClose={() => setIsDocumentationModalOpen(false)}
+      />
     </div>
   );
 }

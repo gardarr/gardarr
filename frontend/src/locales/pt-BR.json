@@ -8,7 +8,9 @@
     "error": "Erro",
     "success": "Sucesso",
     "selectAll": "Selecionar todos",
-    "clearAll": "Limpar todos"
+    "clearAll": "Limpar todos",
+    "close": "Fechar",
+    "refresh": "Atualizar"
   },
   "ratio": "Ratio",
   "nota": "Nota",
@@ -59,7 +61,30 @@
       "compactMode": "Modo Compacto",
       "compactModeDesc": "Reduz o espaçamento e mostra mais conteúdo na tela",
       "blurIntensity": "Desfoque da Imagem de Fundo",
-      "blurIntensityDesc": "Ajuste a intensidade do desfoque nas imagens de fundo (0-100)"
+      "blurIntensityDesc": "Ajuste a intensidade do desfoque nas imagens de fundo (0-100)",
+      "preferencesSaved": "Preferências salvas com sucesso",
+      "displayModeChanged": "Modo de visualização alterado para {{mode}}",
+      "modes": {
+        "table": "Tabela",
+        "card": "Cartão",
+        "list": "Lista"
+      },
+      "compactModeEnabled": "Modo compacto ativado",
+      "compactModeDisabled": "Modo compacto desativado",
+      "blurIntensityUpdated": "Intensidade do desfoque atualizada para {{value}}",
+      "preferencesError": "Falha ao salvar preferências",
+      "colorPalettes": "Paletas de Cores",
+      "colorPalettesDesc": "Personalize 3 paletas de cores com suas cores preferidas",
+      "palette1": "Paleta 1",
+      "palette2": "Paleta 2",
+      "palette3": "Paleta 3",
+      "primary": "Primária",
+      "secondary": "Secundária",
+      "accent": "Destaque",
+      "muted": "Neutro",
+      "previewTitle": "Card de Prévia",
+      "previewText": "Veja como suas cores ficam",
+      "customize": "Personalizar"
     },
     "security": {
       "title": "Segurança",
@@ -165,7 +190,14 @@
       }
     },
     "colorVariant": {
-      "title": "Variante de Cor",
+      "title": "Tema de Cores",
+      "custom": {
+        "title": "Paletas Personalizadas",
+        "hint": "Paletas personalizadas podem ser editadas nas preferências do perfil",
+        "palette1": "Paleta Personalizada 1",
+        "palette2": "Paleta Personalizada 2",
+        "palette3": "Paleta Personalizada 3"
+      },
       "description": "Personalize a paleta de cores da interface",
       "selectLabel": "Selecione a Variante de Cor",
       "current": "Variante Atual",
@@ -598,6 +630,11 @@
     "search": "Buscar torrents...",
     "itemsPerPage": "Itens por página",
     "update": "Atualizar",
+    "refresh": {
+      "pause": "Pausar atualização automática",
+      "resume": "Retomar atualização automática",
+      "paused": "Pausado"
+    },
     "agent": "Agente",
     "agents": "Agentes",
     "of": "de",
@@ -826,6 +863,7 @@
     "addWebhook": "Adicionar Webhook",
     "addFirstWebhook": "Adicionar Seu Primeiro Webhook",
     "noWebhooks": "Nenhum webhook configurado ainda. Crie seu primeiro webhook para receber notificações de eventos.",
+    "documentation": "Documentação",
     "examplePayload": "Exemplo de Payload",
     "examplePayloadTitle": "Exemplo de Payload",
     "examplePayloadDescription": "Exemplo do payload JSON que será enviado para seu endpoint webhook",
@@ -877,19 +915,23 @@
       "nameCount": "{{count}} termo",
       "nameCount_plural": "{{count}} termos"
     },
+    "test": "Testar",
     "success": {
       "created": "Webhook criado com sucesso",
       "updated": "Webhook atualizado com sucesso",
       "deleted": "Webhook excluído com sucesso",
       "enabled": "Webhook habilitado",
-      "disabled": "Webhook desabilitado"
+      "disabled": "Webhook desabilitado",
+      "testSuccess": "Webhook de teste enviado com sucesso",
+      "testSuccessDescription": "O evento de teste foi entregue ao seu endpoint webhook"
     },
     "errors": {
       "loadFailed": "Falha ao carregar webhooks",
       "createFailed": "Falha ao criar webhook",
       "updateFailed": "Falha ao atualizar webhook",
       "deleteFailed": "Falha ao excluir webhook",
-      "urlRequired": "URL do webhook é obrigatória"
+      "urlRequired": "URL do webhook é obrigatória",
+      "testFailed": "Falha ao enviar webhook de teste"
     }
   },
   "torrentDetails": {
@@ -1051,6 +1093,9 @@
     "subtitle": "Acompanhe eventos e mudanças de estado dos torrents",
     "refresh": "Atualizar",
     "showEvents": "Exibir Eventos",
+    "stats": {
+      "totalEvents": "Total de Eventos"
+    },
     "filter": {
       "all": "Todos os Eventos"
     },
@@ -1061,7 +1106,8 @@
       "title": "Eventos Recentes",
       "description": "Mostrando {{total}} eventos",
       "noEvents": "Nenhum evento encontrado",
-      "noResults": "Nenhum evento encontrado para sua busca"
+      "noResults": "Nenhum evento encontrado para sua busca",
+      "unknownTorrent": "Torrent Desconhecido"
     },
     "event": {
       "stateChange": "Torrent mudou de estado",

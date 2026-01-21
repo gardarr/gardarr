@@ -8,7 +8,9 @@
     "error": "Error",
     "success": "Success",
     "selectAll": "Select all",
-    "clearAll": "Clear all"
+    "clearAll": "Clear all",
+    "close": "Close",
+    "refresh": "Refresh"
   },
   "nota": "Grade",
   "ratio": {
@@ -90,7 +92,30 @@
       "compactMode": "Compact Mode",
       "compactModeDesc": "Reduce spacing and show more content on screen",
       "blurIntensity": "Background Image Blur",
-      "blurIntensityDesc": "Adjust the blur intensity for background images (0-100)"
+      "blurIntensityDesc": "Adjust the blur intensity for background images (0-100)",
+      "preferencesSaved": "Preferences saved successfully",
+      "displayModeChanged": "Display mode changed to {{mode}}",
+      "modes": {
+        "table": "Table",
+        "card": "Card",
+        "list": "List"
+      },
+      "compactModeEnabled": "Compact mode enabled",
+      "compactModeDisabled": "Compact mode disabled",
+      "blurIntensityUpdated": "Blur intensity updated to {{value}}",
+      "preferencesError": "Failed to save preferences",
+      "colorPalettes": "Color Palettes",
+      "colorPalettesDesc": "Customize 3 color palettes with your preferred colors",
+      "palette1": "Palette 1",
+      "palette2": "Palette 2",
+      "palette3": "Palette 3",
+      "primary": "Primary",
+      "secondary": "Secondary",
+      "accent": "Accent",
+      "muted": "Muted",
+      "previewTitle": "Preview Card",
+      "previewText": "See how your colors look",
+      "customize": "Customize"
     },
     "security": {
       "title": "Security",
@@ -196,7 +221,14 @@
       }
     },
     "colorVariant": {
-      "title": "Color Variant",
+      "title": "Color Theme",
+      "custom": {
+        "title": "Custom Palettes",
+        "hint": "Custom palettes can be edited in your profile preferences",
+        "palette1": "Custom Palette 1",
+        "palette2": "Custom Palette 2",
+        "palette3": "Custom Palette 3"
+      },
       "description": "Customize the color palette of the interface",
       "selectLabel": "Select Color Variant",
       "current": "Current Variant",
@@ -606,6 +638,11 @@
     "search": "Search torrents...",
     "itemsPerPage": "Items per page",
     "update": "Update",
+    "refresh": {
+      "pause": "Pause auto-refresh",
+      "resume": "Resume auto-refresh",
+      "paused": "Paused"
+    },
     "agent": "Agent",
     "agents": "Agents",
     "of": "of",
@@ -834,6 +871,7 @@
     "addWebhook": "Add Webhook",
     "addFirstWebhook": "Add Your First Webhook",
     "noWebhooks": "No webhooks configured yet. Create your first webhook to receive event notifications.",
+    "documentation": "Documentation",
     "examplePayload": "Example Payload",
     "examplePayloadTitle": "Example Payload",
     "examplePayloadDescription": "Example of the JSON payload that will be sent to your webhook endpoint",
@@ -885,19 +923,23 @@
       "nameCount": "{{count}} term",
       "nameCount_plural": "{{count}} terms"
     },
+    "test": "Test",
     "success": {
       "created": "Webhook created successfully",
       "updated": "Webhook updated successfully",
       "deleted": "Webhook deleted successfully",
       "enabled": "Webhook enabled",
-      "disabled": "Webhook disabled"
+      "disabled": "Webhook disabled",
+      "testSuccess": "Test webhook sent successfully",
+      "testSuccessDescription": "The test event was delivered to your webhook endpoint"
     },
     "errors": {
       "loadFailed": "Failed to load webhooks",
       "createFailed": "Failed to create webhook",
       "updateFailed": "Failed to update webhook",
       "deleteFailed": "Failed to delete webhook",
-      "urlRequired": "Webhook URL is required"
+      "urlRequired": "Webhook URL is required",
+      "testFailed": "Failed to send test webhook"
     }
   },
   "torrentDetails": {
@@ -1029,6 +1071,9 @@
     "subtitle": "Track torrent events and state changes",
     "refresh": "Refresh",
     "showEvents": "Show Events",
+    "stats": {
+      "totalEvents": "Total Events"
+    },
     "filter": {
       "all": "All Events"
     },
@@ -1039,7 +1084,8 @@
       "title": "Recent Events",
       "description": "Showing {{total}} events",
       "noEvents": "No events found",
-      "noResults": "No events found matching your search"
+      "noResults": "No events found matching your search",
+      "unknownTorrent": "Unknown Torrent"
     },
     "event": {
       "stateChange": "Torrent changed state",

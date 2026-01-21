@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -15,6 +16,7 @@ import (
 	"github.com/jfxdev/gardarr/internal/repository/webhook_history"
 	"github.com/jfxdev/gardarr/internal/schemas"
 	"github.com/jfxdev/gardarr/internal/services/integration"
+	webhookService "github.com/jfxdev/gardarr/internal/services/integration/webhook"
 )
 
 // Module holds integrations routes configuration
@@ -113,6 +115,7 @@ func (m *Module) Register() {
 		webhooks.PUT("/:id", m.updateWebhook)
 		webhooks.DELETE("/:id", m.deleteWebhook)
 		webhooks.GET("/:id/history", m.getWebhookHistory)
+		webhooks.POST("/:id/test", m.testWebhook)
 	}
 
 	// Webhook history routes
@@ -436,4 +439,71 @@ func (m *Module) getWebhookHistoryByID(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, m.toWebhookHistoryResponse(history))
+}
+
+// testWebhook sends a test event to the specified webhook
+func (m *Module) testWebhook(c *gin.Context) {
+	webhookUUID, ok := m.parseWebhookUUID(c)
+	if !ok {
+		return
+	}
+
+	// Get webhook
+	wh, err := m.webhookRepo.GetWebhookByUUID(c.Request.Context(), webhookUUID)
+	if err != nil {
+		if errors.Is(err, webhook.ErrNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Webhook not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Create test event
+	testEvent := &entities.Event{
+		UUID:     uuid.New(),
+		AgentID:  uuid.New(),
+		Type:     "test.webhook",
+		TaskHash: "test_" + uuid.New().String()[:8],
+		OldValue: "downloading",
+		NewValue: "completed",
+		Metadata: map[string]interface{}{
+			"name":     "Test Torrent - Webhook Connectivity Test",
+			"progress": 1.0,
+			"test":     true,
+			"size":     1073741824,
+			"category": "test",
+		},
+		CreatedAt: time.Now(),
+	}
+
+	// Create webhook service
+	svc := webhookService.NewService(
+		wh.UUID,
+		wh.URL,
+		wh.InsecureSkipVerify,
+		wh.TimeoutSeconds,
+		m.webhookHistoryRepo,
+	)
+
+	// Send test event
+	if err := svc.SendEvent(c.Request.Context(), testEvent); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   err.Error(),
+			"message": "Failed to send test webhook",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Test webhook sent successfully",
+		"event": gin.H{
+			"event_id":   testEvent.UUID.String(),
+			"event_type": testEvent.Type,
+			"task_hash":  testEvent.TaskHash,
+			"timestamp":  testEvent.CreatedAt.Format(time.RFC3339),
+		},
+	})
 }

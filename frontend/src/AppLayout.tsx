@@ -1,6 +1,6 @@
 // AppLayout.tsx
 import { Button } from "@/components/ui/button";
-import { Settings, Users, BarChart3, ArrowDownUp, Menu, Sun, Moon, Info, LogOut, FolderOpen, UserCircle, Server, Plug } from "lucide-react";
+import { Settings, Users, BarChart3, ArrowDownUp, Menu, Sun, Moon, Info, LogOut, FolderOpen, UserCircle, Server, Plug, History } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import PageTransition from "@/components/PageTransition";
@@ -70,6 +70,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     ...(user?.role === 'admin' ? [{ href: "/users", icon: Users, label: t("navigation.users"), key: "users" }] : []),
     // Only show Settings menu item for admin users
     ...(user?.role === 'admin' ? [{ href: "/settings", icon: Settings, label: t("navigation.settings"), key: "settings" }] : []),
+    { href: "/history", icon: History, label: t("navigation.history"), key: "history" },
     { href: "/integrations", icon: Plug, label: t("navigation.integrations"), key: "integrations" },
   ];
 
@@ -271,6 +272,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {location.pathname === "/agents" && t("navigation.agents")}
               {location.pathname === "/categories" && t("navigation.categories")}
               {location.pathname === "/users" && t("navigation.users")}
+              {location.pathname === "/history" && t("navigation.history")}
               {location.pathname === "/integrations" && t("navigation.integrations")}
               {location.pathname === "/settings" && t("navigation.settings")}
               {location.pathname === "/profile" && t("navigation.profile")}

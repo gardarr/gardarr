@@ -10,7 +10,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { formatBytes, formatBytesPerSecond } from "@/utils/bytes";
 import { truncateText, isTextTruncated } from "@/utils/textUtils";
 import taskDefaultBg from "@/assets/img/common/task-default-background.png";
-import { Download, Upload } from "lucide-react";
+import { Download, Upload, Image as ImageIcon, Check, Hourglass } from "lucide-react";
 import SeedersAndPeersBadge from "@/components/SeedersAndPeersBadge";
 import type { TaskMetadata } from "@/types/torrent";
 import { preferencesService } from "@/services/preferences";
@@ -102,7 +102,7 @@ export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove,
       onLimits={onLimits}
     >
       <Card
-        className={`hover:shadow-lg transition-shadow overflow-hidden p-0 gap-2 cursor-pointer relative`}
+        className="hover:shadow-lg transition-shadow overflow-hidden p-0 gap-2 cursor-pointer relative"
         onClick={handleCardClick}
       >
         {/* Background image for entire card */}
@@ -148,18 +148,31 @@ export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove,
                   <RatioBadge ratio={torrent.ratio} showValue={false} showIcon={true} />
                 </div>
               )}
+              {/* Progress bar at bottom of header - hidden when complete */}
+              {torrent.progress < 100 && (
+                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-muted/40 overflow-hidden">
+                  <div
+                    className="h-full bg-primary/70 transition-all duration-300 ease-out"
+                    style={{ width: `${Math.min(100, Math.max(0, torrent.progress))}%` }}
+                  />
+                </div>
+              )}
             </CardHeader>
             <CardContent className="px-3 pt-0 pb-3 relative z-10">
               <div className="flex gap-2 items-center">
-                {hasImage && (
-                  <div className="flex-shrink-0">
+                <div className="flex-shrink-0">
+                  {hasImage ? (
                     <img
                       src={encodedImageUrl!}
                       alt={torrent.name}
                       className="w-16 h-16 object-cover rounded-md"
                     />
-                  </div>
-                )}
+                  ) : (
+                    <div className="w-16 h-16 rounded-md bg-muted flex items-center justify-center">
+                      <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
                 <div className="flex-1 flex flex-col gap-1.5 text-[11px] text-muted-foreground">
                   <StatBadge
                     icon={Upload}
@@ -226,18 +239,31 @@ export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove,
                   </Tooltip>
                 </div>
               )}
+              {/* Progress bar at bottom of header - hidden when complete */}
+              {torrent.progress < 100 && (
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-muted/40 overflow-hidden">
+                  <div
+                    className="h-full bg-primary/70 transition-all duration-300 ease-out"
+                    style={{ width: `${Math.min(100, Math.max(0, torrent.progress))}%` }}
+                  />
+                </div>
+              )}
             </CardHeader>
             <CardContent className="px-4 pt-1 pb-6 relative z-10">
               <div className="flex gap-3 items-center">
-                {hasImage && (
-                  <div className="flex-shrink-0">
+                <div className="flex-shrink-0">
+                  {hasImage ? (
                     <img
                       src={encodedImageUrl!}
                       alt={torrent.name}
                       className="w-24 h-24 object-cover rounded-md"
                     />
-                  </div>
-                )}
+                  ) : (
+                    <div className="w-24 h-24 rounded-md bg-muted flex items-center justify-center">
+                      <ImageIcon className="h-12 w-12 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
                 <div className="flex-1 flex flex-col gap-2 text-xs text-muted-foreground">
                   <StatBadge
                     icon={Upload}
@@ -310,9 +336,15 @@ function StatBadge({ icon: Icon, rate, total, colorClass, hasImage, blurPx, comp
 }
 
 function ProgressBadge({ progress, hasImage, blurPx, size }: { progress: number, hasImage: boolean, blurPx: number, size: string }) {
+  const isComplete = progress >= 100;
   return (
-    <span className={`${size} text-muted-foreground relative px-2 py-1`}>
+    <span className={`${size} text-muted-foreground relative px-2 py-1 flex items-center gap-1`}>
       <BlurOverlay hasImage={hasImage} blurPx={blurPx} rounded />
+      {isComplete ? (
+        <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+      ) : (
+        <Hourglass className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+      )}
       {progress.toFixed(0)}%
     </span>
   );
