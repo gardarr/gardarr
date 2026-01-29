@@ -87,6 +87,7 @@ export function TorrentListCompact({
             onForceRecheck={onForceRecheck}
             onMetrics={onMetrics}
             onLimits={onLimits}
+            onShowDetails={onShowDetails}
           >
             <div
               onClick={() => handleRowClick(torrent.id)}

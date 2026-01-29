@@ -135,6 +135,7 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
       onForceRecheck={onForceRecheck}
       onMetrics={onMetrics}
       onLimits={onLimits}
+      onShowDetails={onShowDetails}
     >
       <tr
         className="border-b hover:bg-muted/50 transition-colors cursor-pointer"

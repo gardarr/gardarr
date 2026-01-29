@@ -742,6 +742,7 @@
     "forceRecheck": "Forçar recheck",
     "metrics": "Métricas",
     "metadata": "Metadados",
+    "showDetails": "Detalhes",
     "selection": {
       "enable": "Habilitar seleção",
       "selectAll": "Selecionar todos",
