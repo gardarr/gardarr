@@ -49,6 +49,7 @@ import { TorrentLifetimeWidget } from "@/components/widgets/TorrentLifetimeWidge
 import { TorrentImageEditor } from "@/components/TorrentImageEditor";
 import { formatBytes  } from "@/utils/bytes";
 import { preferencesService } from "@/services/preferences";
+import taskDefaultBg from "@/assets/img/common/task-default-background.png";
 
 interface TorrentDetailsModalProps {
   torrent: Task | null;
@@ -90,6 +91,14 @@ function useIsMobile(): boolean {
   return isMobile;
 }
 
+function sanitizeBlurIntensity(value: unknown): number {
+  const numValue = Number(value);
+  if (isNaN(numValue)) {
+    return 50; // safe default
+  }
+  return Math.max(0, Math.min(100, numValue));
+}
+
 export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause, onDelete, onForceDownload, onForceReannounce, onForceRecheck, onRename, onSetLocation, onUpdateCategory, onUpdateTags, onUpdate }: TorrentDetailsModalProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -111,9 +120,8 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
   // Load blur intensity preference
   useEffect(() => {
     const prefs = preferencesService.load();
-    if (typeof prefs?.background_image_blur_intensity === 'number') {
-      setBlurIntensity(prefs.background_image_blur_intensity);
-    }
+    const sanitizedIntensity = sanitizeBlurIntensity(prefs?.background_image_blur_intensity);
+    setBlurIntensity(sanitizedIntensity);
   }, []);
 
   // Initialize current values when torrent changes
@@ -638,10 +646,16 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                       }}
                       aria-hidden
                     />
-                  ) : null}
+                  ) : (
+                    <div
+                      className="absolute inset-0 bg-cover pointer-events-none z-0 opacity-[0.12] dark:opacity-[0.03] rounded-lg"
+                      style={{ backgroundImage: `url(${taskDefaultBg})` }}
+                      aria-hidden
+                    />
+                  )}
                   
                   {/* Header with dark/light background */}
-                  <div className={`relative z-10 px-3 py-2 rounded-t-lg ${!torrent.metadata?.image_url ? getStatusBackgroundColor(torrent.state as TorrentStatus) : ''}`}>
+                  <div className={`relative z-10 px-3 py-2 rounded-t-lg ${torrent.metadata?.image_url ? '' : getStatusBackgroundColor(torrent.state as TorrentStatus)}`}>
                     {/* Blur overlay for header when has image */}
                     {torrent.metadata?.image_url && (
                       <>
@@ -658,6 +672,19 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                   {/* Content */}
                   <div className="p-3 relative z-10">
                     <div className="flex gap-3 items-start">
+                      <div className="flex-shrink-0">
+                        {torrent.metadata?.thumbnail_url ? (
+                          <img
+                            src={torrent.metadata.thumbnail_url}
+                            alt={torrent.name}
+                            className="w-24 h-24 rounded-lg border object-cover"
+                          />
+                        ) : (
+                          <div className="w-24 h-24 rounded-lg border bg-muted flex items-center justify-center">
+                            <Image className="h-12 w-12 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
                       <div className="flex-1 space-y-3">
                         {/* Estado with blur */}
                         <div className="flex items-center gap-2">
@@ -701,15 +728,6 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                           </div>
                         )}
                       </div>
-                      {torrent.metadata?.thumbnail_url && (
-                        <div className="flex-shrink-0">
-                          <img
-                            src={torrent.metadata.thumbnail_url}
-                            alt={torrent.name}
-                            className="w-24 h-24 rounded-lg border object-cover"
-                          />
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>

@@ -33,6 +33,7 @@ Gardarr is a **modern, lightweight management and analytics platform for qBittor
 - [🏗️ Architecture](#-architecture)
 - [🏆 Ratio Grading System](#-ratio-grading-system)
 - [🔌 Integrations & Events](#-integrations--events)
+- [📊 Metrics & Analytics](#-metrics--analytics)
 - [🎨 Customization](#-customization)
   - [Theme Customization](#theme-customization)
   - [Custom Cover Art & Metadata](#custom-cover-art--metadata)
@@ -59,6 +60,15 @@ Gardarr is a **modern, lightweight management and analytics platform for qBittor
 - **🏷️ Organization**: Smart category management with advanced tagging system supporting composite tags.
 - **📱 Mobile-First**: Responsive UI designed for seamless usage on smartphones and tablets.
 - **🐳 Docker Native**: Built for containerized environments with support for Docker secrets.
+
+### 🌟 For Seedboxes
+
+Essential infrastructure for seedbox operators managing single or multiple servers:
+- **Unified Control**: Manage multiple seedboxes across different providers from one dashboard
+- **Ratio Optimization**: Track and maintain healthy ratios for private trackers with visual grading
+- **Cost Efficiency**: Monitor storage, bandwidth, and performance to maximize ROI
+- **Bulk Operations**: Handle hundreds of torrents efficiently with batch actions and smart organization
+- **Mobile Management**: Control your seedbox fleet on-the-go with responsive mobile interface
 
 ## 📋 Requirements
 
@@ -215,6 +225,32 @@ Connect Gardarr to external services like Discord, Slack, or automation tools (n
 - **Event Filtering**: Select exactly which events trigger notifications for each webhook.
 - **Security**: Support for SSL verification skipping (optional) and secure timeouts.
 - **History**: Logs webhook delivery attempts for debugging.
+
+## 📊 Metrics & Analytics
+
+Gardarr provides comprehensive metrics and analytics to monitor torrent performance and agent health.
+
+### Torrent Metrics
+
+Individual torrent details include:
+- **Network Statistics**: Download/upload amounts, speeds, and ratio tracking
+- **Lifetime Timeline**: Creation date, completion date, and duration tracking
+- **Progress Tracking**: Real-time progress bars with state monitoring
+- **File Management**: Complete file list with sizes and priority control
+
+**Value**: Understand individual torrent performance, optimize seeding strategies, and track contribution levels.
+
+### Agent Metrics
+
+Analytics dashboard provides:
+- **Performance**: Real-time download/upload speeds with swarm statistics (seeders/leechers)
+- **Storage**: Total disk usage, free space, and all-time transfer amounts
+- **Ratio Statistics**: Global, average, highest, and lowest ratios across all torrents
+- **Activity**: Recent torrents, most uploaded content, category/tag usage analytics
+- **Task Terms Cloud**: Visual word cloud of common terms from torrent names
+- **Multi-Agent View**: Aggregated metrics across all active agents when no specific agent is selected
+
+**Value**: Monitor infrastructure health, identify bottlenecks, optimize resource allocation, and gain insights into content distribution patterns
 
 ## 🎨 Customization
 
