@@ -7,7 +7,7 @@ import {
   ContextMenuContent,
   ContextMenuItem
 } from "@/components/ui/context-menu";
-import { Play, Pause, Trash2, Zap, Radio, CheckCircle, BarChart3, Settings } from "lucide-react";
+import { Play, Pause, Trash2, Zap, Radio, CheckCircle, BarChart3, Settings, Info } from "lucide-react";
 
 type TorrentContextMenuProps = {
   taskId: string;
@@ -21,6 +21,7 @@ type TorrentContextMenuProps = {
   onForceRecheck?: (taskId: string) => void;
   onMetrics?: (taskId: string, agentId?: string) => void;
   onLimits?: (taskId: string, agentId?: string) => void;
+  onShowDetails?: (taskId: string) => void;
   selectionMode?: boolean;
   selectedIds?: Set<string>;
   onRequestDelete?: (ids: string[]) => void;
@@ -28,7 +29,7 @@ type TorrentContextMenuProps = {
 
 export default function TorrentContextMenu(props: TorrentContextMenuProps) {
   const { t } = useTranslation();
-  const { taskId, agentId, children, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits, selectionMode, selectedIds, onRequestDelete } = props;
+  const { taskId, agentId, children, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits, onShowDetails, selectionMode, selectedIds, onRequestDelete } = props;
   
   const [isMenuReady, setIsMenuReady] = React.useState(false);
 
@@ -123,6 +124,14 @@ export default function TorrentContextMenu(props: TorrentContextMenuProps) {
     }
   }, [onLimits, taskId, agentId]);
 
+  const handleShowDetails = React.useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onShowDetails) {
+      onShowDetails(taskId);
+    }
+  }, [onShowDetails, taskId]);
+
   const handleOpenChange = React.useCallback((open: boolean) => {
     if (open) {
       setIsMenuReady(false);
@@ -156,6 +165,10 @@ export default function TorrentContextMenu(props: TorrentContextMenuProps) {
         className="w-48"
         onCloseAutoFocus={(e: Event) => e.preventDefault()}
       >
+        <ContextMenuItem onClick={createProtectedHandler(handleShowDetails)} disabled={!onShowDetails}>
+          <Info />
+          {t("torrents.showDetails")}
+        </ContextMenuItem>
         <ContextMenuItem onClick={createProtectedHandler(handleStart)}>
           <Play className="text-green-500" />
           {t("torrents.start")}

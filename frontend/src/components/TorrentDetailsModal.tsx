@@ -48,6 +48,8 @@ import { TorrentRatioWidget } from "@/components/widgets/TorrentRatioWidget";
 import { TorrentLifetimeWidget } from "@/components/widgets/TorrentLifetimeWidget";
 import { TorrentImageEditor } from "@/components/TorrentImageEditor";
 import { formatBytes  } from "@/utils/bytes";
+import { preferencesService } from "@/services/preferences";
+import taskDefaultBg from "@/assets/img/common/task-default-background.png";
 
 interface TorrentDetailsModalProps {
   torrent: Task | null;
@@ -89,6 +91,14 @@ function useIsMobile(): boolean {
   return isMobile;
 }
 
+function sanitizeBlurIntensity(value: unknown): number {
+  const numValue = Number(value);
+  if (isNaN(numValue)) {
+    return 50; // safe default
+  }
+  return Math.max(0, Math.min(100, numValue));
+}
+
 export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause, onDelete, onForceDownload, onForceReannounce, onForceRecheck, onRename, onSetLocation, onUpdateCategory, onUpdateTags, onUpdate }: TorrentDetailsModalProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -103,8 +113,16 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
   const [currentCategory, setCurrentCategory] = useState("");
   const [currentCategoryData, setCurrentCategoryData] = useState<Category | null>(null);
   const [currentTags, setCurrentTags] = useState<string[]>([]);
+  const [blurIntensity, setBlurIntensity] = useState(50);
   const isMobile = useIsMobile();
   const { t } = useTranslation();
+
+  // Load blur intensity preference
+  useEffect(() => {
+    const prefs = preferencesService.load();
+    const sanitizedIntensity = sanitizeBlurIntensity(prefs?.background_image_blur_intensity);
+    setBlurIntensity(sanitizedIntensity);
+  }, []);
 
   // Initialize current values when torrent changes
   useEffect(() => {
@@ -615,46 +633,102 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
               {/* Cards General Information e Ratio - Always on same row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 sm:gap-4">
                 {/* Card Informações Gerais */}
-                <div className="p-3 container-content-background/50 rounded-lg border">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Activity className="h-4 w-4 text-muted-foreground" />
-                    <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('torrentDetails.general.title', { defaultValue: 'Informações Gerais' })}</h4>
+                <div className="rounded-lg border overflow-hidden relative">
+                  {/* Background image with blur */}
+                  {torrent.metadata?.image_url ? (
+                    <div
+                      className="absolute inset-0 bg-cover pointer-events-none z-0 rounded-lg"
+                      style={{
+                        backgroundImage: `url(${encodeURI(torrent.metadata.image_url)})`,
+                        filter: `blur(${Math.round((blurIntensity / 100) * 24)}px)`,
+                        backgroundPosition: `center ${torrent.metadata.image_position_y ?? 50}%`,
+                        opacity: Math.max(0.15, Math.min(0.85, (torrent.metadata.image_opacity ?? 65) / 100))
+                      }}
+                      aria-hidden
+                    />
+                  ) : (
+                    <div
+                      className="absolute inset-0 bg-cover pointer-events-none z-0 opacity-[0.12] dark:opacity-[0.03] rounded-lg"
+                      style={{ backgroundImage: `url(${taskDefaultBg})` }}
+                      aria-hidden
+                    />
+                  )}
+                  
+                  {/* Header with dark/light background */}
+                  <div className={`relative z-10 px-3 py-2 rounded-t-lg ${torrent.metadata?.image_url ? '' : getStatusBackgroundColor(torrent.state as TorrentStatus)}`}>
+                    {/* Blur overlay for header when has image */}
+                    {torrent.metadata?.image_url && (
+                      <>
+                        <div className="absolute inset-0 bg-background/20 -z-10 rounded-t-lg" style={{ backdropFilter: `blur(${Math.round((blurIntensity / 100) * 24)}px)` }} aria-hidden />
+                        <div className="absolute inset-0 bg-white/60 dark:bg-black/40 -z-10 rounded-t-lg" aria-hidden />
+                      </>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <Activity className="h-4 w-4 text-muted-foreground" />
+                      <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('torrentDetails.general.title', { defaultValue: 'Informações Gerais' })}</h4>
+                    </div>
                   </div>
-                  <div className="flex gap-3 items-start">
-                    <div className="flex-1 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{t('torrentDetails.general.state', { defaultValue: 'Estado:' })}</span>
-                        <div className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium w-fit ${getStatusBackgroundColor(torrent.state as TorrentStatus)} ${getStatusColor(torrent.state as TorrentStatus)}`}>
-                          {(() => {
-                            const StatusIcon = getStatusIcon(torrent.state as TorrentStatus);
-                            return <StatusIcon className="h-4 w-4" />;
-                          })()}
-                          <span className="capitalize">{torrent.state}</span>
-                        </div>
+                  
+                  {/* Content */}
+                  <div className="p-3 relative z-10">
+                    <div className="flex gap-3 items-start">
+                      <div className="flex-shrink-0">
+                        {torrent.metadata?.thumbnail_url ? (
+                          <img
+                            src={torrent.metadata.thumbnail_url}
+                            alt={torrent.name}
+                            className="w-24 h-24 rounded-lg border object-cover"
+                          />
+                        ) : (
+                          <div className="w-24 h-24 rounded-lg border bg-muted flex items-center justify-center">
+                            <Image className="h-12 w-12 text-muted-foreground" />
+                          </div>
+                        )}
                       </div>
-                      {torrent.agent && (
+                      <div className="flex-1 space-y-3">
+                        {/* Estado with blur */}
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">{t('torrentDetails.general.agent', { defaultValue: 'Agent:' })}</span>
-                          <div className="flex items-center gap-2">
-                            <AgentIcon 
-                              iconName={torrent.agent.icon}
-                              color={torrent.agent.color}
-                              size="sm"
-                            />
-                            <span className="text-sm text-muted-foreground">{torrent.agent.name}</span>
+                          <span className="text-sm font-medium">{t('torrentDetails.general.state', { defaultValue: 'Estado:' })}</span>
+                          <div className="relative inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium w-fit">
+                            {/* Blur overlay for estado badge */}
+                            {torrent.metadata?.image_url && (
+                              <>
+                                <div className="absolute inset-0 bg-background/20 -z-10 rounded-full" style={{ backdropFilter: `blur(${Math.round((blurIntensity / 100) * 24)}px)` }} aria-hidden />
+                                <div className="absolute inset-0 bg-white/60 dark:bg-black/40 -z-10 rounded-full" aria-hidden />
+                              </>
+                            )}
+                            <div className={`flex items-center gap-1.5 ${getStatusColor(torrent.state as TorrentStatus)}`}>
+                              {(() => {
+                                const StatusIcon = getStatusIcon(torrent.state as TorrentStatus);
+                                return <StatusIcon className="h-4 w-4" />;
+                              })()}
+                              <span className="capitalize">{torrent.state}</span>
+                            </div>
                           </div>
                         </div>
-                      )}
-                    </div>
-                    {torrent.metadata?.thumbnail_url && (
-                      <div className="flex-shrink-0">
-                        <img
-                          src={torrent.metadata.thumbnail_url}
-                          alt={torrent.name}
-                          className="w-24 h-24 rounded-lg border object-cover"
-                        />
+                        {/* Agent with blur */}
+                        {torrent.agent && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">{t('torrentDetails.general.agent', { defaultValue: 'Agent:' })}</span>
+                            <div className="relative inline-flex items-center gap-2 px-2 py-1 rounded-md">
+                              {/* Blur overlay for agent badge */}
+                              {torrent.metadata?.image_url && (
+                                <>
+                                  <div className="absolute inset-0 bg-background/20 -z-10 rounded-md" style={{ backdropFilter: `blur(${Math.round((blurIntensity / 100) * 24)}px)` }} aria-hidden />
+                                  <div className="absolute inset-0 bg-white/60 dark:bg-black/40 -z-10 rounded-md" aria-hidden />
+                                </>
+                              )}
+                              <AgentIcon 
+                                iconName={torrent.agent.icon}
+                                color={torrent.agent.color}
+                                size="sm"
+                              />
+                              <span className="text-sm text-muted-foreground">{torrent.agent.name}</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
                 </div>
 

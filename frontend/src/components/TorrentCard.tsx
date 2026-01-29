@@ -100,6 +100,7 @@ export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove,
       onForceRecheck={onForceRecheck}
       onMetrics={onMetrics}
       onLimits={onLimits}
+      onShowDetails={onShowDetails}
     >
       <Card
         className="hover:shadow-lg transition-shadow overflow-hidden p-0 gap-2 cursor-pointer relative"
