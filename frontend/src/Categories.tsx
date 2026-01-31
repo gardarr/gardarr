@@ -153,9 +153,8 @@ function Categories() {
           </div>
         </div>
         <div className="flex gap-2 w-full sm:w-auto justify-between sm:justify-end">
-          <Button onClick={loadCategories} variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            {t('categories.refresh')}
+          <Button onClick={loadCategories} variant="outline" size="icon">
+            <RefreshCw className="h-4 w-4" />
           </Button>
           <Button onClick={() => setShowCreateModal(true)} size="sm">
             <Plus className="h-4 w-4 mr-2" />

@@ -165,9 +165,14 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
                 return <IconComponent className="h-6 w-6 text-white" />;
               })()}
             </div>
-            <h2 className="text-2xl font-bold">
-              {editingCategory ? t('categories.edit') : t('categories.createNew')}
-            </h2>
+            <div>
+              <h2 className="text-2xl font-bold">
+                {editingCategory ? t('categories.edit') : t('categories.createNew')}
+              </h2>
+              {editingCategory && (
+                <p className="text-sm text-muted-foreground">{editingCategory.name}</p>
+              )}
+            </div>
           </div>
           <Button
             variant="ghost"
@@ -181,20 +186,18 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
 
         {/* Form Content */}
         <div className="p-6 space-y-6">
-          <div className="space-y-1.5">
-            <Label htmlFor="name" className="text-sm">{t('categories.fields.name')} *</Label>
-            <Input
-              id="name"
-              placeholder={t('categories.placeholders.name')}
-              value={createForm.name}
-              onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-              disabled={!!editingCategory}
-              className="h-9"
-            />
-            {editingCategory && (
-              <p className="text-xs text-muted-foreground">{t('categories.immutableName')}</p>
-            )}
-          </div>
+          {!editingCategory && (
+            <div className="space-y-1.5">
+              <Label htmlFor="name" className="text-sm">{t('categories.fields.name')} *</Label>
+              <Input
+                id="name"
+                placeholder={t('categories.placeholders.name')}
+                value={createForm.name}
+                onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                className="h-9"
+              />
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label htmlFor="tags" className="text-sm">{t('categories.fields.defaultTags')}</Label>
@@ -230,19 +233,8 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
                 className="flex-1 min-w-[120px] bg-transparent border-none outline-none text-sm"
               />
             </div>
-            <div className="space-y-2">
-              <div className="text-xs text-muted-foreground">
-                {t('categories.tagsHint')}
-              </div>
-              <div className="text-xs text-muted-foreground space-y-1">
-                <div className="font-medium">{t('categories.tagsExamples.title')}</div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs">
-                  <div>• <span className="font-mono bg-muted px-1 rounded">{t('categories.tagsExamples.simpleExample')}</span> - {t('categories.tagsExamples.simple')}</div>
-                  <div>• <span className="font-mono bg-muted px-1 rounded">{t('categories.tagsExamples.hierarchicalExample')}</span> - {t('categories.tagsExamples.hierarchical')}</div>
-                  <div>• <span className="font-mono bg-muted px-1 rounded">{t('categories.tagsExamples.yearExample')}</span> - {t('categories.tagsExamples.year')}</div>
-                  <div>• <span className="font-mono bg-muted px-1 rounded">{t('categories.tagsExamples.qualityExample')}</span> - {t('categories.tagsExamples.quality')}</div>
-                </div>
-              </div>
+            <div className="text-xs text-muted-foreground">
+              {t('categories.tagsHint')}
             </div>
           </div>
 
@@ -257,38 +249,38 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
             />
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-2">
-            <div className="space-y-1.5">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
               <Label htmlFor="icon" className="text-sm">{t('categories.fields.icon')}</Label>
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-5 gap-0.5">
                 {availableIcons.map((iconItem) => {
                   const IconComponent = iconItem.icon;
                   return (
                     <button
                       key={iconItem.name}
                       type="button"
-                      className={`w-10 h-10 rounded-md border-2 flex items-center justify-center transition-all hover:scale-110 ${
-                        createForm.icon === iconItem.name ? 'border-foreground bg-accent scale-110' : 'border-border hover:bg-accent/50'
+                      className={`w-11 h-11 rounded-md border-2 flex items-center justify-center transition-all hover:scale-105 ${
+                        createForm.icon === iconItem.name ? 'border-foreground bg-accent scale-105' : 'border-border hover:bg-accent/50'
                       }`}
                       onClick={() => setCreateForm({ ...createForm, icon: iconItem.name })}
                       title={iconItem.name}
                     >
-                      <IconComponent className="h-5 w-5" />
+                      <IconComponent className="h-6 w-6" />
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <Label htmlFor="color" className="text-sm">{t('categories.fields.color')}</Label>
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-5 gap-0.5">
                 {availableColors.map((color) => (
                   <button
                     key={color.value}
                     type="button"
-                    className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${
-                      createForm.color === color.value ? 'border-foreground scale-110' : 'border-transparent'
+                    className={`w-9 h-9 rounded-md border-2 transition-transform hover:scale-105 ${
+                      createForm.color === color.value ? 'border-foreground scale-105' : 'border-transparent'
                     }`}
                     style={{ backgroundColor: color.value }}
                     onClick={() => setCreateForm({ ...createForm, color: color.value })}
