@@ -371,7 +371,7 @@ The Business Source License 1.1 allows us to:
 1. **Protect the project** from large cloud providers offering Gardarr as a competing service without contributing back
 2. **Maintain open development** where anyone can view, modify, and contribute to the code
 3. **Support self-hosters** who can freely use Gardarr for any personal or business purpose
-4. **Guarantee open source conversion** - the code will automatically become Apache 2.0 licensed
+4. **Guarantee open-source conversion** - the code will automatically become Apache 2.0 licensed
 
 ### Frequently Asked Questions
 
@@ -400,9 +400,9 @@ On **February 2, 2029**, this version automatically converts to the **Apache Lic
 </details>
 
 <details>
-<summary><strong>Is BSL 1.1 an open source license?</strong></summary>
+<summary><strong>Is BSL 1.1 an open-source license?</strong></summary>
 
-BSL 1.1 is a "source-available" license, not technically OSI-approved open source. However, it provides most of the freedoms of open source and **guarantees** automatic conversion to a true open source license (Apache 2.0) on the Change Date.
+BSL 1.1 is a "source-available" license, not technically OSI-approved open source. However, it provides most of the freedoms of open source and **guarantees** automatic conversion to a true open-source license (Apache 2.0) on the Change Date.
 </details>
 
 ### Full License Text
