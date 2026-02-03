@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -20,7 +20,10 @@ export function CategoryFilter({
 }: CategoryFilterProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState(0);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const allButtonRef = useRef<HTMLButtonElement | null>(null);
+  const categoryRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -28,21 +31,78 @@ export function CategoryFilter({
         setIsOpen(false);
       }
     }
-    function handleKeyDown(event: KeyboardEvent) {
+    function handleEscapeKey(event: KeyboardEvent) {
       if (event.key === "Escape") setIsOpen(false);
     }
     if (isOpen) {
       document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("keydown", handleKeyDown);
+      document.addEventListener("keydown", handleEscapeKey);
     }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keydown", handleEscapeKey);
     };
   }, [isOpen]);
 
-  const allSelected = categories.length > 0 && selectedCategoryNames.size === categories.length;
-  const someSelected = selectedCategoryNames.size > 0 && !allSelected;
+  // Focus the appropriate button when opening or when focusedIndex changes
+  useEffect(() => {
+    if (!isOpen) return;
+    if (focusedIndex === 0) {
+      allButtonRef.current?.focus();
+    } else {
+      const cat = categories[focusedIndex - 1];
+      if (cat) {
+        categoryRefs.current.get(cat.id)?.focus();
+      }
+    }
+  }, [isOpen, focusedIndex, categories]);
+
+  // Reset focusedIndex when opening
+  useEffect(() => {
+    if (isOpen) {
+      setFocusedIndex(0);
+    }
+  }, [isOpen]);
+
+  const handleListboxKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+    const totalItems = categories.length + 1; // +1 for "All" button
+    
+    switch (event.key) {
+      case "ArrowDown":
+        event.preventDefault();
+        setFocusedIndex((prev) => (prev + 1) % totalItems);
+        break;
+      case "ArrowUp":
+        event.preventDefault();
+        setFocusedIndex((prev) => (prev - 1 + totalItems) % totalItems);
+        break;
+      case "Home":
+        event.preventDefault();
+        setFocusedIndex(0);
+        break;
+      case "End":
+        event.preventDefault();
+        setFocusedIndex(categories.length);
+        break;
+      case "Enter":
+      case " ":
+        event.preventDefault();
+        if (focusedIndex === 0) {
+          onSetAll(true);
+        } else {
+          const cat = categories[focusedIndex - 1];
+          if (cat) {
+            onToggleCategory(cat.name);
+          }
+        }
+        break;
+    }
+  }, [categories, focusedIndex, onSetAll, onToggleCategory]);
+
+  const currentCategoryNames = new Set(categories.map(cat => cat.name));
+  const intersectionSize = [...selectedCategoryNames].filter(name => currentCategoryNames.has(name)).length;
+  const allSelected = intersectionSize === currentCategoryNames.size && currentCategoryNames.size > 0;
+  const someSelected = intersectionSize > 0 && intersectionSize < currentCategoryNames.size;
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -65,9 +125,14 @@ export function CategoryFilter({
           className="absolute right-0 mt-1 w-64 max-h-[400px] overflow-y-auto rounded-md border bg-card text-card-foreground shadow-md z-[100] py-1"
           role="listbox"
           aria-label={t('torrents.filters.categories')}
+          aria-activedescendant={focusedIndex === 0 ? 'category-filter-all' : `category-filter-${categories[focusedIndex - 1]?.id}`}
+          onKeyDown={handleListboxKeyDown}
         >
           <button
-            className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground sticky top-0 bg-card border-b z-10"
+            id="category-filter-all"
+            ref={allButtonRef}
+            tabIndex={-1}
+            className={`w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground sticky top-0 bg-card border-b z-10 ${focusedIndex === 0 ? 'ring-2 ring-ring ring-inset' : ''}`}
             onClick={() => onSetAll(true)}
             role="option"
             aria-selected={allSelected}
@@ -82,12 +147,22 @@ export function CategoryFilter({
               {t('torrents.filters.noCategoriesAvailable')}
             </div>
           ) : (
-            categories.map((cat) => {
+            categories.map((cat, index) => {
               const selected = selectedCategoryNames.has(cat.name);
+              const isFocused = focusedIndex === index + 1;
               return (
                 <button
+                  id={`category-filter-${cat.id}`}
                   key={cat.id}
-                  className={`w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground ${selected ? 'bg-muted' : ''}`}
+                  ref={(el) => {
+                    if (el) {
+                      categoryRefs.current.set(cat.id, el);
+                    } else {
+                      categoryRefs.current.delete(cat.id);
+                    }
+                  }}
+                  tabIndex={-1}
+                  className={`w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground ${selected ? 'bg-muted' : ''} ${isFocused ? 'ring-2 ring-ring ring-inset' : ''}`}
                   onClick={() => onToggleCategory(cat.name)}
                   role="option"
                   aria-selected={selected}

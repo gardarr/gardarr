@@ -163,13 +163,17 @@ export function useTorrentFilters({
 
     // Filtrar por tags selecionadas (size === 0 mostra todos, size > 0 filtra)
     if (availableTags.length > 0 && selectedTags.size > 0) {
+      // Normalize selectedTags by trimming values for consistent comparison
+      const normalizedSelectedTags = new Set(
+        Array.from(selectedTags).map(tag => tag.trim())
+      );
       filtered = filtered.filter((t) => {
         // Normaliza tags (trim) e filtra vazias
         const validTags = t.tags
           .map(tag => tag?.trim())
           .filter((tag): tag is string => !!tag);
         // Se tem tags válidas, verifica se pelo menos uma está selecionada
-        return validTags.some(tag => selectedTags.has(tag));
+        return validTags.some(tag => normalizedSelectedTags.has(tag));
       });
     }
     
