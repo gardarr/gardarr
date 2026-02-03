@@ -540,7 +540,24 @@
       "pending": "Pending"
     },
     "details": "Details",
-    "limits": "Limits",
+    "limits": {
+      "title": "Limits",
+      "loading": "Loading limits...",
+      "unlimited": "Unlimited",
+      "saving": "Saving...",
+      "instanceSpeedLimits": "Instance Speed Limits",
+      "downloadLimit": "Download Limit",
+      "uploadLimit": "Upload Limit",
+      "saveSpeedLimits": "Save Speed Limits",
+      "speedToastTitle": "Speed limits updated",
+      "instanceActiveLimits": "Instance Active Torrent Limits",
+      "maxActiveDownloads": "Max Active Downloads",
+      "maxActiveUploads": "Max Active Uploads",
+      "maxActiveTorrents": "Max Active Torrents",
+      "maxActiveChecking": "Max Active Checking Torrents",
+      "saveActiveLimits": "Save Active Limits",
+      "activeToastTitle": "Active limits updated"
+    },
     "schedules": "Schedules"
   },
   "users": {
@@ -1220,5 +1237,43 @@
     "unlimited": "Unlimited",
     "globalLimit": "Global Limit",
     "custom": "Custom"
+  },
+  "taskStatus": {
+    "ERROR": "Error",
+    "MISSING_FILES": "Missing Files",
+    "UPLOADING": "Uploading",
+    "PAUSED_UPLOAD": "Upload Paused",
+    "STOPPED_UPLOAD": "Upload Stopped",
+    "QUEUED_UPLOAD": "Upload Queued",
+    "STALLED_UPLOAD": "Upload Stalled",
+    "CHECKING_UPLOAD": "Checking Upload",
+    "FORCED_UPLOAD": "Forced Upload",
+    "ALLOCATING": "Allocating",
+    "DOWNLOADING": "Downloading",
+    "METADATA_DOWNLOAD": "Downloading Metadata",
+    "FORCED_METADATA_DOWNLOAD": "Forced Metadata",
+    "PAUSED_DOWNLOAD": "Download Paused",
+    "STOPPED_DOWNLOAD": "Download Stopped",
+    "QUEUED_DOWNLOAD": "Download Queued",
+    "FORCED_DOWNLOAD": "Forced Download",
+    "STALLED_DOWNLOAD": "Download Stalled",
+    "CHECKING_DOWNLOAD": "Checking Download",
+    "CHECKING_RESUME_DATA": "Checking Data",
+    "MOVING": "Moving",
+    "UNKNOWN": "Unknown"
+  },
+  "taskStatusDescription": {
+    "DOWNLOADING": "Actively downloading content",
+    "UPLOADING": "Actively seeding/uploading content",
+    "STALLED_DOWNLOAD": "Download stalled (no peers)",
+    "STALLED_UPLOAD": "Upload stalled (no leechers)",
+    "CHECKING": "Checking file integrity",
+    "PAUSED_DOWNLOAD": "Download paused",
+    "PAUSED_UPLOAD": "Upload paused",
+    "QUEUED_DOWNLOAD": "Queued for download",
+    "QUEUED_UPLOAD": "Queued for upload",
+    "ERROR": "Torrent in error state",
+    "MISSING_FILES": "Files are missing",
+    "ALLOCATING": "Allocating disk space"
   }
 }

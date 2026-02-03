@@ -279,7 +279,7 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
                   <button
                     key={color.value}
                     type="button"
-                    className={`w-9 h-9 rounded-md border-2 transition-transform hover:scale-105 ${
+                    className={`w-11 h-11 rounded-md border-2 transition-transform hover:scale-105 ${
                       createForm.color === color.value ? 'border-foreground scale-105' : 'border-transparent'
                     }`}
                     style={{ backgroundColor: color.value }}

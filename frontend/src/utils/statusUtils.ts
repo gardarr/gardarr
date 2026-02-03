@@ -195,3 +195,20 @@ export function isInactiveStatus(status: TaskStatus): boolean {
   return INACTIVE_STATUSES.includes(status);
 }
 
+/**
+ * Get the i18n translation key for a task status
+ * @param status - Task status to get translation key for
+ * @returns Translation key string (e.g., "taskStatus.DOWNLOADING")
+ */
+export function getStatusTranslationKey(status: TaskStatus): string {
+  return `taskStatus.${status}`;
+}
+
+/**
+ * Get the i18n translation key for a task status description
+ * @param status - Task status to get description translation key for
+ * @returns Translation key string (e.g., "taskStatusDescription.DOWNLOADING")
+ */
+export function getStatusDescriptionKey(status: string): string {
+  return `taskStatusDescription.${status}`;
+}
