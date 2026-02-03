@@ -5,7 +5,8 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/license/jfxdev/gardarr" alt="License" />
+  <img src="https://img.shields.io/badge/license-BSL%201.1-blue" alt="License: BSL 1.1" />
+  <img src="https://img.shields.io/badge/Apache%202.0-Feb%202029-green" alt="Apache 2.0: Feb 2029" />
   <img src="https://img.shields.io/github/v/release/jfxdev/gardarr" alt="Release" />
   <img src="https://img.shields.io/github/actions/workflow/status/jfxdev/gardarr/.github%2Fworkflows%2Fbuild.yml" alt="GitHub Actions" />
   <img src="https://img.shields.io/coderabbit/prs/github/jfxdev/gardarr?utm_source=oss&utm_medium=github&utm_campaign=gardarr%2Fgardarr&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews" alt="CodeRabbit Reviews" />
@@ -21,7 +22,7 @@
 
 Gardarr is a **modern, lightweight management and analytics platform for qBittorrent**, built with performance and user experience in mind. It provides a centralized interface to monitor and control multiple torrent clients, offering advanced insights and a mobile-first design.
 
-**Fully open-source** project licensed under GPL-3.0, designed to be self-hosted by the community with clean and maintainable code.
+**Source-available** project licensed under BSL 1.1, designed to be self-hosted by the community with clean and maintainable code. **Transitions to Apache 2.0 on February 2, 2029**.
 
 ## 📑 Table of Contents
 
@@ -43,6 +44,7 @@ Gardarr is a **modern, lightweight management and analytics platform for qBittor
 - [⚙️ Configuration](#-configuration)
 - [🛠️ Development](#-development)
 - [📋 Roadmap](#-roadmap)
+- [📄 License](#-license)
 
 ## ✨ Key Features
 
@@ -51,7 +53,7 @@ Gardarr is a **modern, lightweight management and analytics platform for qBittor
 - **📊 Advanced Analytics**:
   - Real-time download/upload speed monitoring.
   - Historical data analysis.
-  - **Ratio Grading**: Intelligent "School Grade" system (E to S++) for ratio tracking.
+  - **Ratio Grading**: Gamification system (E to S++) for ratio tracking.
 - **📝 Event System**: Comprehensive event tracking for state changes, completions, and errors, persisted in the database.
 - **🔐 Secure Authentication**: 
   - Argon2id password hashing.
@@ -144,39 +146,7 @@ Designed for power users with multiple seedboxes or servers.
 
 ## 🏆 Ratio Grading System
 
-Gardarr features an intelligent **"School Grade"** system that gamifies torrent sharing, encouraging healthy seeding behavior and community contribution.
-
-### Grade Levels
-
-The system evaluates your share ratio and assigns a grade from **E** (beginner) to **S++** (legendary):
-
-| Grade | Ratio Range | Description | Stars |
-|-------|-------------|-------------|-------|
-| **S++** | ≥ 100.0 | LEGENDARY - Community hero | ⭐⭐⭐⭐⭐ |
-| **S+** | 50.0 - 99.9 | INCREDIBLE - Raising the bar | ⭐⭐⭐⭐⭐ |
-| **S** | 30.0 - 49.9 | MASTER - Excellent contribution | ⭐⭐⭐⭐⭐ |
-| **A** | 15.0 - 29.9 | ADVANCED - Very good participation | ⭐⭐⭐⭐ |
-| **B** | 7.0 - 14.9 | INTERMEDIATE - Nice work | ⭐⭐⭐ |
-| **C** | 3.0 - 6.9 | APPRENTICE - Almost there | ⭐⭐ |
-| **D** | 1.0 - 2.9 | NOVICE - You're contributing | ⭐ |
-| **E** | < 1.0 | BEGINNER - Keep seeding | - |
-
-### Visual Feedback
-
-Each grade comes with:
-- **Color-coded badges**: Instantly recognize performance levels
-- **Star ratings**: Visual representation from 1 to 5 stars
-- **Motivational messages**: Encouraging feedback for each grade level
-- **Glow effects**: Higher grades feature special visual effects
-
-### Ratio Widget
-
-The Torrent Details modal includes a comprehensive Ratio Widget displaying:
-- **Current ratio** with decimal precision
-- **Total uploaded data** in human-readable format
-- **Popularity metric** showing relative torrent demand
-- **Grade badge** with stars and description
-- **Personalized message** encouraging continued sharing
+Gardarr features an intelligent **gamification system** for torrent sharing, encouraging healthy seeding behavior and community contribution. The system evaluates your share ratio and assigns grades from **E** (beginner) to **S++** (legendary), with color-coded badges, star ratings, and motivational messages.
 
 ### Benefits
 
@@ -187,172 +157,53 @@ The Torrent Details modal includes a comprehensive Ratio Widget displaying:
 
 ## 🔌 Integrations & Events
 
-The platform features a robust event-driven architecture to keep you connected:
+The platform features a robust event-driven architecture to keep you connected.
 
 ### Event System
-Automatically tracks and persists lifecycle events in the database:
-- **State Changes**: Monitor transitions (e.g., Downloading → Seeding, Paused → Resumed).
-- **Lifecycle**: Track when torrents are added, removed, or completed.
-- **Retention**: Configurable history retention (Default: 30 days) via `EVENT_RETENTION_DAYS`.
 
-#### Event History Page
-A comprehensive interface to monitor all torrent activity:
-
-**Event Types Tracked:**
-- **State Changes** (`torrent.state_change`): Monitors status transitions with before/after states
-- **Torrent Added** (`torrent.added`): Logs when new torrents are detected
-- **Torrent Removed** (`torrent.removed`): Tracks when torrents are deleted
-- **Torrent Completed** (`torrent.completed`): Celebrates when downloads reach 100%
+Automatically tracks and persists torrent lifecycle events (state changes, additions, removals, completions) with configurable retention via `EVENT_RETENTION_DAYS`.
 
 **Features:**
-- **Real-time Statistics**: Dashboard cards showing total events and current page counts
-- **Advanced Filtering**: Filter by event type to focus on specific activities
-- **Search Functionality**: Find events by torrent name or hash
-- **Pagination**: Navigate through event history with intelligent page controls
-- **Visual Indicators**: Color-coded badges and icons for each event type
-- **Detailed Metadata**: View state transitions, progress changes, and timestamps
-- **Relative Time Display**: Shows "2 hours ago" with full timestamp on hover
+- Real-time statistics and filtering by event type
+- Search by torrent name or hash with pagination
+- Visual indicators with color-coded badges and timestamps
 
-**Performance:**
-- Integrated with statistics polling (configurable via `STATISTICS_INTERVAL`)
-- Efficient in-memory state tracking with O(1) lookups
-- Concurrent processing per agent for minimal overhead
-- Database indexing on agent_id, type, task_hash, and created_at
+### Event History Page
+
+A comprehensive interface to monitor all torrent activity with event types: `state_change`, `added`, `removed`, and `completed`.
 
 ### Webhooks
-Connect Gardarr to external services like Discord, Slack, or automation tools (n8n, Home Assistant):
-- **Flexible Targets**: Configure multiple webhook endpoints.
-- **Event Filtering**: Select exactly which events trigger notifications for each webhook.
-- **Security**: Support for SSL verification skipping (optional) and secure timeouts.
-- **History**: Logs webhook delivery attempts for debugging.
+
+Connect to external services (Discord, Slack, n8n, Home Assistant) with multiple endpoints, event filtering, and delivery logging.
 
 ## 📊 Metrics & Analytics
 
-Gardarr provides comprehensive metrics and analytics to monitor torrent performance and agent health.
+Comprehensive monitoring for torrent performance and agent health.
 
-### Torrent Metrics
-
-Individual torrent details include:
-- **Network Statistics**: Download/upload amounts, speeds, and ratio tracking
-- **Lifetime Timeline**: Creation date, completion date, and duration tracking
-- **Progress Tracking**: Real-time progress bars with state monitoring
-- **File Management**: Complete file list with sizes and priority control
-
-**Value**: Understand individual torrent performance, optimize seeding strategies, and track contribution levels.
-
-### Agent Metrics
-
-Analytics dashboard provides:
-- **Performance**: Real-time download/upload speeds with swarm statistics (seeders/leechers)
-- **Storage**: Total disk usage, free space, and all-time transfer amounts
-- **Ratio Statistics**: Global, average, highest, and lowest ratios across all torrents
-- **Activity**: Recent torrents, most uploaded content, category/tag usage analytics
-- **Task Terms Cloud**: Visual word cloud of common terms from torrent names
-- **Multi-Agent View**: Aggregated metrics across all active agents when no specific agent is selected
-
-**Value**: Monitor infrastructure health, identify bottlenecks, optimize resource allocation, and gain insights into content distribution patterns
+- **Torrent Metrics**: Network statistics, lifetime timeline, progress tracking, and file management
+- **Agent Metrics**: Real-time speeds, storage usage, ratio statistics, activity analytics, and multi-agent aggregation
 
 ## 🎨 Customization
 
-Gardarr allows you to personalize your library with rich metadata and visual options.
+Personalize your library with rich metadata and visual options.
 
-### Theme Customization
+### Themes
 
-Gardarr offers extensive theme personalization to match your preferences:
+- **Dark & Light modes** with persistent preferences
+- **14 pre-built color palettes** (Default, Aura, Sunset, Ocean, Forest, Cyberpunk, and more)
+- **3 custom palette slots** with 4-color system (Primary, Secondary, Accent, Muted)
 
-#### Dark & Light Modes
-- **Toggle themes** instantly with a single click
-- **Persistent preference** saved across sessions
-- **System-wide consistency** throughout the interface
+### Cover Art & Metadata
 
-#### Color Variants
-Choose from **14 pre-built color palettes** to customize the interface:
-
-| Variant | Description |
-|---------|-------------|
-| **Default** | Classic blue theme |
-| **Aura** | Purple mystique |
-| **Sunset** | Warm orange tones |
-| **Ocean** | Deep blue waters |
-| **Forest** | Natural green |
-| **Lavender** | Soft purple |
-| **Rose** | Elegant pink |
-| **Amber** | Golden warmth |
-| **Mint** | Fresh cyan |
-| **Crimson** | Bold red |
-| **Cyberpunk** | Neon cyan & magenta |
-| **Golden** | Luxurious gold |
-| **Earth** | Neutral brown |
-| **Silver** | Minimalist gray |
-
-#### Custom Palettes
-Create your own color schemes with **3 customizable palette slots**:
-- **4-color system**: Primary, Secondary, Accent, and Muted
-- **Live preview**: See changes in real-time
-- **Profile integration**: Edit palettes in your profile preferences
-- **Instant switching**: Toggle between custom and preset themes
-
-### Custom Cover Art & Metadata
-
-- **Custom Cover Art**: Upload custom images (JPEG, PNG, GIF, WEBP) for any torrent up to 10MB.
-- **Visual Fine-Tuning**: 
-  - **Positioning**: Adjust the vertical position of cover images.
-  - **Opacity**: Control image transparency (15-85%) for better text readability.
-- **Rich Metadata**: Add custom descriptions and notes to your torrents.
+Upload custom images (JPEG, PNG, GIF, WEBP up to 10MB) with positioning and opacity controls. Add descriptions and notes to torrents.
 
 ### Categories
 
-Categories are the foundation of Gardarr's organization system, providing a structured way to manage and classify your torrents. By pre-configuring categories with default tags and directories, you can add new torrents quickly without the overhead of manual configuration - simply select a category and all its settings are automatically applied.
+Organize torrents with pre-configured categories featuring custom icons (16 options), colors (10 options), default directories, and default tags. Configure once, apply everywhere.
 
-#### Core Features
-- **Unique Names**: Each category has a unique, immutable name that serves as its identifier
-- **Custom Icons**: Choose from 16 pre-defined icons (Folder, Film, TV, Music, Games, etc.)
-- **Color Coding**: Select from 10 vibrant colors to visually distinguish categories
-- **Default Directory**: Optionally specify a default save path for torrents in this category
-- **Default Tags**: Pre-configure tags that are automatically applied to new torrents
+### Tags
 
-#### Visual Customization
-Categories support extensive visual customization:
-- **16 Available Icons**: Folder, FolderOpen, Film, Tv, Music, BookOpen, Gamepad2, FileText, Image, Video, Download, Star, Heart, Archive, Package, Disc
-- **10 Color Options**: Blue, Green, Purple, Red, Orange, Pink, Indigo, Teal, Yellow, Gray
-
-#### Category Management
-- **Create**: Define new categories with custom properties
-- **Edit**: Update tags, directory, color, and icon (name is immutable)
-- **Delete**: Remove categories when no longer needed
-- **Search**: Quickly filter categories by name
-
-#### Integration with Torrents
-Categories streamline torrent management by eliminating repetitive configuration. When adding a new torrent, simply select a category and it automatically:
-- **Applies all default tags** from that category
-- **Sets the save directory** (if configured)
-- **Provides visual context** through color and icon
-
-This approach significantly reduces the overhead when adding multiple torrents, as you no longer need to manually configure tags and directories for each one. Configure once in the category, use everywhere.
-
-### Tags & Composite Tags
-
-Gardarr features a powerful tagging system to organize your torrents:
-
-#### Simple Tags
-Basic labels to categorize content (e.g., `movies`, `tv-shows`, `music`).
-
-#### Composite Tags
-Advanced tags using the `::` separator to create hierarchical relationships:
-- **Format**: `category::value`
-- **Examples**:
-  - `genre::action` - Categorize by genre
-  - `quality::4k` - Mark quality level
-  - `status::watched` - Track viewing status
-  - `year::2024` - Organize by year
-
-**Visual Distinction**: Composite tags are rendered as connected badges with distinct colors - the category part uses the primary theme, while the value part uses the secondary theme, making them easy to identify at a glance.
-
-#### Category Default Tags
-When creating categories, you can define default tags that are automatically applied to new torrents:
-- Tags can be simple or composite
-- Multiple tags can be assigned per category
-- Helps maintain consistent organization across your library
+Simple tags (`movies`, `music`) and composite tags using `::` separator for hierarchical organization (`genre::action`, `quality::4k`, `year::2024`).
 
 ## 🛠️ Technology Stack
 
@@ -372,29 +223,77 @@ When creating categories, you can define default tags that are automatically app
 
 ## ⚙️ Configuration
 
-Gardarr is configured via environment variables. Create a `.env` file in the root directory.
+Gardarr is configured via environment variables. Create a `.env` file in the root directory. All variables support Docker secrets using the `_FILE` suffix.
+
+### Application
 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `APP_PORT` | Port for the web interface | `3200` |
-| `APP_URL` | Public URL of Gardarr (used for CORS and links) | `http://localhost:3200` |
-| `GIN_MODE` | `debug` or `release` | `debug` |
+| `APP_URL` | Public URL (CORS, cookies). Origin-only, no trailing slash | `http://localhost:3200` |
 | `APP_MODE` | Set to `standalone` to enable embedded agent | - |
-| `DB_TYPE` | Database type (`sqlite` or `postgres`) | `sqlite` |
-| `EVENT_RETENTION_DAYS` | Days to keep event history | `30` |
-| `STATISTICS_INTERVAL` | Polling interval for stats | `30s` |
+| `GIN_MODE` | `debug` or `release` (enables HSTS) | `release` |
+| `LOG_LEVEL` | Log level: `DEBUG`, `INFO`, `WARN`, `ERROR` | `INFO` |
 
-### Database Configuration (PostgreSQL)
-```bash
-DB_TYPE=postgres
-POSTGRES_HOST=db
-POSTGRES_USER=gardarr
-POSTGRES_PASSWORD=securepassword
-POSTGRES_DB=gardarr
-POSTGRES_PORT=5432
-```
+### Database
 
-For a complete list of environment variables, see [backend/docs/ENVIRONMENT_VARIABLES.md](backend/docs/ENVIRONMENT_VARIABLES.md).
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DATABASE_DRIVER` | Database driver: `sqlite` or `postgres` | `sqlite` |
+| `DATABASE_FILE_PATH` | SQLite file path | `/data/gardarr_database.db` |
+| `DATABASE_HOST` | PostgreSQL host | `localhost` |
+| `DATABASE_PORT` | PostgreSQL port | `5432` |
+| `DATABASE_USERNAME` | PostgreSQL username | `gardarr` |
+| `DATABASE_PASSWORD` | PostgreSQL password | - |
+| `DATABASE_NAME` | PostgreSQL database name | `gardarr_database` |
+| `DATABASE_SSL_MODE` | PostgreSQL SSL mode | `disable` |
+| `DATABASE_MAX_IDLE_CONNS` | Max idle connections | `10` |
+| `DATABASE_MAX_OPEN_CONNS` | Max open connections | `100` |
+| `DATABASE_CONN_MAX_LIFETIME` | Connection max lifetime | `1h` |
+
+### Security
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ENCRYPTION_KEY` | Key for encrypting sensitive data (agent tokens) | - |
+| `CUSTOM_CSP` | Custom Content Security Policy override | Built-in CSP |
+
+### Agent (Standalone Mode)
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `AGENT_PORT` | Port for the embedded agent service | `3100` |
+| `AGENT_SECRET` | Secret key for agent authentication | Auto-generated |
+| `AGENT_TIMEOUT_SECONDS` | Timeout for agent communication | `3` |
+
+### qBittorrent (Standalone Mode)
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `QBITTORRENT_BASEURL` | Base URL of qBittorrent Web UI | - |
+| `QBITTORRENT_USERNAME` | qBittorrent username | - |
+| `QBITTORRENT_PASSWORD` | qBittorrent password | - |
+| `QBITTORRENT_REQUEST_TIMEOUT_SECONDS` | Request timeout | `3` |
+| `QBITTORRENT_MAX_RETRIES` | Max retries on failure | `0` |
+| `QBITTORRENT_RETRY_BACKOFF` | Retry backoff (seconds) | `1` |
+
+### Statistics
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `STATISTICS_ENABLED` | Enable statistics collection | `true` |
+| `STATISTICS_DIR` | Directory for statistics data | `/data/statistics` |
+| `STATISTICS_INTERVAL` | Polling interval | `30s` |
+| `STATISTICS_RETENTION_DAYS` | Days to retain (0 = forever) | `0` |
+| `STATISTICS_PURGE_INTERVAL` | Purge check interval | `30m` |
+
+### Events
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `EVENT_RETENTION_DAYS` | Days to keep event history | `7` |
+
+For detailed documentation, see [backend/docs/ENVIRONMENT_VARIABLES.md](backend/docs/ENVIRONMENT_VARIABLES.md).
 
 ## 🛠️ Development
 
@@ -416,4 +315,100 @@ make dev
 
 ## 📄 License
 
-This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **Business Source License 1.1 (BSL 1.1)**.
+
+### License Summary
+
+| Parameter | Value |
+|-----------|-------|
+| **License** | Business Source License 1.1 |
+| **Licensor** | Gardarr Contributors |
+| **Effective Date** | February 2, 2026 |
+| **Change Date** | February 2, 2029 |
+| **Change License** | Apache License 2.0 |
+
+### What You Can Do ✅
+
+- **Self-host** Gardarr for personal, business, or educational purposes
+- **Modify** the source code to fit your needs
+- **Create derivative works** based on Gardarr
+- **Distribute** the software to others
+- **Contribute** to the project through pull requests and community engagement
+- **Use commercially** as part of internal infrastructure
+- **Study** and learn from the source code
+
+### What Is Restricted ❌
+
+- Offering Gardarr or substantially similar functionality as a **commercial hosted service** or **SaaS product** that directly competes with official Gardarr offerings
+
+### License Transition Timeline
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           LICENSE TIMELINE                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  2026-02-02                              2029-02-02                         │
+│      │                                       │                              │
+│      ▼                                       ▼                              │
+│  ════════════════════════════════════════════════════════════════════════   │
+│  │           BSL 1.1 Period                 │     Apache 2.0              │ │
+│  │   (Source Available License)             │    (Fully Open Source)      │ │
+│  ════════════════════════════════════════════════════════════════════════   │
+│                                                                             │
+│  ● Self-hosting: ALLOWED                    ● All commercial use: ALLOWED  │
+│  ● Modifications: ALLOWED                   ● No restrictions              │
+│  ● Contributions: ALLOWED                   ● Permissive license           │
+│  ● Competing SaaS: RESTRICTED               ● Full open source             │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Why BSL 1.1?
+
+The Business Source License 1.1 allows us to:
+
+1. **Protect the project** from large cloud providers offering Gardarr as a competing service without contributing back
+2. **Maintain open development** where anyone can view, modify, and contribute to the code
+3. **Support self-hosters** who can freely use Gardarr for any personal or business purpose
+4. **Guarantee open-source conversion** - the code will automatically become Apache 2.0 licensed
+
+### Frequently Asked Questions
+
+<details>
+<summary><strong>Can I use Gardarr in my company?</strong></summary>
+
+**Yes!** Self-hosting Gardarr for internal company use is explicitly allowed. The restriction only applies to offering Gardarr as a competing commercial service to third parties.
+</details>
+
+<details>
+<summary><strong>Can I fork and modify Gardarr?</strong></summary>
+
+**Yes!** You can fork, modify, and even distribute your modifications. Your fork must comply with the BSL 1.1 terms until the Change Date (February 2, 2029).
+</details>
+
+<details>
+<summary><strong>When will Gardarr become fully open source?</strong></summary>
+
+On **February 2, 2029**, this version automatically converts to the **Apache License 2.0**, a permissive open-source license with no restrictions on commercial use.
+</details>
+
+<details>
+<summary><strong>Can I contribute to Gardarr?</strong></summary>
+
+**Absolutely!** Contributions are welcome. All contributions are subject to this license and will also convert to Apache 2.0 on the Change Date.
+</details>
+
+<details>
+<summary><strong>Is BSL 1.1 an open-source license?</strong></summary>
+
+BSL 1.1 is a "source-available" license, not technically OSI-approved open source. However, it provides most of the freedoms of open source and **guarantees** automatic conversion to a true open-source license (Apache 2.0) on the Change Date.
+</details>
+
+### Full License Text
+
+See the [LICENSE](LICENSE) file for the complete license terms.
+
+### Contact
+
+For commercial licensing inquiries, please contact the Gardarr maintainers through the project's official channels.
