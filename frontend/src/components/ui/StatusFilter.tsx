@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { LucideIcon } from "lucide-react";
-import type { TaskStatus } from "@/utils/statusUtils";
+import { getStatusTranslationKey, type TaskStatus } from "@/utils/statusUtils";
 
 // Export TaskStatus as TorrentStatus for backward compatibility
 type TorrentStatus = TaskStatus;
@@ -94,11 +94,11 @@ export function StatusFilter({
                 onClick={() => onToggleStatus(status)}
                 role="option"
                 aria-selected={selected}
-                title={status}
+                title={t(getStatusTranslationKey(status))}
               >
                 <span className="flex items-center gap-2">
                   <StatusIcon className={`h-4 w-4 ${getStatusColor(status)}`} />
-                  <span className="truncate max-w-[180px]">{status}</span>
+                  <span className="truncate max-w-[180px]">{t(getStatusTranslationKey(status))}</span>
                 </span>
                 {selected && <Check className="h-4 w-4" />}
               </button>

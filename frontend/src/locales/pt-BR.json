@@ -12,8 +12,39 @@
     "close": "Fechar",
     "refresh": "Atualizar"
   },
-  "ratio": "Ratio",
   "nota": "Nota",
+  "ratio": {
+    "widget": {
+      "title": "Ratio",
+      "ratioTooltip": "Razão Seeders/Leechers. Quanto maior, melhor.",
+      "popularityTooltip": "Popularidade relativa do torrent. Quanto maior, mais popular.",
+      "starsAria": "{{stars}} de {{total}} estrelas"
+    },
+    "grades": {
+      "description": {
+        "Spp": "LENDÁRIO",
+        "Sp": "INCRÍVEL",
+        "S": "MESTRE",
+        "A": "AVANÇADO",
+        "B": "INTERMEDIÁRIO",
+        "C": "APRENDIZ",
+        "D": "NOVATO",
+        "E": "INICIANTE",
+        "unknown": "DESCONHECIDO"
+      },
+      "message": {
+        "Spp": "Você é um verdadeiro herói da comunidade — sua contribuição faz toda a diferença! Você é incrível!",
+        "Sp": "Incrível! Você está elevando o nível e ajudando muita gente.",
+        "S": "Excelente contribuição! Continue assim para manter a comunidade forte.",
+        "A": "Muito bom! Sua participação ajuda a manter tudo saudável.",
+        "B": "Bom trabalho! Compartilhar um pouco mais já fará grande diferença.",
+        "C": "Quase lá! Que tal deixar enviando por mais um tempo?",
+        "D": "Você está contribuindo! Um pouquinho mais de upload e fica ótimo.",
+        "E": "Tudo bem! Se puder, deixe compartilhando mais um pouco — sua ajuda conta muito.",
+        "unknown": "Obrigado por participar! Compartilhar mantém a comunidade viva."
+      }
+    }
+  },
   "navigation": {
     "dashboard": "Dashboard",
     "torrents": "Torrents",
@@ -532,7 +563,24 @@
       "pending": "Pendente"
     },
     "details": "Detalhes",
-    "limits": "Limites",
+    "limits": {
+      "title": "Limites",
+      "loading": "Carregando limites...",
+      "unlimited": "Ilimitado",
+      "saving": "Salvando...",
+      "instanceSpeedLimits": "Limites de Velocidade da Instância",
+      "downloadLimit": "Limite de Download",
+      "uploadLimit": "Limite de Upload",
+      "saveSpeedLimits": "Salvar Limites de Velocidade",
+      "speedToastTitle": "Limites de velocidade atualizados",
+      "instanceActiveLimits": "Limites de Torrents Ativos da Instância",
+      "maxActiveDownloads": "Máx. Downloads Ativos",
+      "maxActiveUploads": "Máx. Uploads Ativos",
+      "maxActiveTorrents": "Máx. Torrents Ativos",
+      "maxActiveChecking": "Máx. Torrents em Verificação",
+      "saveActiveLimits": "Salvar Limites de Atividade",
+      "activeToastTitle": "Limites de atividade atualizados"
+    },
     "schedules": "Programações"
   },
   "users": {
@@ -967,7 +1015,7 @@
           "unknown": "DESCONHECIDO"
         },
         "message": {
-          "Spp": "Você é um herói da comunidade — sua contribuição faz toda a diferença!",
+          "Spp": "Você é um verdadeiro herói da comunidade — sua contribuição faz toda a diferença! Você é incrível!",
           "Sp": "Incrível! Você está elevando o nível e ajudando muita gente.",
           "S": "Excelente contribuição! Continue assim para manter a comunidade forte.",
           "A": "Muito bom! Sua participação ajuda a manter tudo saudável.",
@@ -1242,5 +1290,54 @@
     "unlimited": "Ilimitado",
     "globalLimit": "Limite Global",
     "custom": "Personalizado"
+  },
+  "taskStatus": {
+    "ERROR": "Erro",
+    "MISSING_FILES": "Arquivos Ausentes",
+    "UPLOADING": "Enviando",
+    "PAUSED_UPLOAD": "Upload Pausado",
+    "STOPPED_UPLOAD": "Upload Parado",
+    "QUEUED_UPLOAD": "Upload na Fila",
+    "STALLED_UPLOAD": "Upload Travado",
+    "CHECKING_UPLOAD": "Verificando Upload",
+    "FORCED_UPLOAD": "Upload Forçado",
+    "ALLOCATING": "Alocando",
+    "DOWNLOADING": "Baixando",
+    "METADATA_DOWNLOAD": "Baixando Metadados",
+    "FORCED_METADATA_DOWNLOAD": "Metadados Forçados",
+    "PAUSED_DOWNLOAD": "Download Pausado",
+    "STOPPED_DOWNLOAD": "Download Parado",
+    "QUEUED_DOWNLOAD": "Download na Fila",
+    "FORCED_DOWNLOAD": "Download Forçado",
+    "STALLED_DOWNLOAD": "Download Travado",
+    "CHECKING_DOWNLOAD": "Verificando Download",
+    "CHECKING_RESUME_DATA": "Verificando Dados",
+    "MOVING": "Movendo",
+    "UNKNOWN": "Desconhecido"
+  },
+  "taskStatusDescription": {
+    "ERROR": "Torrent em estado de erro",
+    "MISSING_FILES": "Arquivos ausentes",
+    "UPLOADING": "Enviando/semeando conteúdo ativamente",
+    "PAUSED_UPLOAD": "Upload pausado",
+    "STOPPED_UPLOAD": "Upload parado",
+    "QUEUED_UPLOAD": "Na fila para upload",
+    "STALLED_UPLOAD": "Upload travado (sem leechers)",
+    "CHECKING_UPLOAD": "Verificando arquivos antes do upload",
+    "FORCED_UPLOAD": "Upload forçado (ignorando fila)",
+    "ALLOCATING": "Alocando espaço em disco",
+    "DOWNLOADING": "Baixando conteúdo ativamente",
+    "METADATA_DOWNLOAD": "Baixando metadados do torrent",
+    "FORCED_METADATA_DOWNLOAD": "Download forçado de metadados",
+    "PAUSED_DOWNLOAD": "Download pausado",
+    "STOPPED_DOWNLOAD": "Download parado",
+    "QUEUED_DOWNLOAD": "Na fila para download",
+    "FORCED_DOWNLOAD": "Download forçado (ignorando fila)",
+    "STALLED_DOWNLOAD": "Download travado (sem peers)",
+    "CHECKING_DOWNLOAD": "Verificando arquivos antes do download",
+    "CHECKING_RESUME_DATA": "Verificando dados de retomada",
+    "CHECKING": "Verificando integridade dos arquivos",
+    "MOVING": "Movendo arquivos para novo local",
+    "UNKNOWN": "Estado desconhecido"
   }
 }

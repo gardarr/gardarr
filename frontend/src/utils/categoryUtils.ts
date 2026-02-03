@@ -38,18 +38,28 @@ export const availableIcons: { name: string; icon: LucideIcon }[] = [
   { name: "Disc", icon: Disc }
 ];
 
-// Available colors for categories
+// Available colors for categories (ordered in rainbow spectrum)
 export const availableColors = [
-  { name: "Blue", value: "#3b82f6" },
-  { name: "Green", value: "#10b981" },
-  { name: "Purple", value: "#8b5cf6" },
   { name: "Red", value: "#ef4444" },
-  { name: "Orange", value: "#f97316" },
+  { name: "Rose", value: "#f43f5e" },
   { name: "Pink", value: "#ec4899" },
-  { name: "Indigo", value: "#6366f1" },
-  { name: "Teal", value: "#14b8a6" },
+  { name: "Fuchsia", value: "#d946ef" },
+  { name: "Orange", value: "#f97316" },
+  { name: "Amber", value: "#f59e0b" },
   { name: "Yellow", value: "#eab308" },
-  { name: "Gray", value: "#6b7280" }
+  { name: "Lime", value: "#84cc16" },
+  { name: "Green", value: "#10b981" },
+  { name: "Emerald", value: "#059669" },
+  { name: "Teal", value: "#14b8a6" },
+  { name: "Cyan", value: "#06b6d4" },
+  { name: "Sky", value: "#0ea5e9" },
+  { name: "Blue", value: "#3b82f6" },
+  { name: "Indigo", value: "#6366f1" },
+  { name: "Violet", value: "#7c3aed" },
+  { name: "Purple", value: "#8b5cf6" },
+  { name: "Slate", value: "#475569" },
+  { name: "Gray", value: "#6b7280" },
+  { name: "Zinc", value: "#52525b" }
 ];
 
 /**

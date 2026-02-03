@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Activity, AlertTriangle, Download, Upload, PauseCircle, CheckCircle2 } from 'lucide-react';
 import type { Task } from '@/types/torrent';
-import { normalizeTaskStatus, isDownloadStatus, isInactiveStatus } from '@/utils/statusUtils';
+import { normalizeTaskStatus, isDownloadStatus, isInactiveStatus, getStatusTranslationKey, type TaskStatus } from '@/utils/statusUtils';
+import { useTranslation } from 'react-i18next';
 
 interface ActiveTasksWidgetProps {
   tasks: Task[];
@@ -11,6 +12,7 @@ interface ActiveTasksWidgetProps {
 }
 
 const ActiveTasksWidget: React.FC<ActiveTasksWidgetProps> = ({ tasks, title = 'Active Tasks' }) => {
+  const { t } = useTranslation();
   const statusToCount = tasks.reduce<Record<string, number>>((acc, task) => {
     const status = normalizeTaskStatus(task.state || 'UNKNOWN');
     acc[status] = (acc[status] || 0) + 1;
@@ -95,7 +97,7 @@ const ActiveTasksWidget: React.FC<ActiveTasksWidgetProps> = ({ tasks, title = 'A
                       </div>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>{status}</p>
+                      <p>{t(getStatusTranslationKey(status as TaskStatus))}</p>
                     </TooltipContent>
                   </Tooltip>
                 ))}

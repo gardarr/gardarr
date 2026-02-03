@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { BookOpen, Code, Database, FileJson, Info, List } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { getStatusDescriptionKey } from '@/utils/statusUtils';
 
 interface WebhookDocumentationModalProps {
   isOpen: boolean;
@@ -42,20 +43,26 @@ export function WebhookDocumentationModal({ isOpen, onClose }: WebhookDocumentat
     },
   ];
 
-  const torrentStates = [
-    { state: 'DOWNLOADING', description: 'Actively downloading content', color: 'text-blue-500' },
-    { state: 'UPLOADING', description: 'Actively seeding/uploading content', color: 'text-green-500' },
-    { state: 'STALLED_DOWNLOAD', description: 'Download stalled (no peers)', color: 'text-orange-500' },
-    { state: 'STALLED_UPLOAD', description: 'Upload stalled (no leechers)', color: 'text-yellow-500' },
-    { state: 'CHECKING', description: 'Checking file integrity', color: 'text-purple-500' },
-    { state: 'PAUSED_DOWNLOAD', description: 'Download paused', color: 'text-gray-500' },
-    { state: 'PAUSED_UPLOAD', description: 'Upload paused', color: 'text-gray-500' },
-    { state: 'QUEUED_DOWNLOAD', description: 'Queued for download', color: 'text-cyan-500' },
-    { state: 'QUEUED_UPLOAD', description: 'Queued for upload', color: 'text-cyan-500' },
-    { state: 'ERROR', description: 'Torrent in error state', color: 'text-red-500' },
-    { state: 'MISSING_FILES', description: 'Files are missing', color: 'text-red-500' },
-    { state: 'ALLOCATING', description: 'Allocating disk space', color: 'text-indigo-500' },
+  const torrentStatesConfig = [
+    { state: 'DOWNLOADING', color: 'text-blue-500' },
+    { state: 'UPLOADING', color: 'text-green-500' },
+    { state: 'STALLED_DOWNLOAD', color: 'text-orange-500' },
+    { state: 'STALLED_UPLOAD', color: 'text-yellow-500' },
+    { state: 'CHECKING', color: 'text-purple-500' },
+    { state: 'PAUSED_DOWNLOAD', color: 'text-gray-500' },
+    { state: 'PAUSED_UPLOAD', color: 'text-gray-500' },
+    { state: 'QUEUED_DOWNLOAD', color: 'text-cyan-500' },
+    { state: 'QUEUED_UPLOAD', color: 'text-cyan-500' },
+    { state: 'ERROR', color: 'text-red-500' },
+    { state: 'MISSING_FILES', color: 'text-red-500' },
+    { state: 'ALLOCATING', color: 'text-indigo-500' },
   ];
+
+  const torrentStates = torrentStatesConfig.map(({ state, color }) => ({
+    state,
+    description: t(getStatusDescriptionKey(state)),
+    color,
+  }));
 
   const metadataFields = [
     { field: 'name', type: 'string', description: 'Torrent name' },

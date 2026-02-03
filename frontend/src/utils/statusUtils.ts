@@ -195,3 +195,35 @@ export function isInactiveStatus(status: TaskStatus): boolean {
   return INACTIVE_STATUSES.includes(status);
 }
 
+/**
+ * Normalize a raw status value to the i18n key format
+ * Trims whitespace, converts to uppercase, and normalizes separators (spaces/hyphens to underscores)
+ * @param status - Raw status string to normalize
+ * @returns Normalized status string suitable for i18n keys (e.g., "DOWNLOADING", "PAUSED_DOWNLOAD")
+ */
+export function normalizeStatusValue(status: string): string {
+  return status
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, "_");
+}
+
+/**
+ * Get the i18n translation key for a task status
+ * @param status - Task status to get translation key for
+ * @returns Translation key string (e.g., "taskStatus.DOWNLOADING")
+ */
+export function getStatusTranslationKey(status: TaskStatus): string {
+  return `taskStatus.${status}`;
+}
+
+/**
+ * Get the i18n translation key for a task status description
+ * Normalizes the input to handle different casings, whitespace, and separators
+ * @param status - Task status to get description translation key for
+ * @returns Translation key string (e.g., "taskStatusDescription.DOWNLOADING")
+ */
+export function getStatusDescriptionKey(status: string): string {
+  const normalized = normalizeStatusValue(status);
+  return `taskStatusDescription.${normalized}`;
+}

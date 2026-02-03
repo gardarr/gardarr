@@ -1,5 +1,7 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getStatusIcon, getStatusColor, type TorrentStatus } from "@/components/TorrentStatusIcon";
+import { getStatusTranslationKey } from "@/utils/statusUtils";
+import { useTranslation } from "react-i18next";
 
 interface StatusBadgeProps {
   status: TorrentStatus;
@@ -16,6 +18,7 @@ export function StatusBadge({
   showLabel = false,
   className = "" 
 }: StatusBadgeProps) {
+  const { t } = useTranslation();
   const StatusIcon = getStatusIcon(status);
   
   const sizeClasses = {
@@ -36,7 +39,7 @@ export function StatusBadge({
         className={`${sizeClasses[size]} flex-shrink-0 ${getStatusColor(status)} ${className}`} 
       />
       <span className={`${textSizeClasses[size]} ${getStatusColor(status)} font-medium`}>
-        {status}
+        {t(getStatusTranslationKey(status))}
       </span>
     </div>
   ) : (
@@ -57,7 +60,7 @@ export function StatusBadge({
         </div>
       </TooltipTrigger>
       <TooltipContent>
-        <p>{status}</p>
+        <p>{t(getStatusTranslationKey(status))}</p>
       </TooltipContent>
     </Tooltip>
   );

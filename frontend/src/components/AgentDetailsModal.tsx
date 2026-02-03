@@ -254,7 +254,7 @@ export function AgentDetailsModal({
         <Tabs defaultValue="detalhes" className="w-full flex-1 flex flex-col min-h-0 overflow-hidden">
           <TabsList className="grid w-full grid-cols-3 shrink-0">
             <TabsTrigger value="detalhes">{t('agents.details')}</TabsTrigger>
-            <TabsTrigger value="limites" disabled={agent?.status === 'ERRORED'}>{t('agents.limits')}</TabsTrigger>
+            <TabsTrigger value="limites" disabled={agent?.status === 'ERRORED'}>{t('agents.limits.title')}</TabsTrigger>
             <TabsTrigger value="schedules" disabled>{t('agents.schedules')}</TabsTrigger>
           </TabsList>
 

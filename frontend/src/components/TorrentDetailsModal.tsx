@@ -35,6 +35,7 @@ import { AgentIcon } from "@/components/ui/AgentIcon";
 import { TagBadge } from "@/components/ui/TagBadge";
 import { DeleteTorrentModal } from "@/components/DeleteTorrentModal";
 import { getStatusIcon, getStatusColor, getStatusBackgroundColor, type TorrentStatus } from "@/components/TorrentStatusIcon";
+import { getStatusTranslationKey } from "@/utils/statusUtils";
 import { SelectCategory } from "@/components/SelectCategory";
 import { SelectTags } from "@/components/SelectTags";
 import { useTranslation } from "react-i18next";
@@ -702,7 +703,7 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                                 const StatusIcon = getStatusIcon(torrent.state as TorrentStatus);
                                 return <StatusIcon className="h-4 w-4" />;
                               })()}
-                              <span className="capitalize">{torrent.state}</span>
+                              <span>{t(getStatusTranslationKey(torrent.state as TorrentStatus))}</span>
                             </div>
                           </div>
                         </div>
