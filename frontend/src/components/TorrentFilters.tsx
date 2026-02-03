@@ -132,76 +132,44 @@ export function useTorrentFilters({
     const source = torrents.length > 0 ? torrents : ((isRefreshing || selectionMode) ? lastNonEmptyTorrents : torrents);
     let filtered = source;
 
-    // Filtrar por agentes selecionados (se houver agentes carregados)
-    if (agents.length > 0 && selectedAgentIds.size === 0) {
-      // Nenhum agent selecionado -> não exibe torrents
-      return [] as Torrent[];
+    // Filtrar por agentes selecionados (size === 0 mostra todos, size > 0 filtra)
+    if (agents.length > 0 && selectedAgentIds.size > 0) {
+      filtered = filtered.filter((t) => {
+        return t.agentUUID && selectedAgentIds.has(t.agentUUID);
+      });
     }
 
-    // Filtrar por ratio grades selecionados (se houver grades disponíveis)
-    if (availableGrades.length > 0 && selectedGrades.size === 0) {
-      // Nenhum grade selecionado -> não exibe torrents
-      return [] as Torrent[];
-    }
+    // Filtrar por ratio grades selecionados (size === 0 mostra todos, size > 0 filtra)
     if (availableGrades.length > 0 && selectedGrades.size > 0) {
       filtered = filtered.filter((t) => {
         const grade = getRatioGrade(t.ratio);
         return selectedGrades.has(grade);
       });
     }
-    if (agents.length > 0 && selectedAgentIds.size > 0) {
-      filtered = filtered.filter((t) => {
-        // Só exibe torrents que pertencem aos agentes selecionados
-        return t.agentUUID && selectedAgentIds.has(t.agentUUID);
-      });
-    }
 
-    // Filtrar por status selecionados (se houver status disponíveis)
-    if (availableStatuses.length > 0 && selectedStatuses.size === 0) {
-      // Nenhum status selecionado -> não exibe torrents
-      return [] as Torrent[];
-    }
+    // Filtrar por status selecionados (size === 0 mostra todos, size > 0 filtra)
     if (availableStatuses.length > 0 && selectedStatuses.size > 0) {
       filtered = filtered.filter((t) => {
-        // Só exibe torrents que pertencem aos status selecionados
         return selectedStatuses.has(t.status);
       });
     }
 
-    // Filtrar por categorias selecionadas (se houver categorias disponíveis)
+    // Filtrar por categorias selecionadas (size === 0 mostra todos, size > 0 filtra)
     if (availableCategories.length > 0 && selectedCategories.size > 0) {
       filtered = filtered.filter((t) => {
-        // Verifica se o torrent não tem categoria (sempre exibe)
-        const hasNoCategory = !t.category || t.category.trim() === '';
-        if (hasNoCategory) return true;
-        
-        // Se tem categoria, verifica se está selecionada
         return selectedCategories.has(t.category);
       });
-    } else if (availableCategories.length > 0 && selectedCategories.size === 0) {
-      // Nenhuma categoria selecionada -> exibe apenas torrents sem categoria
-      filtered = filtered.filter((t) => !t.category || t.category.trim() === '');
     }
 
-    // Filtrar por tags selecionadas (se houver tags disponíveis)
+    // Filtrar por tags selecionadas (size === 0 mostra todos, size > 0 filtra)
     if (availableTags.length > 0 && selectedTags.size > 0) {
       filtered = filtered.filter((t) => {
-        // Filtrar tags válidas (não vazias)
-        const validTags = t.tags.filter(tag => tag && tag.trim() !== '');
-        
-        // Torrents sem tags válidas são sempre exibidos
-        if (validTags.length === 0) {
-          return true;
-        }
-        
+        // Normaliza tags (trim) e filtra vazias
+        const validTags = t.tags
+          .map(tag => tag?.trim())
+          .filter((tag): tag is string => !!tag);
         // Se tem tags válidas, verifica se pelo menos uma está selecionada
         return validTags.some(tag => selectedTags.has(tag));
-      });
-    } else if (availableTags.length > 0 && selectedTags.size === 0) {
-      // Nenhuma tag selecionada -> exibe apenas torrents sem tags
-      filtered = filtered.filter((t) => {
-        const validTags = t.tags.filter(tag => tag && tag.trim() !== '');
-        return validTags.length === 0;
       });
     }
     

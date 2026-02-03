@@ -730,6 +730,8 @@
       "close": "Fechar filtros",
       "all": "Todos",
       "none": "Nenhum",
+      "categoriesCount": "categorias",
+      "noCategoriesAvailable": "Nenhuma categoria disponível",
       "agents": "Agentes",
       "status": "Status",
       "categories": "Categorias",

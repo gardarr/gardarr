@@ -10,15 +10,17 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { torrentService } from "./services/torrents";
 import { agentService } from "./services/agents";
+import { categoryService } from "./services/categories";
 import { preferencesService } from "@/services/preferences";
 import { useTorrentFilters } from "@/components/TorrentFilters";
 import type { Task, CreateTaskRequest, TaskMetadata } from "./types/torrent";
 import type { Agent, AgentStatus } from "./types/agent";
+import type { Category } from "./types/category";
 import AgentFilter from "@/components/ui/AgentFilter";
 import StatusFilter from "@/components/ui/StatusFilter";
+import CategoryFilter from "@/components/ui/CategoryFilter";
 import { ListFilter } from "@/components/ui/ListFilter";
 import { FilterSidebar } from "@/components/ui/FilterSidebar";
-import { useAutoSelectFilters } from "@/hooks/useAutoSelectFilters";
 import { useFilterControls } from "@/hooks/useFilterControls";
 import { TorrentDetailsModal } from "@/components/TorrentDetailsModal";
 import { TorrentDeleteModal } from "@/components/TorrentDeleteModal";
@@ -128,6 +130,7 @@ export default function TorrentsPage() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [agents, setAgents] = useState<Agent[]>([]);
   const [agentsLoading, setAgentsLoading] = useState(true);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [selectedAgentIds, setSelectedAgentIds] = useState<Set<string>>(new Set());
   const [selectedStatuses, setSelectedStatuses] = useState<Set<TorrentStatus>>(new Set());
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
@@ -230,12 +233,13 @@ export default function TorrentsPage() {
     return Array.from(categories).sort();
   }, [torrents]);
 
-  // Extrair tags únicas disponíveis
+  // Extrair tags únicas disponíveis (normalizadas e deduplicadas)
   const availableTags = useMemo(() => {
     const tags = new Set<string>();
     torrents.forEach(t => {
       t.tags?.forEach(tag => {
-        if (tag) tags.add(tag);
+        const trimmed = tag?.trim();
+        if (trimmed) tags.add(trimmed);
       });
     });
     return Array.from(tags).sort();
@@ -250,12 +254,6 @@ export default function TorrentsPage() {
     const order = ["S++", "S+", "S", "A", "B", "C", "D", "E"];
     return Array.from(grades).sort((a, b) => order.indexOf(a) - order.indexOf(b));
   }, [torrents]);
-
-  // Auto-select filters
-  useAutoSelectFilters(availableStatuses, selectedStatuses, setSelectedStatuses);
-  useAutoSelectFilters(availableCategories, selectedCategories, setSelectedCategories);
-  useAutoSelectFilters(availableTags, selectedTags, setSelectedTags);
-  useAutoSelectFilters(availableGrades, selectedGrades, setSelectedGrades);
 
   // Filter controls using custom hook
   const agentControls = useFilterControls(selectedAgentIds, setSelectedAgentIds, agents.map(a => a.uuid));
@@ -378,13 +376,6 @@ export default function TorrentsPage() {
       }
       if (response.data) {
         setAgents(response.data);
-        // Selecionar todos por padrão somente na primeira carga
-        setSelectedAgentIds(prev => {
-          if (prev.size === 0 && response.data) {
-            return new Set(response.data.map((a) => a.uuid));
-          }
-          return prev;
-        });
       } else {
         setAgents([]);
       }
@@ -393,6 +384,21 @@ export default function TorrentsPage() {
       setAgents([]);
     } finally {
       setAgentsLoading(false);
+    }
+  }, []);
+
+  // Carregar categorias da API
+  const loadCategories = useCallback(async () => {
+    try {
+      const response = await categoryService.listCategories();
+      if (response.data) {
+        setCategories(response.data);
+      } else {
+        setCategories([]);
+      }
+    } catch {
+      // silencioso; filtro de categorias é opcional
+      setCategories([]);
     }
   }, []);
 
@@ -736,7 +742,8 @@ export default function TorrentsPage() {
   // Carregar dados na inicialização
   useEffect(() => {
     loadAgents();
-  }, [loadAgents]);
+    loadCategories();
+  }, [loadAgents, loadCategories]);
 
   // Cache da última lista não vazia para evitar flicker quando em seleção múltipla
   useEffect(() => {
@@ -1027,11 +1034,11 @@ export default function TorrentsPage() {
               showItemsPerPage={displayMode === "table"}
               onOpenFilters={() => setIsFilterSidebarOpen(true)}
               hasActiveFilters={
-                selectedAgentIds.size < agents.length ||
-                selectedStatuses.size < availableStatuses.length ||
-                selectedCategories.size < availableCategories.length ||
-                selectedTags.size < availableTags.length ||
-                selectedGrades.size < availableGrades.length
+                selectedAgentIds.size > 0 ||
+                selectedStatuses.size > 0 ||
+                selectedCategories.size > 0 ||
+                selectedTags.size > 0 ||
+                selectedGrades.size > 0
               }
               filteredCount={filteredTorrents.length}
               totalCount={torrents.length}
@@ -1092,11 +1099,11 @@ export default function TorrentsPage() {
               showItemsPerPage={displayMode === "table"}
               onOpenFilters={() => setIsFilterSidebarOpen(true)}
               hasActiveFilters={
-                selectedAgentIds.size < agents.length ||
-                selectedStatuses.size < availableStatuses.length ||
-                selectedCategories.size < availableCategories.length ||
-                selectedTags.size < availableTags.length ||
-                selectedGrades.size < availableGrades.length
+                selectedAgentIds.size > 0 ||
+                selectedStatuses.size > 0 ||
+                selectedCategories.size > 0 ||
+                selectedTags.size > 0 ||
+                selectedGrades.size > 0
               }
               filteredCount={filteredTorrents.length}
               totalCount={torrents.length}
@@ -1439,7 +1446,7 @@ export default function TorrentsPage() {
               <label className="text-sm font-medium flex items-center gap-2">
                 <Server className="w-4 h-4 text-muted-foreground" />
                 {t('torrents.filters.agents')}
-                {selectedAgentIds.size > 0 && selectedAgentIds.size < agents.length && (
+                {selectedAgentIds.size > 0 && (
                   <div className="w-2 h-2 rounded-full bg-primary" />
                 )}
               </label>
@@ -1456,7 +1463,7 @@ export default function TorrentsPage() {
               <label className="text-sm font-medium flex items-center gap-2">
                 <Activity className="w-4 h-4 text-muted-foreground" />
                 {t('torrents.filters.status')}
-                {selectedStatuses.size > 0 && selectedStatuses.size < availableStatuses.length && (
+                {selectedStatuses.size > 0 && (
                   <div className="w-2 h-2 rounded-full bg-primary" />
                 )}
               </label>
@@ -1475,15 +1482,14 @@ export default function TorrentsPage() {
               <label className="text-sm font-medium flex items-center gap-2">
                 <Folder className="w-4 h-4 text-muted-foreground" />
                 {t('torrents.filters.categories')}
-                {selectedCategories.size > 0 && selectedCategories.size < availableCategories.length && (
+                {selectedCategories.size > 0 && (
                   <div className="w-2 h-2 rounded-full bg-primary" />
                 )}
               </label>
-              <ListFilter
-                label="categorias"
-                availableItems={availableCategories}
-                selectedItems={selectedCategories}
-                onToggleItem={categoryControls.toggle}
+              <CategoryFilter
+                categories={categories.filter(cat => availableCategories.includes(cat.name))}
+                selectedCategoryNames={selectedCategories}
+                onToggleCategory={categoryControls.toggle}
                 onSetAll={categoryControls.setAll}
               />
             </div>
@@ -1493,7 +1499,7 @@ export default function TorrentsPage() {
               <label className="text-sm font-medium flex items-center gap-2">
                 <Tag className="w-4 h-4 text-muted-foreground" />
                 {t('torrents.filters.tags')}
-                {selectedTags.size > 0 && selectedTags.size < availableTags.length && (
+                {selectedTags.size > 0 && (
                   <div className="w-2 h-2 rounded-full bg-primary" />
                 )}
               </label>
@@ -1512,7 +1518,7 @@ export default function TorrentsPage() {
               <label className="text-sm font-medium flex items-center gap-2">
                 <Star className="w-4 h-4 text-muted-foreground" />
                 {t('torrents.filters.ratioGrades')}
-                {selectedGrades.size > 0 && selectedGrades.size < availableGrades.length && (
+                {selectedGrades.size > 0 && (
                   <div className="w-2 h-2 rounded-full bg-primary" />
                 )}
               </label>
