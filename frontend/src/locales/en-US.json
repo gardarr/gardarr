@@ -1263,17 +1263,28 @@
     "UNKNOWN": "Unknown"
   },
   "taskStatusDescription": {
-    "DOWNLOADING": "Actively downloading content",
-    "UPLOADING": "Actively seeding/uploading content",
-    "STALLED_DOWNLOAD": "Download stalled (no peers)",
-    "STALLED_UPLOAD": "Upload stalled (no leechers)",
-    "CHECKING": "Checking file integrity",
-    "PAUSED_DOWNLOAD": "Download paused",
-    "PAUSED_UPLOAD": "Upload paused",
-    "QUEUED_DOWNLOAD": "Queued for download",
-    "QUEUED_UPLOAD": "Queued for upload",
     "ERROR": "Torrent in error state",
     "MISSING_FILES": "Files are missing",
-    "ALLOCATING": "Allocating disk space"
+    "UPLOADING": "Actively seeding/uploading content",
+    "PAUSED_UPLOAD": "Upload paused",
+    "STOPPED_UPLOAD": "Upload stopped",
+    "QUEUED_UPLOAD": "Queued for upload",
+    "STALLED_UPLOAD": "Upload stalled (no leechers)",
+    "CHECKING_UPLOAD": "Checking files before seeding",
+    "FORCED_UPLOAD": "Force seeding (ignoring queue)",
+    "ALLOCATING": "Allocating disk space",
+    "DOWNLOADING": "Actively downloading content",
+    "METADATA_DOWNLOAD": "Downloading torrent metadata",
+    "FORCED_METADATA_DOWNLOAD": "Force downloading metadata",
+    "PAUSED_DOWNLOAD": "Download paused",
+    "STOPPED_DOWNLOAD": "Download stopped",
+    "QUEUED_DOWNLOAD": "Queued for download",
+    "FORCED_DOWNLOAD": "Force downloading (ignoring queue)",
+    "STALLED_DOWNLOAD": "Download stalled (no peers)",
+    "CHECKING_DOWNLOAD": "Checking files before download",
+    "CHECKING_RESUME_DATA": "Checking resume data",
+    "CHECKING": "Checking file integrity",
+    "MOVING": "Moving files to new location",
+    "UNKNOWN": "Unknown state"
   }
 }

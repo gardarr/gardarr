@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { BookOpen, Code, Database, FileJson, Info, List } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { getStatusTranslationKey, getStatusDescriptionKey } from '@/utils/statusUtils';
+import { getStatusDescriptionKey } from '@/utils/statusUtils';
 
 interface WebhookDocumentationModalProps {
   isOpen: boolean;

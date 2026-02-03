@@ -33,7 +33,7 @@
         "unknown": "DESCONHECIDO"
       },
       "message": {
-        "Spp": "Você é um herói da comunidade — sua contribuição faz toda a diferença!",
+        "Spp": "Você é um verdadeiro herói da comunidade — sua contribuição faz toda a diferença! Você é incrível!",
         "Sp": "Incrível! Você está elevando o nível e ajudando muita gente.",
         "S": "Excelente contribuição! Continue assim para manter a comunidade forte.",
         "A": "Muito bom! Sua participação ajuda a manter tudo saudável.",
@@ -1015,7 +1015,7 @@
           "unknown": "DESCONHECIDO"
         },
         "message": {
-          "Spp": "Você é um herói da comunidade — sua contribuição faz toda a diferença!",
+          "Spp": "Você é um verdadeiro herói da comunidade — sua contribuição faz toda a diferença! Você é incrível!",
           "Sp": "Incrível! Você está elevando o nível e ajudando muita gente.",
           "S": "Excelente contribuição! Continue assim para manter a comunidade forte.",
           "A": "Muito bom! Sua participação ajuda a manter tudo saudável.",
@@ -1316,17 +1316,28 @@
     "UNKNOWN": "Desconhecido"
   },
   "taskStatusDescription": {
-    "DOWNLOADING": "Baixando conteúdo ativamente",
-    "UPLOADING": "Enviando/semeando conteúdo ativamente",
-    "STALLED_DOWNLOAD": "Download travado (sem peers)",
-    "STALLED_UPLOAD": "Upload travado (sem leechers)",
-    "CHECKING": "Verificando integridade dos arquivos",
-    "PAUSED_DOWNLOAD": "Download pausado",
-    "PAUSED_UPLOAD": "Upload pausado",
-    "QUEUED_DOWNLOAD": "Na fila para download",
-    "QUEUED_UPLOAD": "Na fila para upload",
     "ERROR": "Torrent em estado de erro",
     "MISSING_FILES": "Arquivos ausentes",
-    "ALLOCATING": "Alocando espaço em disco"
+    "UPLOADING": "Enviando/semeando conteúdo ativamente",
+    "PAUSED_UPLOAD": "Upload pausado",
+    "STOPPED_UPLOAD": "Upload parado",
+    "QUEUED_UPLOAD": "Na fila para upload",
+    "STALLED_UPLOAD": "Upload travado (sem leechers)",
+    "CHECKING_UPLOAD": "Verificando arquivos antes do upload",
+    "FORCED_UPLOAD": "Upload forçado (ignorando fila)",
+    "ALLOCATING": "Alocando espaço em disco",
+    "DOWNLOADING": "Baixando conteúdo ativamente",
+    "METADATA_DOWNLOAD": "Baixando metadados do torrent",
+    "FORCED_METADATA_DOWNLOAD": "Download forçado de metadados",
+    "PAUSED_DOWNLOAD": "Download pausado",
+    "STOPPED_DOWNLOAD": "Download parado",
+    "QUEUED_DOWNLOAD": "Na fila para download",
+    "FORCED_DOWNLOAD": "Download forçado (ignorando fila)",
+    "STALLED_DOWNLOAD": "Download travado (sem peers)",
+    "CHECKING_DOWNLOAD": "Verificando arquivos antes do download",
+    "CHECKING_RESUME_DATA": "Verificando dados de retomada",
+    "CHECKING": "Verificando integridade dos arquivos",
+    "MOVING": "Movendo arquivos para novo local",
+    "UNKNOWN": "Estado desconhecido"
   }
 }
