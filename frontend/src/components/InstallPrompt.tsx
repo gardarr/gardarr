@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { X, Share, Plus } from "lucide-react";
 import { Button } from "./ui/button";
 
@@ -15,10 +15,11 @@ export function InstallPrompt() {
   const [showIOSPrompt, setShowIOSPrompt] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showDesktopPrompt, setShowDesktopPrompt] = useState(false);
+  const desktopPromptTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    const isStandalone = window.matchMedia("(display-mode: standalone)").matches 
-      || (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+    const isStandalone = globalThis.matchMedia("(display-mode: standalone)").matches 
+      || (globalThis.navigator as Navigator & { standalone?: boolean }).standalone === true;
     const dismissed = localStorage.getItem("pwa-prompt-dismissed");
     const dismissedTime = dismissed ? parseInt(dismissed, 10) : 0;
     const daysSinceDismissed = (Date.now() - dismissedTime) / (1000 * 60 * 60 * 24);
@@ -29,7 +30,7 @@ export function InstallPrompt() {
     }
 
     // iOS detection
-    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) && !(window as Window & { MSStream?: unknown }).MSStream;
+    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) && !(globalThis as typeof globalThis & { MSStream?: unknown }).MSStream;
     
     if (isIOS) {
       // Delay showing iOS prompt slightly for better UX
@@ -41,14 +42,24 @@ export function InstallPrompt() {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setTimeout(() => setShowDesktopPrompt(true), 2000);
+      desktopPromptTimerRef.current = setTimeout(() => setShowDesktopPrompt(true), 2000);
     };
 
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    globalThis.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    return () => {
+      globalThis.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      if (desktopPromptTimerRef.current) {
+        clearTimeout(desktopPromptTimerRef.current);
+        desktopPromptTimerRef.current = null;
+      }
+    };
   }, []);
 
   const handleDismiss = () => {
+    if (desktopPromptTimerRef.current) {
+      clearTimeout(desktopPromptTimerRef.current);
+      desktopPromptTimerRef.current = null;
+    }
     localStorage.setItem("pwa-prompt-dismissed", Date.now().toString());
     setShowIOSPrompt(false);
     setShowDesktopPrompt(false);
@@ -56,6 +67,11 @@ export function InstallPrompt() {
 
   const handleInstall = async () => {
     if (!deferredPrompt) return;
+    
+    if (desktopPromptTimerRef.current) {
+      clearTimeout(desktopPromptTimerRef.current);
+      desktopPromptTimerRef.current = null;
+    }
     
     await deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;

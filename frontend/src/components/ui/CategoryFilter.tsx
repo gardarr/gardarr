@@ -6,10 +6,10 @@ import type { Category } from "@/types/category";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 
 interface CategoryFilterProps {
-  categories: Category[];
-  selectedCategoryNames: Set<string>;
-  onToggleCategory: (name: string) => void;
-  onSetAll: (checked: boolean) => void;
+  readonly categories: Category[];
+  readonly selectedCategoryNames: Set<string>;
+  readonly onToggleCategory: (name: string) => void;
+  readonly onSetAll: (checked: boolean) => void;
 }
 
 export function CategoryFilter({
@@ -88,7 +88,10 @@ export function CategoryFilter({
       case " ":
         event.preventDefault();
         if (focusedIndex === 0) {
-          onSetAll(true);
+          const currentCategoryNames = new Set(categories.map(cat => cat.name));
+          const intersectionSize = [...selectedCategoryNames].filter(name => currentCategoryNames.has(name)).length;
+          const allSelected = intersectionSize === currentCategoryNames.size && currentCategoryNames.size > 0;
+          onSetAll(!allSelected);
         } else {
           const cat = categories[focusedIndex - 1];
           if (cat) {
@@ -97,12 +100,19 @@ export function CategoryFilter({
         }
         break;
     }
-  }, [categories, focusedIndex, onSetAll, onToggleCategory]);
+  }, [categories, focusedIndex, selectedCategoryNames, onSetAll, onToggleCategory]);
 
   const currentCategoryNames = new Set(categories.map(cat => cat.name));
   const intersectionSize = [...selectedCategoryNames].filter(name => currentCategoryNames.has(name)).length;
   const allSelected = intersectionSize === currentCategoryNames.size && currentCategoryNames.size > 0;
   const someSelected = intersectionSize > 0 && intersectionSize < currentCategoryNames.size;
+
+  // Determine button label text
+  const getButtonLabel = () => {
+    if (allSelected) return t('torrents.filters.all');
+    if (someSelected) return `${selectedCategoryNames.size} ${t('torrents.filters.categoriesCount')}`;
+    return t('torrents.filters.none');
+  };
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -116,7 +126,7 @@ export function CategoryFilter({
         aria-label={t('torrents.filters.categories')}
       >
         <span className="truncate">
-          {allSelected ? t('torrents.filters.all') : someSelected ? `${selectedCategoryNames.size} ${t('torrents.filters.categoriesCount')}` : t('torrents.filters.none')}
+          {getButtonLabel()}
         </span>
         <ChevronDown className={`h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
       </Button>
@@ -124,6 +134,7 @@ export function CategoryFilter({
         <div 
           className="absolute right-0 mt-1 w-64 max-h-[400px] overflow-y-auto rounded-md border bg-card text-card-foreground shadow-md z-[100] py-1"
           role="listbox"
+          tabIndex={0}
           aria-label={t('torrents.filters.categories')}
           aria-activedescendant={focusedIndex === 0 ? 'category-filter-all' : `category-filter-${categories[focusedIndex - 1]?.id}`}
           onKeyDown={handleListboxKeyDown}
@@ -133,7 +144,7 @@ export function CategoryFilter({
             ref={allButtonRef}
             tabIndex={-1}
             className={`w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground sticky top-0 bg-card border-b z-10 ${focusedIndex === 0 ? 'ring-2 ring-ring ring-inset' : ''}`}
-            onClick={() => onSetAll(true)}
+            onClick={() => onSetAll(!allSelected)}
             role="option"
             aria-selected={allSelected}
           >
