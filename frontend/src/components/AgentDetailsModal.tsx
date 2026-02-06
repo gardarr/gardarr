@@ -219,7 +219,7 @@ export function AgentDetailsModal({
   }, [isOpen]);
 
   const compareVersions = (a: string, b: string) => {
-    const norm = (v: string) => v.replace(/^v/i, '').split('.').map(s => parseInt(s, 10) || 0);
+    const norm = (v: string) => v.replace(/^v/i, '').split('.').map(s => Number.parseInt(s, 10) || 0);
     const pa = norm(a);
     const pb = norm(b);
     const len = Math.max(pa.length, pb.length);

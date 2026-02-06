@@ -397,7 +397,7 @@ export default function IntegrationWebhookPage() {
                 min="1"
                 max="300"
                 value={formData.timeout_seconds}
-                onChange={(e) => setFormData({ ...formData, timeout_seconds: parseInt(e.target.value) || 10 })}
+                onChange={(e) => setFormData({ ...formData, timeout_seconds: Number.parseInt(e.target.value, 10) || 10 })}
               />
               <p className="text-sm text-muted-foreground">{t('webhooks.timeoutHelp')}</p>
             </div>

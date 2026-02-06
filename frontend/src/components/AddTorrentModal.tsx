@@ -264,7 +264,7 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
                       <HardDrive className="h-3 w-3 text-muted-foreground" />
                       <span className="text-xs text-muted-foreground">{t("torrents.addModal.magnetInfo.size")}:</span>
                       <span className="text-xs font-medium text-foreground">
-                        {formatBytes(parseInt(parsedMagnetLink.exact_length))}
+                        {formatBytes(Number.parseInt(parsedMagnetLink.exact_length, 10))}
                       </span>
                     </div>
                   )}

@@ -6,7 +6,12 @@ import tailwindcss from "@tailwindcss/vite"
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react({
+      jsxRuntime: 'automatic',
+    }),
+    tailwindcss()
+  ],
   test: {
     globals: true,
     environment: 'jsdom',
@@ -16,6 +21,7 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+    dedupe: ['react', 'react-dom'],
   },
   server: {
     port: 5173,

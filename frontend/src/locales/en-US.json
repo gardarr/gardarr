@@ -707,6 +707,8 @@
       "close": "Close filters",
       "all": "All",
       "none": "None",
+      "categoriesCount": "categories",
+      "noCategoriesAvailable": "No categories available",
       "agents": "Agents",
       "status": "Status",
       "categories": "Categories",

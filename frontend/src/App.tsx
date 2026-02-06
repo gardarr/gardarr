@@ -22,6 +22,7 @@ import InitialSetupPage from './InitialSetup'
 import ResetPasswordPage from './ResetPassword'
 import ForgotPasswordPage from './ForgotPassword'
 import { Toaster } from './components/ui/sonner'
+import { InstallPrompt } from './components/InstallPrompt'
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
       <Router>
         <AuthProvider>
           <Toaster richColors />
+          <InstallPrompt />
           <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/setup" element={<InitialSetupPage />} />

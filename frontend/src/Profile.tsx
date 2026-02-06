@@ -783,15 +783,15 @@ export default function ProfilePage() {
                     max="100"
                     value={blurIntensity}
                     onChange={(e) => {
-                      const value = parseInt(e.target.value);
+                      const value = Number.parseInt(e.target.value, 10);
                       setBlurIntensity(value);
                     }}
                     onMouseUp={(e) => {
-                      const value = parseInt((e.target as HTMLInputElement).value);
+                      const value = Number.parseInt((e.target as HTMLInputElement).value, 10);
                       updatePreference("background_image_blur_intensity", value);
                     }}
                     onTouchEnd={(e) => {
-                      const value = parseInt((e.target as HTMLInputElement).value);
+                      const value = Number.parseInt((e.target as HTMLInputElement).value, 10);
                       updatePreference("background_image_blur_intensity", value);
                     }}
                     disabled={isLoadingPreferences}
