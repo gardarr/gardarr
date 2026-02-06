@@ -20,7 +20,7 @@ const sanitizeSpeedInput = (rawValue: string): number => {
     if (rawValue === "" || rawValue === null) {
         return 0;
     }
-    const parsed = parseInt(rawValue, 10);
+    const parsed = Number.parseInt(rawValue, 10);
     if (isNaN(parsed)) {
         return 0;
     }
@@ -338,7 +338,7 @@ export function AgentLimits({ agentId, disableScroll = false }: AgentLimitsProps
                                 id="max-active-uploads"
                                 type="number"
                                 value={maxActiveUploads}
-                                onChange={(e) => setMaxActiveUploads(Math.max(1, parseInt(e.target.value) || 1))}
+                                onChange={(e) => setMaxActiveUploads(Math.max(1, Number.parseInt(e.target.value, 10) || 1))}
                                 placeholder="1"
                                 min="1"
                             />
@@ -353,7 +353,7 @@ export function AgentLimits({ agentId, disableScroll = false }: AgentLimitsProps
                                 id="max-active-torrents"
                                 type="number"
                                 value={maxActiveTorrents}
-                                onChange={(e) => setMaxActiveTorrents(Math.max(1, parseInt(e.target.value) || 1))}
+                                onChange={(e) => setMaxActiveTorrents(Math.max(1, Number.parseInt(e.target.value, 10) || 1))}
                                 placeholder="1"
                                 min="1"
                             />
@@ -368,7 +368,7 @@ export function AgentLimits({ agentId, disableScroll = false }: AgentLimitsProps
                                 id="max-active-checking"
                                 type="number"
                                 value={maxActiveCheckingTorrents}
-                                onChange={(e) => setMaxActiveCheckingTorrents(Math.max(1, parseInt(e.target.value) || 1))}
+                                onChange={(e) => setMaxActiveCheckingTorrents(Math.max(1, Number.parseInt(e.target.value, 10) || 1))}
                                 placeholder="1"
                                 min="1"
                             />

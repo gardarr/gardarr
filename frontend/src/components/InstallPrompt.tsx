@@ -21,7 +21,7 @@ export function InstallPrompt() {
     const isStandalone = globalThis.matchMedia("(display-mode: standalone)").matches 
       || (globalThis.navigator as Navigator & { standalone?: boolean }).standalone === true;
     const dismissed = localStorage.getItem("pwa-prompt-dismissed");
-    const dismissedTime = dismissed ? parseInt(dismissed, 10) : 0;
+    const dismissedTime = dismissed ? Number.parseInt(dismissed, 10) : 0;
     const daysSinceDismissed = (Date.now() - dismissedTime) / (1000 * 60 * 60 * 24);
 
     // Don't show if already installed or dismissed within last 7 days
@@ -29,8 +29,11 @@ export function InstallPrompt() {
       return;
     }
 
-    // iOS detection
-    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) && !(globalThis as typeof globalThis & { MSStream?: unknown }).MSStream;
+    // iOS detection (including iPadOS 13+ which reports as macOS)
+    const isMSStream = !!(globalThis as typeof globalThis & { MSStream?: unknown }).MSStream;
+    const isTraditionalIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    const isModernIPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+    const isIOS = (isTraditionalIOS || isModernIPadOS) && !isMSStream;
     
     if (isIOS) {
       // Delay showing iOS prompt slightly for better UX

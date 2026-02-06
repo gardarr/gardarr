@@ -191,7 +191,7 @@ export function EditIntegrationWebhookModal({
                 min="1"
                 max="300"
                 value={formData.timeout_seconds}
-                onChange={(e) => updateFormField('timeout_seconds', parseInt(e.target.value) || 10)}
+                onChange={(e) => updateFormField('timeout_seconds', Number.parseInt(e.target.value, 10) || 10)}
               />
               <p className="text-sm text-muted-foreground">{t('webhooks.timeoutHelp')}</p>
             </div>
