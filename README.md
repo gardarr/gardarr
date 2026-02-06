@@ -24,8 +24,71 @@ Gardarr is a **modern, lightweight management and analytics platform for qBittor
 
 **Source-available** project licensed under BSL 1.1, designed to be self-hosted by the community with clean and maintainable code. **Transitions to Apache 2.0 on February 2, 2029**.
 
+## 📸 Screenshots
+
+### 📱 Mobile Experience
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="assets/screenshots/dashboard-mobile.png" alt="Dashboard Mobile" width="280" /><br />
+      <em>Dashboard with real-time analytics: speeds, ratio, storage, and active tasks</em>
+    </td>
+    <td align="center" width="50%">
+      <img src="assets/screenshots/torrents-page-compact-mobile.png" alt="Torrents Compact Mobile" width="280" /><br />
+      <em>Compact view optimized for quick browsing on smaller screens</em>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="assets/screenshots/torrents-page-mobile.png" alt="Torrents Mobile" width="280" /><br />
+      <em>Torrents list with card view featuring cover art and ratio grades</em>
+    </td>
+    <td align="center" width="50%">
+      <img src="assets/screenshots/integrations-page-mobile.png" alt="Integrations Mobile" width="280" /><br />
+      <em>Integrations page for webhooks, notifications, and external services</em>
+    </td>
+  </tr>
+</table>
+
+### 🖥️ Desktop Experience
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="assets/screenshots/dashboard-desktop.png" alt="Dashboard Desktop" width="100%" /><br />
+      <em>Full dashboard with analytics widgets, recent torrents, categories, and top uploads</em>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="assets/screenshots/torrents-page-table-desktop.png" alt="Torrents Table Desktop" width="100%" /><br />
+      <em>Table view with sortable columns, color-coded ratio grades (E to S++), and batch actions</em>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="assets/screenshots/torrent-details-desktop.png" alt="Torrent Details Desktop" width="100%" /><br />
+      <em>Detailed torrent view with progress timeline, ratio grading system, and custom cover art</em>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="assets/screenshots/categories-page-desktop.png" alt="Categories Desktop" width="100%" /><br />
+      <em>Category management with custom icons, colors, default directories, and auto-tags</em>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="assets/screenshots/add-torrent-desktop.png" alt="Add Torrent Desktop" width="100%" /><br />
+      <em>Add torrent modal with magnet URI parsing, auto-filled categories and tags</em>
+    </td>
+  </tr>
+</table>
+
 ## 📑 Table of Contents
 
+- [📸 Screenshots](#-screenshots)
 - [✨ Key Features](#-key-features)
 - [📋 Requirements](#-requirements)
 - [🚀 Getting Started](#-getting-started)
