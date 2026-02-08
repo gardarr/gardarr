@@ -2,6 +2,7 @@ package settings
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -10,20 +11,23 @@ import (
 	"github.com/jfxdev/gardarr/internal/models"
 	"github.com/jfxdev/gardarr/internal/schemas"
 	settingsService "github.com/jfxdev/gardarr/internal/services/settings"
+	taskMetadataService "github.com/jfxdev/gardarr/internal/services/task_metadata"
 )
 
 // Module holds settings routes configuration
 type Module struct {
 	group           *gin.RouterGroup
 	settingsService *settingsService.Service
+	metaSvc         *taskMetadataService.Service
 	db              *database.Database
 }
 
 // NewModule creates a new settings module
-func NewModule(router *gin.RouterGroup, db *database.Database) *Module {
+func NewModule(router *gin.RouterGroup, db *database.Database, metaSvc *taskMetadataService.Service) *Module {
 	return &Module{
 		group:           router.Group("/settings"),
 		settingsService: settingsService.NewService(db),
+		metaSvc:         metaSvc,
 		db:              db,
 	}
 }
@@ -42,6 +46,11 @@ func (m *Module) Register() {
 	protected.PUT("/theme", m.updateTheme)
 	protected.GET("/language", m.getLanguage)
 	protected.PUT("/language", m.updateLanguage)
+
+	// Image storage management
+	protected.GET("/images/stats", m.getImageStorageStats)
+	protected.DELETE("/images/agent/:agent_id", m.deleteAgentImages)
+	protected.DELETE("/images/orphans", m.deleteOrphanImages)
 }
 
 // getTimezone retrieves the current system timezone
@@ -159,6 +168,62 @@ func (m *Module) getLanguage(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, resp)
+}
+
+// getImageStorageStats returns per-agent image storage stats
+func (m *Module) getImageStorageStats(c *gin.Context) {
+	stats, err := m.metaSvc.GetImageStorageStatsByAgent(c.Request.Context())
+	if err != nil {
+		slog.Error("failed to get image storage stats", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to retrieve image storage stats",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, stats)
+}
+
+// deleteAgentImages deletes all images for a specific agent
+func (m *Module) deleteAgentImages(c *gin.Context) {
+	agentID := c.Param("agent_id")
+	if agentID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "agent_id is required",
+		})
+		return
+	}
+
+	deletedCount, err := m.metaSvc.DeleteImagesByAgent(c.Request.Context(), agentID)
+	if err != nil {
+		slog.Error("failed to delete agent images", "error", err, "agent_id", agentID)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to delete agent images",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":       "Agent images deleted successfully",
+		"deleted_count": deletedCount,
+	})
+}
+
+// deleteOrphanImages deletes orphan image files not referenced by any task
+func (m *Module) deleteOrphanImages(c *gin.Context) {
+	deletedCount, err := m.metaSvc.DeleteOrphanImages(c.Request.Context())
+	if err != nil {
+		slog.Error("failed to delete orphan images", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to delete orphan images",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":       "Orphan images deleted successfully",
+		"deleted_count": deletedCount,
+	})
 }
 
 // updateLanguage updates the system default language

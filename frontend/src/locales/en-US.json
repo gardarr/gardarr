@@ -260,6 +260,33 @@
       "title": "Other Settings",
       "description": "Additional settings will be available soon",
       "comingSoon": "Future settings such as notification preferences, download limits, and privacy settings will be added here."
+    },
+    "imageStorage": {
+      "title": "Image Storage",
+      "description": "Manage uploaded torrent images per agent. View disk usage and clean up unused files.",
+      "totalImages": "Total Images",
+      "diskUsage": "Disk Usage",
+      "byAgent": "By Agent",
+      "unknownAgent": "Unknown Agent",
+      "removed": "removed",
+      "images": "images",
+      "delete": "Delete",
+      "orphanFiles": "Orphan Files",
+      "orphanFilesFound": "orphan files found",
+      "orphanHint": "Files on disk not linked to any task",
+      "cleanUp": "Clean Up",
+      "noImages": "No images stored.",
+      "loadError": "Failed to load image storage stats.",
+      "cancel": "Cancel",
+      "confirmDelete": "Delete",
+      "confirmDeleteOrphans": {
+        "title": "Delete Orphan Files",
+        "description": "This will permanently delete all orphan image files from disk. This action cannot be undone."
+      },
+      "confirmDeleteAgent": {
+        "title": "Delete Agent Images",
+        "description": "This will permanently delete all images for this agent from disk and remove their associations. This action cannot be undone."
+      }
     }
   },
   "timezones": {
@@ -1288,5 +1315,51 @@
     "CHECKING": "Checking file integrity",
     "MOVING": "Moving files to new location",
     "UNKNOWN": "Unknown state"
+  },
+  "torrentImageEditor": {
+    "image": {
+      "label": "Image Source",
+      "uploading": "Uploading...",
+      "notSaved": "Not saved",
+      "saved": "Saved",
+      "dragToAdjust": "Drag to adjust",
+      "position": "Position: {{position}}%",
+      "replace": "Replace",
+      "remove": "Remove",
+      "removeImage": "Remove Image",
+      "deleting": "Removing...",
+      "cancel": "Cancel",
+      "uploadPrompt": "Click to upload an image",
+      "fileTypes": "PNG, JPG, GIF, WEBP up to 5MB",
+      "autoUpload": "Upload starts automatically after selection"
+    },
+    "imageAdjustments": {
+      "label": "Image Adjustments"
+    },
+    "opacity": {
+      "label": "Image Opacity",
+      "hint": "Adjust between 15% (more transparent) and 85% (more visible)"
+    },
+    "preview": {
+      "label": "Preview",
+      "normal": "Normal View",
+      "compact": "Compact View"
+    },
+    "thumbnail": {
+      "label": "Thumbnail"
+    },
+    "errors": {
+      "invalidFileType": "Please select a valid image file",
+      "fileSizeExceeded": "Image must be at most 5MB",
+      "uploadFailed": "Failed to upload image",
+      "deleteFailed": "Failed to remove image",
+      "savePositionFailed": "Failed to save position",
+      "saveOpacityFailed": "Failed to save opacity"
+    },
+    "success": {
+      "imageUploaded": "Image uploaded successfully",
+      "imageDeleted": "Image removed successfully",
+      "positionUpdated": "Image position updated"
+    }
   }
 }
