@@ -39,7 +39,7 @@ FROM alpine:3.23.2
 RUN apk add --no-cache ca-certificates wget && \
     addgroup -g 1000 appgroup && \
     adduser -u 1000 -G appgroup -D appuser && \
-    mkdir -p /data /media && \
+    mkdir -p /data /media /app && \
     chown -R appuser:appgroup /data /media /app
 
 # Set build argument for port
