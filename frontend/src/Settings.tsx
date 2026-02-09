@@ -200,24 +200,24 @@ export default function SettingsPage() {
       if (deleteTarget.type === 'agent' && deleteTarget.agentId) {
         const result = await settingsService.deleteAgentImages(deleteTarget.agentId);
         if (result.error) {
-          toast.error(result.error);
+          toast.error(t('settings.imageStorage.deleteError', { message: result.error }));
           return;
         }
-        toast.success(`${result.data?.deleted_count ?? 0} images deleted`);
+        toast.success(t('settings.imageStorage.imagesDeleted', { count: result.data?.deleted_count ?? 0 }));
       } else if (deleteTarget.type === 'orphans') {
         const result = await settingsService.deleteOrphanImages();
         if (result.error) {
-          toast.error(result.error);
+          toast.error(t('settings.imageStorage.deleteError', { message: result.error }));
           return;
         }
-        toast.success(`${result.data?.deleted_count ?? 0} orphan files deleted`);
+        toast.success(t('settings.imageStorage.orphansDeleted', { count: result.data?.deleted_count ?? 0 }));
       }
       setDeleteDialogOpen(false);
       setDeleteTarget(null);
       loadImageStats();
     } catch (error) {
       console.error('Failed to delete images:', error);
-      toast.error('Failed to delete images');
+      toast.error(t('settings.imageStorage.deleteFailedGeneric'));
     } finally {
       setDeleting(false);
     }
@@ -546,7 +546,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <Dialog open={deleteDialogOpen} onOpenChange={(open) => { if (!deleting) setDeleteDialogOpen(open); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>

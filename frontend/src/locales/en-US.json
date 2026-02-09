@@ -286,7 +286,11 @@
       "confirmDeleteAgent": {
         "title": "Delete Agent Images",
         "description": "This will permanently delete all images for this agent from disk and remove their associations. This action cannot be undone."
-      }
+      },
+      "imagesDeleted": "{{count}} images deleted",
+      "orphansDeleted": "{{count}} orphan files deleted",
+      "deleteError": "Delete failed: {{message}}",
+      "deleteFailedGeneric": "Failed to delete images"
     }
   },
   "timezones": {

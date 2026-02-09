@@ -286,7 +286,11 @@
       "confirmDeleteAgent": {
         "title": "Excluir Imagens do Agente",
         "description": "Isso excluirá permanentemente todas as imagens deste agente do disco e removerá suas associações. Esta ação não pode ser desfeita."
-      }
+      },
+      "imagesDeleted": "{{count}} imagens excluídas",
+      "orphansDeleted": "{{count}} arquivos órfãos excluídos",
+      "deleteError": "Falha ao excluir: {{message}}",
+      "deleteFailedGeneric": "Falha ao excluir imagens"
     }
   },
   "timezones": {
