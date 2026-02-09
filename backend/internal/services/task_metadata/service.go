@@ -358,19 +358,19 @@ func (s *Service) validateImagePath(imagePath string) error {
 	return nil
 }
 
-// GetImageStorageStatsByAgent returns per-agent image storage stats using a filesystem-first approach
-func (s *Service) GetImageStorageStatsByAgent(ctx context.Context) (*models.ImageStorageStatsResponse, error) {
-	// 1. Scan uploadDir for all files
+type uploadFileInfo struct {
+	path string
+	size int64
+}
+
+// scanUploadDir reads all files from the upload directory and returns a map keyed by full path.
+func (s *Service) scanUploadDir() (map[string]uploadFileInfo, error) {
 	entries, err := os.ReadDir(s.uploadDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read upload directory: %w", err)
 	}
 
-	type fileInfo struct {
-		path string
-		size int64
-	}
-	filesByPath := make(map[string]fileInfo)
+	filesByPath := make(map[string]uploadFileInfo)
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
@@ -380,7 +380,63 @@ func (s *Service) GetImageStorageStatsByAgent(ctx context.Context) (*models.Imag
 			continue
 		}
 		fullPath := filepath.Join(s.uploadDir, entry.Name())
-		filesByPath[fullPath] = fileInfo{path: fullPath, size: info.Size()}
+		filesByPath[fullPath] = uploadFileInfo{path: fullPath, size: info.Size()}
+	}
+	return filesByPath, nil
+}
+
+// queryHashToAgentID maps task hashes to their agent IDs via the task_states table.
+func (s *Service) queryHashToAgentID(ctx context.Context, taskHashes []string) map[string]string {
+	hashToAgentID := make(map[string]string)
+	if len(taskHashes) == 0 {
+		return hashToAgentID
+	}
+	var taskStates []struct {
+		Hash    string    `gorm:"column:hash"`
+		AgentID uuid.UUID `gorm:"column:agent_id"`
+	}
+	if err := s.db.DB.WithContext(ctx).
+		Table("task_states").
+		Select("hash, agent_id").
+		Where("hash IN ?", taskHashes).
+		Find(&taskStates).Error; err != nil {
+		slog.Warn("failed to query task_states", "error", err)
+		return hashToAgentID
+	}
+	for _, ts := range taskStates {
+		hashToAgentID[ts.Hash] = ts.AgentID.String()
+	}
+	return hashToAgentID
+}
+
+// queryAgentNames returns a map of agent UUID strings to their display names.
+func (s *Service) queryAgentNames(ctx context.Context) map[string]string {
+	agentNames := make(map[string]string)
+	var agents []struct {
+		UUID uuid.UUID `gorm:"column:uuid"`
+		Name string    `gorm:"column:name"`
+	}
+	if err := s.db.DB.WithContext(ctx).
+		Table("agents").
+		Select("uuid, name").
+		Find(&agents).Error; err != nil {
+		slog.Warn("failed to query agents", "error", err)
+		return agentNames
+	}
+	for _, a := range agents {
+		agentNames[a.UUID.String()] = a.Name
+	}
+	// Standalone agents are not stored in the DB — register the nil UUID explicitly
+	agentNames[constants.StandaloneAgentUUID.String()] = "Standalone"
+	return agentNames
+}
+
+// GetImageStorageStatsByAgent returns per-agent image storage stats using a filesystem-first approach
+func (s *Service) GetImageStorageStatsByAgent(ctx context.Context) (*models.ImageStorageStatsResponse, error) {
+	// 1. Scan uploadDir for all files
+	filesByPath, err := s.scanUploadDir()
+	if err != nil {
+		return nil, err
 	}
 
 	// 2. Get all TaskMetadata with images → build map[imagePath]*TaskMetadata
@@ -402,43 +458,10 @@ func (s *Service) GetImageStorageStatsByAgent(ctx context.Context) (*models.Imag
 	}
 
 	// 4. Query TaskState to map task_hash → agent_id
-	hashToAgentID := make(map[string]string)
-	if len(taskHashes) > 0 {
-		var taskStates []struct {
-			Hash    string    `gorm:"column:hash"`
-			AgentID uuid.UUID `gorm:"column:agent_id"`
-		}
-		if err := s.db.DB.WithContext(ctx).
-			Table("task_states").
-			Select("hash, agent_id").
-			Where("hash IN ?", taskHashes).
-			Find(&taskStates).Error; err != nil {
-			slog.Warn("failed to query task_states", "error", err)
-		} else {
-			for _, ts := range taskStates {
-				hashToAgentID[ts.Hash] = ts.AgentID.String()
-			}
-		}
-	}
+	hashToAgentID := s.queryHashToAgentID(ctx, taskHashes)
 
 	// 5. Get all known agent UUIDs and names
-	agentNames := make(map[string]string)
-	var agents []struct {
-		UUID uuid.UUID `gorm:"column:uuid"`
-		Name string    `gorm:"column:name"`
-	}
-	if err := s.db.DB.WithContext(ctx).
-		Table("agents").
-		Select("uuid, name").
-		Find(&agents).Error; err != nil {
-		slog.Warn("failed to query agents", "error", err)
-	} else {
-		for _, a := range agents {
-			agentNames[a.UUID.String()] = a.Name
-		}
-	}
-	// Standalone agents are not stored in the DB — register the nil UUID explicitly
-	agentNames[constants.StandaloneAgentUUID.String()] = "Standalone"
+	agentNames := s.queryAgentNames(ctx)
 
 	// 6. Group files by agent
 	type agentAccum struct {
@@ -552,24 +575,62 @@ func (s *Service) DeleteImagesByAgent(ctx context.Context, agentID string) (int,
 	return deletedCount, nil
 }
 
+// queryHashesWithState returns the set of task hashes (from the provided list) that have a row in task_states.
+func (s *Service) queryHashesWithState(ctx context.Context, taskHashes []string) map[string]bool {
+	hashHasState := make(map[string]bool)
+	if len(taskHashes) == 0 {
+		return hashHasState
+	}
+	var taskStates []struct {
+		Hash string `gorm:"column:hash"`
+	}
+	if err := s.db.DB.WithContext(ctx).
+		Table("task_states").
+		Select("hash").
+		Where("hash IN ?", taskHashes).
+		Find(&taskStates).Error; err != nil {
+		slog.Warn("failed to query task_states for orphan check", "error", err)
+		return hashHasState
+	}
+	for _, ts := range taskStates {
+		hashHasState[ts.Hash] = true
+	}
+	return hashHasState
+}
+
+// removeValidatedFile validates the path is within the upload dir, then removes it.
+// Returns true if the file was successfully removed.
+func (s *Service) removeValidatedFile(filePath string) bool {
+	if err := s.validateImagePath(filePath); err != nil {
+		slog.Warn("skipping orphan deletion due to path validation failure", "error", err)
+		return false
+	}
+	if err := os.Remove(filePath); err != nil && !os.IsNotExist(err) {
+		slog.Warn("failed to delete orphan file", "error", err, "path", filePath)
+		return false
+	}
+	return true
+}
+
+// clearImagePaths clears image_path in DB for the given task hashes, if any.
+func (s *Service) clearImagePaths(ctx context.Context, hashes []string) {
+	if len(hashes) == 0 {
+		return
+	}
+	if _, err := s.repo.ClearImagePathsByTaskHashes(ctx, hashes); err != nil {
+		slog.Error("failed to clear image paths for orphans in DB", "error", err)
+	}
+}
+
 // DeleteOrphanImages deletes orphan files from uploadDir.
 // An orphan is either: (a) a file not referenced by any TaskMetadata, or
 // (b) a file referenced by TaskMetadata but whose task_hash has no TaskState.
 // This method mirrors the exact same filesystem-first classification used by GetImageStorageStatsByAgent.
 func (s *Service) DeleteOrphanImages(ctx context.Context) (int, error) {
 	// 1. Scan uploadDir for all files (filesystem-first, matching stats logic)
-	entries, err := os.ReadDir(s.uploadDir)
+	filesByPath, err := s.scanUploadDir()
 	if err != nil {
-		return 0, fmt.Errorf("failed to read upload directory: %w", err)
-	}
-
-	filesByPath := make(map[string]bool)
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		fullPath := filepath.Join(s.uploadDir, entry.Name())
-		filesByPath[fullPath] = true
+		return 0, err
 	}
 
 	// 2. Get all TaskMetadata with images → build map[imagePath]*TaskMetadata
@@ -585,29 +646,13 @@ func (s *Service) DeleteOrphanImages(ctx context.Context) (int, error) {
 	// 3. Collect only task hashes that have files on disk (matching stats logic)
 	var taskHashes []string
 	for _, meta := range metadataList {
-		if filesByPath[meta.ImagePath] {
+		if _, exists := filesByPath[meta.ImagePath]; exists {
 			taskHashes = append(taskHashes, meta.TaskHash)
 		}
 	}
 
 	// 4. Query TaskState to find which hashes still have an agent link
-	hashHasState := make(map[string]bool)
-	if len(taskHashes) > 0 {
-		var taskStates []struct {
-			Hash string `gorm:"column:hash"`
-		}
-		if err := s.db.DB.WithContext(ctx).
-			Table("task_states").
-			Select("hash").
-			Where("hash IN ?", taskHashes).
-			Find(&taskStates).Error; err != nil {
-			slog.Warn("failed to query task_states for orphan check", "error", err)
-		} else {
-			for _, ts := range taskStates {
-				hashHasState[ts.Hash] = true
-			}
-		}
-	}
+	hashHasState := s.queryHashesWithState(ctx, taskHashes)
 
 	// 5. Walk files and delete orphans (same classification as stats)
 	var deletedCount int
@@ -617,18 +662,12 @@ func (s *Service) DeleteOrphanImages(ctx context.Context) (int, error) {
 
 		// Case A: file on disk, no TaskMetadata → pure FS orphan
 		// Case B: file on disk, has TaskMetadata, but no TaskState → stale orphan
-		isOrphan := !hasMeta || (hasMeta && !hashHasState[meta.TaskHash])
+		isOrphan := !hasMeta || !hashHasState[meta.TaskHash]
 		if !isOrphan {
 			continue
 		}
 
-		if err := s.validateImagePath(filePath); err != nil {
-			slog.Warn("skipping orphan deletion due to path validation failure", "error", err)
-			continue
-		}
-
-		if err := os.Remove(filePath); err != nil && !os.IsNotExist(err) {
-			slog.Warn("failed to delete orphan file", "error", err, "path", filePath)
+		if !s.removeValidatedFile(filePath) {
 			continue
 		}
 		deletedCount++
@@ -640,11 +679,7 @@ func (s *Service) DeleteOrphanImages(ctx context.Context) (int, error) {
 	}
 
 	// 6. Clear image paths in DB for stale orphans
-	if len(hashesToClear) > 0 {
-		if _, err := s.repo.ClearImagePathsByTaskHashes(ctx, hashesToClear); err != nil {
-			slog.Error("failed to clear image paths for orphans in DB", "error", err)
-		}
-	}
+	s.clearImagePaths(ctx, hashesToClear)
 
 	return deletedCount, nil
 }

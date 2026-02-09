@@ -12,6 +12,8 @@ import (
 	"github.com/jfxdev/gardarr/internal/models"
 )
 
+const unexpectedErrFmt = "unexpected error: %v"
+
 // setupTestService creates a Service with an in-memory DB and a temp uploadDir.
 // It auto-migrates TaskMetadata, TaskState, and Agent tables.
 func setupTestService(t *testing.T) (*Service, string) {
@@ -81,13 +83,13 @@ func seedTaskMetadata(t *testing.T, svc *Service, taskHash, imagePath string) {
 // Tests for GetImageStorageStatsByAgent
 // ---------------------------------------------------------------------------
 
-func TestGetImageStorageStatsByAgent_Empty(t *testing.T) {
+func TestGetImageStorageStatsByAgentEmpty(t *testing.T) {
 	svc, _ := setupTestService(t)
 	ctx := context.Background()
 
 	stats, err := svc.GetImageStorageStatsByAgent(ctx)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrFmt, err)
 	}
 	if stats.TotalImageCount != 0 {
 		t.Errorf("expected 0 total images, got %d", stats.TotalImageCount)
@@ -100,7 +102,7 @@ func TestGetImageStorageStatsByAgent_Empty(t *testing.T) {
 	}
 }
 
-func TestGetImageStorageStatsByAgent_PerAgent(t *testing.T) {
+func TestGetImageStorageStatsByAgentPerAgent(t *testing.T) {
 	svc, uploadDir := setupTestService(t)
 	ctx := context.Background()
 
@@ -108,7 +110,7 @@ func TestGetImageStorageStatsByAgent_PerAgent(t *testing.T) {
 	agent1 := seedAgent(t, svc, "Agent-1")
 	agent2 := seedAgent(t, svc, "Agent-2")
 
-	file1 := createTestFile(t, uploadDir, "hash1_img.jpg", "aaaa") // 4 bytes
+	file1 := createTestFile(t, uploadDir, "hash1_img.jpg", "aaaa")   // 4 bytes
 	file2 := createTestFile(t, uploadDir, "hash2_img.jpg", "bbbbbb") // 6 bytes
 
 	seedTaskMetadata(t, svc, "hash1", file1)
@@ -118,7 +120,7 @@ func TestGetImageStorageStatsByAgent_PerAgent(t *testing.T) {
 
 	stats, err := svc.GetImageStorageStatsByAgent(ctx)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrFmt, err)
 	}
 
 	if stats.TotalImageCount != 2 {
@@ -142,7 +144,7 @@ func TestGetImageStorageStatsByAgent_PerAgent(t *testing.T) {
 	}
 }
 
-func TestGetImageStorageStatsByAgent_OrphanFileNoDB(t *testing.T) {
+func TestGetImageStorageStatsByAgentOrphanFileNoDB(t *testing.T) {
 	svc, uploadDir := setupTestService(t)
 	ctx := context.Background()
 
@@ -151,7 +153,7 @@ func TestGetImageStorageStatsByAgent_OrphanFileNoDB(t *testing.T) {
 
 	stats, err := svc.GetImageStorageStatsByAgent(ctx)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrFmt, err)
 	}
 	if stats.OrphanCount != 1 {
 		t.Errorf("expected 1 orphan, got %d", stats.OrphanCount)
@@ -161,7 +163,7 @@ func TestGetImageStorageStatsByAgent_OrphanFileNoDB(t *testing.T) {
 	}
 }
 
-func TestGetImageStorageStatsByAgent_OrphanNoTaskState(t *testing.T) {
+func TestGetImageStorageStatsByAgentOrphanNoTaskState(t *testing.T) {
 	svc, uploadDir := setupTestService(t)
 	ctx := context.Background()
 
@@ -171,14 +173,14 @@ func TestGetImageStorageStatsByAgent_OrphanNoTaskState(t *testing.T) {
 
 	stats, err := svc.GetImageStorageStatsByAgent(ctx)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrFmt, err)
 	}
 	if stats.OrphanCount != 1 {
 		t.Errorf("expected 1 orphan (no TaskState), got %d", stats.OrphanCount)
 	}
 }
 
-func TestGetImageStorageStatsByAgent_RemovedAgent(t *testing.T) {
+func TestGetImageStorageStatsByAgentRemovedAgent(t *testing.T) {
 	svc, uploadDir := setupTestService(t)
 	ctx := context.Background()
 
@@ -191,7 +193,7 @@ func TestGetImageStorageStatsByAgent_RemovedAgent(t *testing.T) {
 
 	stats, err := svc.GetImageStorageStatsByAgent(ctx)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrFmt, err)
 	}
 	if len(stats.Agents) != 1 {
 		t.Fatalf("expected 1 agent entry, got %d", len(stats.Agents))
@@ -208,7 +210,7 @@ func TestGetImageStorageStatsByAgent_RemovedAgent(t *testing.T) {
 // Tests for DeleteImagesByAgent
 // ---------------------------------------------------------------------------
 
-func TestDeleteImagesByAgent_DeletesFilesAndClearsDB(t *testing.T) {
+func TestDeleteImagesByAgentDeletesFilesAndClearsDB(t *testing.T) {
 	svc, uploadDir := setupTestService(t)
 	ctx := context.Background()
 
@@ -222,7 +224,7 @@ func TestDeleteImagesByAgent_DeletesFilesAndClearsDB(t *testing.T) {
 
 	deleted, err := svc.DeleteImagesByAgent(ctx, agentID)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrFmt, err)
 	}
 	if deleted != 2 {
 		t.Errorf("expected 2 deleted, got %d", deleted)
@@ -247,7 +249,7 @@ func TestDeleteImagesByAgent_DeletesFilesAndClearsDB(t *testing.T) {
 	}
 }
 
-func TestDeleteImagesByAgent_DoesNotAffectOtherAgents(t *testing.T) {
+func TestDeleteImagesByAgentDoesNotAffectOtherAgents(t *testing.T) {
 	svc, uploadDir := setupTestService(t)
 	ctx := context.Background()
 
@@ -263,7 +265,7 @@ func TestDeleteImagesByAgent_DoesNotAffectOtherAgents(t *testing.T) {
 
 	deleted, err := svc.DeleteImagesByAgent(ctx, agent2)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrFmt, err)
 	}
 	if deleted != 1 {
 		t.Errorf("expected 1 deleted, got %d", deleted)
@@ -281,13 +283,13 @@ func TestDeleteImagesByAgent_DoesNotAffectOtherAgents(t *testing.T) {
 	}
 }
 
-func TestDeleteImagesByAgent_NoTasks(t *testing.T) {
+func TestDeleteImagesByAgentNoTasks(t *testing.T) {
 	svc, _ := setupTestService(t)
 	ctx := context.Background()
 
 	deleted, err := svc.DeleteImagesByAgent(ctx, uuid.New().String())
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrFmt, err)
 	}
 	if deleted != 0 {
 		t.Errorf("expected 0 deleted for non-existent agent, got %d", deleted)
@@ -298,7 +300,7 @@ func TestDeleteImagesByAgent_NoTasks(t *testing.T) {
 // Tests for DeleteOrphanImages
 // ---------------------------------------------------------------------------
 
-func TestDeleteOrphanImages_RemovesStaleOrphans(t *testing.T) {
+func TestDeleteOrphanImagesRemovesStaleOrphans(t *testing.T) {
 	svc, uploadDir := setupTestService(t)
 	ctx := context.Background()
 
@@ -314,7 +316,7 @@ func TestDeleteOrphanImages_RemovesStaleOrphans(t *testing.T) {
 
 	deleted, err := svc.DeleteOrphanImages(ctx)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrFmt, err)
 	}
 	if deleted != 1 {
 		t.Errorf("expected 1 stale orphan deleted, got %d", deleted)
@@ -337,7 +339,7 @@ func TestDeleteOrphanImages_RemovesStaleOrphans(t *testing.T) {
 	}
 }
 
-func TestDeleteOrphanImages_RemovesUnreferencedFiles(t *testing.T) {
+func TestDeleteOrphanImagesRemovesUnreferencedFiles(t *testing.T) {
 	svc, uploadDir := setupTestService(t)
 	ctx := context.Background()
 
@@ -352,7 +354,7 @@ func TestDeleteOrphanImages_RemovesUnreferencedFiles(t *testing.T) {
 
 	deleted, err := svc.DeleteOrphanImages(ctx)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrFmt, err)
 	}
 	if deleted != 1 {
 		t.Errorf("expected 1 orphan deleted, got %d", deleted)
@@ -369,7 +371,7 @@ func TestDeleteOrphanImages_RemovesUnreferencedFiles(t *testing.T) {
 	}
 }
 
-func TestDeleteOrphanImages_NoOrphans(t *testing.T) {
+func TestDeleteOrphanImagesNoOrphans(t *testing.T) {
 	svc, uploadDir := setupTestService(t)
 	ctx := context.Background()
 
@@ -381,20 +383,20 @@ func TestDeleteOrphanImages_NoOrphans(t *testing.T) {
 
 	deleted, err := svc.DeleteOrphanImages(ctx)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrFmt, err)
 	}
 	if deleted != 0 {
 		t.Errorf("expected 0 orphans deleted, got %d", deleted)
 	}
 }
 
-func TestDeleteOrphanImages_EmptyDir(t *testing.T) {
+func TestDeleteOrphanImagesEmptyDir(t *testing.T) {
 	svc, _ := setupTestService(t)
 	ctx := context.Background()
 
 	deleted, err := svc.DeleteOrphanImages(ctx)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrFmt, err)
 	}
 	if deleted != 0 {
 		t.Errorf("expected 0 deleted for empty dir, got %d", deleted)

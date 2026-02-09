@@ -263,14 +263,13 @@ export function TorrentImageEditor({
                 <div className="absolute top-2 right-2 bg-green-500/90 text-white px-2 py-1 rounded text-xs font-medium shadow-md">
                   {t('torrentImageEditor.image.saved')}
                 </div>
-                {!isDragging && (
-                  <div className="absolute top-2 left-2 bg-blue-500/90 text-white px-2 py-1 rounded text-xs font-medium shadow-md">
-                    {t('torrentImageEditor.image.dragToAdjust')}
-                  </div>
-                )}
-                {isDragging && (
+                {isDragging ? (
                   <div className="absolute top-2 left-2 bg-purple-500/90 text-white px-2 py-1 rounded text-xs font-medium shadow-md">
                     {t('torrentImageEditor.image.position', { position: Math.round(imagePositionY) })}
+                  </div>
+                ) : (
+                  <div className="absolute top-2 left-2 bg-blue-500/90 text-white px-2 py-1 rounded text-xs font-medium shadow-md">
+                    {t('torrentImageEditor.image.dragToAdjust')}
                   </div>
                 )}
               </>

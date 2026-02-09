@@ -239,6 +239,125 @@ export default function SettingsPage() {
     );
   }
 
+  const renderImageStorageContent = () => {
+    if (imageStatsLoading && !imageStats) {
+      return (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+        </div>
+      );
+    }
+
+    if (imageStats) {
+      return (
+        <>
+          {/* Summary */}
+          <div className="p-4 bg-secondary rounded-lg flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <ImageIcon className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">
+                  {t("settings.imageStorage.totalImages")}: {imageStats.total_image_count}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t("settings.imageStorage.diskUsage")}: {formatBytes(imageStats.total_size_bytes)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Per-agent table */}
+          {imageStats.agents && imageStats.agents.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-muted-foreground">
+                {t("settings.imageStorage.byAgent")}
+              </h4>
+              <div className="border rounded-lg divide-y">
+                {imageStats.agents.map((agent) => (
+                  <div key={agent.agent_id} className="flex items-center justify-between p-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {agent.is_removed && (
+                        <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {agent.agent_name || t("settings.imageStorage.unknownAgent")}
+                          {agent.is_removed && (
+                            <span className="ml-2 text-xs text-amber-500 font-normal">
+                              ({t("settings.imageStorage.removed")})
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {agent.image_count} {t("settings.imageStorage.images")} · {formatBytes(agent.total_size_bytes)}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => openDeleteDialog('agent', agent.agent_id, agent.agent_name)}
+                      disabled={deleting}
+                      className="flex-shrink-0"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                      {t("settings.imageStorage.delete")}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Orphan files */}
+          {imageStats.orphan_count > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-muted-foreground">
+                {t("settings.imageStorage.orphanFiles")}
+              </h4>
+              <div className="border border-amber-500/30 bg-amber-500/5 rounded-lg p-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  <div>
+                    <p className="text-sm font-medium">
+                      {imageStats.orphan_count} {t("settings.imageStorage.orphanFilesFound")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatBytes(imageStats.orphan_size_bytes)} · {t("settings.imageStorage.orphanHint")}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openDeleteDialog('orphans')}
+                  disabled={deleting}
+                  className="flex-shrink-0"
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                  {t("settings.imageStorage.cleanUp")}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Empty state */}
+          {imageStats.total_image_count === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              {t("settings.imageStorage.noImages")}
+            </p>
+          )}
+        </>
+      );
+    }
+
+    return (
+      <p className="text-sm text-muted-foreground">
+        {t("settings.imageStorage.loadError")}
+      </p>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -422,114 +541,7 @@ export default function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {imageStatsLoading && !imageStats ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-            </div>
-          ) : imageStats ? (
-            <>
-              {/* Summary */}
-              <div className="p-4 bg-secondary rounded-lg flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">
-                      {t("settings.imageStorage.totalImages")}: {imageStats.total_image_count}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {t("settings.imageStorage.diskUsage")}: {formatBytes(imageStats.total_size_bytes)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Per-agent table */}
-              {imageStats.agents && imageStats.agents.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-muted-foreground">
-                    {t("settings.imageStorage.byAgent")}
-                  </h4>
-                  <div className="border rounded-lg divide-y">
-                    {imageStats.agents.map((agent) => (
-                      <div key={agent.agent_id} className="flex items-center justify-between p-3">
-                        <div className="flex items-center gap-2 min-w-0">
-                          {agent.is_removed && (
-                            <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
-                          )}
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {agent.agent_name || t("settings.imageStorage.unknownAgent")}
-                              {agent.is_removed && (
-                                <span className="ml-2 text-xs text-amber-500 font-normal">
-                                  ({t("settings.imageStorage.removed")})
-                                </span>
-                              )}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {agent.image_count} {t("settings.imageStorage.images")} · {formatBytes(agent.total_size_bytes)}
-                            </p>
-                          </div>
-                        </div>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => openDeleteDialog('agent', agent.agent_id, agent.agent_name)}
-                          disabled={deleting}
-                          className="flex-shrink-0"
-                        >
-                          <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                          {t("settings.imageStorage.delete")}
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Orphan files */}
-              {imageStats.orphan_count > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-muted-foreground">
-                    {t("settings.imageStorage.orphanFiles")}
-                  </h4>
-                  <div className="border border-amber-500/30 bg-amber-500/5 rounded-lg p-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-amber-500" />
-                      <div>
-                        <p className="text-sm font-medium">
-                          {imageStats.orphan_count} {t("settings.imageStorage.orphanFilesFound")}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatBytes(imageStats.orphan_size_bytes)} · {t("settings.imageStorage.orphanHint")}
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openDeleteDialog('orphans')}
-                      disabled={deleting}
-                      className="flex-shrink-0"
-                    >
-                      <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                      {t("settings.imageStorage.cleanUp")}
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Empty state */}
-              {imageStats.total_image_count === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  {t("settings.imageStorage.noImages")}
-                </p>
-              )}
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              {t("settings.imageStorage.loadError")}
-            </p>
-          )}
+          {renderImageStorageContent()}
         </CardContent>
       </Card>
 
