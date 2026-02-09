@@ -201,16 +201,16 @@ export default function SettingsPage() {
         const result = await settingsService.deleteAgentImages(deleteTarget.agentId);
         if (result.error) {
           toast.error(result.error);
-        } else {
-          toast.success(`${result.data?.deleted_count ?? 0} images deleted`);
+          return;
         }
+        toast.success(`${result.data?.deleted_count ?? 0} images deleted`);
       } else if (deleteTarget.type === 'orphans') {
         const result = await settingsService.deleteOrphanImages();
         if (result.error) {
           toast.error(result.error);
-        } else {
-          toast.success(`${result.data?.deleted_count ?? 0} orphan files deleted`);
+          return;
         }
+        toast.success(`${result.data?.deleted_count ?? 0} orphan files deleted`);
       }
       setDeleteDialogOpen(false);
       setDeleteTarget(null);
