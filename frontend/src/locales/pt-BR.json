@@ -260,6 +260,37 @@
       "title": "Outras Configurações",
       "description": "Configurações adicionais estarão disponíveis em breve",
       "comingSoon": "Futuras configurações como preferências de notificação, limites de download, e configurações de privacidade serão adicionadas aqui."
+    },
+    "imageStorage": {
+      "title": "Armazenamento de Imagens",
+      "description": "Gerencie imagens de torrents enviadas por agente. Visualize uso de disco e limpe arquivos não utilizados.",
+      "totalImages": "Total de Imagens",
+      "diskUsage": "Uso de Disco",
+      "byAgent": "Por Agente",
+      "unknownAgent": "Agente Desconhecido",
+      "removed": "removido",
+      "images": "imagens",
+      "delete": "Excluir",
+      "orphanFiles": "Arquivos Órfãos",
+      "orphanFilesFound": "arquivos órfãos encontrados",
+      "orphanHint": "Arquivos no disco não vinculados a nenhuma tarefa",
+      "cleanUp": "Limpar",
+      "noImages": "Nenhuma imagem armazenada.",
+      "loadError": "Falha ao carregar estatísticas de armazenamento de imagens.",
+      "cancel": "Cancelar",
+      "confirmDelete": "Excluir",
+      "confirmDeleteOrphans": {
+        "title": "Excluir Arquivos Órfãos",
+        "description": "Isso excluirá permanentemente todos os arquivos de imagem órfãos do disco. Esta ação não pode ser desfeita."
+      },
+      "confirmDeleteAgent": {
+        "title": "Excluir Imagens do Agente",
+        "description": "Isso excluirá permanentemente todas as imagens deste agente do disco e removerá suas associações. Esta ação não pode ser desfeita."
+      },
+      "imagesDeleted": "{{count}} imagens excluídas",
+      "orphansDeleted": "{{count}} arquivos órfãos excluídos",
+      "deleteError": "Falha ao excluir: {{message}}",
+      "deleteFailedGeneric": "Falha ao excluir imagens"
     }
   },
   "timezones": {
@@ -1341,5 +1372,51 @@
     "CHECKING": "Verificando integridade dos arquivos",
     "MOVING": "Movendo arquivos para novo local",
     "UNKNOWN": "Estado desconhecido"
+  },
+  "torrentImageEditor": {
+    "image": {
+      "label": "Fonte da Imagem",
+      "uploading": "Enviando...",
+      "notSaved": "Não salvo",
+      "saved": "Salvo",
+      "dragToAdjust": "Arraste para ajustar",
+      "position": "Posição: {{position}}%",
+      "replace": "Trocar",
+      "remove": "Remover",
+      "removeImage": "Remover Imagem",
+      "deleting": "Removendo...",
+      "cancel": "Cancelar",
+      "uploadPrompt": "Clique para fazer upload de uma imagem",
+      "fileTypes": "PNG, JPG, GIF, WEBP até 5MB",
+      "autoUpload": "O upload será feito automaticamente após a seleção"
+    },
+    "imageAdjustments": {
+      "label": "Ajustes da Imagem"
+    },
+    "opacity": {
+      "label": "Opacidade da Imagem",
+      "hint": "Ajuste entre 15% (mais transparente) e 85% (mais visível)"
+    },
+    "preview": {
+      "label": "Pré-visualização",
+      "normal": "Visualização Normal",
+      "compact": "Visualização Compacta"
+    },
+    "thumbnail": {
+      "label": "Miniatura"
+    },
+    "errors": {
+      "invalidFileType": "Por favor, selecione um arquivo de imagem válido",
+      "fileSizeExceeded": "A imagem deve ter no máximo 5MB",
+      "uploadFailed": "Erro ao enviar imagem",
+      "deleteFailed": "Erro ao remover imagem",
+      "savePositionFailed": "Erro ao salvar posição",
+      "saveOpacityFailed": "Erro ao salvar opacidade"
+    },
+    "success": {
+      "imageUploaded": "Imagem enviada com sucesso",
+      "imageDeleted": "Imagem removida com sucesso",
+      "positionUpdated": "Posição da imagem atualizada"
+    }
   }
 }

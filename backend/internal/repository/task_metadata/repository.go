@@ -81,3 +81,25 @@ func (r *Repository) Delete(ctx context.Context, uuid uuid.UUID) error {
 func (r *Repository) DeleteByTaskHash(ctx context.Context, taskHash string) error {
 	return r.db.DB.WithContext(ctx).Where("task_hash = ?", taskHash).Delete(&models.TaskMetadata{}).Error
 }
+
+// GetAllWithImages retrieves all task metadata records that have an image path
+func (r *Repository) GetAllWithImages(ctx context.Context) ([]models.TaskMetadata, error) {
+	var metadataList []models.TaskMetadata
+	err := r.db.DB.WithContext(ctx).Where("image_path != ''").Find(&metadataList).Error
+	if err != nil {
+		return nil, err
+	}
+	return metadataList, nil
+}
+
+// ClearImagePathsByTaskHashes clears image_path for the given task hashes
+func (r *Repository) ClearImagePathsByTaskHashes(ctx context.Context, hashes []string) (int64, error) {
+	if len(hashes) == 0 {
+		return 0, nil
+	}
+	result := r.db.DB.WithContext(ctx).
+		Model(&models.TaskMetadata{}).
+		Where("task_hash IN ? AND image_path != ''", hashes).
+		Update("image_path", "")
+	return result.RowsAffected, result.Error
+}

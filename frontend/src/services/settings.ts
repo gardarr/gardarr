@@ -37,6 +37,27 @@ export interface ThemeUpdateRequest {
   theme: string;
 }
 
+export interface AgentImageStats {
+  agent_id: string;
+  agent_name: string;
+  is_removed: boolean;
+  image_count: number;
+  total_size_bytes: number;
+}
+
+export interface ImageStorageStatsResponse {
+  agents: AgentImageStats[];
+  orphan_count: number;
+  orphan_size_bytes: number;
+  total_size_bytes: number;
+  total_image_count: number;
+}
+
+export interface DeleteImagesResponse {
+  message: string;
+  deleted_count: number;
+}
+
 class SettingsService {
   /**
    * Gets the current system timezone
@@ -127,6 +148,44 @@ class SettingsService {
     }
     
     return {};
+  }
+  /**
+   * Gets image storage stats per agent
+   */
+  async getImageStorageStats(): Promise<{ data?: ImageStorageStatsResponse; error?: string }> {
+    const response = await api.get<ImageStorageStatsResponse>("/settings/images/stats");
+    
+    if (response.error) {
+      return { error: response.error };
+    }
+    
+    return { data: response.data };
+  }
+
+  /**
+   * Deletes all images for a specific agent
+   */
+  async deleteAgentImages(agentId: string): Promise<{ data?: DeleteImagesResponse; error?: string }> {
+    const response = await api.delete<DeleteImagesResponse>(`/settings/images/agent/${agentId}`);
+    
+    if (response.error) {
+      return { error: response.error };
+    }
+    
+    return { data: response.data };
+  }
+
+  /**
+   * Deletes orphan image files not referenced by any task
+   */
+  async deleteOrphanImages(): Promise<{ data?: DeleteImagesResponse; error?: string }> {
+    const response = await api.delete<DeleteImagesResponse>("/settings/images/orphans");
+    
+    if (response.error) {
+      return { error: response.error };
+    }
+    
+    return { data: response.data };
   }
 }
 

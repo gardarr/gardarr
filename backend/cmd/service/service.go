@@ -458,7 +458,7 @@ func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statist
 	profile.NewModule(v1, db).Register()
 	signup.NewModule(v1, db).Register()
 	setup.NewModule(v1, db, statsSvc).Register()
-	settings.NewModule(v1, db).Register()
+	settings.NewModule(v1, db, metaSvc).Register()
 	version.NewModule(v1, db).Register()
 	eventsModule, err := eventsRoutes.NewModule(v1, db)
 	if err != nil {

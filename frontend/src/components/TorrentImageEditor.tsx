@@ -60,14 +60,14 @@ export function TorrentImageEditor({
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
-      toast.error(t('torrentImageEditor.errors.invalidFileType', { defaultValue: 'Por favor, selecione um arquivo de imagem válido' }));
+      toast.error(t('torrentImageEditor.errors.invalidFileType'));
       input.value = ""; // Reset input
       return;
     }
 
     // Validate file size (5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast.error(t('torrentImageEditor.errors.fileSizeExceeded', { defaultValue: 'A imagem deve ter no máximo 5MB' }));
+      toast.error(t('torrentImageEditor.errors.fileSizeExceeded'));
       input.value = ""; // Reset input
       return;
     }
@@ -89,7 +89,7 @@ export function TorrentImageEditor({
 
       await api.post(`/tasks/metadata/${taskHash}/image`, formData);
 
-      toast.success(t('torrentImageEditor.success.imageUploaded', { defaultValue: 'Imagem enviada com sucesso' }));
+      toast.success(t('torrentImageEditor.success.imageUploaded'));
 
       setSelectedFile(null);
       input.value = ""; // Reset input to allow re-selection
@@ -98,7 +98,7 @@ export function TorrentImageEditor({
       const errorMessage = error && typeof error === 'object' && 'response' in error
         ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
         : undefined;
-      toast.error(errorMessage || t('torrentImageEditor.errors.uploadFailed', { defaultValue: 'Erro ao enviar imagem' }));
+      toast.error(errorMessage || t('torrentImageEditor.errors.uploadFailed'));
       // Revert preview on error
       setImagePreview(metadata?.image_url || null);
       setSelectedFile(null);
@@ -113,7 +113,7 @@ export function TorrentImageEditor({
     try {
       await api.delete(`/tasks/metadata/${taskHash}/image`);
 
-      toast.success(t('torrentImageEditor.success.imageDeleted', { defaultValue: 'Imagem removida com sucesso' }));
+      toast.success(t('torrentImageEditor.success.imageDeleted'));
 
       setImagePreview(null);
       setSelectedFile(null);
@@ -122,7 +122,7 @@ export function TorrentImageEditor({
       const errorMessage = error && typeof error === 'object' && 'response' in error
         ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
         : undefined;
-      toast.error(errorMessage || t('torrentImageEditor.errors.deleteFailed', { defaultValue: 'Erro ao remover imagem' }));
+      toast.error(errorMessage || t('torrentImageEditor.errors.deleteFailed'));
     } finally {
       setIsDeleting(false);
     }
@@ -184,13 +184,13 @@ export function TorrentImageEditor({
       await api.put(`/tasks/metadata/${taskHash}/position`, {
         image_position_y: imagePositionY,
       });
-      toast.success(t('torrentImageEditor.success.positionUpdated', { defaultValue: 'Posição da imagem atualizada' }));
+      toast.success(t('torrentImageEditor.success.positionUpdated'));
       onUpdate?.();
     } catch (error: unknown) {
       const errorMessage = error && typeof error === 'object' && 'response' in error
         ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
         : undefined;
-      toast.error(errorMessage || t('torrentImageEditor.errors.savePositionFailed', { defaultValue: 'Erro ao salvar posição' }));
+      toast.error(errorMessage || t('torrentImageEditor.errors.savePositionFailed'));
     }
   };
 
@@ -209,7 +209,7 @@ export function TorrentImageEditor({
       const errorMessage = error && typeof error === 'object' && 'response' in error
         ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
         : undefined;
-      toast.error(errorMessage || t('torrentImageEditor.errors.saveOpacityFailed', { defaultValue: 'Erro ao salvar opacidade' }));
+      toast.error(errorMessage || t('torrentImageEditor.errors.saveOpacityFailed'));
     }
   };
 
@@ -218,7 +218,7 @@ export function TorrentImageEditor({
       {/* Image Section */}
       <div className="space-y-3">
         <Label className="text-sm font-medium">
-          {t('torrentImageEditor.image.label', { defaultValue: 'Image Source' })}
+          {t('torrentImageEditor.image.label')}
         </Label>
         <ImageSourceSelector
           value={imageSource}
@@ -228,7 +228,7 @@ export function TorrentImageEditor({
         {imagePreview ? (
           <>
             <Label className="text-sm font-medium">
-              {t('torrentImageEditor.imageAdjustments.label', { defaultValue: 'Image Adjustments' })}
+              {t('torrentImageEditor.imageAdjustments.label')}
             </Label>
             <div
               ref={imageContainerRef}
@@ -252,25 +252,24 @@ export function TorrentImageEditor({
             </div>
             {isUploading ? (
               <div className="absolute top-2 right-2 bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium shadow-md animate-pulse">
-                {t('torrentImageEditor.image.uploading', { defaultValue: 'Enviando...' })}
+                {t('torrentImageEditor.image.uploading')}
               </div>
             ) : selectedFile ? (
               <div className="absolute top-2 right-2 bg-amber-500 text-white px-2 py-1 rounded text-xs font-medium shadow-md">
-                {t('torrentImageEditor.image.notSaved', { defaultValue: 'Não salvo' })}
+                {t('torrentImageEditor.image.notSaved')}
               </div>
             ) : metadata?.image_url && (
               <>
                 <div className="absolute top-2 right-2 bg-green-500/90 text-white px-2 py-1 rounded text-xs font-medium shadow-md">
-                  {t('torrentImageEditor.image.saved', { defaultValue: 'Salvo' })}
+                  {t('torrentImageEditor.image.saved')}
                 </div>
-                {!isDragging && (
-                  <div className="absolute top-2 left-2 bg-blue-500/90 text-white px-2 py-1 rounded text-xs font-medium shadow-md">
-                    {t('torrentImageEditor.image.dragToAdjust', { defaultValue: 'Arraste para ajustar' })}
-                  </div>
-                )}
-                {isDragging && (
+                {isDragging ? (
                   <div className="absolute top-2 left-2 bg-purple-500/90 text-white px-2 py-1 rounded text-xs font-medium shadow-md">
-                    {t('torrentImageEditor.image.position', { defaultValue: `Posição: ${Math.round(imagePositionY)}%` })}
+                    {t('torrentImageEditor.image.position', { position: Math.round(imagePositionY) })}
+                  </div>
+                ) : (
+                  <div className="absolute top-2 left-2 bg-blue-500/90 text-white px-2 py-1 rounded text-xs font-medium shadow-md">
+                    {t('torrentImageEditor.image.dragToAdjust')}
                   </div>
                 )}
               </>
@@ -287,7 +286,7 @@ export function TorrentImageEditor({
                 disabled={isUploading || isDeleting}
               >
                 <Upload className="h-4 w-4 mr-2" />
-                {t('torrentImageEditor.image.replace', { defaultValue: 'Trocar' })}
+                {t('torrentImageEditor.image.replace')}
               </Button>
               {metadata?.image_url && !selectedFile && (
                 <Button
@@ -301,11 +300,11 @@ export function TorrentImageEditor({
                   disabled={isUploading || isDeleting}
                 >
                   {isDeleting ? (
-                    <>{t('torrentImageEditor.image.deleting', { defaultValue: 'Removendo...' })}</>
+                    <>{t('torrentImageEditor.image.deleting')}</>
                   ) : (
                     <>
                       <Trash2 className="h-4 w-4 mr-2" />
-                      {t('torrentImageEditor.image.remove', { defaultValue: 'Remover' })}
+                      {t('torrentImageEditor.image.remove')}
                     </>
                   )}
                 </Button>
@@ -322,7 +321,7 @@ export function TorrentImageEditor({
                   onMouseDown={(e) => e.stopPropagation()}
                 >
                   <X className="h-4 w-4 mr-2" />
-                  {t('torrentImageEditor.image.cancel', { defaultValue: 'Cancelar' })}
+                  {t('torrentImageEditor.image.cancel')}
                 </Button>
               )}
             </div>
@@ -343,13 +342,13 @@ export function TorrentImageEditor({
           >
             <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
             <p className="text-sm text-muted-foreground mb-1">
-              {t('torrentImageEditor.image.uploadPrompt', { defaultValue: 'Clique para fazer upload de uma imagem' })}
+              {t('torrentImageEditor.image.uploadPrompt')}
             </p>
             <p className="text-xs text-muted-foreground">
-              {t('torrentImageEditor.image.fileTypes', { defaultValue: 'PNG, JPG, GIF, WEBP até 5MB' })}
+              {t('torrentImageEditor.image.fileTypes')}
             </p>
             <p className="text-xs text-muted-foreground/70 mt-2">
-              {t('torrentImageEditor.image.autoUpload', { defaultValue: 'O upload será feito automaticamente após a seleção' })}
+              {t('torrentImageEditor.image.autoUpload')}
             </p>
           </div>
         )}
@@ -363,12 +362,32 @@ export function TorrentImageEditor({
           disabled={isUploading}
         />
 
+        {/* Delete Image Button */}
+        {metadata?.image_url && !selectedFile && (
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleDeleteImage}
+            disabled={isUploading || isDeleting}
+            className="w-full"
+          >
+            {isDeleting ? (
+              <>{t('torrentImageEditor.image.deleting')}</>
+            ) : (
+              <>
+                <Trash2 className="h-4 w-4 mr-2" />
+                {t('torrentImageEditor.image.removeImage')}
+              </>
+            )}
+          </Button>
+        )}
+
         {/* Image Opacity Slider */}
         {metadata?.image_url && !selectedFile && (
           <div className="space-y-2 pt-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="image-opacity" className="text-sm font-medium">
-                {t('torrentImageEditor.opacity.label', { defaultValue: 'Opacidade da Imagem' })}
+                {t('torrentImageEditor.opacity.label')}
               </Label>
               <span className="text-xs text-muted-foreground">
                 {imageOpacity}%
@@ -385,7 +404,7 @@ export function TorrentImageEditor({
               className="w-full"
             />
             <p className="text-xs text-muted-foreground">
-              {t('torrentImageEditor.opacity.hint', { defaultValue: 'Ajuste entre 15% (mais transparente) e 85% (mais visível)' })}
+              {t('torrentImageEditor.opacity.hint')}
             </p>
           </div>
         )}
@@ -395,13 +414,13 @@ export function TorrentImageEditor({
       {imagePreview && (
         <div className="space-y-3">
           <Label className="text-sm font-medium">
-            {t('torrentImageEditor.preview.label', { defaultValue: 'Preview' })}
+            {t('torrentImageEditor.preview.label')}
           </Label>
           
           <div className="space-y-3">
             <div>
               <p className="text-xs text-muted-foreground mb-2">
-                {t('torrentImageEditor.preview.normal', { defaultValue: 'Normal View' })}
+                {t('torrentImageEditor.preview.normal')}
               </p>
               <TorrentCardPreview
                 taskName={taskName}
@@ -414,7 +433,7 @@ export function TorrentImageEditor({
             
             <div>
               <p className="text-xs text-muted-foreground mb-2">
-                {t('torrentImageEditor.preview.compact', { defaultValue: 'Compact View' })}
+                {t('torrentImageEditor.preview.compact')}
               </p>
               <TorrentCardPreview
                 taskName={taskName}
@@ -432,7 +451,7 @@ export function TorrentImageEditor({
       {metadata?.thumbnail_url && !selectedFile && (
         <div className="space-y-3">
           <Label className="text-sm font-medium">
-            {t('torrentImageEditor.thumbnail.label', { defaultValue: 'Thumbnail' })}
+            {t('torrentImageEditor.thumbnail.label')}
           </Label>
           <img
             src={metadata.thumbnail_url}
