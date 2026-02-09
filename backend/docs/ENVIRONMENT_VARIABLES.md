@@ -193,7 +193,7 @@ This document lists all environment variables used by Gardarr backend.
 
 ### `STATISTICS_PROVIDER`
 - **Description**: Storage backend for statistics data
-- **Values**: `filesystem` (default) or `influxdb`
+- **Values**: `filesystem` (default) or `influxdb` (aliases: `fs` for `filesystem`, `influx` for `influxdb`)
 - **Default**: `filesystem`
 - **Example**: `STATISTICS_PROVIDER=influxdb`
 

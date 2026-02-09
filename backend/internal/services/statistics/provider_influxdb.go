@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/InfluxCommunity/influxdb3-go/v2/influxdb3"
@@ -16,7 +15,6 @@ import (
 type InfluxDBProvider struct {
 	client   *influxdb3.Client
 	database string
-	mu       sync.Mutex
 }
 
 // InfluxDBProviderConfig holds configuration for the InfluxDB provider.
@@ -46,7 +44,15 @@ func NewInfluxDBProvider(cfg InfluxDBProviderConfig) (*InfluxDBProvider, error) 
 // WriteSnapshots writes snapshot lines as points in the "snapshot" measurement.
 func (p *InfluxDBProvider) WriteSnapshots(ctx context.Context, agentID string, ts time.Time, lines []SnapshotLine) error {
 	points := make([]*influxdb3.Point, 0, len(lines))
-	for _, sl := range lines {
+	for i, sl := range lines {
+		// Use the snapshot's own timestamp when available; otherwise derive
+		// a unique one by adding a nanosecond offset per index so that
+		// points sharing the same measurement+tags won't overwrite each other.
+		pointTS := sl.TS
+		if pointTS.IsZero() {
+			pointTS = ts.Add(time.Duration(i) * time.Nanosecond)
+		}
+
 		pt := influxdb3.NewPoint("snapshot",
 			map[string]string{
 				"agent_id": agentID,
@@ -63,7 +69,7 @@ func (p *InfluxDBProvider) WriteSnapshots(ctx context.Context, agentID string, t
 				"dl_bytes": sl.DlB,
 				"ul_bytes": sl.UlB,
 			},
-			ts,
+			pointTS,
 		)
 		points = append(points, pt)
 	}
@@ -102,18 +108,19 @@ func (p *InfluxDBProvider) UpsertHourSummary(ctx context.Context, agentID string
 
 // ScanSnapshots queries snapshot points from InfluxDB and calls fn for each.
 func (p *InfluxDBProvider) ScanSnapshots(ctx context.Context, agentID string, from, to time.Time, fn func(*SnapshotLine)) error {
-	query := fmt.Sprintf(
-		`SELECT time, "task", "state", "p01", "r1e4", "dl_kbs", "ul_kbs", "seeders", "leechers", "dl_bytes", "ul_bytes" `+
-			`FROM "snapshot" `+
-			`WHERE time >= '%s' AND time <= '%s' `+
-			`AND "agent_id" = '%s' `+
-			`ORDER BY time ASC`,
-		from.UTC().Format(time.RFC3339Nano),
-		to.UTC().Format(time.RFC3339Nano),
-		agentID,
-	)
+	query := `SELECT time, "task", "state", "p01", "r1e4", "dl_kbs", "ul_kbs", "seeders", "leechers", "dl_bytes", "ul_bytes" ` +
+		`FROM "snapshot" ` +
+		`WHERE time >= $fromTime AND time <= $toTime ` +
+		`AND "agent_id" = $agentID ` +
+		`ORDER BY time ASC`
 
-	iterator, err := p.client.Query(ctx, query)
+	params := influxdb3.QueryParameters{
+		"agentID":  agentID,
+		"fromTime": from.UTC().Format(time.RFC3339Nano),
+		"toTime":   to.UTC().Format(time.RFC3339Nano),
+	}
+
+	iterator, err := p.client.QueryWithParameters(ctx, query, params)
 	if err != nil {
 		return fmt.Errorf("influxdb: scan snapshots query: %w", err)
 	}
@@ -137,6 +144,10 @@ func (p *InfluxDBProvider) ScanSnapshots(ctx context.Context, agentID string, fr
 		fn(&sl)
 	}
 
+	if err := iterator.Err(); err != nil {
+		return fmt.Errorf("influxdb: scan snapshots iteration: %w", err)
+	}
+
 	return nil
 }
 
@@ -154,18 +165,19 @@ func (p *InfluxDBProvider) GetHourSummaries(ctx context.Context, agentID string,
 	// Include the full toDate day
 	toTime_ = toTime_.Add(24*time.Hour - time.Nanosecond)
 
-	query := fmt.Sprintf(
-		`SELECT time, "tasks_seen", "active_dl", "active_ul", "total_dl_kb", "total_ul_kb" `+
-			`FROM "hour_summary" `+
-			`WHERE time >= '%s' AND time <= '%s' `+
-			`AND "agent_id" = '%s' `+
-			`ORDER BY time ASC`,
-		fromTime.UTC().Format(time.RFC3339Nano),
-		toTime_.UTC().Format(time.RFC3339Nano),
-		agentID,
-	)
+	query := `SELECT time, "tasks_seen", "active_dl", "active_ul", "total_dl_kb", "total_ul_kb" ` +
+		`FROM "hour_summary" ` +
+		`WHERE time >= $fromTime AND time <= $toTime ` +
+		`AND "agent_id" = $agentID ` +
+		`ORDER BY time ASC`
 
-	iterator, err := p.client.Query(ctx, query)
+	params := influxdb3.QueryParameters{
+		"agentID":  agentID,
+		"fromTime": fromTime.UTC().Format(time.RFC3339Nano),
+		"toTime":   toTime_.UTC().Format(time.RFC3339Nano),
+	}
+
+	iterator, err := p.client.QueryWithParameters(ctx, query, params)
 	if err != nil {
 		return nil, fmt.Errorf("influxdb: get hour summaries: %w", err)
 	}
@@ -189,6 +201,10 @@ func (p *InfluxDBProvider) GetHourSummaries(ctx context.Context, agentID string,
 		})
 	}
 
+	if err := iterator.Err(); err != nil {
+		return nil, fmt.Errorf("influxdb: get hour summaries iteration: %w", err)
+	}
+
 	return rows, nil
 }
 
@@ -200,21 +216,22 @@ func (p *InfluxDBProvider) GetDayIndex(ctx context.Context, agentID string, date
 	}
 	dayEnd := dayStart.Add(24 * time.Hour)
 
-	query := fmt.Sprintf(
-		`SELECT DATE_BIN(INTERVAL '1 hour', time, '%s') AS hour_bucket, `+
-			`COUNT(*) AS line_count `+
-			`FROM "snapshot" `+
-			`WHERE time >= '%s' AND time < '%s' `+
-			`AND "agent_id" = '%s' `+
-			`GROUP BY hour_bucket `+
-			`ORDER BY hour_bucket ASC`,
-		dayStart.UTC().Format(time.RFC3339),
-		dayStart.UTC().Format(time.RFC3339Nano),
-		dayEnd.UTC().Format(time.RFC3339Nano),
-		agentID,
-	)
+	query := `SELECT DATE_BIN(INTERVAL '1 hour', time, $dayStart) AS hour_bucket, ` +
+		`COUNT(*) AS line_count ` +
+		`FROM "snapshot" ` +
+		`WHERE time >= $fromTime AND time < $toTime ` +
+		`AND "agent_id" = $agentID ` +
+		`GROUP BY hour_bucket ` +
+		`ORDER BY hour_bucket ASC`
 
-	iterator, err := p.client.Query(ctx, query)
+	params := influxdb3.QueryParameters{
+		"agentID":  agentID,
+		"dayStart": dayStart.UTC().Format(time.RFC3339),
+		"fromTime": dayStart.UTC().Format(time.RFC3339Nano),
+		"toTime":   dayEnd.UTC().Format(time.RFC3339Nano),
+	}
+
+	iterator, err := p.client.QueryWithParameters(ctx, query, params)
 	if err != nil {
 		return nil, fmt.Errorf("influxdb: get day index: %w", err)
 	}
@@ -234,8 +251,17 @@ func (p *InfluxDBProvider) GetDayIndex(ctx context.Context, agentID string, date
 		})
 	}
 
+	if err := iterator.Err(); err != nil {
+		return nil, fmt.Errorf("influxdb: get day index iteration: %w", err)
+	}
+
 	return rows, nil
 }
+
+// estimatedBytesPerPoint is a rough estimate of the average serialized size
+// of a single snapshot point in InfluxDB (used when precise storage metrics
+// are unavailable).
+const estimatedBytesPerPoint int64 = 100
 
 // GetTotalSize returns an estimate of the total data size. InfluxDB v3 does not
 // expose per-measurement storage size easily, so we return a count-based estimate.
@@ -251,15 +277,18 @@ func (p *InfluxDBProvider) GetTotalSize(ctx context.Context) (int64, error) {
 	for iterator.Next() {
 		value := iterator.Value()
 		count := toInt64(value["total"])
-		// Estimate ~100 bytes per snapshot point
-		total = count * 100
+		total = count * estimatedBytesPerPoint
+	}
+
+	if err := iterator.Err(); err != nil {
+		return 0, fmt.Errorf("influxdb: get total size iteration: %w", err)
 	}
 
 	return total, nil
 }
 
-// Purge deletes data older than the cutoff date using the InfluxDB delete API.
-// In practice, retention is better handled via InfluxDB bucket retention policies.
+// Purge is a no-op for the InfluxDB provider; retention is handled via
+// InfluxDB bucket retention policies. The v3 client does not expose a delete API.
 func (p *InfluxDBProvider) Purge(ctx context.Context, cutoffDate string) error {
 	// InfluxDB v3 handles retention via bucket configuration.
 	// Manual purge is a no-op if retention is configured on the bucket.

@@ -4,6 +4,7 @@ import '@testing-library/jest-dom';
 import { BrowserRouter } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import Dashboard from '../Dashboard';
+import { SetupProvider } from '../contexts/SetupContext';
 
 // Mock react-i18next
 vi.mock('react-i18next', async (importOriginal) => {
@@ -104,7 +105,11 @@ describe('Dashboard Component', () => {
   });
 
   const renderWithRouter = (component: React.ReactElement) => {
-    return render(<BrowserRouter>{component}</BrowserRouter>);
+    return render(
+      <BrowserRouter>
+        <SetupProvider>{component}</SetupProvider>
+      </BrowserRouter>
+    );
   };
 
   it('renders dashboard component', async () => {

@@ -24,7 +24,7 @@ const Dashboard: React.FC = () => {
   const { hash, agent_uuid } = useParams<{ hash?: string; agent_uuid?: string }>();
   const navigate = useNavigate();
   
-  const { statisticsEnabled } = useSetup();
+  const { statisticsEnabled, loading: setupLoading } = useSetup();
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
   const [fromDate, setFromDate] = useState<Date | undefined>(new Date(Date.now() - 24 * 60 * 60 * 1000)); // 1 day ago
   const [toDate, setToDate] = useState<Date | undefined>(new Date());
@@ -235,7 +235,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Statistics Warning */}
-      <StatisticsDisabledAlert statisticsEnabled={statisticsEnabled} />
+      {!setupLoading && <StatisticsDisabledAlert statisticsEnabled={statisticsEnabled} />}
 
       {/* Agent Metrics or Setup Prompt */}
       {(() => {

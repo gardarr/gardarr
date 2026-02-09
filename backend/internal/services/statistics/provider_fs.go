@@ -5,8 +5,10 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -16,6 +18,7 @@ import (
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/models"
 	"github.com/jfxdev/gardarr/pkg/validations"
+	"gorm.io/gorm"
 )
 
 // FilesystemProvider stores statistics as gzip-compressed JSONL files on disk,
@@ -40,20 +43,30 @@ func NewFilesystemProvider(cfg FilesystemProviderConfig) *FilesystemProvider {
 }
 
 // WriteSnapshots writes snapshot lines to a daily gzip JSONL file for the agent.
-func (p *FilesystemProvider) WriteSnapshots(ctx context.Context, agentID string, ts time.Time, lines []SnapshotLine) error {
+func (p *FilesystemProvider) WriteSnapshots(ctx context.Context, agentID string, ts time.Time, lines []SnapshotLine) (retErr error) {
 	var fw FileWriter
 	if err := fw.OpenDaily(p.baseDir, agentID, ts); err != nil {
 		return err
 	}
+	defer func() {
+		if closeErr := fw.Close(); closeErr != nil && retErr == nil {
+			retErr = closeErr
+		}
+	}()
 
 	for _, line := range lines {
-		_ = fw.WriteLine(line)
+		if err := fw.WriteLine(line); err != nil {
+			return err
+		}
 	}
-	_ = fw.Flush()
-	_ = fw.Close()
+	if err := fw.Flush(); err != nil {
+		return err
+	}
 
 	// Upsert file index for current hour
-	_ = p.upsertFileIndex(ctx, agentID, ts, fw.Path(), fw.Lines(), fw.Size())
+	if err := p.upsertFileIndex(ctx, agentID, ts, fw.Path(), fw.Lines(), fw.Size()); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -66,13 +79,17 @@ func (p *FilesystemProvider) UpsertHourSummary(ctx context.Context, agentID stri
 	hour := ts.Hour()
 	var sum models.StatsFileHourSummary
 	tx := p.db.DB.WithContext(ctx)
-	if err := tx.Where("agent_id = ? AND date = ? AND hour = ?", agentID, date, hour).First(&sum).Error; err == nil {
+	err := tx.Where("agent_id = ? AND date = ? AND hour = ?", agentID, date, hour).First(&sum).Error
+	if err == nil {
 		sum.TasksSeen += data.TasksSeen
 		sum.ActiveDlCount += data.DlActive
 		sum.ActiveUlCount += data.UlActive
 		sum.TotalDlKBs += data.TotalDlKB
 		sum.TotalUlKBs += data.TotalUlKB
 		return tx.Save(&sum).Error
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
 	}
 	sum = models.StatsFileHourSummary{
 		AgentID:       agentID,
@@ -94,7 +111,14 @@ func (p *FilesystemProvider) ScanSnapshots(ctx context.Context, agentID string, 
 		return err
 	}
 	for _, path := range files {
-		_ = scanFile(path, fn)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+		if err := scanFile(path, fn); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -257,6 +281,9 @@ func (p *FilesystemProvider) upsertFileIndex(ctx context.Context, agentID string
 		idx.EndTS = ts
 		return tx.Save(&idx).Error
 	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
 	idx = models.StatsFileIndex{
 		AgentID:   agentID,
 		Date:      date,
@@ -274,6 +301,10 @@ func (p *FilesystemProvider) resolveBaseDir() string {
 	base := p.baseDir
 	if _, err := os.Stat(base); err != nil {
 		if _, err2 := os.Stat("./data"); err2 == nil {
+			slog.Warn("configured statistics base directory not found, falling back to ./data",
+				"configured", base,
+				"fallback", "./data",
+			)
 			return "./data"
 		}
 		return ""

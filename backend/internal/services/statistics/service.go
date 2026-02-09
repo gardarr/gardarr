@@ -12,6 +12,7 @@ import (
 	agentmanager "github.com/jfxdev/gardarr/internal/services/agentmanager"
 	"github.com/jfxdev/gardarr/internal/services/events"
 	"github.com/jfxdev/gardarr/pkg/env"
+	"github.com/jfxdev/gardarr/pkg/logger"
 )
 
 type Service struct {
@@ -29,18 +30,11 @@ type Service struct {
 // interval and enabled flag are loaded from environment variables.
 // It uses a FilesystemProvider by default for backward compatibility.
 func NewService(db *database.Database, agents *agentmanager.Service, eventService *events.Service) *Service {
-	return &Service{
-		provider: NewFilesystemProvider(FilesystemProviderConfig{
-			DB:      db,
-			BaseDir: env.Get("STATISTICS_DIR").Default("./data/statistics").Value(),
-		}),
-		agents:        agents,
-		eventService:  eventService,
-		interval:      env.Get("STATISTICS_INTERVAL").Default("30s").ValueDuration(),
-		enabled:       env.Get("STATISTICS_ENABLED").Default(true).ValueBool(),
-		retentionDays: env.Get("STATISTICS_RETENTION_DAYS").Default(0).ValueInt(),
-		purgeInterval: env.Get("STATISTICS_PURGE_INTERVAL").Default("30m").ValueDuration(),
-	}
+	provider := NewFilesystemProvider(FilesystemProviderConfig{
+		DB:      db,
+		BaseDir: env.Get("STATISTICS_DIR").Default("./data/statistics").Value(),
+	})
+	return NewServiceWithProvider(provider, agents, eventService)
 }
 
 // NewServiceWithProvider creates a new statistics Service with a custom StatsProvider.
@@ -188,16 +182,35 @@ func (s *Service) collectAgentData(ctx context.Context, a *entities.Agent, now t
 	agentID := a.UUID.String()
 
 	// Write snapshots via provider
-	_ = s.provider.WriteSnapshots(ctx, agentID, now, lines)
+	if err := s.provider.WriteSnapshots(ctx, agentID, now, lines); err != nil {
+		logger.Error("failed to write snapshots",
+			"agent_id", agentID,
+			"ts", now,
+			"lines", len(lines),
+			"error", err,
+		)
+	}
 
 	// Upsert hour summary via provider
-	_ = s.provider.UpsertHourSummary(ctx, agentID, now, HourSummaryInput{
+	summary := HourSummaryInput{
 		TasksSeen: tasksSeen,
 		DlActive:  dlActive,
 		UlActive:  ulActive,
 		TotalDlKB: totalDlKBs,
 		TotalUlKB: totalUlKBs,
-	})
+	}
+	if err := s.provider.UpsertHourSummary(ctx, agentID, now, summary); err != nil {
+		logger.Error("failed to upsert hour summary",
+			"agent_id", agentID,
+			"ts", now,
+			"tasks_seen", summary.TasksSeen,
+			"dl_active", summary.DlActive,
+			"ul_active", summary.UlActive,
+			"total_dl_kb", summary.TotalDlKB,
+			"total_ul_kb", summary.TotalUlKB,
+			"error", err,
+		)
+	}
 }
 
 // ParseTime parses a timestamp string supporting multiple formats

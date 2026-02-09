@@ -227,7 +227,7 @@ func (m *Module) getUploadDiffs(c *gin.Context) {
 }
 
 // GET /v1/statistics/size
-// Returns the total size (in bytes) of all statistics files on disk
+// Returns the estimated total size (in bytes) of all stored statistics data
 func (m *Module) getTotalSize(c *gin.Context) {
 	total, err := m.service.GetTotalSize(c.Request.Context())
 	if err != nil {
