@@ -191,8 +191,14 @@ This document lists all environment variables used by Gardarr backend.
 - **Default**: `true`
 - **Example**: `STATISTICS_ENABLED=false`
 
+### `STATISTICS_PROVIDER`
+- **Description**: Storage backend for statistics data
+- **Values**: `filesystem` (default) or `influxdb`
+- **Default**: `filesystem`
+- **Example**: `STATISTICS_PROVIDER=influxdb`
+
 ### `STATISTICS_DIR`
-- **Description**: Directory for storing statistics data
+- **Description**: Directory for storing statistics data (filesystem provider only)
 - **Default**: `/data/statistics`
 - **Example**: `STATISTICS_DIR=./data/statistics`
 
@@ -210,6 +216,22 @@ This document lists all environment variables used by Gardarr backend.
 - **Description**: Interval for checking and purging old statistics
 - **Default**: `30m`
 - **Example**: `STATISTICS_PURGE_INTERVAL=1h`
+
+### `STATISTICS_INFLUXDB_URL`
+- **Description**: URL of the InfluxDB v3 server (influxdb provider only)
+- **Default**: `http://localhost:8086`
+- **Example**: `STATISTICS_INFLUXDB_URL=http://influxdb:8086`
+
+### `STATISTICS_INFLUXDB_TOKEN`
+- **Description**: Authentication token for InfluxDB (influxdb provider only, required)
+- **Default**: None
+- **Example**: `STATISTICS_INFLUXDB_TOKEN=my-super-secret-token`
+- **Note**: Supports `_FILE` suffix for Docker secrets
+
+### `STATISTICS_INFLUXDB_DATABASE`
+- **Description**: Database/bucket name in InfluxDB (influxdb provider only)
+- **Default**: `gardarr_stats`
+- **Example**: `STATISTICS_INFLUXDB_DATABASE=gardarr_stats`
 
 ---
 

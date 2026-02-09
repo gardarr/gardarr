@@ -9,7 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/middlewares"
-	"github.com/jfxdev/gardarr/internal/models"
 	stats "github.com/jfxdev/gardarr/internal/services/statistics"
 )
 
@@ -35,7 +34,7 @@ type Module struct {
 func NewModule(router *gin.RouterGroup, db *database.Database, service *stats.Service) *Module {
 	return &Module{
 		group:   router.Group("/statistics"),
-		db:      db,
+		db:      db, // kept for session middleware
 		service: service,
 	}
 }
@@ -60,8 +59,8 @@ func (m *Module) getDayIndex(c *gin.Context) {
 		return
 	}
 
-	var rows []models.StatsFileIndex
-	if err := m.db.DB.Where("agent_id = ? AND date = ?", agentID, dateStr).Order("hour ASC").Find(&rows).Error; err != nil {
+	rows, err := m.service.GetDayIndex(c.Request.Context(), agentID, dateStr)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query index"})
 		return
 	}
@@ -82,8 +81,8 @@ func (m *Module) getDayHours(c *gin.Context) {
 		return
 	}
 
-	var rows []models.StatsFileHourSummary
-	if err := m.db.DB.Where("agent_id = ? AND date = ?", agentID, dateStr).Order("hour ASC").Find(&rows).Error; err != nil {
+	rows, err := m.service.GetHourSummaries(c.Request.Context(), agentID, dateStr, dateStr)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query hourly summary"})
 		return
 	}
@@ -253,9 +252,8 @@ func (m *Module) getRangeSummary(c *gin.Context) {
 		toStr = time.Now().UTC().Format("2006-01-02")
 	}
 
-	// accumulate per day across the range using StatsFileHourSummary
-	var rows []models.StatsFileHourSummary
-	if err := m.db.DB.Where("agent_id = ? AND date >= ? AND date <= ?", agentID, fromStr, toStr).Find(&rows).Error; err != nil {
+	rows, err := m.service.GetHourSummaries(c.Request.Context(), agentID, fromStr, toStr)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query range summary"})
 		return
 	}

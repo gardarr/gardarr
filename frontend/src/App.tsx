@@ -1,6 +1,7 @@
 
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
+import { SetupProvider } from './contexts/SetupContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import AppLayout from './AppLayout'
@@ -8,6 +9,7 @@ import TorrentsPage from './Torrents'
 import AgentsPage from './Agents'
 import CategoriesPage from './Categories'
 import DashboardPage from './Dashboard'
+import HomepageRedirect from './components/HomepageRedirect'
 import HistoryPage from './History'
 import IntegrationsPage from './Integrations'
 import IntegrationWebhookPage from './IntegrationWebhook'
@@ -42,13 +44,15 @@ function App() {
             path="/"
             element={
               <ProtectedRoute>
-                <AppLayout>
-                  <Outlet />
-                </AppLayout>
+                <SetupProvider>
+                  <AppLayout>
+                    <Outlet />
+                  </AppLayout>
+                </SetupProvider>
               </ProtectedRoute>
             }
           >
-            <Route index element={<DashboardPage />} />
+            <Route index element={<HomepageRedirect />} />
             <Route path="agent/:agent_uuid" element={<DashboardPage />} />
             <Route path="agent/:agent_uuid/task/:uuid" element={<DashboardPage />} />
             <Route path="torrents" element={<TorrentsPage />} />

@@ -1,32 +1,23 @@
 package statistics
 
 import (
-	"bufio"
-	"compress/gzip"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/fs"
-	"os"
-	"path/filepath"
 	"sort"
 	"sync"
 	"time"
 
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/infra/database"
-	"github.com/jfxdev/gardarr/internal/models"
 	agentmanager "github.com/jfxdev/gardarr/internal/services/agentmanager"
 	"github.com/jfxdev/gardarr/internal/services/events"
 	"github.com/jfxdev/gardarr/pkg/env"
-	"github.com/jfxdev/gardarr/pkg/validations"
 )
 
 type Service struct {
-	db            *database.Database
+	provider      StatsProvider
 	agents        *agentmanager.Service
 	eventService  *events.Service
-	baseDir       string
 	interval      time.Duration
 	enabled       bool
 	retentionDays int
@@ -36,12 +27,28 @@ type Service struct {
 // NewService creates a new statistics Service using the provided database,
 // agent manager and event service. Configuration such as base directory,
 // interval and enabled flag are loaded from environment variables.
+// It uses a FilesystemProvider by default for backward compatibility.
 func NewService(db *database.Database, agents *agentmanager.Service, eventService *events.Service) *Service {
 	return &Service{
-		db:            db,
+		provider: NewFilesystemProvider(FilesystemProviderConfig{
+			DB:      db,
+			BaseDir: env.Get("STATISTICS_DIR").Default("./data/statistics").Value(),
+		}),
 		agents:        agents,
 		eventService:  eventService,
-		baseDir:       env.Get("STATISTICS_DIR").Default("./data/statistics").Value(),
+		interval:      env.Get("STATISTICS_INTERVAL").Default("30s").ValueDuration(),
+		enabled:       env.Get("STATISTICS_ENABLED").Default(true).ValueBool(),
+		retentionDays: env.Get("STATISTICS_RETENTION_DAYS").Default(0).ValueInt(),
+		purgeInterval: env.Get("STATISTICS_PURGE_INTERVAL").Default("30m").ValueDuration(),
+	}
+}
+
+// NewServiceWithProvider creates a new statistics Service with a custom StatsProvider.
+func NewServiceWithProvider(provider StatsProvider, agents *agentmanager.Service, eventService *events.Service) *Service {
+	return &Service{
+		provider:      provider,
+		agents:        agents,
+		eventService:  eventService,
 		interval:      env.Get("STATISTICS_INTERVAL").Default("30s").ValueDuration(),
 		enabled:       env.Get("STATISTICS_ENABLED").Default(true).ValueBool(),
 		retentionDays: env.Get("STATISTICS_RETENTION_DAYS").Default(0).ValueInt(),
@@ -80,7 +87,7 @@ func (s *Service) Start(ctx context.Context) {
 				// create a nil channel that never fires when purge disabled
 				return make(<-chan time.Time)
 			}():
-				_ = s.PurgeOldFiles(ctx)
+				_ = s.purgeOldData(ctx)
 			case <-ctx.Done():
 				return
 			}
@@ -147,13 +154,8 @@ func (s *Service) collectAgentData(ctx context.Context, a *entities.Agent, now t
 		_ = s.eventService.DetectRemovedTasks(ctx, tasks, a.UUID, now)
 	}
 
-	// Open writer per agent/day
-	var fw FileWriter
-	if err := fw.OpenDaily(s.baseDir, a.UUID.String(), now); err != nil {
-		return
-	}
-
-	// Build and write lines
+	// Build snapshot lines and summary data
+	var lines []SnapshotLine
 	var tasksSeen, dlActive, ulActive int
 	var totalDlKBs, totalUlKBs int64
 	for _, t := range tasks {
@@ -170,7 +172,7 @@ func (s *Service) collectAgentData(ctx context.Context, a *entities.Agent, now t
 			DlB:  int64(t.Network.Download.Amount),
 			UlB:  int64(t.Network.Upload.Amount),
 		}
-		_ = fw.WriteLine(line)
+		lines = append(lines, line)
 
 		tasksSeen++
 		if line.DlKB > 0 {
@@ -182,80 +184,20 @@ func (s *Service) collectAgentData(ctx context.Context, a *entities.Agent, now t
 		totalDlKBs += int64(line.DlKB)
 		totalUlKBs += int64(line.UlKB)
 	}
-	_ = fw.Flush()
-	_ = fw.Close()
 
-	// Upsert file index for current hour
-	_ = s.upsertFileIndex(ctx, a.UUID.String(), now, fw.Path(), fw.Lines(), fw.Size())
-	_ = s.upsertHourSummary(ctx, a.UUID.String(), now, fw.Path(), tasksSeen, dlActive, ulActive, totalDlKBs, totalUlKBs)
-}
+	agentID := a.UUID.String()
 
-// upsertFileIndex records or updates the file index entry for the given agent,
-// date and hour, tracking file path, line count, size and time range covered by
-// the snapshot file.
-func (s *Service) upsertFileIndex(ctx context.Context, agentID string, ts time.Time, path string, lines int64, size int64) error {
-	// Guard against nil DB to avoid panics in tests or FS-only contexts
-	if s == nil || s.db == nil || s.db.DB == nil {
-		return nil
-	}
-	date := ts.Format("2006-01-02")
-	hour := ts.Hour()
-	var idx models.StatsFileIndex
-	tx := s.db.DB.WithContext(ctx)
-	// Try to find by file_path first (unique constraint)
-	err := tx.Where("file_path = ?", path).First(&idx).Error
-	if err == nil {
-		// Record exists, update it
-		idx.LineCount += int(lines)
-		idx.SizeBytes += size
-		idx.EndTS = ts
-		return tx.Save(&idx).Error
-	}
-	// Record doesn't exist, create a new one
-	idx = models.StatsFileIndex{
-		AgentID:   agentID,
-		Date:      date,
-		Hour:      hour,
-		FilePath:  path,
-		StartTS:   ts,
-		EndTS:     ts,
-		LineCount: int(lines),
-		SizeBytes: size,
-	}
-	return tx.Create(&idx).Error
-}
+	// Write snapshots via provider
+	_ = s.provider.WriteSnapshots(ctx, agentID, now, lines)
 
-// upsertHourSummary records or updates aggregated hourly statistics for the
-// given agent, including number of tasks seen, counts of active download/upload
-// tasks and total transfer speeds in KB/s.
-func (s *Service) upsertHourSummary(ctx context.Context, agentID string, ts time.Time, path string, tasksSeen, dlActive, ulActive int, totalDlKBs, totalUlKBs int64) error {
-	// Guard against nil DB to avoid panics in tests or FS-only contexts
-	if s == nil || s.db == nil || s.db.DB == nil {
-		return nil
-	}
-	date := ts.Format("2006-01-02")
-	hour := ts.Hour()
-	var sum models.StatsFileHourSummary
-	tx := s.db.DB.WithContext(ctx)
-	if err := tx.Where("agent_id = ? AND date = ? AND hour = ?", agentID, date, hour).First(&sum).Error; err == nil {
-		sum.TasksSeen += tasksSeen
-		sum.ActiveDlCount += dlActive
-		sum.ActiveUlCount += ulActive
-		sum.TotalDlKBs += totalDlKBs
-		sum.TotalUlKBs += totalUlKBs
-		return tx.Save(&sum).Error
-	}
-	sum = models.StatsFileHourSummary{
-		AgentID:       agentID,
-		Date:          date,
-		Hour:          hour,
-		TasksSeen:     tasksSeen,
-		ActiveDlCount: dlActive,
-		ActiveUlCount: ulActive,
-		TotalDlKBs:    totalDlKBs,
-		TotalUlKBs:    totalUlKBs,
-	}
-	return tx.Create(&sum).Error
+	// Upsert hour summary via provider
+	_ = s.provider.UpsertHourSummary(ctx, agentID, now, HourSummaryInput{
+		TasksSeen: tasksSeen,
+		DlActive:  dlActive,
+		UlActive:  ulActive,
+		TotalDlKB: totalDlKBs,
+		TotalUlKB: totalUlKBs,
+	})
 }
 
 // ParseTime parses a timestamp string supporting multiple formats
@@ -371,285 +313,28 @@ func mergeAggregations(a1, a2 WindowedAggregation) WindowedAggregation {
 	return result
 }
 
-// DiscoverFiles finds statistics files for an agent within a date range
-func (s *Service) DiscoverFiles(ctx context.Context, agentID string, from, to time.Time) ([]string, error) {
-	fromDate := from.UTC().Format("2006-01-02")
-	toDate := to.UTC().Format("2006-01-02")
-
-	// Try to get files from database index
-	var idx []models.StatsFileIndex
-	// Guard against nil DB in tests or FS-only contexts
-	if s != nil && s.db != nil && s.db.DB != nil {
-		if err := s.db.DB.WithContext(ctx).
-			Where("agent_id = ? AND date >= ? AND date <= ?", agentID, fromDate, toDate).
-			Find(&idx).Error; err != nil {
-			return nil, fmt.Errorf("failed to query file index: %w", err)
-		}
-	}
-
-	fileSet := make(map[string]struct{})
-	for _, r := range idx {
-		if r.FilePath != "" {
-			fileSet[r.FilePath] = struct{}{}
-		}
-	}
-
-	files := make([]string, 0, len(fileSet))
-	for p := range fileSet {
-		files = append(files, p)
-	}
-
-	// If no files from index, discover from filesystem
-	if len(files) == 0 {
-		files = s.discoverFilesFromFS(agentID, from, to, fromDate, toDate)
-	}
-
-	sort.Strings(files)
-	return files, nil
-}
-
-// discoverFilesFromFS discovers statistics files directly from the filesystem
-func (s *Service) discoverFilesFromFS(agentID string, from, to time.Time, fromDate, toDate string) []string {
-	// Validate agentID to prevent path traversal attacks
-	if validations.ValidateSafePathComponent(agentID) != nil {
-		return nil
-	}
-
-	base := s.baseDir
-	if _, err := os.Stat(base); err != nil {
-		if _, err2 := os.Stat("./data"); err2 == nil {
-			base = "./data"
-		}
-	}
-
-	// Build list of dates to check
-	var dates []time.Time
-	cur := from.UTC().Truncate(24 * time.Hour)
-	end := to.UTC().Truncate(24 * time.Hour)
-	for !cur.After(end) {
-		dates = append(dates, cur)
-		cur = cur.Add(24 * time.Hour)
-	}
-
-	// Process dates concurrently with worker pool
-	type dateResult struct {
-		path string
-	}
-
-	resultsChan := make(chan dateResult, len(dates))
-	var wg sync.WaitGroup
-
-	// Use worker pool to limit concurrent file system operations
-	// Too many concurrent stats can overwhelm the filesystem
-	workers := 16
-	if len(dates) < workers {
-		workers = len(dates)
-	}
-	if workers == 0 {
-		workers = 1
-	}
-
-	dateChan := make(chan time.Time, len(dates))
-	for _, d := range dates {
-		dateChan <- d
-	}
-	close(dateChan)
-
-	// Start workers
-	for i := 0; i < workers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for date := range dateChan {
-				yyyy := date.Format("2006")
-				mm := date.Format("01")
-				day := date.Format("2006-01-02")
-				candidates := []string{
-					filepath.Join(base, yyyy, mm, agentID, agentID+"-"+day+".jsonl.gz"),
-					filepath.Join(base, "statistics", yyyy, mm, agentID, agentID+"-"+day+".jsonl.gz"),
-				}
-				for _, p := range candidates {
-					if _, err := os.Stat(p); err == nil {
-						resultsChan <- dateResult{path: p}
-						break
-					}
-				}
-			}
-		}()
-	}
-
-	// Close results channel when all workers complete
-	go func() {
-		wg.Wait()
-		close(resultsChan)
-	}()
-
-	// Collect results
-	var files []string
-	for result := range resultsChan {
-		files = append(files, result.path)
-	}
-
-	// Fallback: walk and find matching files if structured search found nothing
-	if len(files) == 0 {
-		var mu sync.Mutex
-		_ = filepath.Walk(base, func(path string, info os.FileInfo, err error) error {
-			if err != nil || info == nil || info.IsDir() {
-				return nil
-			}
-			name := info.Name()
-			if len(name) > len(agentID)+1 && name[:len(agentID)+1] == agentID+"-" && filepath.Ext(name) == ".gz" {
-				rest := name[len(agentID)+1:]
-				if len(rest) >= 10 {
-					d := rest[:10]
-					if d >= fromDate && d <= toDate {
-						mu.Lock()
-						files = append(files, path)
-						mu.Unlock()
-					}
-				}
-			}
-			return nil
-		})
-	}
-
-	return files
-}
-
-// ScanFile reads a gzip JSONL file and calls fn for each parsed SnapshotLine
-func (s *Service) ScanFile(path string, fn func(*SnapshotLine)) error {
-	if path == "" {
-		return nil
-	}
-
-	p := path
-	if !filepath.IsAbs(p) {
-		if abs, err := filepath.Abs(p); err == nil {
-			p = abs
-		}
-	}
-
-	f, err := os.Open(p)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	gz, err := gzip.NewReader(f)
-	if err != nil {
-		return err
-	}
-	defer gz.Close()
-
-	scanner := bufio.NewScanner(gz)
-	scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
-
-	for scanner.Scan() {
-		var sl SnapshotLine
-		if err := json.Unmarshal(scanner.Bytes(), &sl); err == nil {
-			fn(&sl)
-		}
-	}
-
-	return scanner.Err()
-}
-
-// PurgeOldFiles deletes statistics files and database indices older than the configured retention
-// period. If retention is disabled (<=0), this is a no-op. The purge consists of:
-// 1) Deleting DB rows in StatsFileHourSummary and StatsFileIndex older than cutoff date
-// 2) Deleting .jsonl.gz files under the base statistics directory older than cutoff date
-func (s *Service) PurgeOldFiles(ctx context.Context) error {
+// purgeOldData delegates purge to the provider.
+func (s *Service) purgeOldData(ctx context.Context) error {
 	if s.retentionDays <= 0 {
 		return nil
 	}
-
 	cutoff := time.Now().UTC().AddDate(0, 0, -s.retentionDays)
-	cutoffDate := cutoff.Format("2006-01-02")
-
-	// DB purge (guard for nil DB in tests)
-	if s.db != nil && s.db.DB != nil {
-		if err := s.db.DB.WithContext(ctx).
-			Where("date < ?", cutoffDate).
-			Delete(&models.StatsFileHourSummary{}).Error; err != nil {
-			return fmt.Errorf("purge hour summaries: %w", err)
-		}
-		if err := s.db.DB.WithContext(ctx).
-			Where("date < ?", cutoffDate).
-			Delete(&models.StatsFileIndex{}).Error; err != nil {
-			return fmt.Errorf("purge file index: %w", err)
-		}
-	}
-
-	// FS purge
-	base := s.baseDir
-	if _, err := os.Stat(base); err != nil {
-		if _, err2 := os.Stat("./data"); err2 == nil {
-			base = "./data"
-		}
-	}
-
-	_ = filepath.WalkDir(base, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d == nil || d.IsDir() {
-			return nil
-		}
-		if filepath.Ext(path) != ".gz" {
-			return nil
-		}
-
-		name := d.Name()
-		var dateStr string
-		// scan for YYYY-MM-DD in file name
-		for i := 0; i+10 <= len(name); i++ {
-			seg := name[i : i+10]
-			if len(seg) == 10 && seg[4] == '-' && seg[7] == '-' {
-				dateStr = seg
-				break
-			}
-		}
-		if dateStr == "" {
-			return nil
-		}
-		if dateStr < cutoffDate {
-			_ = os.Remove(path)
-		}
-		return nil
-	})
-
-	return nil
+	return s.provider.Purge(ctx, cutoff.Format("2006-01-02"))
 }
 
-// GetTotalSize walks the statistics base directory and returns the total size
-// in bytes of all .jsonl.gz files. If the base directory does not exist, it
-// returns 0 without error.
+// GetDayIndex retrieves index entries for an agent on a specific date.
+func (s *Service) GetDayIndex(ctx context.Context, agentID string, date string) ([]DayIndexRow, error) {
+	return s.provider.GetDayIndex(ctx, agentID, date)
+}
+
+// GetHourSummaries retrieves hourly summaries for an agent in a date range.
+func (s *Service) GetHourSummaries(ctx context.Context, agentID string, fromDate, toDate string) ([]HourSummaryRow, error) {
+	return s.provider.GetHourSummaries(ctx, agentID, fromDate, toDate)
+}
+
+// GetTotalSize delegates to the provider to return total storage size.
 func (s *Service) GetTotalSize(ctx context.Context) (int64, error) {
-	base := s.baseDir
-	if _, err := os.Stat(base); err != nil {
-		if _, err2 := os.Stat("./data"); err2 == nil {
-			base = "./data"
-		} else {
-			// no base dir found
-			return 0, nil
-		}
-	}
-	var total int64
-	err := filepath.WalkDir(base, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d == nil || d.IsDir() {
-			return nil
-		}
-		if filepath.Ext(path) != ".gz" {
-			return nil
-		}
-		info, e := d.Info()
-		if e != nil {
-			return nil
-		}
-		total += info.Size()
-		return nil
-	})
-	if err != nil {
-		return 0, err
-	}
-	return total, nil
+	return s.provider.GetTotalSize(ctx)
 }
 
 // WindowedAggregation represents aggregated statistics in a time window
@@ -668,90 +353,49 @@ type WindowedAggregation struct {
 // GetWindowedAggregation computes aggregated statistics in fixed time windows
 // filterTasks can be empty, a single task hash, or multiple task hashes
 func (s *Service) GetWindowedAggregation(ctx context.Context, agentID string, from, to time.Time, step time.Duration, groupBy string, filterTasks []string) (interface{}, error) {
-	files, err := s.DiscoverFiles(ctx, agentID, from, to)
-	if err != nil {
-		return nil, err
-	}
-
 	if groupBy == "task" {
-		return s.aggregateByTask(files, from, to, step, filterTasks)
+		return s.aggregateByTask(ctx, agentID, from, to, step, filterTasks)
 	}
 
-	return s.aggregateByAgent(files, from, to, step, filterTasks)
+	return s.aggregateByAgent(ctx, agentID, from, to, step, filterTasks)
 }
 
 // aggregateByTask aggregates statistics grouped by task
 // filterTasks is a list of task hashes to filter by. Empty list means no filter.
-func (s *Service) aggregateByTask(files []string, from, to time.Time, step time.Duration, filterTasks []string) (map[string]map[string]WindowedAggregation, error) {
-	// Create a map for O(1) lookup if filtering
+func (s *Service) aggregateByTask(ctx context.Context, agentID string, from, to time.Time, step time.Duration, filterTasks []string) (map[string]map[string]WindowedAggregation, error) {
 	filterMap := make(map[string]bool)
 	for _, task := range filterTasks {
 		if task != "" {
 			filterMap[task] = true
 		}
 	}
-	type fileResult struct {
-		data map[string]map[string]WindowedAggregation
-	}
 
-	resultsChan := make(chan fileResult, len(files))
-	var wg sync.WaitGroup
-
-	// Process each file concurrently
-	for _, filePath := range files {
-		wg.Add(1)
-		go func(p string) {
-			defer wg.Done()
-
-			localData := make(map[string]map[string]WindowedAggregation)
-
-			_ = s.ScanFile(p, func(sl *SnapshotLine) {
-				ts := sl.TS.UTC()
-				if ts.Before(from.UTC()) || ts.After(to.UTC()) {
-					return
-				}
-				// Filter by task hashes if specified
-				if len(filterMap) > 0 && !filterMap[sl.Task] {
-					return
-				}
-
-				w := ts.Truncate(step)
-				wk := w.Format(time.RFC3339)
-
-				if _, ok := localData[wk]; !ok {
-					localData[wk] = map[string]WindowedAggregation{}
-				}
-
-				a := localData[wk][sl.Task]
-				a = updateAggregation(a, sl)
-				localData[wk][sl.Task] = a
-			})
-
-			resultsChan <- fileResult{data: localData}
-		}(filePath)
-	}
-
-	// Close channel when all goroutines complete
-	go func() {
-		wg.Wait()
-		close(resultsChan)
-	}()
-
-	// Merge results from all files
 	out := make(map[string]map[string]WindowedAggregation)
-	for result := range resultsChan {
-		for wk, tasks := range result.data {
-			if _, ok := out[wk]; !ok {
-				out[wk] = map[string]WindowedAggregation{}
-			}
-			for task, agg := range tasks {
-				if existing, ok := out[wk][task]; ok {
-					out[wk][task] = mergeAggregations(existing, agg)
-				} else {
-					out[wk][task] = agg
-				}
-			}
+	var mu sync.Mutex
+
+	err := s.provider.ScanSnapshots(ctx, agentID, from, to, func(sl *SnapshotLine) {
+		ts := sl.TS.UTC()
+		if ts.Before(from.UTC()) || ts.After(to.UTC()) {
+			return
 		}
+		if len(filterMap) > 0 && !filterMap[sl.Task] {
+			return
+		}
+
+		w := ts.Truncate(step)
+		wk := w.Format(time.RFC3339)
+
+		mu.Lock()
+		if _, ok := out[wk]; !ok {
+			out[wk] = map[string]WindowedAggregation{}
+		}
+		a := out[wk][sl.Task]
+		a = updateAggregation(a, sl)
+		out[wk][sl.Task] = a
+		mu.Unlock()
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return out, nil
@@ -759,103 +403,53 @@ func (s *Service) aggregateByTask(files []string, from, to time.Time, step time.
 
 // aggregateByAgent aggregates statistics for the entire agent
 // filterTasks is a list of task hashes to filter by. Empty list means no filter.
-func (s *Service) aggregateByAgent(files []string, from, to time.Time, step time.Duration, filterTasks []string) (map[string]WindowedAggregation, error) {
-	// Create a map for O(1) lookup if filtering
+func (s *Service) aggregateByAgent(ctx context.Context, agentID string, from, to time.Time, step time.Duration, filterTasks []string) (map[string]WindowedAggregation, error) {
 	filterMap := make(map[string]bool)
 	for _, task := range filterTasks {
 		if task != "" {
 			filterMap[task] = true
 		}
 	}
-	type fileResult struct {
-		timestampAggs map[time.Time]*WindowedAggregation
-	}
 
-	resultsChan := make(chan fileResult, len(files))
-	var wg sync.WaitGroup
-
-	// First pass: process files concurrently to build timestamp aggregations
-	for _, filePath := range files {
-		wg.Add(1)
-		go func(p string) {
-			defer wg.Done()
-
-			localTimestampAggs := make(map[time.Time]*WindowedAggregation)
-
-			_ = s.ScanFile(p, func(sl *SnapshotLine) {
-				ts := sl.TS.UTC()
-				if ts.Before(from.UTC()) || ts.After(to.UTC()) {
-					return
-				}
-				// Filter by task hashes if specified
-				if len(filterMap) > 0 && !filterMap[sl.Task] {
-					return
-				}
-
-				// Group by exact timestamp to sum concurrent torrents
-				tsKey := ts.Truncate(time.Second)
-				if localTimestampAggs[tsKey] == nil {
-					localTimestampAggs[tsKey] = &WindowedAggregation{}
-				}
-
-				a := localTimestampAggs[tsKey]
-				a.Snaps++
-
-				// Sum speeds for concurrent torrents at this timestamp
-				a.DlKB += int64(sl.DlKB)
-				a.UlKB += int64(sl.UlKB)
-
-				// Other metrics use incremental average (seeders/leechers) or sum (ratio)
-				a.Seeders = calculateIncrementalAverage(a.Seeders, a.Snaps, int64(sl.Sd))
-				a.Leechers = calculateIncrementalAverage(a.Leechers, a.Snaps, int64(sl.Lc))
-
-				// TotalDlB and TotalUlB use max (cumulative values)
-				if sl.DlB > a.TotalDlB {
-					a.TotalDlB = sl.DlB
-				}
-				if sl.UlB > a.TotalUlB {
-					a.TotalUlB = sl.UlB
-				}
-
-				a.SumR1e4 += int64(sl.R1e4)
-				if a.Snaps > 0 {
-					a.AvgRatio = (float64(a.SumR1e4) / 10000.0) / float64(a.Snaps)
-				}
-			})
-
-			resultsChan <- fileResult{timestampAggs: localTimestampAggs}
-		}(filePath)
-	}
-
-	// Close channel when all goroutines complete
-	go func() {
-		wg.Wait()
-		close(resultsChan)
-	}()
-
-	// Merge timestamp aggregations from all files
 	timestampAggs := make(map[time.Time]*WindowedAggregation)
-	for result := range resultsChan {
-		for ts, tsAgg := range result.timestampAggs {
-			if existing, ok := timestampAggs[ts]; ok {
-				// Merge two timestamp aggregations
-				existing.Snaps += tsAgg.Snaps
-				existing.DlKB += tsAgg.DlKB
-				existing.UlKB += tsAgg.UlKB
-				existing.Seeders = calculateWeightedAverage(existing.Seeders, existing.Snaps-tsAgg.Snaps, tsAgg.Seeders, tsAgg.Snaps)
-				existing.Leechers = calculateWeightedAverage(existing.Leechers, existing.Snaps-tsAgg.Snaps, tsAgg.Leechers, tsAgg.Snaps)
-				if tsAgg.TotalDlB > existing.TotalDlB {
-					existing.TotalDlB = tsAgg.TotalDlB
-				}
-				if tsAgg.TotalUlB > existing.TotalUlB {
-					existing.TotalUlB = tsAgg.TotalUlB
-				}
-				existing.SumR1e4 += tsAgg.SumR1e4
-				existing.AvgRatio = (float64(existing.SumR1e4) / 10000.0) / float64(existing.Snaps)
-			} else {
-				timestampAggs[ts] = tsAgg
-			}
+	var mu sync.Mutex
+
+	err := s.provider.ScanSnapshots(ctx, agentID, from, to, func(sl *SnapshotLine) {
+		ts := sl.TS.UTC()
+		if ts.Before(from.UTC()) || ts.After(to.UTC()) {
+			return
 		}
+		if len(filterMap) > 0 && !filterMap[sl.Task] {
+			return
+		}
+
+		tsKey := ts.Truncate(time.Second)
+
+		mu.Lock()
+		if timestampAggs[tsKey] == nil {
+			timestampAggs[tsKey] = &WindowedAggregation{}
+		}
+
+		a := timestampAggs[tsKey]
+		a.Snaps++
+		a.DlKB += int64(sl.DlKB)
+		a.UlKB += int64(sl.UlKB)
+		a.Seeders = calculateIncrementalAverage(a.Seeders, a.Snaps, int64(sl.Sd))
+		a.Leechers = calculateIncrementalAverage(a.Leechers, a.Snaps, int64(sl.Lc))
+		if sl.DlB > a.TotalDlB {
+			a.TotalDlB = sl.DlB
+		}
+		if sl.UlB > a.TotalUlB {
+			a.TotalUlB = sl.UlB
+		}
+		a.SumR1e4 += int64(sl.R1e4)
+		if a.Snaps > 0 {
+			a.AvgRatio = (float64(a.SumR1e4) / 10000.0) / float64(a.Snaps)
+		}
+		mu.Unlock()
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	// Second pass: aggregate timestamp-level sums into windows (take max per window)
@@ -868,17 +462,13 @@ func (s *Service) aggregateByAgent(files []string, from, to time.Time, step time
 		if windowAgg.Snaps == 0 {
 			windowAgg = *tsAgg
 		} else {
-			// Merge timestamp aggregation into window
-			// For speeds: take max of timestamp sums (peak concurrent throughput)
 			if tsAgg.DlKB > windowAgg.DlKB {
 				windowAgg.DlKB = tsAgg.DlKB
 			}
 			if tsAgg.UlKB > windowAgg.UlKB {
 				windowAgg.UlKB = tsAgg.UlKB
 			}
-			// For other metrics: aggregate appropriately
 			totalSnaps := windowAgg.Snaps + tsAgg.Snaps
-			// Weighted average for seeders/leechers when merging timestamp aggregations
 			windowAgg.Seeders = calculateWeightedAverage(windowAgg.Seeders, windowAgg.Snaps, tsAgg.Seeders, tsAgg.Snaps)
 			windowAgg.Leechers = calculateWeightedAverage(windowAgg.Leechers, windowAgg.Snaps, tsAgg.Leechers, tsAgg.Snaps)
 			if tsAgg.TotalDlB > windowAgg.TotalDlB {
@@ -908,11 +498,6 @@ type TaskUploadDiff struct {
 
 // GetUploadDiffs calculates tasks with highest upload differences per window
 func (s *Service) GetUploadDiffs(ctx context.Context, agentID string, from, to time.Time, step time.Duration, limit int) ([]TaskUploadDiff, error) {
-	files, err := s.DiscoverFiles(ctx, agentID, from, to)
-	if err != nil {
-		return nil, err
-	}
-
 	type taskWindowEntry struct {
 		window   string
 		task     string
@@ -922,93 +507,48 @@ func (s *Service) GetUploadDiffs(ctx context.Context, agentID string, from, to t
 		lastTS   time.Time
 	}
 
-	type fileResult struct {
-		entries map[string]map[string]*taskWindowEntry // task -> window -> entry
-	}
-
-	resultsChan := make(chan fileResult, len(files))
-	var wg sync.WaitGroup
-
-	// Process each file concurrently
-	for _, filePath := range files {
-		wg.Add(1)
-		go func(p string) {
-			defer wg.Done()
-
-			localEntries := make(map[string]map[string]*taskWindowEntry)
-
-			_ = s.ScanFile(p, func(sl *SnapshotLine) {
-				ts := sl.TS.UTC()
-				if ts.Before(from.UTC()) || ts.After(to.UTC()) {
-					return
-				}
-
-				w := ts.Truncate(step)
-				wk := w.Format(time.RFC3339)
-
-				if localEntries[sl.Task] == nil {
-					localEntries[sl.Task] = make(map[string]*taskWindowEntry)
-				}
-				if localEntries[sl.Task][wk] == nil {
-					localEntries[sl.Task][wk] = &taskWindowEntry{
-						window:   wk,
-						task:     sl.Task,
-						firstUlB: sl.UlB,
-						firstTS:  ts,
-						lastUlB:  sl.UlB,
-						lastTS:   ts,
-					}
-				} else {
-					entry := localEntries[sl.Task][wk]
-					// Update first if this timestamp is earlier
-					if ts.Before(entry.firstTS) {
-						entry.firstUlB = sl.UlB
-						entry.firstTS = ts
-					}
-					// Update last if this timestamp is later
-					if ts.After(entry.lastTS) {
-						entry.lastUlB = sl.UlB
-						entry.lastTS = ts
-					}
-				}
-			})
-
-			resultsChan <- fileResult{entries: localEntries}
-		}(filePath)
-	}
-
-	// Close channel when all goroutines complete
-	go func() {
-		wg.Wait()
-		close(resultsChan)
-	}()
-
-	// Merge results from all files
 	taskWindows := make(map[string]map[string]*taskWindowEntry)
-	for result := range resultsChan {
-		for task, windowMap := range result.entries {
-			if taskWindows[task] == nil {
-				taskWindows[task] = make(map[string]*taskWindowEntry)
+	var mu sync.Mutex
+
+	err := s.provider.ScanSnapshots(ctx, agentID, from, to, func(sl *SnapshotLine) {
+		ts := sl.TS.UTC()
+		if ts.Before(from.UTC()) || ts.After(to.UTC()) {
+			return
+		}
+
+		w := ts.Truncate(step)
+		wk := w.Format(time.RFC3339)
+
+		mu.Lock()
+		if taskWindows[sl.Task] == nil {
+			taskWindows[sl.Task] = make(map[string]*taskWindowEntry)
+		}
+		if taskWindows[sl.Task][wk] == nil {
+			taskWindows[sl.Task][wk] = &taskWindowEntry{
+				window:   wk,
+				task:     sl.Task,
+				firstUlB: sl.UlB,
+				firstTS:  ts,
+				lastUlB:  sl.UlB,
+				lastTS:   ts,
 			}
-			for window, entry := range windowMap {
-				if existing, ok := taskWindows[task][window]; ok {
-					// Merge entries: keep earliest first and latest last
-					if entry.firstTS.Before(existing.firstTS) {
-						existing.firstUlB = entry.firstUlB
-						existing.firstTS = entry.firstTS
-					}
-					if entry.lastTS.After(existing.lastTS) {
-						existing.lastUlB = entry.lastUlB
-						existing.lastTS = entry.lastTS
-					}
-				} else {
-					taskWindows[task][window] = entry
-				}
+		} else {
+			entry := taskWindows[sl.Task][wk]
+			if ts.Before(entry.firstTS) {
+				entry.firstUlB = sl.UlB
+				entry.firstTS = ts
+			}
+			if ts.After(entry.lastTS) {
+				entry.lastUlB = sl.UlB
+				entry.lastTS = ts
 			}
 		}
+		mu.Unlock()
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	// Calculate differences and collect results (ensure non-nil slice)
 	results := make([]TaskUploadDiff, 0)
 	for _, taskMap := range taskWindows {
 		for _, entry := range taskMap {
@@ -1025,7 +565,6 @@ func (s *Service) GetUploadDiffs(ctx context.Context, agentID string, from, to t
 		}
 	}
 
-	// Sort by difference (descending) and limit
 	sort.Slice(results, func(i, j int) bool {
 		return results[i].Diff > results[j].Diff
 	})

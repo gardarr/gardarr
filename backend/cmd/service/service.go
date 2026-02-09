@@ -155,8 +155,12 @@ func Run(cmd *cobra.Command, args []string) error {
 	}
 	eventChan := eventSvc.EnableRealTimeEmission(100)
 
-	// Statistics (feature-flagged)
-	statsSvc := statistics.NewService(db, agentSvc, eventSvc)
+	// Statistics (feature-flagged, provider-based)
+	statsProvider, err := statistics.NewProvider(db)
+	if err != nil {
+		return fmt.Errorf("failed to initialize statistics provider: %w", err)
+	}
+	statsSvc := statistics.NewServiceWithProvider(statsProvider, agentSvc, eventSvc)
 	ctx, cancelStats := context.WithCancel(context.Background())
 	defer cancelStats()
 	statsSvc.Start(ctx)

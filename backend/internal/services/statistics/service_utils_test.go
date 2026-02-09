@@ -60,24 +60,17 @@ func TestParseTime(t *testing.T) {
 	}
 }
 
-func TestServiceScanFile(t *testing.T) {
+func TestScanFile(t *testing.T) {
 	// Create a temporary directory for test files
 	tmpDir := t.TempDir()
 
-	// Create a test service
-	db := &database.Database{}
-	svc := &Service{
-		db:      db,
-		baseDir: tmpDir,
-	}
-
 	t.Run("Empty path", func(t *testing.T) {
-		err := svc.ScanFile("", func(*SnapshotLine) {})
+		err := scanFile("", func(*SnapshotLine) {})
 		assert.NoError(t, err)
 	})
 
 	t.Run("Non-existent file", func(t *testing.T) {
-		err := svc.ScanFile(filepath.Join(tmpDir, "nonexistent.gz"), func(*SnapshotLine) {})
+		err := scanFile(filepath.Join(tmpDir, "nonexistent.gz"), func(*SnapshotLine) {})
 		assert.Error(t, err)
 	})
 
@@ -86,22 +79,18 @@ func TestServiceScanFile(t *testing.T) {
 		err := os.WriteFile(invalidFile, []byte("not a gzip file"), 0644)
 		require.NoError(t, err)
 
-		err = svc.ScanFile(invalidFile, func(*SnapshotLine) {})
+		err = scanFile(invalidFile, func(*SnapshotLine) {})
 		assert.Error(t, err)
 	})
 }
 
-func TestServiceDiscoverFiles(t *testing.T) {
+func TestFilesystemProviderDiscoverFiles(t *testing.T) {
 	// Create a temporary directory for test files
 	tmpDir := t.TempDir()
 
-	// Create a minimal test database (you may need to adjust this based on your DB setup)
-	db := &database.Database{}
-
-	svc := &Service{
-		db:      db,
-		baseDir: tmpDir,
-	}
+	prov := NewFilesystemProvider(FilesystemProviderConfig{
+		BaseDir: tmpDir,
+	})
 
 	ctx := context.Background()
 	agentID := "test-agent-123"
@@ -109,10 +98,8 @@ func TestServiceDiscoverFiles(t *testing.T) {
 	to := time.Date(2024, 1, 3, 0, 0, 0, 0, time.UTC)
 
 	t.Run("No files found", func(t *testing.T) {
-		files, err := svc.DiscoverFiles(ctx, agentID, from, to)
-		// Should not error, just return empty list
+		err := prov.ScanSnapshots(ctx, agentID, from, to, func(*SnapshotLine) {})
 		assert.NoError(t, err)
-		assert.Empty(t, files)
 	})
 
 	t.Run("Discovers files from filesystem", func(t *testing.T) {
@@ -128,7 +115,7 @@ func TestServiceDiscoverFiles(t *testing.T) {
 		err = os.WriteFile(testFile, []byte{}, 0644)
 		require.NoError(t, err)
 
-		files, err := svc.DiscoverFiles(ctx, agentID, from, to)
+		files, err := prov.discoverFiles(ctx, agentID, from, to)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, files)
 		assert.Contains(t, files[0], agentID+"-2024-01-02.jsonl.gz")
@@ -137,11 +124,9 @@ func TestServiceDiscoverFiles(t *testing.T) {
 
 func TestServiceWindowedAggregation(t *testing.T) {
 	tmpDir := t.TempDir()
-	db := &database.Database{}
 
 	svc := &Service{
-		db:      db,
-		baseDir: tmpDir,
+		provider: NewFilesystemProvider(FilesystemProviderConfig{BaseDir: tmpDir}),
 	}
 
 	ctx := context.Background()
@@ -175,11 +160,9 @@ func TestServiceWindowedAggregation(t *testing.T) {
 
 func TestServiceGetUploadDiffs(t *testing.T) {
 	tmpDir := t.TempDir()
-	db := &database.Database{}
 
 	svc := &Service{
-		db:      db,
-		baseDir: tmpDir,
+		provider: NewFilesystemProvider(FilesystemProviderConfig{BaseDir: tmpDir}),
 	}
 
 	ctx := context.Background()
@@ -219,8 +202,9 @@ func TestServiceGetUploadDiffs(t *testing.T) {
 
 func TestServicePurgeOldFilesFSOnly(t *testing.T) {
 	tmpDir := t.TempDir()
+	prov := NewFilesystemProvider(FilesystemProviderConfig{BaseDir: tmpDir})
 	svc := &Service{
-		baseDir:       tmpDir,
+		provider:      prov,
 		retentionDays: 10,
 	}
 
@@ -239,8 +223,8 @@ func TestServicePurgeOldFilesFSOnly(t *testing.T) {
 	oldFile := mustWrite(filepath.Join("2024", "01", "agent-x", "agent-x-"+oldDate+".jsonl.gz"))
 	newFile := mustWrite(filepath.Join("2024", "01", "agent-x", "agent-x-"+newDate+".jsonl.gz"))
 
-	// Run purge (DB is nil so it will skip DB part)
-	err := svc.PurgeOldFiles(context.Background())
+	// Run purge via service (DB is nil so it will skip DB part)
+	err := svc.purgeOldData(context.Background())
 	require.NoError(t, err)
 
 	// Old should be removed, new should remain
@@ -251,7 +235,7 @@ func TestServicePurgeOldFilesFSOnly(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestServiceUpsertFileIndex(t *testing.T) {
+func TestFilesystemProviderUpsertFileIndex(t *testing.T) {
 	// Create a test database in memory
 	db := database.SetupTestDB(t)
 
@@ -259,10 +243,10 @@ func TestServiceUpsertFileIndex(t *testing.T) {
 	err := database.RunMigrations(db)
 	require.NoError(t, err)
 
-	svc := &Service{
-		db:      db,
-		baseDir: t.TempDir(),
-	}
+	prov := NewFilesystemProvider(FilesystemProviderConfig{
+		DB:      db,
+		BaseDir: t.TempDir(),
+	})
 
 	ctx := context.Background()
 	agentID := "test-agent"
@@ -272,7 +256,7 @@ func TestServiceUpsertFileIndex(t *testing.T) {
 	size := int64(1024)
 
 	t.Run("Creates new file index", func(t *testing.T) {
-		err := svc.upsertFileIndex(ctx, agentID, ts, path, lines, size)
+		err := prov.upsertFileIndex(ctx, agentID, ts, path, lines, size)
 		assert.NoError(t, err)
 
 		// Verify record was created
@@ -283,7 +267,7 @@ func TestServiceUpsertFileIndex(t *testing.T) {
 
 	t.Run("Updates existing file index on duplicate path", func(t *testing.T) {
 		// Try to insert the same path again
-		err := svc.upsertFileIndex(ctx, agentID, ts, path, lines, size)
+		err := prov.upsertFileIndex(ctx, agentID, ts, path, lines, size)
 		assert.NoError(t, err)
 
 		// Should still have only one record
@@ -305,7 +289,7 @@ func TestServiceUpsertFileIndex(t *testing.T) {
 		path2 := "data/statistics/2024/01/test-agent/test-agent-2024-01-16.jsonl.gz"
 		ts2 := time.Date(2024, 1, 16, 10, 30, 0, 0, time.UTC)
 
-		err := svc.upsertFileIndex(ctx, agentID, ts2, path2, lines, size)
+		err := prov.upsertFileIndex(ctx, agentID, ts2, path2, lines, size)
 		assert.NoError(t, err)
 
 		// Should now have two records

@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import { agentService } from '@/services/agents';
 import { SelectAgent } from '@/components/SelectAgent';
-import { setupService } from '@/services/setup';
+import { useSetup } from '@/contexts/setup-hooks';
 import StatisticsDisabledAlert from '@/components/StatisticsDisabledAlert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -24,13 +24,13 @@ const Dashboard: React.FC = () => {
   const { hash, agent_uuid } = useParams<{ hash?: string; agent_uuid?: string }>();
   const navigate = useNavigate();
   
+  const { statisticsEnabled } = useSetup();
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
   const [fromDate, setFromDate] = useState<Date | undefined>(new Date(Date.now() - 24 * 60 * 60 * 1000)); // 1 day ago
   const [toDate, setToDate] = useState<Date | undefined>(new Date());
   type AgentTask = { task: string; diff: number };
   const [topUploaded, setTopUploaded] = useState<AgentTask[]>([]);
   const [taskNameById, setTaskNameById] = useState<Record<string, string>>({});
-  const [statisticsEnabled, setStatisticsEnabled] = useState<boolean>(true);
   const [hasActiveAgents, setHasActiveAgents] = useState<boolean | null>(null);
   const [hasErrorAgents, setHasErrorAgents] = useState<boolean>(false);
   const [isLoadingAgents, setIsLoadingAgents] = useState<boolean>(true);
@@ -56,19 +56,8 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // Check setup status and available agents
+  // Check available agents
   useEffect(() => {
-    const checkStatisticsStatus = async () => {
-      try {
-        const result = await setupService.checkSetup();
-        setStatisticsEnabled(result.data?.statistics_enabled ?? true);
-      } catch (error) {
-        // On error, assume statistics are enabled to avoid blocking the UI
-        console.error('Failed to check statistics status:', error);
-        setStatisticsEnabled(true);
-      }
-    };
-    
     const checkActiveAgents = async () => {
       setIsLoadingAgents(true);
       try {
@@ -87,7 +76,6 @@ const Dashboard: React.FC = () => {
       }
     };
     
-    checkStatisticsStatus();
     checkActiveAgents();
   }, []);
 
