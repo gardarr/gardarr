@@ -3,6 +3,7 @@ package statistics
 import (
 	"context"
 	"fmt"
+	"math"
 	"strconv"
 	"time"
 
@@ -136,8 +137,8 @@ func (p *InfluxDBProvider) ScanSnapshots(ctx context.Context, agentID string, fr
 			R1e4: toInt(value["r1e4"]),
 			DlKB: toInt(value["dl_kbs"]),
 			UlKB: toInt(value["ul_kbs"]),
-			Sd:   int16(toInt64(value["seeders"])),
-			Lc:   int16(toInt64(value["leechers"])),
+			Sd:   toInt16(value["seeders"]),
+			Lc:   toInt16(value["leechers"]),
 			DlB:  toInt64(value["dl_bytes"]),
 			UlB:  toInt64(value["ul_bytes"]),
 		}
@@ -191,9 +192,9 @@ func (p *InfluxDBProvider) GetHourSummaries(ctx context.Context, agentID string,
 			AgentID:       agentID,
 			Date:          ts.Format("2006-01-02"),
 			Hour:          ts.Hour(),
-			TasksSeen:     int(toInt64(value["tasks_seen"])),
-			ActiveDlCount: int(toInt64(value["active_dl"])),
-			ActiveUlCount: int(toInt64(value["active_ul"])),
+			TasksSeen:     int64ToIntSafe(toInt64(value["tasks_seen"])),
+			ActiveDlCount: int64ToIntSafe(toInt64(value["active_dl"])),
+			ActiveUlCount: int64ToIntSafe(toInt64(value["active_ul"])),
 			TotalDlKBs:    toInt64(value["total_dl_kb"]),
 			TotalUlKBs:    toInt64(value["total_ul_kb"]),
 			CreatedAt:     ts,
@@ -247,7 +248,7 @@ func (p *InfluxDBProvider) GetDayIndex(ctx context.Context, agentID string, date
 			Hour:      bucketTS.Hour(),
 			StartTS:   bucketTS,
 			EndTS:     bucketTS.Add(time.Hour),
-			LineCount: int(toInt64(value["line_count"])),
+			LineCount: toInt(value["line_count"]),
 		})
 	}
 
@@ -324,14 +325,35 @@ func toInt(v interface{}) int {
 	case int:
 		return val
 	case int64:
-		return int(val)
+		return int64ToIntSafe(val)
 	case float64:
-		return int(val)
+		return int64ToIntSafe(int64(val))
 	case string:
 		n, _ := strconv.Atoi(val)
 		return n
 	}
 	return 0
+}
+
+func int64ToIntSafe(v int64) int {
+	if v > math.MaxInt {
+		return math.MaxInt
+	}
+	if v < math.MinInt {
+		return math.MinInt
+	}
+	return int(v)
+}
+
+func toInt16(v interface{}) int16 {
+	n := toInt64(v)
+	if n > math.MaxInt16 {
+		return math.MaxInt16
+	}
+	if n < math.MinInt16 {
+		return math.MinInt16
+	}
+	return int16(n)
 }
 
 func toInt64(v interface{}) int64 {

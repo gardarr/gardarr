@@ -357,6 +357,24 @@ func (p *FilesystemProvider) discoverFilesFromFS(agentID string, from, to time.T
 		return nil
 	}
 
+	absBase, err := filepath.Abs(base)
+	if err != nil {
+		return nil
+	}
+	absBase = filepath.Clean(absBase) + string(filepath.Separator)
+
+	isInsideBase := func(candidate string) bool {
+		abs, err := filepath.Abs(candidate)
+		if err != nil {
+			return false
+		}
+		rel, err := filepath.Rel(filepath.Clean(absBase[:len(absBase)-1]), abs)
+		if err != nil {
+			return false
+		}
+		return len(rel) >= 1 && rel[0] != '.' && rel != ".."
+	}
+
 	var dates []time.Time
 	cur := from.UTC().Truncate(24 * time.Hour)
 	end := to.UTC().Truncate(24 * time.Hour)
@@ -399,6 +417,9 @@ func (p *FilesystemProvider) discoverFilesFromFS(agentID string, from, to time.T
 					filepath.Join(base, "statistics", yyyy, mm, agentID, agentID+"-"+day+".jsonl.gz"),
 				}
 				for _, cp := range candidates {
+					if !isInsideBase(cp) {
+						continue
+					}
 					if _, err := os.Stat(cp); err == nil {
 						resultsChan <- dateResult{path: cp}
 						break
