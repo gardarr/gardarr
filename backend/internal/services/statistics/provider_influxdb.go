@@ -217,7 +217,9 @@ func (p *InfluxDBProvider) GetDayIndex(ctx context.Context, agentID string, date
 	}
 	dayEnd := dayStart.Add(24 * time.Hour)
 
-	query := `SELECT DATE_BIN(INTERVAL '1 hour', time, $dayStart) AS hour_bucket, ` +
+	dayStartLiteral := dayStart.UTC().Format(time.RFC3339)
+
+	query := `SELECT DATE_BIN(INTERVAL '1 hour', time, '` + dayStartLiteral + `') AS hour_bucket, ` +
 		`COUNT(*) AS line_count ` +
 		`FROM "snapshot" ` +
 		`WHERE time >= $fromTime AND time < $toTime ` +
@@ -227,7 +229,6 @@ func (p *InfluxDBProvider) GetDayIndex(ctx context.Context, agentID string, date
 
 	params := influxdb3.QueryParameters{
 		"agentID":  agentID,
-		"dayStart": dayStart.UTC().Format(time.RFC3339),
 		"fromTime": dayStart.UTC().Format(time.RFC3339Nano),
 		"toTime":   dayEnd.UTC().Format(time.RFC3339Nano),
 	}

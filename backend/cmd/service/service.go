@@ -218,6 +218,14 @@ func Run(cmd *cobra.Command, args []string) error {
 	<-quit
 	log.Println("Shutting down server...")
 
+	// Stop statistics collection loop
+	cancelStats()
+
+	// Close the statistics provider (e.g. InfluxDB client)
+	if err := statsSvc.Close(); err != nil {
+		log.Printf("Error closing statistics service: %v", err)
+	}
+
 	// The context is used to inform the server it has 5 seconds to finish
 	// the request it is currently handling
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

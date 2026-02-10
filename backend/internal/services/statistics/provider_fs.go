@@ -357,24 +357,6 @@ func (p *FilesystemProvider) discoverFilesFromFS(agentID string, from, to time.T
 		return nil
 	}
 
-	absBase, err := filepath.Abs(base)
-	if err != nil {
-		return nil
-	}
-	absBase = filepath.Clean(absBase) + string(filepath.Separator)
-
-	isInsideBase := func(candidate string) bool {
-		abs, err := filepath.Abs(candidate)
-		if err != nil {
-			return false
-		}
-		rel, err := filepath.Rel(filepath.Clean(absBase[:len(absBase)-1]), abs)
-		if err != nil {
-			return false
-		}
-		return len(rel) >= 1 && rel[0] != '.' && rel != ".."
-	}
-
 	var dates []time.Time
 	cur := from.UTC().Truncate(24 * time.Hour)
 	end := to.UTC().Truncate(24 * time.Hour)
@@ -412,12 +394,14 @@ func (p *FilesystemProvider) discoverFilesFromFS(agentID string, from, to time.T
 				yyyy := date.Format("2006")
 				mm := date.Format("01")
 				day := date.Format("2006-01-02")
-				candidates := []string{
-					filepath.Join(base, yyyy, mm, agentID, agentID+"-"+day+".jsonl.gz"),
-					filepath.Join(base, "statistics", yyyy, mm, agentID, agentID+"-"+day+".jsonl.gz"),
+				filename := agentID + "-" + day + ".jsonl.gz"
+				candidateParts := [][]string{
+					{yyyy, mm, agentID, filename},
+					{"statistics", yyyy, mm, agentID, filename},
 				}
-				for _, cp := range candidates {
-					if !isInsideBase(cp) {
+				for _, parts := range candidateParts {
+					cp, err := validations.SafeJoinPath(base, parts...)
+					if err != nil {
 						continue
 					}
 					if _, err := os.Stat(cp); err == nil {

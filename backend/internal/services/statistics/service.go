@@ -277,55 +277,6 @@ func updateAggregation(a WindowedAggregation, sl *SnapshotLine) WindowedAggregat
 	return a
 }
 
-// mergeAggregations combines two WindowedAggregation structures by applying appropriate
-// merging strategies for each metric: max for speeds and cumulative values, weighted
-// average for seeders/leechers, and sum for ratio components
-func mergeAggregations(a1, a2 WindowedAggregation) WindowedAggregation {
-	totalSnaps := a1.Snaps + a2.Snaps
-
-	result := WindowedAggregation{
-		Snaps: totalSnaps,
-	}
-
-	// Use max for speed metrics
-	if a1.DlKB > a2.DlKB {
-		result.DlKB = a1.DlKB
-	} else {
-		result.DlKB = a2.DlKB
-	}
-
-	if a1.UlKB > a2.UlKB {
-		result.UlKB = a1.UlKB
-	} else {
-		result.UlKB = a2.UlKB
-	}
-
-	// Weighted average for seeders and leechers
-	result.Seeders = calculateWeightedAverage(a1.Seeders, a1.Snaps, a2.Seeders, a2.Snaps)
-	result.Leechers = calculateWeightedAverage(a1.Leechers, a1.Snaps, a2.Leechers, a2.Snaps)
-
-	// Use max for cumulative byte values
-	if a1.TotalDlB > a2.TotalDlB {
-		result.TotalDlB = a1.TotalDlB
-	} else {
-		result.TotalDlB = a2.TotalDlB
-	}
-
-	if a1.TotalUlB > a2.TotalUlB {
-		result.TotalUlB = a1.TotalUlB
-	} else {
-		result.TotalUlB = a2.TotalUlB
-	}
-
-	// Sum the ratio components and recalculate average
-	result.SumR1e4 = a1.SumR1e4 + a2.SumR1e4
-	if totalSnaps > 0 {
-		result.AvgRatio = (float64(result.SumR1e4) / 10000.0) / float64(totalSnaps)
-	}
-
-	return result
-}
-
 // purgeOldData delegates purge to the provider.
 func (s *Service) purgeOldData(ctx context.Context) error {
 	if s.retentionDays <= 0 {
@@ -333,6 +284,11 @@ func (s *Service) purgeOldData(ctx context.Context) error {
 	}
 	cutoff := time.Now().UTC().AddDate(0, 0, -s.retentionDays)
 	return s.provider.Purge(ctx, cutoff.Format("2006-01-02"))
+}
+
+// Close releases resources held by the underlying provider.
+func (s *Service) Close() error {
+	return s.provider.Close()
 }
 
 // GetDayIndex retrieves index entries for an agent on a specific date.
