@@ -1,4 +1,3 @@
-
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { SetupProvider } from './contexts/SetupContext'
@@ -26,6 +25,15 @@ import ForgotPasswordPage from './ForgotPassword'
 import { Toaster } from './components/ui/sonner'
 import { InstallPrompt } from './components/InstallPrompt'
 
+/**
+ * Root application component that sets up global providers, UI utilities, and the route hierarchy.
+ *
+ * Renders an ErrorBoundary wrapping BrowserRouter and the AuthProvider, mounts global UI elements
+ * (Toaster and InstallPrompt), defines public routes, and configures a protected root route that
+ * applies SetupProvider and AppLayout for all authenticated routes; unknown routes redirect to home.
+ *
+ * @returns The root React element containing providers, global UI, and application routes
+ */
 function App() {
   return (
     <ErrorBoundary>

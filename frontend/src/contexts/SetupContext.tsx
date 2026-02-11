@@ -5,6 +5,11 @@ import { SetupContext } from "./setup-context";
 
 export { SetupContext };
 
+/**
+ * Initializes setup-related state on mount and provides `statisticsEnabled` and `loading` via SetupContext to descendant components.
+ *
+ * @returns A React element that wraps `children` with SetupContext.Provider supplying `{ statisticsEnabled, loading }`.
+ */
 export function SetupProvider({ children }: { children: ReactNode }) {
   const [statisticsEnabled, setStatisticsEnabled] = useState<boolean>(true);
   const [loading, setLoading] = useState(true);

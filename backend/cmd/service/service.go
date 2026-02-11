@@ -77,6 +77,9 @@ func getMediaDirectory() string {
 	return env.Get(constants.TorrentImageUploadDirEnv).Default("/media/uploads/images").Value()
 }
 
+// Run starts the application: validates filesystem and database, initializes services (crypto, database, settings, agent, events, statistics provider/service, integrations, metadata), registers routes, and runs the HTTP server with graceful shutdown.
+// It will start an embedded agent when APP_MODE is set to standalone, run background statistics and integration loops, and block until an interrupt signal triggers shutdown.
+// It returns an error if initialization, route setup, server startup, or shutdown fails.
 func Run(cmd *cobra.Command, args []string) error {
 	// Validate filesystem permissions before starting
 	// Get all directory paths from environment variables

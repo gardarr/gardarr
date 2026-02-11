@@ -28,7 +28,7 @@ type Service struct {
 // NewService creates a new statistics Service using the provided database,
 // agent manager and event service. Configuration such as base directory,
 // interval and enabled flag are loaded from environment variables.
-// It uses a FilesystemProvider by default for backward compatibility.
+// variable (defaults to "./data/statistics"). Construction is delegated to NewServiceWithProvider.
 func NewService(db *database.Database, agents *agentmanager.Service, eventService *events.Service) *Service {
 	provider := NewFilesystemProvider(FilesystemProviderConfig{
 		DB:      db,
@@ -37,7 +37,11 @@ func NewService(db *database.Database, agents *agentmanager.Service, eventServic
 	return NewServiceWithProvider(provider, agents, eventService)
 }
 
-// NewServiceWithProvider creates a new statistics Service with a custom StatsProvider.
+// NewServiceWithProvider creates a Service that uses the provided StatsProvider for statistics persistence
+// and configures collection interval, enabled flag, retention days and purge interval from environment variables.
+// The following environment variables are read with their defaults:
+// STATISTICS_INTERVAL (default "30s"), STATISTICS_ENABLED (default true), STATISTICS_RETENTION_DAYS (default 0),
+// STATISTICS_PURGE_INTERVAL (default "30m").
 func NewServiceWithProvider(provider StatsProvider, agents *agentmanager.Service, eventService *events.Service) *Service {
 	return &Service{
 		provider:      provider,
@@ -245,7 +249,12 @@ func calculateWeightedAverage(value1, weight1, value2, weight2 int64) int64 {
 }
 
 // updateAggregation applies a snapshot line to an existing aggregation,
-// updating all metrics according to their aggregation strategy (max, average, or sum)
+// updateAggregation applies a SnapshotLine to a WindowedAggregation and returns the updated aggregation.
+// It increments the snapshot count and merges metrics using the aggregation strategy:
+// - DlKB and UlKB: keep the maximum value observed in the window.
+// - Seeders and Leechers: update via incremental averaging.
+// - TotalDlB and TotalUlB: keep the maximum cumulative byte counts.
+// - SumR1e4: accumulate the R1e4 sums and recompute AvgRatio as (SumR1e4/10000)/Snaps.
 func updateAggregation(a WindowedAggregation, sl *SnapshotLine) WindowedAggregation {
 	a.Snaps++
 

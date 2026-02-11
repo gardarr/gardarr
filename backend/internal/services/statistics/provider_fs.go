@@ -34,7 +34,9 @@ type FilesystemProviderConfig struct {
 	BaseDir string
 }
 
-// NewFilesystemProvider creates a new FilesystemProvider.
+// NewFilesystemProvider creates a FilesystemProvider configured with the provided FilesystemProviderConfig.
+// The returned provider uses cfg.DB for optional database-backed indexing and cfg.BaseDir as the base directory
+// for on-disk statistics files.
 func NewFilesystemProvider(cfg FilesystemProviderConfig) *FilesystemProvider {
 	return &FilesystemProvider{
 		db:      cfg.DB,
@@ -448,7 +450,9 @@ func (p *FilesystemProvider) discoverFilesFromFS(agentID string, from, to time.T
 	return files
 }
 
-// scanFile reads a gzip JSONL file and calls fn for each parsed SnapshotLine.
+// scanFile reads a gzip-compressed JSONL file at path and invokes fn for each successfully decoded SnapshotLine.
+// If path is empty the function does nothing. Malformed JSON lines are skipped; any error encountered while opening,
+// decompressing, or scanning the file is returned.
 func scanFile(path string, fn func(*SnapshotLine)) error {
 	if path == "" {
 		return nil

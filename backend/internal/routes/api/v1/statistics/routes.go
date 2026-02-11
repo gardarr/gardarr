@@ -31,6 +31,8 @@ type Module struct {
 	service *stats.Service
 }
 
+// NewModule creates and returns a Module mounted at "/statistics" under the provided router group.
+// The returned Module retains the given database (used for session middleware) and the injected statistics service.
 func NewModule(router *gin.RouterGroup, db *database.Database, service *stats.Service) *Module {
 	return &Module{
 		group:   router.Group("/statistics"),

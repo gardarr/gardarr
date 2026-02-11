@@ -25,7 +25,8 @@ type InfluxDBProviderConfig struct {
 	Database string
 }
 
-// NewInfluxDBProvider creates a new InfluxDBProvider and validates the connection.
+// NewInfluxDBProvider creates and returns an InfluxDBProvider configured with the provided InfluxDB settings.
+// It returns an error if the underlying InfluxDB client cannot be created.
 func NewInfluxDBProvider(cfg InfluxDBProviderConfig) (*InfluxDBProvider, error) {
 	client, err := influxdb3.New(influxdb3.ClientConfig{
 		Host:     cfg.URL,
@@ -306,7 +307,9 @@ func (p *InfluxDBProvider) Close() error {
 	return nil
 }
 
-// --- type conversion helpers ---
+// toString converts v to its string representation.
+// It returns an empty string for nil, returns v unchanged if it is already a string,
+// and otherwise returns fmt.Sprintf("%v", v).
 
 func toString(v interface{}) string {
 	if v == nil {
@@ -318,6 +321,9 @@ func toString(v interface{}) string {
 	return fmt.Sprintf("%v", v)
 }
 
+// toInt converts v to an int.
+// Supports values of type int, int64 (clamped to the host int range), float64 (truncated toward zero),
+// and numeric strings (parsed with strconv.Atoi). If v is nil or an unsupported type, it returns 0.
 func toInt(v interface{}) int {
 	if v == nil {
 		return 0
@@ -336,6 +342,7 @@ func toInt(v interface{}) int {
 	return 0
 }
 
+// int64ToIntSafe converts v to an int, clamping to math.MaxInt or math.MinInt if v lies outside the target int range.
 func int64ToIntSafe(v int64) int {
 	if v > math.MaxInt {
 		return math.MaxInt
@@ -346,6 +353,7 @@ func int64ToIntSafe(v int64) int {
 	return int(v)
 }
 
+// toInt16 converts v to an int16, clamping values greater than 32767 to 32767 and values less than -32768 to -32768. It returns 0 when v cannot be interpreted as a numeric value.
 func toInt16(v interface{}) int16 {
 	n := toInt64(v)
 	if n > math.MaxInt16 {
@@ -357,6 +365,10 @@ func toInt16(v interface{}) int16 {
 	return int16(n)
 }
 
+// toInt64 converts v to an int64.
+// It accepts values of type int64, int, float64, and numeric strings (base 10).
+// For float64 the value is truncated toward zero. If v is nil, is an unsupported
+// type, or a string that fails to parse, the function returns 0.
 func toInt64(v interface{}) int64 {
 	if v == nil {
 		return 0
@@ -375,6 +387,9 @@ func toInt64(v interface{}) int64 {
 	return 0
 }
 
+// toTime converts v to a time.Time.
+// It accepts time.Time (returned as-is) and string values parsed using RFC3339Nano with a fallback to RFC3339;
+// for nil, unsupported types, or parse failures it returns the zero time.
 func toTime(v interface{}) time.Time {
 	if v == nil {
 		return time.Time{}

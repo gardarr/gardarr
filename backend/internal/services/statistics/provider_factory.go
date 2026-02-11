@@ -9,7 +9,8 @@ import (
 )
 
 // NewProvider creates a StatsProvider based on the STATISTICS_PROVIDER environment variable.
-// Supported values: "filesystem" (default), "influxdb".
+// NewProvider creates a StatsProvider configured from environment variables.
+// It supports "filesystem" (default) and "influxdb". For the filesystem provider it uses STATISTICS_DIR (default "./data/statistics") and the supplied database. For the InfluxDB provider it reads STATISTICS_INFLUXDB_URL (default "http://localhost:8086"), STATISTICS_INFLUXDB_TOKEN (required), and STATISTICS_INFLUXDB_DATABASE (default "gardarr_stats"); an error is returned if the token is empty or if an unknown provider type is specified.
 func NewProvider(db *database.Database) (StatsProvider, error) {
 	providerType := strings.ToLower(env.Get("STATISTICS_PROVIDER").Default("filesystem").Value())
 
