@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import { setupService } from "@/services/setup";
 import type { SetupStatus } from "@/types/setup";
 
@@ -11,7 +11,7 @@ interface SetupContextState {
 
 const SetupContext = createContext<SetupContextState | undefined>(undefined);
 
-export function SetupProvider({ children }: { children: ReactNode }) {
+export function SetupProvider({ children }: Readonly<{ children: ReactNode }>) {
     const [statisticsEnabled, setStatisticsEnabled] = useState<boolean>(true);
     const [loading, setLoading] = useState<boolean>(true);
     const [status, setStatus] = useState<SetupStatus | null>(null);
@@ -38,8 +38,15 @@ export function SetupProvider({ children }: { children: ReactNode }) {
         checkSetup();
     }, [checkSetup]);
 
+    const contextValue = useMemo(() => ({
+        statisticsEnabled,
+        loading,
+        checkSetup,
+        status
+    }), [statisticsEnabled, loading, checkSetup, status]);
+
     return (
-        <SetupContext.Provider value={{ statisticsEnabled, loading, checkSetup, status }}>
+        <SetupContext.Provider value={contextValue}>
             {children}
         </SetupContext.Provider>
     );

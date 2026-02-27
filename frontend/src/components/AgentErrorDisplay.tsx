@@ -41,13 +41,18 @@ export function AgentErrorDisplay({ agent, className = '' }: Readonly<AgentError
   const { t } = useTranslation();
 
   // Only show if there's an error or if initializing
-  if ((agent.status !== 'ERRORED' && agent.status !== 'INITIALIZING') || !agent.error_code) {
+  if (agent.status !== 'ERRORED' && agent.status !== 'INITIALIZING') {
+    return null;
+  }
+
+  // If in error status, we must have an error code to display details
+  if (agent.status === 'ERRORED' && !agent.error_code) {
     return null;
   }
 
   const errorCode = agent.error_code;
-  const isPermanent = agent.permanent ?? isPermanentError(errorCode);
-  const IconComponent = ERROR_ICONS[errorCode] || AlertCircle;
+  const isPermanent = agent.permanent ?? (errorCode ? isPermanentError(errorCode) : false);
+  const IconComponent = (errorCode ? ERROR_ICONS[errorCode] : null) || (agent.status === 'INITIALIZING' ? Server : AlertCircle);
 
   return (
     <Alert
@@ -76,18 +81,22 @@ export function AgentErrorDisplay({ agent, className = '' }: Readonly<AgentError
 export function AgentErrorBadge({ agent }: Readonly<{ agent: Agent }>) {
   const { t } = useTranslation();
 
-  if ((agent.status !== 'ERRORED' && agent.status !== 'INITIALIZING') || !agent.error_code) {
+  if (agent.status !== 'ERRORED' && agent.status !== 'INITIALIZING') {
+    return null;
+  }
+
+  if (agent.status === 'ERRORED' && !agent.error_code) {
     return null;
   }
 
   const errorCode = agent.error_code;
-  const isPermanent = agent.permanent ?? isPermanentError(errorCode);
-  const IconComponent = ERROR_ICONS[errorCode] || AlertCircle;
+  const isPermanent = agent.permanent ?? (errorCode ? isPermanentError(errorCode) : false);
+  const IconComponent = (errorCode ? ERROR_ICONS[errorCode] : null) || (agent.status === 'INITIALIZING' ? Server : AlertCircle);
 
   return (
     <div className={`text-xs flex items-center gap-1 px-2 py-1 rounded ${isPermanent
-        ? 'bg-red-100 dark:bg-red-950/30 text-red-700 dark:text-red-300'
-        : 'bg-yellow-100 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-300'
+      ? 'bg-red-100 dark:bg-red-950/30 text-red-700 dark:text-red-300'
+      : 'bg-yellow-100 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-300'
       }`}>
       <IconComponent className="h-3 w-3" />
       <span>{agent.status === 'INITIALIZING' ? t('agents.initializing', 'Starting up...') : t(`agents.errorCodes.${errorCode}.title`)}</span>
