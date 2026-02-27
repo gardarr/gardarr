@@ -9,12 +9,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { 
-  Server, 
-  Plus, 
-  Trash2, 
-  Search, 
-  Loader2, 
+import {
+  Server,
+  Plus,
+  Trash2,
+  Search,
+  Loader2,
   RefreshCw,
   HardDrive,
   Wifi,
@@ -68,13 +68,13 @@ function Agents() {
   });
   const [showCreateToken, setShowCreateToken] = useState(false);
   const [showEditToken, setShowEditToken] = useState(false);
-  
+
 
   const loadAgents = useCallback(async () => {
     try {
       setLoading(true);
       const response = await agentService.listAgents();
-      
+
       if (response.error) {
         toast.error(response.error);
       } else if (response.data) {
@@ -132,13 +132,13 @@ function Agents() {
         setAgents([...agents, response.data]);
         toast.success(t('agents.success.created'));
         // Reset form
-        setCreateForm({ 
-          name: "", 
-          type: "qbittorrent", 
-          address: "", 
-          token: "", 
-          icon: "QBittorrent", 
-          color: "#3b82f6" 
+        setCreateForm({
+          name: "",
+          type: "qbittorrent",
+          address: "",
+          token: "",
+          icon: "QBittorrent",
+          color: "#3b82f6"
         });
         setShowCreateToken(false);
         setShowCreateForm(false);
@@ -198,16 +198,16 @@ function Agents() {
         toast.error(response.error);
       } else if (response.data) {
         // Update the agent in the list
-        const updatedAgents = agents.map(agent => 
+        const updatedAgents = agents.map(agent =>
           agent.uuid === agentToEdit.uuid ? response.data! : agent
         );
         setAgents(updatedAgents);
-        
+
         // Update the selected agent if it's the same one being edited
         if (selectedAgent?.uuid === agentToEdit.uuid) {
           setSelectedAgent(response.data!);
         }
-        
+
         toast.success(t('agents.success.updated'));
         setShowEditModal(false);
         setShowDetailsModal(false);
@@ -221,7 +221,7 @@ function Agents() {
   };
 
   // Filter agents
-  const filteredAgents = agents.filter(agent => 
+  const filteredAgents = agents.filter(agent =>
     agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     agent.address.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -238,7 +238,7 @@ function Agents() {
 
   return (
     <div className="space-y-6">
-      
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
         <div className="flex items-center gap-3">
@@ -337,9 +337,8 @@ function Agents() {
                   <button
                     key={color.value}
                     type="button"
-                    className={`w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 ${
-                      createForm.color === color.value ? 'border-foreground scale-110' : 'border-transparent'
-                    }`}
+                    className={`w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 ${createForm.color === color.value ? 'border-foreground scale-110' : 'border-transparent'
+                      }`}
                     style={{ backgroundColor: color.value }}
                     onClick={() => setCreateForm({ ...createForm, color: color.value })}
                     title={t(`agents.colors.${color.name.toLowerCase()}`)}
@@ -357,9 +356,8 @@ function Agents() {
                     <button
                       key={iconItem.name}
                       type="button"
-                      className={`w-8 h-8 rounded-md border-2 flex items-center justify-center transition-all hover:scale-110 ${
-                        createForm.icon === iconItem.name ? 'border-foreground bg-accent scale-110' : 'border-border hover:container-content-background/50'
-                      }`}
+                      className={`w-8 h-8 rounded-md border-2 flex items-center justify-center transition-all hover:scale-110 ${createForm.icon === iconItem.name ? 'border-foreground bg-accent scale-110' : 'border-border hover:container-content-background/50'
+                        }`}
                       onClick={() => setCreateForm({ ...createForm, icon: iconItem.name })}
                       title={iconItem.name}
                     >
@@ -374,7 +372,7 @@ function Agents() {
             <div className="space-y-1.5">
               <Label className="text-sm">{t('agents.preview')}</Label>
               <div className="flex items-center gap-3 p-3 container-content-background/50 rounded-lg">
-                <AgentIcon 
+                <AgentIcon
                   iconName={createForm.icon}
                   color={createForm.color}
                   size="md"
@@ -448,11 +446,10 @@ function Agents() {
         <>
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {filteredAgents.map((agent) => (
-              <Card 
-                key={agent.uuid} 
-                className={`relative cursor-pointer hover:container-content-background/50 transition-colors ${
-                  agent.status === 'ERRORED' ? 'border border-red-500/30' : ''
-                }`}
+              <Card
+                key={agent.uuid}
+                className={`relative cursor-pointer hover:container-content-background/50 transition-colors ${agent.status === 'ERRORED' ? 'border border-red-500/30' : ''
+                  } ${agent.status === 'INITIALIZING' ? 'border border-yellow-500/30' : ''}`}
                 onClick={() => showAgentDetails(agent)}
               >
                 {agent.standalone && (
@@ -466,7 +463,7 @@ function Agents() {
                     <div className="flex-1 p-4">
                       <div className="flex gap-3 items-center">
                         {/* Icon */}
-                        <AgentIcon 
+                        <AgentIcon
                           iconName={agent.icon}
                           color={agent.color}
                           size="lg"
@@ -484,9 +481,15 @@ function Agents() {
                               {agent.status === 'ERRORED' && (
                                 <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)] ml-0.5"></div>
                               )}
+                              {agent.status === 'INITIALIZING' && (
+                                <div className="w-2 h-2 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.6)] ml-0.5 animate-pulse"></div>
+                              )}
                               <h3 className="font-semibold text-base truncate">{agent.name}</h3>
                               {agent.status === 'ERRORED' && (
                                 <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                              )}
+                              {agent.status === 'INITIALIZING' && (
+                                <Loader2 className="h-4 w-4 text-yellow-500 flex-shrink-0 animate-spin" />
                               )}
                             </div>
                             <p className="text-xs text-muted-foreground flex items-center gap-2">
@@ -550,7 +553,7 @@ function Agents() {
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <div className="cursor-help">
-                                  <QBittorrentIcon 
+                                  <QBittorrentIcon
                                     size="lg"
                                     className="w-8 h-8 text-muted-foreground/60"
                                   />
@@ -585,7 +588,7 @@ function Agents() {
               <DialogHeader>
                 <DialogTitle>{t('agents.deleteAgent')}</DialogTitle>
               </DialogHeader>
-              
+
               {agentToDelete && (
                 <div className="space-y-4">
                   {agentToDelete.standalone ? (
@@ -603,9 +606,9 @@ function Agents() {
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center gap-3 p-3 container-content-background/50 rounded-lg">
-                        <AgentIcon 
+                        <AgentIcon
                           iconName={agentToDelete.icon}
                           color={agentToDelete.color}
                           size="md"
@@ -619,8 +622,8 @@ function Agents() {
                       </div>
 
                       <div className="flex gap-2 justify-end">
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           onClick={() => {
                             setShowDeleteModal(false);
                             setAgentToDelete(null);
@@ -635,9 +638,9 @@ function Agents() {
                       <p className="text-sm text-muted-foreground">
                         {t('agents.confirmDelete.title')} {t('agents.confirmDelete.description')}
                       </p>
-                      
+
                       <div className="flex items-center gap-3 p-3 container-content-background/50 rounded-lg">
-                        <AgentIcon 
+                        <AgentIcon
                           iconName={agentToDelete.icon}
                           color={agentToDelete.color}
                           size="md"
@@ -651,8 +654,8 @@ function Agents() {
                       </div>
 
                       <div className="flex gap-2 justify-end">
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           onClick={() => {
                             setShowDeleteModal(false);
                             setAgentToDelete(null);
@@ -660,8 +663,8 @@ function Agents() {
                         >
                           {t('agents.cancel')}
                         </Button>
-                        <Button 
-                          variant="destructive" 
+                        <Button
+                          variant="destructive"
                           onClick={handleDeleteAgent}
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
@@ -681,160 +684,158 @@ function Agents() {
               <DialogHeader>
                 <DialogTitle>{t('agents.editAgent')} - {agentToEdit?.name}</DialogTitle>
               </DialogHeader>
-              
+
               {agentToEdit && (
                 <CustomScrollArea className="max-h-[calc(90vh-120px)]" variant="thin" mobileFallback>
                   <div className="space-y-4">
-                  {agentToEdit.standalone && (
-                    <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg">
-                      <Server className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                      <div>
-                        <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                          {t('agents.standalone.title')}
-                        </p>
-                        <p className="text-xs text-blue-700 dark:text-blue-300">
-                          {t('agents.standalone.cannotModify')}
-                        </p>
+                    {agentToEdit.standalone && (
+                      <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg">
+                        <Server className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <div>
+                          <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                            {t('agents.standalone.title')}
+                          </p>
+                          <p className="text-xs text-blue-700 dark:text-blue-300">
+                            {t('agents.standalone.cannotModify')}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="edit-name" className="text-sm">{t('agents.name')}</Label>
-                      <Input
-                        id="edit-name"
-                        placeholder={t('agents.agentName')}
-                        value={editForm.name}
-                        onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                        className="h-9"
-                        disabled={agentToEdit.standalone}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="edit-address" className="text-sm">{t('agents.address')}</Label>
-                      <Input
-                        id="edit-address"
-                        placeholder="http://localhost:3100"
-                        value={editForm.address}
-                        onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
-                        className="h-9"
-                        disabled={agentToEdit.standalone}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="edit-token" className="text-sm">{t('agents.token')} ({t('agents.leaveEmptyToKeep')})</Label>
-                    <div className="relative">
-                      <Input
-                        id="edit-token"
-                        type={showEditToken ? "text" : "password"}
-                        placeholder={t('agents.newAuthenticationToken')}
-                        value={editForm.token}
-                        onChange={(e) => setEditForm({ ...editForm, token: e.target.value })}
-                        className="h-9 pr-10"
-                        disabled={agentToEdit.standalone}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowEditToken(!showEditToken)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                        disabled={agentToEdit.standalone}
-                      >
-                        {showEditToken ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="edit-color" className="text-sm">{t('agents.color')}</Label>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {availableColors.map((color) => (
-                        <button
-                          key={color.value}
-                          type="button"
-                          className={`w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 ${
-                            editForm.color === color.value ? 'border-foreground scale-110' : 'border-transparent'
-                          } ${agentToEdit.standalone ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          style={{ backgroundColor: color.value }}
-                          onClick={() => !agentToEdit.standalone && setEditForm({ ...editForm, color: color.value })}
-                          title={t(`agents.colors.${color.name.toLowerCase()}`)}
+                    )}
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="edit-name" className="text-sm">{t('agents.name')}</Label>
+                        <Input
+                          id="edit-name"
+                          placeholder={t('agents.agentName')}
+                          value={editForm.name}
+                          onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                          className="h-9"
                           disabled={agentToEdit.standalone}
                         />
-                      ))}
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="edit-address" className="text-sm">{t('agents.address')}</Label>
+                        <Input
+                          id="edit-address"
+                          placeholder="http://localhost:3100"
+                          value={editForm.address}
+                          onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                          className="h-9"
+                          disabled={agentToEdit.standalone}
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="space-y-1.5">
-                    <Label htmlFor="edit-icon" className="text-sm">{t('agents.icon')}</Label>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {availableIcons.map((iconItem) => {
-                        const IconComponent = iconItem.icon;
-                        return (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="edit-token" className="text-sm">{t('agents.token')} ({t('agents.leaveEmptyToKeep')})</Label>
+                      <div className="relative">
+                        <Input
+                          id="edit-token"
+                          type={showEditToken ? "text" : "password"}
+                          placeholder={t('agents.newAuthenticationToken')}
+                          value={editForm.token}
+                          onChange={(e) => setEditForm({ ...editForm, token: e.target.value })}
+                          className="h-9 pr-10"
+                          disabled={agentToEdit.standalone}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowEditToken(!showEditToken)}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                          disabled={agentToEdit.standalone}
+                        >
+                          {showEditToken ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="edit-color" className="text-sm">{t('agents.color')}</Label>
+                      <div className="flex gap-1.5 flex-wrap">
+                        {availableColors.map((color) => (
                           <button
-                            key={iconItem.name}
+                            key={color.value}
                             type="button"
-                            className={`w-8 h-8 rounded-md border-2 flex items-center justify-center transition-all hover:scale-110 ${
-                              editForm.icon === iconItem.name ? 'border-foreground bg-accent scale-110' : 'border-border hover:container-content-background/50'
-                            } ${agentToEdit.standalone ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            onClick={() => !agentToEdit.standalone && setEditForm({ ...editForm, icon: iconItem.name })}
-                            title={iconItem.name}
+                            className={`w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 ${editForm.color === color.value ? 'border-foreground scale-110' : 'border-transparent'
+                              } ${agentToEdit.standalone ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            style={{ backgroundColor: color.value }}
+                            onClick={() => !agentToEdit.standalone && setEditForm({ ...editForm, color: color.value })}
+                            title={t(`agents.colors.${color.name.toLowerCase()}`)}
                             disabled={agentToEdit.standalone}
-                          >
-                            <IconComponent className="h-4 w-4" />
-                          </button>
-                        );
-                      })}
+                          />
+                        ))}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Preview */}
-                  <div className="space-y-1.5">
-                    <Label className="text-sm">{t('agents.preview')}</Label>
-                    <div className="flex items-center gap-3 p-3 container-content-background/50 rounded-lg">
-                      <AgentIcon 
-                        iconName={editForm.icon}
-                        color={editForm.color}
-                        size="md"
-                        className="w-12 h-12 rounded-lg"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="font-semibold text-sm">
-                          {editForm.name || t('agents.agentName')}
-                        </div>
-                        <div className="text-xs text-muted-foreground truncate">
-                          {editForm.address || "http://localhost:8080"}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="edit-icon" className="text-sm">{t('agents.icon')}</Label>
+                      <div className="flex gap-1.5 flex-wrap">
+                        {availableIcons.map((iconItem) => {
+                          const IconComponent = iconItem.icon;
+                          return (
+                            <button
+                              key={iconItem.name}
+                              type="button"
+                              className={`w-8 h-8 rounded-md border-2 flex items-center justify-center transition-all hover:scale-110 ${editForm.icon === iconItem.name ? 'border-foreground bg-accent scale-110' : 'border-border hover:container-content-background/50'
+                                } ${agentToEdit.standalone ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              onClick={() => !agentToEdit.standalone && setEditForm({ ...editForm, icon: iconItem.name })}
+                              title={iconItem.name}
+                              disabled={agentToEdit.standalone}
+                            >
+                              <IconComponent className="h-4 w-4" />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Preview */}
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">{t('agents.preview')}</Label>
+                      <div className="flex items-center gap-3 p-3 container-content-background/50 rounded-lg">
+                        <AgentIcon
+                          iconName={editForm.icon}
+                          color={editForm.color}
+                          size="md"
+                          className="w-12 h-12 rounded-lg"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="font-semibold text-sm">
+                            {editForm.name || t('agents.agentName')}
+                          </div>
+                          <div className="text-xs text-muted-foreground truncate">
+                            {editForm.address || "http://localhost:8080"}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex gap-2 justify-end pt-1">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => {
-                        setShowEditModal(false);
-                        setShowEditToken(false);
-                        setAgentToEdit(null);
-                      }} 
-                      size="sm"
-                    >
-                      {t('agents.cancel')}
-                    </Button>
-                    <Button 
-                      onClick={handleUpdateAgent} 
-                      size="sm"
-                      disabled={agentToEdit.standalone}
-                      title={agentToEdit.standalone ? t('agents.standalone.tooltip', 'Standalone agent') : t('agents.updateAgentInfo', 'Update agent information')}
-                    >
-                      <Check className="h-4 w-4 mr-1" />
-                      {t('agents.updateAgent')}
-                    </Button>
-                  </div>
+                    <div className="flex gap-2 justify-end pt-1">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setShowEditModal(false);
+                          setShowEditToken(false);
+                          setAgentToEdit(null);
+                        }}
+                        size="sm"
+                      >
+                        {t('agents.cancel')}
+                      </Button>
+                      <Button
+                        onClick={handleUpdateAgent}
+                        size="sm"
+                        disabled={agentToEdit.standalone}
+                        title={agentToEdit.standalone ? t('agents.standalone.tooltip', 'Standalone agent') : t('agents.updateAgentInfo', 'Update agent information')}
+                      >
+                        <Check className="h-4 w-4 mr-1" />
+                        {t('agents.updateAgent')}
+                      </Button>
+                    </div>
                   </div>
                 </CustomScrollArea>
               )}

@@ -25,6 +25,7 @@ import { AgentIcon } from "./ui/AgentIcon";
 import { QBittorrentIcon } from "./ui/QBittorrentIcon";
 import { agentService } from "../services/agents";
 import { versionService } from "../services/version";
+import { useSetup } from "../contexts/SetupContext";
 import { AgentLimits } from "./AgentLimits";
 import { AgentErrorDisplay } from "./AgentErrorDisplay";
 
@@ -53,6 +54,7 @@ export function AgentDetailsModal({
   const [agentVersions, setAgentVersions] = useState<Record<string, Version>>({});
   const [agentTaskStats, setAgentTaskStats] = useState<Record<string, TaskStats>>({});
   const [systemVersion, setSystemVersion] = useState<Version | null>(null);
+  const { statisticsEnabled } = useSetup();
 
   // Load agent details
   const loadAgentDetails = useCallback(async (id: string, agentToPreserve?: Agent | null) => {
@@ -184,7 +186,6 @@ export function AgentDetailsModal({
     }
   }, []);
 
-
   // Load data when modal opens and agentId or initialAgent changes
   useEffect(() => {
     if (isOpen) {
@@ -254,7 +255,7 @@ export function AgentDetailsModal({
         <Tabs defaultValue="detalhes" className="w-full flex-1 flex flex-col min-h-0 overflow-hidden">
           <TabsList className="grid w-full grid-cols-3 shrink-0">
             <TabsTrigger value="detalhes">{t('agents.details')}</TabsTrigger>
-            <TabsTrigger value="limites" disabled={agent?.status === 'ERRORED'}>{t('agents.limits.title')}</TabsTrigger>
+            <TabsTrigger value="limites" disabled={agent?.status === 'ERRORED' || agent?.status === 'INITIALIZING'}>{t('agents.limits.title')}</TabsTrigger>
             <TabsTrigger value="schedules" disabled>{t('agents.schedules')}</TabsTrigger>
           </TabsList>
 
@@ -296,9 +297,15 @@ export function AgentDetailsModal({
                             {agent?.status === 'ERRORED' && (
                               <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)] ml-0.5"></div>
                             )}
+                            {agent?.status === 'INITIALIZING' && (
+                              <div className="w-2 h-2 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.6)] ml-0.5 animate-pulse"></div>
+                            )}
                             <h3 className="font-semibold text-base">{agent?.name}</h3>
                             {agent?.status === 'ERRORED' && (
                               <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                            )}
+                            {agent?.status === 'INITIALIZING' && (
+                              <Loader2 className="h-4 w-4 text-yellow-500 flex-shrink-0 animate-spin" />
                             )}
                             {agent && agentVersions[agent.uuid] && (
                               <TooltipProvider>
@@ -385,7 +392,7 @@ export function AgentDetailsModal({
                       </div>
                     </div>
 
-                    {agent?.status === 'ERRORED' && (
+                    {(agent?.status === 'ERRORED' || agent?.status === 'INITIALIZING') && (
                       <AgentErrorDisplay agent={agent} />
                     )}
 
@@ -444,7 +451,7 @@ export function AgentDetailsModal({
                       </div>
                     )}
 
-                    {agent?.instance && agent?.status !== 'ERRORED' && (
+                    {agent?.instance && agent?.status !== 'ERRORED' && agent?.status !== 'INITIALIZING' && (
                       <div className="space-y-3">
                         <h4 className="font-semibold text-sm">{t('agents.instanceInformation')}</h4>
 
@@ -482,21 +489,22 @@ export function AgentDetailsModal({
                           </div>
 
                           {/* Analytics Card */}
-                          <div className="flex items-center p-3 container-content-background/50 rounded-lg border-2 border-dashed border-primary/20 hover:border-primary/40 transition-colors">
+                          <div className={`flex items-center p-3 container-content-background/50 rounded-lg border-2 border-dashed ${statisticsEnabled ? 'border-primary/20 hover:border-primary/40' : 'border-muted opacity-60'} transition-colors`}>
                             <div className="flex items-center gap-3 flex-1">
-                              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                                <BarChart3 className="h-4 w-4 text-primary" />
+                              <div className={`w-8 h-8 rounded-lg ${statisticsEnabled ? 'bg-primary/10' : 'bg-muted'} flex items-center justify-center flex-shrink-0`}>
+                                <BarChart3 className={`h-4 w-4 ${statisticsEnabled ? 'text-primary' : 'text-muted-foreground'}`} />
                               </div>
 
                               <div className="min-w-0 flex-1">
-                                <h4 className="text-sm font-medium text-primary">Analytics</h4>
+                                <h4 className={`text-sm font-medium ${statisticsEnabled ? 'text-primary' : 'text-muted-foreground'}`}>Analytics</h4>
                                 <p className="text-xs text-muted-foreground">
-                                  View detailed metrics
+                                  {statisticsEnabled ? 'View detailed metrics' : 'Statistics disabled'}
                                 </p>
                               </div>
 
                               <Button
                                 size="sm"
+                                disabled={!statisticsEnabled}
                                 onClick={() => agent && openAnalytics(agent.uuid)}
                                 className="flex items-center gap-1 h-7 px-2"
                               >

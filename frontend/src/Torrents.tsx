@@ -339,21 +339,22 @@ export default function TorrentsPage() {
       // Buscar tasks de cada agente funcional individualmente
       const allTasks: Task[] = [];
 
-      for (const agent of functionalAgents) {
-        try {
-          const response = await torrentService.listAgentTasks(agent.uuid);
-          if (response?.data) {
-            // Adicionar informações do agente a cada task
-            const tasksWithAgent = response.data.map(task => ({
-              ...task,
-              agent: agent
-            }));
-            allTasks.push(...tasksWithAgent);
+      await Promise.allSettled(
+        functionalAgents.map(async (agent) => {
+          try {
+            const response = await torrentService.listAgentTasks(agent.uuid);
+            if (response?.data) {
+              const tasksWithAgent = response.data.map(task => ({
+                ...task,
+                agent: agent
+              }));
+              allTasks.push(...tasksWithAgent);
+            }
+          } catch {
+            // silencioso - ignorar erros individuais de agentes
           }
-        } catch {
-          // silencioso - ignorar erros individuais de agentes
-        }
-      }
+        })
+      );
 
       setOriginalTasks(allTasks);
       const mappedTorrents = allTasks.map(mapTaskToTorrent);
@@ -533,7 +534,7 @@ export default function TorrentsPage() {
   const handleMetadataUpdate = useCallback(async () => {
     // Recarregar torrents silenciosamente para obter metadados atualizados
     const updatedTasks = await refreshTorrentsSilently();
-    
+
     // Atualizar o torrent selecionado no modal se houver um aberto
     setSelectedTorrent(prev => {
       if (prev && updatedTasks.length > 0) {
@@ -773,6 +774,7 @@ export default function TorrentsPage() {
 
     let timeoutId: NodeJS.Timeout;
     let isPageVisible = !document.hidden;
+    let isActive = true;
 
     // Pause auto refresh when page is not visible
     const handleVisibilityChange = () => {
@@ -781,19 +783,21 @@ export default function TorrentsPage() {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    const id = setInterval(() => {
-      // Only update if page is visible and not paused
-      if (!isPageVisible) return;
+    const scheduleNext = () => {
+      if (!isActive) return;
+      timeoutId = setTimeout(async () => {
+        if (!isActive) return;
+        if (isPageVisible) {
+          await refreshTorrentsSilently();
+        }
+        scheduleNext();
+      }, refreshIntervalSec * 1000);
+    };
 
-      // Debounce to prevent excessive updates
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        refreshTorrentsSilently();
-      }, 100); // 100ms debounce
-    }, refreshIntervalSec * 1000);
+    scheduleNext();
 
     return () => {
-      clearInterval(id);
+      isActive = false;
       clearTimeout(timeoutId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
@@ -870,8 +874,8 @@ export default function TorrentsPage() {
     const observer = new IntersectionObserver(
       (entries) => {
         const target = entries[0];
-        if (target.isIntersecting && displayedItemsCount < filteredTorrents.length) {
-          setDisplayedItemsCount(prev => Math.min(prev + ITEMS_PER_LOAD, filteredTorrents.length));
+        if (target.isIntersecting) {
+          setDisplayedItemsCount(prev => prev + ITEMS_PER_LOAD);
         }
       },
       { threshold: 0.1, rootMargin: '200px' }
@@ -880,7 +884,7 @@ export default function TorrentsPage() {
     observer.observe(sentinelRef.current);
 
     return () => observer.disconnect();
-  }, [useCardLazyLoading, displayedItemsCount, filteredTorrents.length, ITEMS_PER_LOAD]);
+  }, [useCardLazyLoading]);
 
   // Intersection Observer para lazy loading (mobile)
   useEffect(() => {
@@ -889,8 +893,8 @@ export default function TorrentsPage() {
     const observer = new IntersectionObserver(
       (entries) => {
         const target = entries[0];
-        if (target.isIntersecting && displayedItemsCount < filteredTorrents.length) {
-          setDisplayedItemsCount(prev => Math.min(prev + ITEMS_PER_LOAD, filteredTorrents.length));
+        if (target.isIntersecting) {
+          setDisplayedItemsCount(prev => prev + ITEMS_PER_LOAD);
         }
       },
       { threshold: 0.1, rootMargin: '200px' }
@@ -899,7 +903,7 @@ export default function TorrentsPage() {
     observer.observe(mobileSentinelRef.current);
 
     return () => observer.disconnect();
-  }, [isMobile, displayedItemsCount, filteredTorrents.length, ITEMS_PER_LOAD]);
+  }, [isMobile]);
 
   // Função para lidar com mudança de itens por página
   const handleItemsPerPageChange = (newItemsPerPage: number) => {

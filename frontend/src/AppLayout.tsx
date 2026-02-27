@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/auth-hooks";
 import VariantColorSelectButton from "@/components/VariantColorSelectButton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import logoImage from "@/assets/img/logo/logo.png";
+import { useSetup } from "@/contexts/SetupContext";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
@@ -17,6 +18,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isDark, setIsDark] = useState<boolean>(false);
   const [isMobile, setIsMobile] = useState(false);
+  const { statisticsEnabled } = useSetup();
   const location = useLocation();
 
   useEffect(() => {
@@ -36,10 +38,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const checkIsMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
-    
+
     checkIsMobile();
     window.addEventListener('resize', checkIsMobile);
-    
+
     return () => window.removeEventListener('resize', checkIsMobile);
   }, []);
 
@@ -62,7 +64,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   const menuItems = [
-    { href: "/", icon: BarChart3, label: t("navigation.dashboard"), key: "dashboard" },
+    ...(statisticsEnabled ? [{ href: "/", icon: BarChart3, label: t("navigation.dashboard"), key: "dashboard" }] : []),
     { href: "/torrents", icon: ArrowDownUp, label: t("navigation.torrents"), key: "torrents" },
     { href: "/agents", icon: Server, label: t("navigation.agents"), key: "agents" },
     { href: "/categories", icon: FolderOpen, label: t("navigation.categories"), key: "categories" },
@@ -77,18 +79,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden max-h-screen">
       {/* Mobile Sidebar Overlay */}
-      <div 
-        className={`fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity duration-300 ${
-          sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
+      <div
+        className={`fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity duration-300 ${sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}
         onClick={() => setSidebarOpen(false)}
       />
-      
+
       {/* Sidebar Esquerda - Responsiva para mobile */}
-      <div 
+      <div
         className={`bg-sidebar border-r border-border flex-col transition-all duration-300 ease-in-out overflow-hidden
-          ${sidebarOpen 
-            ? 'flex fixed inset-y-0 left-0 z-50 w-64 translate-x-0 md:relative md:z-auto md:w-64' 
+          ${sidebarOpen
+            ? 'flex fixed inset-y-0 left-0 z-50 w-64 translate-x-0 md:relative md:z-auto md:w-64'
             : 'fixed inset-y-0 left-0 z-50 w-64 -translate-x-full md:flex md:relative md:translate-x-0 md:w-16'
           }`}
       >
@@ -96,45 +97,42 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="border-b border-border p-4">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
-              <img 
-                src={logoImage} 
-                alt="Gardarr Logo" 
+              <img
+                src={logoImage}
+                alt="Gardarr Logo"
                 className="h-full w-full object-contain"
               />
             </div>
-            <span className={`font-semibold text-lg whitespace-nowrap transition-all duration-200 overflow-hidden ${
-              sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
-            }`}>
+            <span className={`font-semibold text-lg whitespace-nowrap transition-all duration-200 overflow-hidden ${sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
+              }`}>
               Gardarr
             </span>
           </div>
         </div>
-        
+
         {/* Menu de Navegação */}
         <nav className="p-2 flex-1 overflow-auto">
           <ul className="space-y-1">
             {menuItems.map((item) => {
               const IconComponent = item.icon;
               // Special handling for dashboard - should be active on "/" or "/agent/:agent_uuid" paths
-              const isActive = item.href === "/" 
+              const isActive = item.href === "/"
                 ? (location.pathname === "/" || location.pathname.startsWith("/agent/"))
                 : location.pathname === item.href || location.pathname.startsWith(item.href + "/");
               const isCollapsed = !sidebarOpen && !isMobile;
-              
+
               const menuItem = (
                 <Link
                   to={item.href}
                   onClick={() => isMobile && setSidebarOpen(false)}
-                  className={`flex items-center px-3 py-2 rounded-md transition-all ${
-                    isActive 
-                      ? "bg-primary text-primary-foreground" 
-                      : "text-sidebar-foreground hover:bg-primary/90 hover:text-primary-foreground"
-                  } ${isCollapsed ? 'justify-center' : 'gap-3'}`}
+                  className={`flex items-center px-3 py-2 rounded-md transition-all ${isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "text-sidebar-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                    } ${isCollapsed ? 'justify-center' : 'gap-3'}`}
                 >
                   <IconComponent className="h-4 w-4 flex-shrink-0" />
-                  <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${
-                    sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
-                  }`}>
+                  <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
+                    }`}>
                     {item.label}
                   </span>
                 </Link>
@@ -161,26 +159,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             })}
           </ul>
         </nav>
-        
+
         {/* Footer da Sidebar */}
         <div className="border-t border-border p-2 mt-auto space-y-1">
           {(() => {
             const isCollapsed = !sidebarOpen && !isMobile;
-            
+
             const aboutItem = (
               <Link
                 to="/about"
                 onClick={() => isMobile && setSidebarOpen(false)}
-                className={`flex items-center px-3 py-2 rounded-md transition-all ${
-                  location.pathname === "/about"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-sidebar-foreground hover:bg-primary/90 hover:text-primary-foreground"
-                } ${isCollapsed ? 'justify-center' : 'gap-3'}`}
+                className={`flex items-center px-3 py-2 rounded-md transition-all ${location.pathname === "/about"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-sidebar-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                  } ${isCollapsed ? 'justify-center' : 'gap-3'}`}
               >
                 <Info className="h-4 w-4 flex-shrink-0" />
-                <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${
-                  sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
-                }`}>
+                <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
+                  }`}>
                   {t("navigation.about")}
                 </span>
               </Link>
@@ -197,9 +193,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 className={`flex items-center px-3 py-2 rounded-md transition-all text-sidebar-foreground hover:bg-primary/90 hover:text-primary-foreground w-full ${isCollapsed ? 'justify-center' : 'gap-3'}`}
               >
                 <LogOut className="h-4 w-4 flex-shrink-0" />
-                <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${
-                  sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
-                }`}>
+                <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
+                  }`}>
                   {t("auth.logout")}
                 </span>
               </button>
@@ -221,7 +216,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 ) : (
                   aboutItem
                 )}
-                
+
                 {isCollapsed ? (
                   <TooltipProvider>
                     <Tooltip>
@@ -278,13 +273,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {location.pathname === "/profile" && t("navigation.profile")}
               {location.pathname === "/about" && t("navigation.about")}
             </h1>
-            
+
             {/* Mobile: Show site icon and name */}
             <div className="flex items-center gap-2 md:hidden">
               <div className="h-6 w-6 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
-                <img 
-                  src={logoImage} 
-                  alt="Gardarr Logo" 
+                <img
+                  src={logoImage}
+                  alt="Gardarr Logo"
                   className="h-full w-full object-contain"
                 />
               </div>
@@ -293,7 +288,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </span>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2 md:gap-4">
             <Button variant="ghost" size="icon" aria-label={t("theme.toggle")} onClick={toggleTheme} className="h-8 w-8 flex items-center justify-center">
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -310,7 +305,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </Button>
           </div>
         </header>
-        
+
         {/* Conteúdo da Rota */}
         <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden" style={{ maxHeight: 'calc(100vh - 4rem)' }}>
           <div className="w-full max-w-7xl mx-auto p-4 md:p-6">

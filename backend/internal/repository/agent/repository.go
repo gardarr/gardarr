@@ -122,8 +122,9 @@ func (r *Repository) ListAgents() ([]*entities.Agent, error) {
 	}
 
 	// Check if APP_MODE is set to standalone and add mock agent
-	if env.Get(constants.AppModeEnv).Value() == constants.StandaloneMode {
-		result = append(result, r.standaloneAgent)
+	if env.Get(constants.AppModeEnv).Value() == constants.StandaloneMode && r.standaloneAgent != nil {
+		standaloneCopy := *r.standaloneAgent
+		result = append(result, &standaloneCopy)
 	}
 
 	return result, nil
@@ -132,8 +133,9 @@ func (r *Repository) ListAgents() ([]*entities.Agent, error) {
 // GetByUUID retrieves a single instance by its UUID
 func (r *Repository) GetAgentByUUID(uid uuid.UUID) (*entities.Agent, error) {
 	// Check if APP_MODE is set to standalone and add mock agent
-	if uid == constants.StandaloneAgentUUID {
-		return r.standaloneAgent, nil
+	if uid == constants.StandaloneAgentUUID && r.standaloneAgent != nil {
+		standaloneCopy := *r.standaloneAgent
+		return &standaloneCopy, nil
 	}
 
 	var handler models.Agent
@@ -381,6 +383,16 @@ func (r *Repository) CheckAgentAvailability(agent *entities.Agent) error {
 		return &AgentError{
 			Code:      entities.AgentErrorCodeConnectionRefused,
 			Message:   "qBittorrent instance is not accessible",
+			Permanent: false,
+		}
+	case qbt.StatusInitializing:
+		logger.Info("qBittorrent is currently initializing",
+			"agent", agent.Name,
+			"address", agent.Address,
+		)
+		return &AgentError{
+			Code:      entities.AgentErrorCodeServiceUnavailable,
+			Message:   "qBittorrent is starting up",
 			Permanent: false,
 		}
 	}

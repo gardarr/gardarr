@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/infra/database"
@@ -12,6 +13,7 @@ import (
 	"github.com/jfxdev/gardarr/internal/schemas"
 	"github.com/jfxdev/gardarr/internal/services/crypto"
 	metadata "github.com/jfxdev/gardarr/internal/services/task_metadata"
+	"github.com/jfxdev/gardarr/pkg/logger"
 )
 
 type Service struct {
@@ -95,10 +97,21 @@ func (s *Service) ListAgents() ([]*entities.Agent, error) {
 			instance, err := s.repository.GetInstance(a)
 			if err != nil {
 				// isAvailable failed or GetInstance failed - abort execution
-				a.Status = entities.AgentStatusErrored
-				a.Error = err.Error()
-				a.Instance = nil
 				a.ErrorCode, a.Permanent = extractAgentError(err)
+				a.Instance = nil
+				a.Error = err.Error()
+
+				if a.ErrorCode == entities.AgentErrorCodeServiceUnavailable && strings.Contains(strings.ToLower(a.Error), "starting up") {
+					a.Status = entities.AgentStatusInitializing
+				} else {
+					a.Status = entities.AgentStatusErrored
+				}
+
+				logger.Error("failed to get agent instance during list",
+					"agent", a.Name,
+					"error", err.Error(),
+					"code", a.ErrorCode,
+				)
 
 				agentChan <- a
 				return
@@ -253,10 +266,15 @@ func (s *Service) GetAgent(ctx context.Context, id string) (*entities.Agent, err
 			return agent, nil
 		default:
 			// Agent is not available - abort execution and return agent with error status
-			agent.Status = entities.AgentStatusErrored
 			agent.Instance = nil
 			agent.Error = err.Error()
 			agent.ErrorCode, agent.Permanent = extractAgentError(err)
+
+			if agent.ErrorCode == entities.AgentErrorCodeServiceUnavailable && strings.Contains(strings.ToLower(agent.Error), "starting up") {
+				agent.Status = entities.AgentStatusInitializing
+			} else {
+				agent.Status = entities.AgentStatusErrored
+			}
 			return agent, nil
 		}
 	}

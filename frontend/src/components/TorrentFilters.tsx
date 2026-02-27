@@ -10,7 +10,7 @@ function getStatusPriority(status: TorrentStatus): number {
       return 1;
     case "MISSING_FILES":
       return 2;
-    
+
     // Download states - second priority (3-9)
     case "DOWNLOADING":
       return 3;
@@ -30,7 +30,7 @@ function getStatusPriority(status: TorrentStatus): number {
     case "PAUSED_DOWNLOAD":
     case "STOPPED_DOWNLOAD":
       return 10;
-    
+
     // Upload states - third priority (11-17)
     case "UPLOADING":
       return 11;
@@ -45,7 +45,7 @@ function getStatusPriority(status: TorrentStatus): number {
     case "PAUSED_UPLOAD":
     case "STOPPED_UPLOAD":
       return 16;
-    
+
     // Other states - lowest priority (17+)
     case "ALLOCATING":
       return 17;
@@ -176,7 +176,7 @@ export function useTorrentFilters({
         return validTags.some(tag => normalizedSelectedTags.has(tag));
       });
     }
-    
+
     // Aplicar filtro de busca se houver termo
     if (searchTerm.trim()) {
       filtered = filtered.filter(torrent =>
@@ -185,11 +185,11 @@ export function useTorrentFilters({
         torrent.id.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    
+
     // Aplicar ordenação baseada no tipo selecionado
-    return filtered.sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       let comparison = 0;
-      
+
       switch (sortType) {
         case "priority": {
           // Ordenar por prioridade de status (downloading e error primeiro)
@@ -202,7 +202,7 @@ export function useTorrentFilters({
           }
           break;
         }
-          
+
         case "alphabetical":
           // Ordenar alfabeticamente por status, depois por nome
           comparison = a.status.localeCompare(b.status);
@@ -210,35 +210,35 @@ export function useTorrentFilters({
             comparison = a.name.localeCompare(b.name);
           }
           break;
-          
+
         case "size":
           comparison = a.totalSizeBytes - b.totalSizeBytes;
           break;
-          
+
         case "progress":
           comparison = a.progress - b.progress;
           break;
-          
+
         case "download_speed":
           comparison = a.downloadRateBps - b.downloadRateBps;
           break;
-          
+
         case "upload_speed":
           comparison = a.uploadRateBps - b.uploadRateBps;
           break;
-          
+
         case "downloaded":
           comparison = a.downloadedBytes - b.downloadedBytes;
           break;
-          
+
         case "uploaded":
           comparison = a.uploadedBytes - b.uploadedBytes;
           break;
-          
+
         default:
           comparison = a.name.localeCompare(b.name);
       }
-      
+
       // Aplicar direção da ordenação
       return sortDirection === "asc" ? comparison : -comparison;
     });
