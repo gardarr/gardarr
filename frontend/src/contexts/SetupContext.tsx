@@ -16,10 +16,12 @@ export function SetupProvider({ children }: Readonly<{ children: ReactNode }>) {
                 setStatus(result.data);
                 setStatisticsEnabled(result.data.statistics_enabled ?? true);
             } else {
+                setStatus(null);
                 setStatisticsEnabled(true);
             }
         } catch (error) {
             console.error("Failed to check setup status:", error);
+            setStatus(null);
             setStatisticsEnabled(true); // Default to true on error to avoid blocking UI
         } finally {
             setLoading(false);
