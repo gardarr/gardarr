@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import { agentService } from '@/services/agents';
 import { SelectAgent } from '@/components/SelectAgent';
-import { useSetup } from '@/contexts/SetupContext';
+import { useSetup } from '@/contexts/SetupContextBase';
 import StatisticsDisabledAlert from '@/components/StatisticsDisabledAlert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 

@@ -1,15 +1,7 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
+import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import { setupService } from "@/services/setup";
+import { SetupContext } from "./SetupContextBase";
 import type { SetupStatus } from "@/types/setup";
-
-interface SetupContextState {
-    statisticsEnabled: boolean;
-    loading: boolean;
-    checkSetup: () => Promise<void>;
-    status: SetupStatus | null;
-}
-
-const SetupContext = createContext<SetupContextState | undefined>(undefined);
 
 export function SetupProvider({ children }: Readonly<{ children: ReactNode }>) {
     const [statisticsEnabled, setStatisticsEnabled] = useState<boolean>(true);
@@ -52,10 +44,4 @@ export function SetupProvider({ children }: Readonly<{ children: ReactNode }>) {
     );
 }
 
-export function useSetup(): SetupContextState {
-    const context = useContext(SetupContext);
-    if (context === undefined) {
-        throw new Error("useSetup must be used within a SetupProvider");
-    }
-    return context;
-}
+// useSetup moved to SetupContextBase.ts to fix ESLint react-refresh/only-export-components

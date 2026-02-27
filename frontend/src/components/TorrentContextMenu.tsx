@@ -8,7 +8,7 @@ import {
   ContextMenuItem
 } from "@/components/ui/context-menu";
 import { Play, Pause, Trash2, Zap, Radio, CheckCircle, BarChart3, Settings, Info } from "lucide-react";
-import { useSetup } from "@/contexts/SetupContext";
+import { useSetup } from "@/contexts/SetupContextBase";
 
 type TorrentContextMenuProps = {
   taskId: string;

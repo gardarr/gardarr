@@ -9,7 +9,7 @@ import { useAuth } from "@/contexts/auth-hooks";
 import VariantColorSelectButton from "@/components/VariantColorSelectButton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import logoImage from "@/assets/img/logo/logo.png";
-import { useSetup } from "@/contexts/SetupContext";
+import { useSetup } from "@/contexts/SetupContextBase";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();

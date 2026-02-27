@@ -25,7 +25,7 @@ import { AgentIcon } from "./ui/AgentIcon";
 import { QBittorrentIcon } from "./ui/QBittorrentIcon";
 import { agentService } from "../services/agents";
 import { versionService } from "../services/version";
-import { useSetup } from "../contexts/SetupContext";
+import { useSetup } from "../contexts/SetupContextBase";
 import { AgentLimits } from "./AgentLimits";
 import { AgentErrorDisplay } from "./AgentErrorDisplay";
 
