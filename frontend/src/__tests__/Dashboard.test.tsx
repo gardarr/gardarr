@@ -4,6 +4,7 @@ import '@testing-library/jest-dom';
 import { BrowserRouter } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import Dashboard from '../Dashboard';
+import { SetupProvider } from '../contexts/SetupContext';
 
 // Mock react-i18next
 vi.mock('react-i18next', async (importOriginal) => {
@@ -44,7 +45,7 @@ vi.mock('../services/statistics', () => ({
 // Mock agent service
 vi.mock('../services/agents', () => ({
   agentService: {
-    listAgents: vi.fn().mockResolvedValue({ 
+    listAgents: vi.fn().mockResolvedValue({
       data: [
         {
           uuid: '1',
@@ -74,8 +75,8 @@ vi.mock('../services/agents', () => ({
 // Mock setup service
 vi.mock('../services/setup', () => ({
   setupService: {
-    checkSetup: vi.fn().mockResolvedValue({ 
-      data: { statistics_enabled: true } 
+    checkSetup: vi.fn().mockResolvedValue({
+      data: { statistics_enabled: true }
     }),
   },
 }));
@@ -104,12 +105,18 @@ describe('Dashboard Component', () => {
   });
 
   const renderWithRouter = (component: React.ReactElement) => {
-    return render(<BrowserRouter>{component}</BrowserRouter>);
+    return render(
+      <BrowserRouter>
+        <SetupProvider>
+          {component}
+        </SetupProvider>
+      </BrowserRouter>
+    );
   };
 
   it('renders dashboard component', async () => {
     renderWithRouter(<Dashboard />);
-    
+
     // Component should render the dashboard title
     await waitFor(() => {
       expect(screen.getByText('Dashboard')).toBeInTheDocument();
@@ -119,14 +126,14 @@ describe('Dashboard Component', () => {
 
   it('renders dashboard with metrics', async () => {
     renderWithRouter(<Dashboard />);
-    
+
     // Check main dashboard elements
     await waitFor(() => {
       expect(screen.getByText('Dashboard')).toBeInTheDocument();
     }, { timeout: 2000 });
 
     expect(screen.getByText('Real-time analytics and insights for your torrent agents and tasks')).toBeInTheDocument();
-    
+
     // Wait for agent metrics to be rendered after agents are loaded
     await waitFor(() => {
       expect(screen.getByTestId('agent-metrics')).toBeInTheDocument();
@@ -135,14 +142,14 @@ describe('Dashboard Component', () => {
 
   it('renders with date range picker and refresh button', async () => {
     renderWithRouter(<Dashboard />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('Dashboard')).toBeInTheDocument();
     }, { timeout: 2000 });
 
     // Check for date range picker
     expect(screen.getByTestId('date-range-picker')).toBeInTheDocument();
-    
+
     // Check for refresh button
     const refreshButton = screen.getByLabelText('Refresh now');
     expect(refreshButton).toBeInTheDocument();
@@ -153,7 +160,7 @@ describe('Dashboard Component', () => {
 describe('Dashboard Utility Functions', () => {
   // These would be tested if the utility functions were extracted
   // For now, they're tested indirectly through component rendering
-  
+
   it('formats bytes correctly', () => {
     // This would test the formatBytes function if extracted
     // Currently tested through component rendering

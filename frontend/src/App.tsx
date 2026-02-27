@@ -1,6 +1,7 @@
 
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
+import { SetupProvider } from './contexts/SetupContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import AppLayout from './AppLayout'
@@ -28,44 +29,46 @@ function App() {
   return (
     <ErrorBoundary>
       <Router>
-        <AuthProvider>
-          <Toaster richColors />
-          <InstallPrompt />
-          <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/setup" element={<InitialSetupPage />} />
-          <Route path="/signup/:token" element={<SignupPage />} />
-          <Route path="/invite/:code" element={<InviteAcceptPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Outlet />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<DashboardPage />} />
-            <Route path="agent/:agent_uuid" element={<DashboardPage />} />
-            <Route path="agent/:agent_uuid/task/:uuid" element={<DashboardPage />} />
-            <Route path="torrents" element={<TorrentsPage />} />
-            <Route path="agents" element={<AgentsPage />} />
-            <Route path="categories" element={<CategoriesPage />} />
-            <Route path="history" element={<HistoryPage />} />
-            <Route path="integrations" element={<IntegrationsPage />} />
-            <Route path="integrations/webhooks" element={<IntegrationWebhookPage />} />
-            <Route path="users" element={<UsersPage />} />
-            <Route path="settings" element={<ProtectedRoute adminOnly><SettingsPage /></ProtectedRoute>} />
-            <Route path="profile" element={<ProfilePage />} />
-            <Route path="about" element={<AboutPage />} />
-          </Route>
-          {/* Catch-all route for 404 - redirect to home */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-        </AuthProvider>
+        <SetupProvider>
+          <AuthProvider>
+            <Toaster richColors />
+            <InstallPrompt />
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/setup" element={<InitialSetupPage />} />
+              <Route path="/signup/:token" element={<SignupPage />} />
+              <Route path="/invite/:code" element={<InviteAcceptPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Outlet />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<DashboardPage />} />
+                <Route path="agent/:agent_uuid" element={<DashboardPage />} />
+                <Route path="agent/:agent_uuid/task/:uuid" element={<DashboardPage />} />
+                <Route path="torrents" element={<TorrentsPage />} />
+                <Route path="agents" element={<AgentsPage />} />
+                <Route path="categories" element={<CategoriesPage />} />
+                <Route path="history" element={<HistoryPage />} />
+                <Route path="integrations" element={<IntegrationsPage />} />
+                <Route path="integrations/webhooks" element={<IntegrationWebhookPage />} />
+                <Route path="users" element={<UsersPage />} />
+                <Route path="settings" element={<ProtectedRoute adminOnly><SettingsPage /></ProtectedRoute>} />
+                <Route path="profile" element={<ProfilePage />} />
+                <Route path="about" element={<AboutPage />} />
+              </Route>
+              {/* Catch-all route for 404 - redirect to home */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </AuthProvider>
+        </SetupProvider>
       </Router>
     </ErrorBoundary>
   )
