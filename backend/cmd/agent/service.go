@@ -59,6 +59,14 @@ func Run(cmd *cobra.Command, args []string) error {
 
 	// Get qBittorrent configuration
 	qbtBaseURL := env.Get(constants.QBittorrentBaseURLEnv).Value()
+	if qbtBaseURL == "" {
+		if old := env.Get(constants.QBittorrentBaseURLOldEnv).Value(); old != "" {
+			logger.Warn("QBITTORRENT_BASEURL is deprecated, please rename it to QBITTORRENT_URL",
+				"component", "agent",
+			)
+			qbtBaseURL = old
+		}
+	}
 	qbtTimeout := time.Duration(env.Get(constants.QBittorrentRequestTimeoutSecondsEnv).Default(3).ValueInt()) * time.Second
 	qbtMaxRetries := env.Get(constants.QBittorrentMaxRetriesEnv).Default(0).ValueInt()
 	qbtLoginMaxRetries := env.Get(constants.QBittorrentLoginMaxRetriesEnv).Default(5).ValueInt()
@@ -147,16 +155,23 @@ func Run(cmd *cobra.Command, args []string) error {
 	// Monitor qBittorrent auth status — if permanent failure is detected
 	// after MaxLoginRetries consecutive attempts, trigger graceful shutdown
 	// so Docker restart policy can recover the container.
+	monitorCtx, monitorCancel := context.WithCancel(context.Background())
+	defer monitorCancel()
 	go func() {
 		ticker := time.NewTicker(10 * time.Second)
 		defer ticker.Stop()
-		for range ticker.C {
-			if client.IsAuthFailed() {
-				logger.Error("qBittorrent authentication permanently failed, shutting down agent",
-					"component", "agent",
-					"max_login_retries", qbtLoginMaxRetries,
-				)
-				quit <- syscall.SIGTERM
+		for {
+			select {
+			case <-ticker.C:
+				if client.IsAuthFailed() {
+					logger.Error("qBittorrent authentication permanently failed, shutting down agent",
+						"component", "agent",
+						"max_login_retries", qbtLoginMaxRetries,
+					)
+					quit <- syscall.SIGTERM
+					return
+				}
+			case <-monitorCtx.Done():
 				return
 			}
 		}

@@ -182,6 +182,11 @@ This document lists all environment variables used by Gardarr backend.
 - **Default**: `1`
 - **Example**: `QBITTORRENT_RETRY_BACKOFF=2`
 
+### `QBITTORRENT_LOGIN_MAX_RETRIES`
+- **Description**: Maximum number of consecutive authentication failures before the agent gives up and shuts down (triggering a Docker restart). Distinct from `QBITTORRENT_MAX_RETRIES` which governs per-request retries.
+- **Default**: `5`
+- **Example**: `QBITTORRENT_LOGIN_MAX_RETRIES=5`
+
 ---
 
 ## Statistics

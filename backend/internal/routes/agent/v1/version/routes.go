@@ -31,10 +31,13 @@ func (m *Module) Register() {
 
 // getVersion retrieves the version of the application
 func (m *Module) getVersion(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"version":         version.Version,
-		"commit":          version.Commit,
-		"date":            version.Date,
-		"qbittorrent_url": env.Get(constants.QBittorrentBaseURLEnv).Value(),
-	})
+	resp := gin.H{
+		"version": version.Version,
+		"commit":  version.Commit,
+		"date":    version.Date,
+	}
+	if u := env.Get(constants.QBittorrentBaseURLEnv).Value(); u != "" {
+		resp["qbittorrent_url"] = u
+	}
+	c.JSON(http.StatusOK, resp)
 }
