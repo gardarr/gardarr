@@ -151,7 +151,7 @@ The easiest way to get started. Manages a single qBittorrent instance.
 cp examples/standalone/docker-compose.yml docker-compose.yml
 
 # Configure credentials
-echo "QBITTORRENT_BASEURL=http://your-qbittorrent:8080" >> .env
+echo "QBITTORRENT_URL=http://your-qbittorrent:8080" >> .env
 echo "QBITTORRENT_USERNAME=your_username" >> .env
 echo "QBITTORRENT_PASSWORD=your_password" >> .env
 
@@ -333,7 +333,7 @@ Gardarr is configured via environment variables. Create a `.env` file in the roo
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `QBITTORRENT_BASEURL` | Base URL of qBittorrent Web UI | - |
+| `QBITTORRENT_URL` | Base URL of qBittorrent Web UI | - |
 | `QBITTORRENT_USERNAME` | qBittorrent username | - |
 | `QBITTORRENT_PASSWORD` | qBittorrent password | - |
 | `QBITTORRENT_REQUEST_TIMEOUT_SECONDS` | Request timeout | `3` |

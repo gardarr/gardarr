@@ -151,10 +151,10 @@ This document lists all environment variables used by Gardarr backend.
 
 ## qBittorrent (Standalone Mode)
 
-### `QBITTORRENT_BASEURL`
+### `QBITTORRENT_URL`
 - **Description**: Base URL of the qBittorrent Web UI
 - **Default**: None (required in standalone mode)
-- **Example**: `QBITTORRENT_BASEURL=http://localhost:8080`
+- **Example**: `QBITTORRENT_URL=http://localhost:8080`
 
 ### `QBITTORRENT_USERNAME`
 - **Description**: qBittorrent Web UI username
@@ -181,6 +181,11 @@ This document lists all environment variables used by Gardarr backend.
 - **Description**: Backoff time in seconds between retries
 - **Default**: `1`
 - **Example**: `QBITTORRENT_RETRY_BACKOFF=2`
+
+### `QBITTORRENT_LOGIN_MAX_RETRIES`
+- **Description**: Maximum number of consecutive authentication failures before the agent gives up and shuts down (triggering a Docker restart). Distinct from `QBITTORRENT_MAX_RETRIES` which governs per-request retries.
+- **Default**: `5`
+- **Example**: `QBITTORRENT_LOGIN_MAX_RETRIES=5`
 
 ---
 
@@ -246,7 +251,7 @@ DATABASE_FILE_PATH=./gardarr.db
 
 # Standalone mode
 # APP_MODE=standalone
-# QBITTORRENT_BASEURL=http://localhost:8080
+# QBITTORRENT_URL=http://localhost:8080
 # QBITTORRENT_USERNAME=admin
 # QBITTORRENT_PASSWORD=adminadmin
 ```
@@ -281,7 +286,7 @@ APP_MODE=standalone
 APP_PORT=3200
 AGENT_PORT=3100
 
-QBITTORRENT_BASEURL=http://localhost:8080
+QBITTORRENT_URL=http://localhost:8080
 QBITTORRENT_USERNAME=admin
 QBITTORRENT_PASSWORD=adminadmin
 ```

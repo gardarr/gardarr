@@ -19,6 +19,7 @@ export interface Version {
   version: string;
   commit: string;
   date: string;
+  qbittorrent_url?: string;
 }
 
 export type AgentStatus = 'ACTIVE' | 'ERRORED' | 'INACTIVE' | 'INITIALIZING' | 'PENDING';
@@ -135,4 +136,11 @@ export interface ActiveLimitsSchema {
   max_active_uploads: number;
   max_active_torrents: number;
   max_active_checking_torrents: number;
+}
+
+export interface LogEntry {
+  id: number;
+  message: string;
+  timestamp: number;
+  type: 1 | 2 | 4 | 8;
 }

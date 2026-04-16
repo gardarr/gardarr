@@ -26,15 +26,15 @@ export default function HistoryPage() {
     try {
       const offset = page * limit;
       let url = `/events?limit=${limit}&offset=${offset}`;
-      
+
       if (filterType && filterType !== "all") {
         url += `&type=${encodeURIComponent(filterType)}`;
       }
-      
+
       if (searchQuery) {
         url += `&search=${encodeURIComponent(searchQuery)}`;
       }
-      
+
       const response = await api.get<EventsResponse>(url);
 
       if (response.data) {
@@ -51,13 +51,6 @@ export default function HistoryPage() {
   useEffect(() => {
     loadEvents();
   }, [loadEvents]);
-
-  // IMPORTANT: These stats are calculated from the current page of events only (up to 50 events),
-  // not from the total event history. They represent counts within the currently displayed page.
-  // The 'total' variable contains the aggregate count across all pages.
-  const completedCount = events.filter(e => e.type === 'torrent.completed').length;
-  const addedCount = events.filter(e => e.type === 'torrent.added').length;
-  const stateChangeCount = events.filter(e => e.type === 'torrent.state_change').length;
 
   return (
     <div className="space-y-6">
@@ -80,51 +73,6 @@ export default function HistoryPage() {
           <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
           {t('history.refresh')}
         </Button>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-        <Card>
-          <CardContent className="pt-4 pb-4">
-            <div className="text-2xl font-bold text-primary">{total}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {t('history.stats.totalEvents', 'Total Events')}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-4">
-            <div className="text-2xl font-bold text-emerald-500">{completedCount}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {t('history.badge.completed')}
-            </p>
-            <p className="text-[10px] text-muted-foreground/70 mt-0.5">
-              (Current Page)
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-4">
-            <div className="text-2xl font-bold text-green-500">{addedCount}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {t('history.badge.added')}
-            </p>
-            <p className="text-[10px] text-muted-foreground/70 mt-0.5">
-              (Current Page)
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-4">
-            <div className="text-2xl font-bold text-blue-500">{stateChangeCount}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {t('history.badge.stateChange')}
-            </p>
-            <p className="text-[10px] text-muted-foreground/70 mt-0.5">
-              (Current Page)
-            </p>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Event List */}

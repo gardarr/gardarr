@@ -173,3 +173,12 @@ func (s *Repository) SetMaxActiveTorrentLimits(maxDownloads, maxUploads, maxTorr
 
 	return nil
 }
+
+func (s *Repository) GetLogs(normal bool, info bool, warning bool, critical bool, lastKnownID int) ([]*qbt.LogEntry, error) {
+	logs, err := s.client.GetLogs(normal, info, warning, critical, lastKnownID)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get logs")
+	}
+
+	return logs, nil
+}

@@ -302,7 +302,7 @@ export default function ProfilePage() {
         color_palette_3_accent: string;
         color_palette_3_muted: string;
       }>("/profile/preferences", payload);
-      
+
       if (response.data) {
         const displayMode = response.data.torrent_display_mode as "table" | "card" | "list";
         setDisplayMode(displayMode);
@@ -347,7 +347,7 @@ export default function ProfilePage() {
           color_palette_3_accent: response.data.color_palette_3_accent,
           color_palette_3_muted: response.data.color_palette_3_muted,
         });
-        
+
         // Dispatch custom event to notify other components
         window.dispatchEvent(new Event('preferencesUpdated'));
 
@@ -392,7 +392,7 @@ export default function ProfilePage() {
     setPalettes(prev => {
       const [, paletteNum, colorType] = key.match(/color_palette_(\d+)_(\w+)/) || [];
       if (!paletteNum || !colorType) return prev;
-      
+
       const paletteKey = `palette${paletteNum}` as 'palette1' | 'palette2' | 'palette3';
       return {
         ...prev,
@@ -429,10 +429,6 @@ export default function ProfilePage() {
     setIsDark(nextDark);
   };
 
-  const changeLanguage = (lng: string) => {
-    i18n.changeLanguage(lng);
-    localStorage.setItem("app_language", lng);
-  };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -592,33 +588,6 @@ export default function ProfilePage() {
 
               <Separator />
 
-              {/* Language Preference */}
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">
-                    {t("profile.preferences.language")}
-                  </label>
-                  <p className="text-sm text-muted-foreground">
-                    {i18n.language === 'pt-BR' ? 'Português (Brasil)' : 'English (US)'}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant={i18n.language === 'en-US' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => changeLanguage('en-US')}
-                  >
-                    English
-                  </Button>
-                  <Button
-                    variant={i18n.language === 'pt-BR' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => changeLanguage('pt-BR')}
-                  >
-                    Português
-                  </Button>
-                </div>
-              </div>
 
             </CardContent>
           </Card>
@@ -863,7 +832,7 @@ export default function ProfilePage() {
                       {/* Preview Card */}
                       <div className="rounded-lg border bg-card">
                         <div className="p-3 flex items-center gap-3 border-b">
-                          <div 
+                          <div
                             className="w-8 h-8 rounded-md flex items-center justify-center"
                             style={{ backgroundColor: palettes.palette1.primary }}
                           >
@@ -947,7 +916,7 @@ export default function ProfilePage() {
                       {/* Preview Card */}
                       <div className="rounded-lg border bg-card">
                         <div className="p-3 flex items-center gap-3 border-b">
-                          <div 
+                          <div
                             className="w-8 h-8 rounded-md flex items-center justify-center"
                             style={{ backgroundColor: palettes.palette2.primary }}
                           >
@@ -1031,7 +1000,7 @@ export default function ProfilePage() {
                       {/* Preview Card */}
                       <div className="rounded-lg border bg-card">
                         <div className="p-3 flex items-center gap-3 border-b">
-                          <div 
+                          <div
                             className="w-8 h-8 rounded-md flex items-center justify-center"
                             style={{ backgroundColor: palettes.palette3.primary }}
                           >

@@ -14,7 +14,9 @@ const (
 	QBittorrentRequestTimeoutSecondsEnv = "QBITTORRENT_REQUEST_TIMEOUT_SECONDS"
 	QBittorrentMaxRetriesEnv            = "QBITTORRENT_MAX_RETRIES"
 	QBittorrentRetryBackoffEnv          = "QBITTORRENT_RETRY_BACKOFF"
-	QBittorrentBaseURLEnv               = "QBITTORRENT_BASEURL"
+	QBittorrentLoginMaxRetriesEnv       = "QBITTORRENT_LOGIN_MAX_RETRIES"
+	QBittorrentBaseURLEnv               = "QBITTORRENT_URL"
+	QBittorrentBaseURLOldEnv            = "QBITTORRENT_BASEURL" // Deprecated: use QBITTORRENT_URL
 	QBittorrentUsernameEnv              = "QBITTORRENT_USERNAME"
 	QBittorrentPasswordEnv              = "QBITTORRENT_PASSWORD"
 )

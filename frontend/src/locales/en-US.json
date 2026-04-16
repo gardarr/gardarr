@@ -695,6 +695,10 @@
     "agents": "Agents",
     "of": "of",
     "torrents": "torrents",
+    "logs": {
+      "title": "Logs",
+      "noLogs": "No logs found for the selected filters"
+    },
     "sortedBy": "sorted by",
     "loading": "Loading torrents...",
     "error": "Error loading torrents",

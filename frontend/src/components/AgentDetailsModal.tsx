@@ -15,7 +15,6 @@ import {
   BarChart3,
   Lock,
   Edit,
-  Info,
   ExternalLink
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -28,6 +27,7 @@ import { versionService } from "../services/version";
 import { useSetup } from "../contexts/SetupContextBase";
 import { AgentLimits } from "./AgentLimits";
 import { AgentErrorDisplay } from "./AgentErrorDisplay";
+import { AgentLogsTab } from "./AgentLogsTab";
 
 interface AgentDetailsModalProps {
   isOpen: boolean;
@@ -253,8 +253,9 @@ export function AgentDetailsModal({
         </DialogHeader>
 
         <Tabs defaultValue="detalhes" className="w-full flex-1 flex flex-col min-h-0 overflow-hidden">
-          <TabsList className="grid w-full grid-cols-3 shrink-0">
+          <TabsList className="grid w-full grid-cols-4 shrink-0">
             <TabsTrigger value="detalhes">{t('agents.details')}</TabsTrigger>
+            <TabsTrigger value="logs" disabled={agent?.status === 'ERRORED' || agent?.status === 'INITIALIZING'}>{t('agents.logs.title', 'Logs')}</TabsTrigger>
             <TabsTrigger value="limites" disabled={agent?.status === 'ERRORED' || agent?.status === 'INITIALIZING'}>{t('agents.limits.title')}</TabsTrigger>
             <TabsTrigger value="schedules" disabled>{t('agents.schedules')}</TabsTrigger>
           </TabsList>
@@ -307,36 +308,7 @@ export function AgentDetailsModal({
                             {agent?.status === 'INITIALIZING' && (
                               <Loader2 className="h-4 w-4 text-yellow-500 flex-shrink-0 animate-spin" />
                             )}
-                            {agent && agentVersions[agent.uuid] && (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div className="cursor-help">
-                                      <Info className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-                                    </div>
-                                  </TooltipTrigger>
-                                  <TooltipContent className="max-w-xs">
-                                    <div className="space-y-1 text-sm">
-                                      <div className="font-medium">{t('agents.agentVersion', 'Agent Version')}</div>
-                                      <div className="space-y-0.5">
-                                        <div className="flex justify-between gap-2">
-                                          <span className="text-muted-foreground">{t('agents.version')}:</span>
-                                          <span className="font-mono text-xs">{agentVersions[agent.uuid].version}</span>
-                                        </div>
-                                        <div className="flex justify-between gap-2">
-                                          <span className="text-muted-foreground">{t('agents.commit')}:</span>
-                                          <span className="font-mono text-xs">{agentVersions[agent.uuid].commit}</span>
-                                        </div>
-                                        <div className="flex justify-between gap-2">
-                                          <span className="text-muted-foreground">{t('agents.date')}:</span>
-                                          <span className="font-mono text-xs">{agentVersions[agent.uuid].date}</span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            )}
+
                           </div>
                           <p className="text-xs text-muted-foreground">{agent?.address}</p>
                           {agent && systemVersion && agentVersions[agent.uuid] && compareVersions(agentVersions[agent.uuid].version, systemVersion.version) < 0 && (
@@ -395,6 +367,51 @@ export function AgentDetailsModal({
                     {(agent?.status === 'ERRORED' || agent?.status === 'INITIALIZING') && (
                       <AgentErrorDisplay agent={agent} />
                     )}
+
+                    {(() => {
+                      const currentVersion = agent ? agentVersions[agent.uuid] : null;
+                      if (!agent || !currentVersion) return null;
+                      return (
+                        <div className="space-y-3">
+                          <h4 className="font-semibold text-sm">{t('agents.agentInformation', 'Agent Information')}</h4>
+                          <div className="space-y-2 p-3 container-content-background/50 rounded-lg">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                              <Server className="h-3 w-3" />
+                              <span>{t('agents.details', 'Details')}</span>
+                            </div>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between items-center">
+                                <span className="text-muted-foreground">{t('agents.version')}:</span>
+                                <span className="font-mono">{currentVersion.version}</span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-muted-foreground">{t('agents.commit')}:</span>
+                                <span className="font-mono text-xs">{currentVersion.commit}</span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-muted-foreground">{t('agents.date')}:</span>
+                                <span className="font-mono text-xs">{currentVersion.date}</span>
+                              </div>
+                              {currentVersion.qbittorrent_url && (
+                                <div className="flex justify-between items-center mt-2 pt-2 border-t border-border/50">
+                                  <span className="text-muted-foreground">{t('agents.qbittorrentUrl', 'qBittorrent URL')}:</span>
+                                  <span className="font-mono text-xs break-all text-right ml-4">
+                                    {currentVersion.qbittorrent_url.startsWith('http') ? (
+                                      <a href={currentVersion.qbittorrent_url} target="_blank" rel="noreferrer" className="text-primary hover:underline flex items-center justify-end gap-1">
+                                        {currentVersion.qbittorrent_url}
+                                        <ExternalLink className="h-3 w-3" />
+                                      </a>
+                                    ) : (
+                                      currentVersion.qbittorrent_url
+                                    )}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {agent?.status === 'ERRORED' && (
                       <div className="space-y-3">
@@ -618,6 +635,10 @@ export function AgentDetailsModal({
                   </div>
                 )}
               </div>
+            </TabsContent>
+
+            <TabsContent value="logs" className="mt-4 flex-1 h-[calc(100vh-270px)]">
+              {agent && <AgentLogsTab agentId={agent.uuid} />}
             </TabsContent>
 
             <TabsContent value="limites" className="mt-4">

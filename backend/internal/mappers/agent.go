@@ -27,9 +27,10 @@ func ToAgentResponse(e *entities.Agent) *models.AgentResponse {
 
 func ToAgentVersion(m models.AgentVersionResponse) *entities.AgentVersion {
 	return &entities.AgentVersion{
-		Version: m.Version,
-		Commit:  m.Commit,
-		Date:    m.Date,
+		Version:        m.Version,
+		Commit:         m.Commit,
+		Date:           m.Date,
+		QbittorrentURL: m.QbittorrentURL,
 	}
 }
 
@@ -39,8 +40,9 @@ func ToAgentVersionResponse(e *entities.AgentVersion) models.AgentVersionRespons
 	}
 
 	return models.AgentVersionResponse{
-		Version: e.Version,
-		Commit:  e.Commit,
-		Date:    e.Date,
+		Version:        e.Version,
+		Commit:         e.Commit,
+		Date:           e.Date,
+		QbittorrentURL: e.QbittorrentURL,
 	}
 }

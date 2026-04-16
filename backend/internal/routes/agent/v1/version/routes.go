@@ -4,7 +4,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jfxdev/gardarr/internal/constants"
 	"github.com/jfxdev/gardarr/internal/middlewares"
+	"github.com/jfxdev/gardarr/pkg/env"
 	"github.com/jfxdev/gardarr/pkg/version"
 )
 
@@ -29,9 +31,13 @@ func (m *Module) Register() {
 
 // getVersion retrieves the version of the application
 func (m *Module) getVersion(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
+	resp := gin.H{
 		"version": version.Version,
 		"commit":  version.Commit,
 		"date":    version.Date,
-	})
+	}
+	if u := env.Get(constants.QBittorrentBaseURLEnv).Value(); u != "" {
+		resp["qbittorrent_url"] = u
+	}
+	c.JSON(http.StatusOK, resp)
 }

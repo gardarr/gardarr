@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/jfxdev/gardarr/internal/entities"
+	"github.com/jfxdev/go-qbt"
 )
 
 // RepositoryInterface defines the interface for instance repository operations
@@ -16,4 +17,5 @@ type RepositoryInterface interface {
 	SetDownloadSpeedLimit(limit int) error
 	SetUploadSpeedLimit(limit int) error
 	SetMaxActiveTorrentLimits(maxDownloads, maxUploads, maxTorrents, maxChecking int) error
+	GetLogs(normal bool, info bool, warning bool, critical bool, lastKnownID int) ([]*qbt.LogEntry, error)
 }

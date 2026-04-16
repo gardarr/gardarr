@@ -5,6 +5,7 @@ import (
 
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/schemas"
+	"github.com/jfxdev/go-qbt"
 )
 
 type TaskService interface {
@@ -38,6 +39,7 @@ type InstanceService interface {
 	GetPreferences(context.Context) (*entities.InstancePreferences, error)
 	SetSpeedLimit(context.Context, schemas.InstanceSetSpeedLimitSchema) error
 	SetMaxActiveTorrentLimits(context.Context, schemas.InstanceSetMaxActiveTorrentLimitsSchema) error
+	GetLogs(ctx context.Context, normal bool, info bool, warning bool, critical bool, lastKnownID int) ([]*qbt.LogEntry, error)
 }
 
 // TaskRepositoryInterface defines the interface for task repository operations

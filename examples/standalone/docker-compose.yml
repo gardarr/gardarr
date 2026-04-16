@@ -16,7 +16,7 @@ services:
       STATISTICS_INTERVAL: 5s
       STATISTICS_DIR: /data/statistics
       # Replace the following placeholder values with your actual qBittorrent credentials
-      QBITTORRENT_BASEURL: "${QBITTORRENT_BASEURL}"
+      QBITTORRENT_URL: "${QBITTORRENT_URL}"
       QBITTORRENT_USERNAME: "${QBITTORRENT_USERNAME}"
       QBITTORRENT_PASSWORD: "${QBITTORRENT_PASSWORD}"
     volumes:

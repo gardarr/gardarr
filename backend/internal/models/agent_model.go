@@ -48,9 +48,10 @@ type AgentResponse struct {
 }
 
 type AgentVersionResponse struct {
-	Version string `json:"version"`
-	Commit  string `json:"commit"`
-	Date    string `json:"date"`
+	Version        string `json:"version"`
+	Commit         string `json:"commit"`
+	Date           string `json:"date"`
+	QbittorrentURL string `json:"qbittorrent_url,omitempty"`
 }
 
 type AgentLivenessResponse struct {

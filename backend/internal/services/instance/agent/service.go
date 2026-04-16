@@ -81,3 +81,7 @@ func (s *service) SetMaxActiveTorrentLimits(ctx context.Context, schema schemas.
 		schema.MaxActiveCheckingTorrents,
 	)
 }
+
+func (s *service) GetLogs(ctx context.Context, normal bool, info bool, warning bool, critical bool, lastKnownID int) ([]*qbt.LogEntry, error) {
+	return s.repository.GetLogs(normal, info, warning, critical, lastKnownID)
+}
