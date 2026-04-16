@@ -340,7 +340,7 @@ export function EventList({
                           renderStateChange(event.old_value, event.new_value)
                         ) : (
                           getEventDescription(event) && (
-                            <p className="text-xs text-muted-foreground font-mono truncate max-w-[200px]" title={getEventDescription(event) || undefined}>
+                            <p className="text-xs text-muted-foreground font-mono truncate max-w-[200px]" title={getEventDescription(event) ?? undefined}>
                               {getEventDescription(event)}
                             </p>
                           )

@@ -612,7 +612,10 @@
       "saveActiveLimits": "Salvar Limites de Atividade",
       "activeToastTitle": "Limites de atividade atualizados"
     },
-    "schedules": "Programações"
+    "schedules": "Programações",
+    "logs": {
+      "noLogs": "Nenhum log encontrado para os filtros selecionados"
+    }
   },
   "users": {
     "title": "Usuários",

@@ -40,6 +40,7 @@ export function AgentLogsTab({ agentId }: AgentLogsTabProps) {
     const fetchLogs = useCallback(async (isRefresh = false) => {
         if (!agentId) return;
 
+        let fetchSucceeded = false;
         try {
             setLoading(true);
             setError(null);
@@ -76,17 +77,18 @@ export function AgentLogsTab({ agentId }: AgentLogsTabProps) {
             } else if (!isRefresh) {
                 setLogs([]);
             }
+            fetchSucceeded = true;
         } catch (err) {
             console.error("Failed to fetch logs:", err);
             setError(err instanceof Error ? err.message : "Failed to load logs");
         } finally {
             setLoading(false);
-            if (isRefresh && !error) {
+            if (isRefresh && fetchSucceeded) {
                 setRefreshSuccess(true);
                 setTimeout(() => setRefreshSuccess(false), 2000);
             }
         }
-    }, [agentId, showNormal, showInfo, showWarning, showCritical, error]);
+    }, [agentId, showNormal, showInfo, showWarning, showCritical]);
 
     // Initial fetch and handle filter changes
     useEffect(() => {
