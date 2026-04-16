@@ -397,7 +397,7 @@ export function AgentDetailsModal({
                                   <span className="text-muted-foreground">{t('agents.qbittorrentUrl', 'qBittorrent URL')}:</span>
                                   <span className="font-mono text-xs break-all text-right ml-4">
                                     {currentVersion.qbittorrent_url.startsWith('http') ? (
-                                      <a href={currentVersion.qbittorrent_url} target="_blank" rel="noreferrer noopener" className="text-primary hover:underline flex items-center justify-end gap-1">
+                                      <a href={currentVersion.qbittorrent_url} target="_blank" rel="noreferrer" className="text-primary hover:underline flex items-center justify-end gap-1">
                                         {currentVersion.qbittorrent_url}
                                         <ExternalLink className="h-3 w-3" />
                                       </a>

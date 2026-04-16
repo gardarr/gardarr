@@ -129,8 +129,7 @@ export class AgentService {
     if (options.critical !== undefined) params.append('critical', options.critical.toString());
     if (options.lastKnownId !== undefined) params.append('last_known_id', options.lastKnownId.toString());
 
-    const qs = params.toString();
-    return api.get<LogEntry[]>(`/agent/${agentId}/logs${qs ? `?${qs}` : ''}`);
+    return api.get<LogEntry[]>(`/agent/${agentId}/logs?${params.toString()}`);
   }
 }
 
