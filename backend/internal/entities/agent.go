@@ -70,7 +70,8 @@ type Agent struct {
 }
 
 type AgentVersion struct {
-	Version string
-	Commit  string
-	Date    string
+	Version        string
+	Commit         string
+	Date           string
+	QbittorrentURL string
 }

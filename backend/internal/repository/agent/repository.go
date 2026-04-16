@@ -484,9 +484,10 @@ func (r *Repository) GetInstanceWithoutDecrypt(agent *entities.Agent) (*entities
 func (r *Repository) GetAgentVersion(agent *entities.Agent) (*entities.AgentVersion, error) {
 	if agent.Standalone {
 		return &entities.AgentVersion{
-			Version: version.Version,
-			Commit:  version.Commit,
-			Date:    version.Date,
+			Version:        version.Version,
+			Commit:         version.Commit,
+			Date:           version.Date,
+			QbittorrentURL: env.Get(constants.QBittorrentBaseURLEnv).Value(),
 		}, nil
 	}
 
@@ -646,6 +647,67 @@ func (r *Repository) DeleteAgent(uid uuid.UUID) error {
 	}
 
 	return nil
+}
+
+// GetAgentLogs proxies the logs request to the agent
+func (r *Repository) GetAgentLogs(agent *entities.Agent, normal, info, warning, critical bool, lastKnownID int) ([]*qbt.LogEntry, error) {
+	if err := r.isAvailable(agent); err != nil {
+		return nil, err
+	}
+
+	urlObj, err := url.Parse(fmt.Sprintf("%s/v1/instance/logs", agent.Address))
+	if err != nil {
+		return nil, err
+	}
+
+	query := urlObj.Query()
+	query.Set("normal", strconv.FormatBool(normal))
+	query.Set("info", strconv.FormatBool(info))
+	query.Set("warning", strconv.FormatBool(warning))
+	query.Set("critical", strconv.FormatBool(critical))
+	if lastKnownID > 0 {
+		query.Set("last_known_id", strconv.Itoa(lastKnownID))
+	}
+	urlObj.RawQuery = query.Encode()
+
+	req, err := http.NewRequest("GET", urlObj.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var decryptedToken string
+	if agent.Standalone {
+		decryptedToken = env.Get(constants.AgentSecretEnv).Value()
+	} else {
+		decryptedToken, err = r.crypto.Decrypt(agent.Token)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", decryptedToken))
+
+	response, err := r.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to get agent logs, status: %d", response.StatusCode)
+	}
+
+	var handler []*qbt.LogEntry
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := json.NewDecoder(bytes.NewReader(body)).Decode(&handler); err != nil {
+		return nil, err
+	}
+
+	return handler, nil
 }
 
 func (r *Repository) ListAgentTasks(agent *entities.Agent) ([]*entities.Task, error) {

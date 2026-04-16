@@ -42,7 +42,7 @@ services:
       AGENT_PORT: ${AGENT_PORT:-3100}
       AGENT_SECRET: ${AGENT_SECRET}
       # Replace the following placeholder values with your actual qBittorrent credentials
-      QBITTORRENT_BASEURL: "${QBITTORRENT_BASEURL}"
+      QBITTORRENT_URL: "${QBITTORRENT_URL}"
       QBITTORRENT_USERNAME: "${QBITTORRENT_USERNAME}"
       QBITTORRENT_PASSWORD: "${QBITTORRENT_PASSWORD}"
     restart: unless-stopped

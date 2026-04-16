@@ -14,6 +14,7 @@ import (
 	"github.com/jfxdev/gardarr/internal/services/crypto"
 	metadata "github.com/jfxdev/gardarr/internal/services/task_metadata"
 	"github.com/jfxdev/gardarr/pkg/logger"
+	"github.com/jfxdev/go-qbt"
 )
 
 type Service struct {
@@ -676,4 +677,13 @@ func (s *Service) SetAgentGlobalSpeedLimits(ctx context.Context, agent *entities
 
 func (s *Service) SetAgentGlobalActiveLimits(ctx context.Context, agent *entities.Agent, schema schemas.InstanceSetMaxActiveTorrentLimitsSchema) error {
 	return s.repository.SetAgentGlobalActiveLimits(agent, schema)
+}
+
+func (s *Service) GetAgentLogs(ctx context.Context, agentID string, normal, info, warning, critical bool, lastKnownID int) ([]*qbt.LogEntry, error) {
+	agent, err := s.fetchAgent(agentID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.repository.GetAgentLogs(agent, normal, info, warning, critical, lastKnownID)
 }

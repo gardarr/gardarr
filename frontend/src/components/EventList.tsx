@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Separator } from "@/components/ui/separator";
 import { normalizeTaskStatus } from "@/utils/statusUtils";
 import { type EventType, EVENT_TYPES } from "@/constants/eventTypes";
 import {
@@ -24,7 +23,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { 
+import {
   AlertCircle,
   CheckCircle,
   XCircle,
@@ -147,10 +146,10 @@ export function EventList({
 
   const renderStateChange = (oldValue?: string, newValue?: string) => {
     if (!oldValue || !newValue) return null;
-    
+
     const oldStatus = normalizeTaskStatus(oldValue);
     const newStatus = normalizeTaskStatus(newValue);
-    
+
     return (
       <div className="flex items-center gap-2 flex-wrap">
         <StatusBadge status={oldStatus} size="sm" showTooltip={false} showLabel={true} />
@@ -167,7 +166,7 @@ export function EventList({
       "torrent.removed": t("history.badge.removed"),
       "torrent.completed": t("history.badge.completed"),
     };
-    
+
     return typeMap[type];
   };
 
@@ -177,40 +176,40 @@ export function EventList({
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
     const maxVisible = 7;
-    
+
     if (totalPages <= maxVisible) {
       for (let i = 0; i < totalPages; i++) {
         pages.push(i);
       }
     } else {
       pages.push(0);
-      
+
       let start = Math.max(1, page - 1);
       let end = Math.min(totalPages - 2, page + 1);
-      
+
       if (page < 3) {
         end = 4;
       }
-      
+
       if (page > totalPages - 4) {
         start = totalPages - 5;
       }
-      
+
       if (start > 1) {
         pages.push('...');
       }
-      
+
       for (let i = start; i <= end; i++) {
         pages.push(i);
       }
-      
+
       if (end < totalPages - 2) {
         pages.push('...');
       }
-      
+
       pages.push(totalPages - 1);
     }
-    
+
     return pages;
   };
 
@@ -231,7 +230,7 @@ export function EventList({
             className="pl-9 h-9"
           />
         </div>
-        
+
         <Select value={filterType} onValueChange={(value) => {
           onFilterChange(value as FilterType);
           onPageChange(0);
@@ -249,7 +248,7 @@ export function EventList({
             ))}
           </SelectContent>
         </Select>
-        
+
         <Button variant="outline" size="sm" onClick={onRefresh}>
           <RefreshCw className="h-4 w-4 sm:mr-2" />
           <span className="hidden sm:inline">{t("history.refresh")}</span>
@@ -272,7 +271,7 @@ export function EventList({
             <div className="text-center">
               <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">
-                {searchQuery 
+                {searchQuery
                   ? t("history.events.noResults") || "No events found matching your search"
                   : t("history.events.noEvents")
                 }
@@ -282,50 +281,43 @@ export function EventList({
         </Card>
       ) : (
         <>
-          <div className="space-y-3">
+          <div className="divide-y divide-border border rounded-md shadow-sm bg-card overflow-hidden">
             {events.map((event) => (
-              <Card key={event.uuid}>
-                <CardContent className="px-4 sm:px-6 py-2">
-                  <div className="flex items-start gap-3">
-                    {/* Icon and Timestamp */}
-                    <div className="flex flex-col items-center gap-1 shrink-0">
-                      <div className={`h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center border ${getEventColor(event.type)}`}>
-                        {getEventIcon(event.type)}
-                      </div>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <p className="text-xs text-muted-foreground cursor-help leading-tight text-center">
-                            {formatRelativeTime(event.created_at)}
-                          </p>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{formatDate(event.created_at)}</p>
-                        </TooltipContent>
-                      </Tooltip>
+              <div key={event.uuid} className="p-4 hover:bg-muted/30 transition-colors">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                  {/* Icon and Timestamp */}
+                  <div className="flex items-center sm:flex-col gap-3 sm:gap-1 shrink-0 sm:w-24">
+                    <div className={`h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center border ${getEventColor(event.type)}`}>
+                      {getEventIcon(event.type)}
                     </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <p className="text-xs text-muted-foreground cursor-help whitespace-nowrap">
+                          {formatRelativeTime(event.created_at)}
+                        </p>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{formatDate(event.created_at)}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
 
-                    {/* Vertical Separator */}
-                    <Separator orientation="vertical" className="self-stretch min-h-[50px]" />
+                  {/* Vertical Separator (Only Desktop) */}
+                  <div className="hidden sm:block h-10 w-px bg-border shrink-0" />
 
-                    {/* Content */}
-                    <div className="flex-1 min-w-0 space-y-1">
-                      {/* Badge */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline" className="text-xs shrink-0">
-                          {getEventBadge(event.type)}
-                        </Badge>
-                      </div>
-                      
-                      {/* Torrent Name - Subtitle */}
+                  {/* Content */}
+                  <div className="flex-1 min-w-0 flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
+                    {/* Torrent Name */}
+                    <div className="flex-1 min-w-0">
                       {event.metadata?.name ? (
-                        <p className="text-sm text-foreground truncate leading-snug" title={event.metadata.name}>
+                        <p className="text-sm font-medium text-foreground truncate" title={event.metadata.name}>
                           {event.metadata.name}
                         </p>
                       ) : (
                         <div className="flex items-center gap-1.5">
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <div className="flex items-center gap-1.5 text-sm text-muted-foreground cursor-help">
+                              <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground cursor-help">
                                 <HelpCircle className="h-4 w-4 text-muted-foreground/70" />
                                 <span className="italic">{t("history.events.unknownTorrent")}</span>
                               </div>
@@ -339,23 +331,32 @@ export function EventList({
                           </Tooltip>
                         </div>
                       )}
-                      
-                      {/* Description */}
-                      {event.type === "torrent.state_change" ? (
-                        <div className={event.metadata?.name ? "mt-2" : ""}>
-                          {renderStateChange(event.old_value, event.new_value)}
-                        </div>
-                      ) : (
-                        getEventDescription(event) && (
-                          <p className="text-xs text-muted-foreground font-mono leading-tight">
-                            {getEventDescription(event)}
-                          </p>
-                        )
-                      )}
+                    </div>
+
+                    {/* Description / State Change */}
+                    {(event.type === "torrent.state_change" || getEventDescription(event)) && (
+                      <div className="shrink-0 flex items-center md:min-w-[160px]">
+                        {event.type === "torrent.state_change" ? (
+                          renderStateChange(event.old_value, event.new_value)
+                        ) : (
+                          getEventDescription(event) && (
+                            <p className="text-xs text-muted-foreground font-mono truncate max-w-[200px]" title={getEventDescription(event) || undefined}>
+                              {getEventDescription(event)}
+                            </p>
+                          )
+                        )}
+                      </div>
+                    )}
+
+                    {/* Badge */}
+                    <div className="shrink-0 flex md:items-end md:justify-end md:min-w-[100px]">
+                      <Badge variant="outline" className="text-[10px] uppercase font-semibold">
+                        {getEventBadge(event.type)}
+                      </Badge>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
 
@@ -372,12 +373,12 @@ export function EventList({
               <Pagination className="mx-0">
                 <PaginationContent>
                   <PaginationItem>
-                    <PaginationPrevious 
+                    <PaginationPrevious
                       onClick={() => onPageChange(Math.max(0, page - 1))}
                       className={page === 0 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                     />
                   </PaginationItem>
-                  
+
                   {getPageNumbers().map((pageNum, index) => (
                     <PaginationItem key={pageNum === '...' ? `ellipsis-${index}` : pageNum}>
                       {pageNum === '...' ? (
@@ -393,7 +394,7 @@ export function EventList({
                       )}
                     </PaginationItem>
                   ))}
-                  
+
                   <PaginationItem>
                     <PaginationNext
                       onClick={() => onPageChange(Math.min(totalPages - 1, page + 1))}

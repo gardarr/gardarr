@@ -2,6 +2,7 @@ package agents
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jfxdev/gardarr/internal/mappers"
@@ -42,6 +43,7 @@ func (m Module) Register() {
 	m.agentRouter.GET("/:id/tasks", m.listAgentTasks)
 	m.agentRouter.GET("/:id/tasks/stats", m.getAgentTasksStats)
 	m.agentRouter.GET("/:id/preferences", m.getAgentPreferences)
+	m.agentRouter.GET("/:id/logs", m.getAgentLogs)
 	m.agentRouter.DELETE("/:id", m.deleteAgent)
 	m.agentRouter.POST("/:id/task", m.createAgentTask)
 	m.agentRouter.GET("/:id/task/:task_id", m.getAgentTask)
@@ -575,4 +577,28 @@ func (m *Module) setAgentSpeedLimits(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Instance speed limits set successfully"})
+}
+
+func (m *Module) getAgentLogs(c *gin.Context) {
+	agentID := c.Param("id")
+
+	normal := c.Query("normal") == "true"
+	info := c.Query("info") == "true"
+	warning := c.Query("warning") == "true"
+	critical := c.Query("critical") == "true"
+	
+	lastKnownID := 0
+	if idStr := c.Query("last_known_id"); idStr != "" {
+		if id, err := strconv.Atoi(idStr); err == nil {
+			lastKnownID = id
+		}
+	}
+
+	result, err := m.service.GetAgentLogs(c.Request.Context(), agentID, normal, info, warning, critical, lastKnownID)
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
 }

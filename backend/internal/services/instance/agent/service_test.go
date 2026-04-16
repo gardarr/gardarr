@@ -7,6 +7,7 @@ import (
 
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/schemas"
+	"github.com/jfxdev/go-qbt"
 )
 
 // mockInstanceRepository is a mock implementation of the instance repository for testing
@@ -97,6 +98,10 @@ func (m *mockInstanceRepository) SetMaxActiveTorrentLimits(maxDownloads, maxUplo
 	m.preferences.ActiveTorrentLimits.MaxActiveTorrents = maxTorrents
 	m.preferences.ActiveTorrentLimits.MaxActiveCheckingTorrents = maxChecking
 	return nil
+}
+
+func (m *mockInstanceRepository) GetLogs(normal, info, warning, critical bool, lastKnownID int) ([]*qbt.LogEntry, error) {
+	return nil, nil
 }
 
 func TestServiceGetInstance(t *testing.T) {

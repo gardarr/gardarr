@@ -151,10 +151,10 @@ This document lists all environment variables used by Gardarr backend.
 
 ## qBittorrent (Standalone Mode)
 
-### `QBITTORRENT_BASEURL`
+### `QBITTORRENT_URL`
 - **Description**: Base URL of the qBittorrent Web UI
 - **Default**: None (required in standalone mode)
-- **Example**: `QBITTORRENT_BASEURL=http://localhost:8080`
+- **Example**: `QBITTORRENT_URL=http://localhost:8080`
 
 ### `QBITTORRENT_USERNAME`
 - **Description**: qBittorrent Web UI username
@@ -246,7 +246,7 @@ DATABASE_FILE_PATH=./gardarr.db
 
 # Standalone mode
 # APP_MODE=standalone
-# QBITTORRENT_BASEURL=http://localhost:8080
+# QBITTORRENT_URL=http://localhost:8080
 # QBITTORRENT_USERNAME=admin
 # QBITTORRENT_PASSWORD=adminadmin
 ```
@@ -281,7 +281,7 @@ APP_MODE=standalone
 APP_PORT=3200
 AGENT_PORT=3100
 
-QBITTORRENT_BASEURL=http://localhost:8080
+QBITTORRENT_URL=http://localhost:8080
 QBITTORRENT_USERNAME=admin
 QBITTORRENT_PASSWORD=adminadmin
 ```

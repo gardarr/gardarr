@@ -718,6 +718,10 @@
     "agents": "Agentes",
     "of": "de",
     "torrents": "torrents",
+    "logs": {
+      "title": "Logs",
+      "noLogs": "Nenhum log encontrado para os filtros selecionados"
+    },
     "sortedBy": "ordenados por",
     "loading": "Carregando torrents...",
     "error": "Erro ao carregar torrents",

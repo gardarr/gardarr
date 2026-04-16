@@ -61,21 +61,24 @@ func Run(cmd *cobra.Command, args []string) error {
 	qbtBaseURL := env.Get(constants.QBittorrentBaseURLEnv).Value()
 	qbtTimeout := time.Duration(env.Get(constants.QBittorrentRequestTimeoutSecondsEnv).Default(3).ValueInt()) * time.Second
 	qbtMaxRetries := env.Get(constants.QBittorrentMaxRetriesEnv).Default(0).ValueInt()
+	qbtLoginMaxRetries := env.Get(constants.QBittorrentLoginMaxRetriesEnv).Default(5).ValueInt()
 
 	logger.Info("initializing qBittorrent client",
 		"component", "agent",
 		"base_url", qbtBaseURL,
 		"timeout", qbtTimeout.String(),
 		"max_retries", qbtMaxRetries,
+		"login_max_retries", qbtLoginMaxRetries,
 	)
 
 	client, err := qbt.New(qbt.Config{
-		BaseURL:        qbtBaseURL,
-		Username:       env.Get(constants.QBittorrentUsernameEnv).Value(),
-		Password:       env.Get(constants.QBittorrentPasswordEnv).Value(),
-		RequestTimeout: qbtTimeout,
-		MaxRetries:     qbtMaxRetries,
-		RetryBackoff:   time.Duration(env.Get(constants.QBittorrentRetryBackoffEnv).Default(1).ValueInt()) * time.Second,
+		BaseURL:         qbtBaseURL,
+		Username:        env.Get(constants.QBittorrentUsernameEnv).Value(),
+		Password:        env.Get(constants.QBittorrentPasswordEnv).Value(),
+		RequestTimeout:  qbtTimeout,
+		MaxRetries:      qbtMaxRetries,
+		RetryBackoff:    time.Duration(env.Get(constants.QBittorrentRetryBackoffEnv).Default(1).ValueInt()) * time.Second,
+		MaxLoginRetries: qbtLoginMaxRetries,
 	})
 	if err != nil {
 		logger.Error("failed to create qBittorrent client",
@@ -85,6 +88,18 @@ func Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	logger.Info("qBittorrent client created", "component", "agent")
+
+	// Attempt initial login to verify connectivity and credentials
+	loginCtx, loginCancel := context.WithTimeout(context.Background(), qbtTimeout)
+	if err := client.Login(loginCtx); err != nil {
+		logger.Warn("initial qBittorrent login failed, will retry in background",
+			"component", "agent",
+			"error", err.Error(),
+		)
+	} else {
+		logger.Info("qBittorrent login successful", "component", "agent")
+	}
+	loginCancel()
 
 	taskSvc := taskService.New(client)
 	logger.Debug("task service initialized", "component", "agent")
@@ -128,6 +143,25 @@ func Run(cmd *cobra.Command, args []string) error {
 	// kill -2 is syscall.SIGINT
 	// kill -9 is syscall.SIGKILL but can't be catch, so don't need add it
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	// Monitor qBittorrent auth status — if permanent failure is detected
+	// after MaxLoginRetries consecutive attempts, trigger graceful shutdown
+	// so Docker restart policy can recover the container.
+	go func() {
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			if client.IsAuthFailed() {
+				logger.Error("qBittorrent authentication permanently failed, shutting down agent",
+					"component", "agent",
+					"max_login_retries", qbtLoginMaxRetries,
+				)
+				quit <- syscall.SIGTERM
+				return
+			}
+		}
+	}()
+
 	<-quit
 
 	logger.Info("shutting down agent server", "component", "agent")

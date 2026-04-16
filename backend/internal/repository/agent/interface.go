@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/schemas"
+	"github.com/jfxdev/go-qbt"
 )
 
 // RepositoryInterface defines the interface for agent repository operations
@@ -43,4 +44,5 @@ type RepositoryInterface interface {
 	SetAgentTaskShareLimit(agent *entities.Agent, taskID string, limits schemas.TaskSetShareLimitSchema) error
 	SetAgentGlobalSpeedLimits(agent *entities.Agent, schema schemas.InstanceSetSpeedLimitSchema) error
 	SetAgentGlobalActiveLimits(agent *entities.Agent, schema schemas.InstanceSetMaxActiveTorrentLimitsSchema) error
+	GetAgentLogs(agent *entities.Agent, normal, info, warning, critical bool, lastKnownID int) ([]*qbt.LogEntry, error)
 }

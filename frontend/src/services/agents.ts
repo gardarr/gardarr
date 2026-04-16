@@ -8,7 +8,8 @@ import type {
   TaskStats,
   AgentPreferences,
   SpeedLimitsSchema,
-  ActiveLimitsSchema
+  ActiveLimitsSchema,
+  LogEntry
 } from '../types/agent';
 
 /**
@@ -106,6 +107,29 @@ export class AgentService {
    */
   async setAgentActiveLimits(agentId: string, limits: ActiveLimitsSchema): Promise<ApiResponse<{ message: string }>> {
     return api.post<{ message: string }>(`/agent/${agentId}/active/limits`, limits);
+  }
+
+  /**
+   * Get agent logs
+   */
+  async getAgentLogs(
+    agentId: string,
+    options: {
+      normal?: boolean;
+      info?: boolean;
+      warning?: boolean;
+      critical?: boolean;
+      lastKnownId?: number;
+    } = {}
+  ): Promise<ApiResponse<LogEntry[]>> {
+    const params = new URLSearchParams();
+    if (options.normal !== undefined) params.append('normal', options.normal.toString());
+    if (options.info !== undefined) params.append('info', options.info.toString());
+    if (options.warning !== undefined) params.append('warning', options.warning.toString());
+    if (options.critical !== undefined) params.append('critical', options.critical.toString());
+    if (options.lastKnownId !== undefined) params.append('last_known_id', options.lastKnownId.toString());
+
+    return api.get<LogEntry[]>(`/agent/${agentId}/logs?${params.toString()}`);
   }
 }
 
