@@ -39,6 +39,10 @@ func (s *service) GetConnectionStatus(_ context.Context) *entities.ConnectionSta
 	return s.repository.GetConnectionStatus()
 }
 
+func (s *service) RefreshConnectionStatus(ctx context.Context) *entities.ConnectionStatus {
+	return s.repository.RefreshConnectionStatus(ctx)
+}
+
 func (s *service) Ping(ctx context.Context) error {
 	return s.repository.Ping()
 }

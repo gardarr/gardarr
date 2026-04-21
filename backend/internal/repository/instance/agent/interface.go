@@ -14,6 +14,7 @@ type RepositoryInterface interface {
 	Ping() error
 	GetStatus() string
 	GetConnectionStatus() *entities.ConnectionStatus
+	RefreshConnectionStatus(ctx context.Context) *entities.ConnectionStatus
 	SetDownloadSpeedLimit(limit int) error
 	SetUploadSpeedLimit(limit int) error
 	SetMaxActiveTorrentLimits(maxDownloads, maxUploads, maxTorrents, maxChecking int) error

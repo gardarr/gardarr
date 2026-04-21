@@ -9,7 +9,7 @@ const (
 	AgentSecretEnv             = "AGENT_SECRET"
 	StandaloneAgentAddress     = "http://127.0.0.1:3100"
 	AgentTimeoutSecondsEnv     = "AGENT_TIMEOUT_SECONDS"
-	DefaultAgentTimeoutSeconds = 3
+	DefaultAgentTimeoutSeconds = 10
 
 	QBittorrentRequestTimeoutSecondsEnv = "QBITTORRENT_REQUEST_TIMEOUT_SECONDS"
 	QBittorrentMaxRetriesEnv            = "QBITTORRENT_MAX_RETRIES"

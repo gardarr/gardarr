@@ -341,15 +341,26 @@ func (r *Repository) CheckAgentAvailability(agent *entities.Agent) error {
 	// Check for specific status codes from the agent
 	switch handler.Status {
 	case qbt.StatusUnauthorized:
+		// Use the detailed error from the agent response if available,
+		// instead of hardcoding a generic message. The agent knows the
+		// actual reason (wrong credentials, permanent lockout, etc.).
+		message := handler.Message
+		if message == "" {
+			message = "Invalid qBittorrent username or password"
+		}
+		permanent := handler.Permanent
+
 		logger.Error("qBittorrent authentication failed",
 			"agent", agent.Name,
 			"address", agent.Address,
 			"error_code", entities.AgentErrorCodeAuthFailure,
+			"message", message,
+			"permanent", permanent,
 		)
 		return &AgentError{
 			Code:      entities.AgentErrorCodeAuthFailure,
-			Message:   "Invalid qBittorrent username or password",
-			Permanent: true,
+			Message:   message,
+			Permanent: permanent,
 		}
 	case qbt.StatusUnaccessible:
 		// Use the detailed error from the response if available

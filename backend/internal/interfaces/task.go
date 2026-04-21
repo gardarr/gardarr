@@ -35,6 +35,7 @@ type InstanceService interface {
 	GetInstance(context.Context) (*entities.Instance, error)
 	GetStatus(context.Context) string
 	GetConnectionStatus(context.Context) *entities.ConnectionStatus
+	RefreshConnectionStatus(context.Context) *entities.ConnectionStatus
 	Ping(context.Context) error
 	GetPreferences(context.Context) (*entities.InstancePreferences, error)
 	SetSpeedLimit(context.Context, schemas.InstanceSetSpeedLimitSchema) error

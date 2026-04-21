@@ -184,9 +184,30 @@ func Run(cmd *cobra.Command, args []string) error {
 			}
 		}()
 
-		// Give the agent service a moment to start up
-		time.Sleep(2 * time.Second)
-		log.Println("✅ Agent service started successfully on port 3100")
+		// Wait for agent HTTP server to be ready instead of using a fixed sleep.
+		// Probe the health endpoint with retries to ensure the agent is accepting connections.
+		agentPort := env.Get(constants.AgentPortEnv).Default("3100").Value()
+		agentHealthURL := fmt.Sprintf("http://127.0.0.1:%s/v1/health/liveness", agentPort)
+		probeClient := &http.Client{Timeout: 1 * time.Second}
+
+		ready := false
+		for attempt := 0; attempt < 30; attempt++ {
+			resp, err := probeClient.Get(agentHealthURL)
+			if err == nil {
+				resp.Body.Close()
+				if resp.StatusCode == http.StatusOK {
+					ready = true
+					break
+				}
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+
+		if ready {
+			log.Printf("✅ Agent service started successfully on port %s", agentPort)
+		} else {
+			log.Printf("⚠️ Agent service may not be fully ready on port %s, continuing anyway", agentPort)
+		}
 	}
 
 	srv := &http.Server{

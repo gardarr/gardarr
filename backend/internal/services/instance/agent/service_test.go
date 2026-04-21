@@ -100,6 +100,10 @@ func (m *mockInstanceRepository) SetMaxActiveTorrentLimits(maxDownloads, maxUplo
 	return nil
 }
 
+func (m *mockInstanceRepository) RefreshConnectionStatus(ctx context.Context) *entities.ConnectionStatus {
+	return m.GetConnectionStatus()
+}
+
 func (m *mockInstanceRepository) GetLogs(normal, info, warning, critical bool, lastKnownID int) ([]*qbt.LogEntry, error) {
 	return nil, nil
 }
