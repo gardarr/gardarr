@@ -112,8 +112,11 @@ func (s *Repository) GetStatus() string {
 
 func (s *Repository) GetConnectionStatus() *entities.ConnectionStatus {
 	connStatus := s.client.GetConnectionStatus()
+	return s.mapConnectionStatus(connStatus)
+}
 
-	// Map qbt error codes to entity error codes
+// mapConnectionStatus maps a qbt.ConnectionStatus to entities.ConnectionStatus
+func (s *Repository) mapConnectionStatus(connStatus *qbt.ConnectionStatus) *entities.ConnectionStatus {
 	var errorCode entities.AgentErrorCode
 	switch connStatus.ErrorCode {
 	case qbt.ErrorCodeAuthFailure:
@@ -148,6 +151,11 @@ func (s *Repository) GetConnectionStatus() *entities.ConnectionStatus {
 		Message:   connStatus.Message,
 		Permanent: connStatus.Permanent,
 	}
+}
+
+func (s *Repository) RefreshConnectionStatus(ctx context.Context) *entities.ConnectionStatus {
+	connStatus := s.client.RefreshConnectionStatus(ctx)
+	return s.mapConnectionStatus(connStatus)
 }
 
 func (s *Repository) SetDownloadSpeedLimit(limit int) error {

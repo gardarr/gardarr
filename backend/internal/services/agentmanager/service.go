@@ -254,35 +254,9 @@ func (s *Service) GetAgent(ctx context.Context, id string) (*entities.Agent, err
 	// Set default status to ACTIVE
 	agent.Status = entities.AgentStatusActive
 
-	// Check agent availability first - if it fails, abort immediately without trying to get instance
-	if err := s.repository.CheckAgentAvailability(agent); err != nil {
-		// Check if context was cancelled during the call
-		select {
-		case <-ctx.Done():
-			agent.Status = entities.AgentStatusErrored
-			agent.Instance = nil
-			agent.Error = "request cancelled or timeout"
-			agent.ErrorCode = entities.AgentErrorCodeTimeout
-			agent.Permanent = false
-			return agent, nil
-		default:
-			// Agent is not available - abort execution and return agent with error status
-			agent.Instance = nil
-			agent.Error = err.Error()
-			agent.ErrorCode, agent.Permanent = extractAgentError(err)
-
-			if agent.ErrorCode == entities.AgentErrorCodeServiceUnavailable && strings.Contains(strings.ToLower(agent.Error), "starting up") {
-				agent.Status = entities.AgentStatusInitializing
-			} else {
-				agent.Status = entities.AgentStatusErrored
-			}
-			return agent, nil
-		}
-	}
-
-	// Agent is available, now try to get instance
-	// GetInstance internally calls isAvailable again as a safety check
-	// If it fails, abort and return agent with error
+	// GetInstance internally calls isAvailable (CheckAgentAvailability) first.
+	// No need for a separate CheckAgentAvailability call — that would double
+	// the HTTP round-trips to the agent per request.
 	instance, err := s.repository.GetInstance(agent)
 	if err != nil {
 		// Check if context was cancelled during the call
@@ -298,10 +272,15 @@ func (s *Service) GetAgent(ctx context.Context, id string) (*entities.Agent, err
 		default:
 			// Error from GetInstance (could be from isAvailable or instance fetch)
 			// Abort execution and return agent with error status and instance = nil
-			agent.Status = entities.AgentStatusErrored
 			agent.Instance = nil
 			agent.Error = err.Error()
 			agent.ErrorCode, agent.Permanent = extractAgentError(err)
+
+			if agent.ErrorCode == entities.AgentErrorCodeServiceUnavailable && strings.Contains(strings.ToLower(agent.Error), "starting up") {
+				agent.Status = entities.AgentStatusInitializing
+			} else {
+				agent.Status = entities.AgentStatusErrored
+			}
 			return agent, nil
 		}
 	}

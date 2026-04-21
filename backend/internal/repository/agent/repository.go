@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jfxdev/gardarr/internal/agentcheck"
 	"github.com/jfxdev/gardarr/internal/constants"
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/infra/database"
@@ -245,28 +246,6 @@ func mapQbtErrorCode(code qbt.ErrorCode) entities.AgentErrorCode {
 	}
 }
 
-// isValidAgentErrorCode validates if a given code is a known AgentErrorCode constant
-func isValidAgentErrorCode(code entities.AgentErrorCode) bool {
-	switch code {
-	case entities.AgentErrorCodeNone,
-		entities.AgentErrorCodeAuthFailure,
-		entities.AgentErrorCodeTimeout,
-		entities.AgentErrorCodeDNS,
-		entities.AgentErrorCodeHTTPSRequired,
-		entities.AgentErrorCodeSSLError,
-		entities.AgentErrorCodeVersionIncompatible,
-		entities.AgentErrorCodeConnectionRefused,
-		entities.AgentErrorCodeNetworkUnreachable,
-		entities.AgentErrorCodeAgentUnreachable,
-		entities.AgentErrorCodeBadGateway,
-		entities.AgentErrorCodeServiceUnavailable,
-		entities.AgentErrorCodeUnknown:
-		return true
-	default:
-		return false
-	}
-}
-
 // CheckAgentAvailability checks if the agent is available and accessible
 func (r *Repository) CheckAgentAvailability(agent *entities.Agent) error {
 	url := fmt.Sprintf("%s/v1/health/liveness", agent.Address)
@@ -311,7 +290,6 @@ func (r *Repository) CheckAgentAvailability(agent *entities.Agent) error {
 	var handler models.AgentLivenessResponse
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		// Body read errors are I/O issues, not network errors
 		agentErr := &AgentError{
 			Code:      entities.AgentErrorCodeUnknown,
 			Message:   fmt.Sprintf("failed to read response body: %v", err),
@@ -325,7 +303,6 @@ func (r *Repository) CheckAgentAvailability(agent *entities.Agent) error {
 	}
 
 	if err := json.Unmarshal(body, &handler); err != nil {
-		// JSON parse errors are data format issues, not network errors
 		agentErr := &AgentError{
 			Code:      entities.AgentErrorCodeUnknown,
 			Message:   fmt.Sprintf("failed to parse response: %v", err),
@@ -338,66 +315,23 @@ func (r *Repository) CheckAgentAvailability(agent *entities.Agent) error {
 		return agentErr
 	}
 
-	// Check for specific status codes from the agent
-	switch handler.Status {
-	case qbt.StatusUnauthorized:
-		logger.Error("qBittorrent authentication failed",
-			"agent", agent.Name,
-			"address", agent.Address,
-			"error_code", entities.AgentErrorCodeAuthFailure,
-		)
-		return &AgentError{
-			Code:      entities.AgentErrorCodeAuthFailure,
-			Message:   "Invalid qBittorrent username or password",
-			Permanent: true,
-		}
-	case qbt.StatusUnaccessible:
-		// Use the detailed error from the response if available
-		if handler.ErrorCode != "" {
-			candidateCode := entities.AgentErrorCode(handler.ErrorCode)
-			errorCode := entities.AgentErrorCodeConnectionRefused // Safe default
-
-			if isValidAgentErrorCode(candidateCode) {
-				errorCode = candidateCode
-			} else {
-				logger.Warn("unknown agent error code received, using fallback",
-					"agent", agent.Name,
-					"received_code", handler.ErrorCode,
-					"fallback_code", errorCode,
-				)
-			}
-
-			logger.Error("qBittorrent not accessible",
-				"agent", agent.Name,
-				"address", agent.Address,
-				"error_code", errorCode,
-				"message", handler.Message,
-				"permanent", handler.Permanent,
-			)
-			return &AgentError{
-				Code:      errorCode,
-				Message:   handler.Message,
-				Permanent: handler.Permanent,
-			}
-		}
-		return &AgentError{
-			Code:      entities.AgentErrorCodeConnectionRefused,
-			Message:   "qBittorrent instance is not accessible",
-			Permanent: false,
-		}
-	case qbt.StatusInitializing:
-		logger.Info("qBittorrent is currently initializing",
-			"agent", agent.Name,
-			"address", agent.Address,
-		)
-		return &AgentError{
-			Code:      entities.AgentErrorCodeServiceUnavailable,
-			Message:   "qBittorrent is starting up",
-			Permanent: false,
-		}
+	result := agentcheck.ValidateLiveness(&handler)
+	if result.Healthy {
+		return nil
 	}
 
-	return nil
+	logger.Error("agent liveness check failed",
+		"agent", agent.Name,
+		"address", agent.Address,
+		"error_code", result.ErrorCode,
+		"message", result.Message,
+		"permanent", result.Permanent,
+	)
+	return &AgentError{
+		Code:      result.ErrorCode,
+		Message:   result.Message,
+		Permanent: result.Permanent,
+	}
 }
 
 // GetByUUID retrieves a single instance by its UUID

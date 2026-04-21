@@ -12,12 +12,13 @@ import (
 
 // mockInstanceRepository is a mock implementation of the instance repository for testing
 type mockInstanceRepository struct {
-	instance      *entities.Instance
-	preferences   *entities.InstancePreferences
-	pingError     error
-	downloadError error
-	uploadError   error
-	status        string
+	instance                  *entities.Instance
+	preferences               *entities.InstancePreferences
+	pingError                 error
+	downloadError             error
+	uploadError               error
+	status                    string
+	refreshedConnectionStatus *entities.ConnectionStatus
 }
 
 func newMockInstanceRepository() *mockInstanceRepository {
@@ -98,6 +99,15 @@ func (m *mockInstanceRepository) SetMaxActiveTorrentLimits(maxDownloads, maxUplo
 	m.preferences.ActiveTorrentLimits.MaxActiveTorrents = maxTorrents
 	m.preferences.ActiveTorrentLimits.MaxActiveCheckingTorrents = maxChecking
 	return nil
+}
+
+func (m *mockInstanceRepository) RefreshConnectionStatus(ctx context.Context) *entities.ConnectionStatus {
+	if m.refreshedConnectionStatus != nil {
+		// Simulate the real repository: refresh updates the cached status.
+		m.status = m.refreshedConnectionStatus.Status
+		return m.refreshedConnectionStatus
+	}
+	return m.GetConnectionStatus()
 }
 
 func (m *mockInstanceRepository) GetLogs(normal, info, warning, critical bool, lastKnownID int) ([]*qbt.LogEntry, error) {

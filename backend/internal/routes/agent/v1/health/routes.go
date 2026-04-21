@@ -24,7 +24,11 @@ func NewModule(router *gin.RouterGroup, svc interfaces.InstanceService) *Module 
 
 func (m Module) Register() {
 	m.group.GET("/liveness", func(c *gin.Context) {
-		connStatus := m.svc.GetConnectionStatus(c.Request.Context())
+		// Use RefreshConnectionStatus to attempt a fresh connection check
+		// instead of returning potentially stale cached status.
+		// This ensures the liveness endpoint reflects the real state of
+		// the qBittorrent connection, not a stale cached value.
+		connStatus := m.svc.RefreshConnectionStatus(c.Request.Context())
 
 		// Log errors for debugging
 		if connStatus.Status != qbt.StatusConnected && connStatus.ErrorCode != "" {

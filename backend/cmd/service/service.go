@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -18,9 +20,11 @@ import (
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
 	"github.com/jfxdev/gardarr/cmd/agent"
+	"github.com/jfxdev/gardarr/internal/agentcheck"
 	"github.com/jfxdev/gardarr/internal/constants"
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/middlewares"
+	"github.com/jfxdev/gardarr/internal/models"
 	"github.com/jfxdev/gardarr/internal/routes/api/v1/agents"
 	"github.com/jfxdev/gardarr/internal/routes/api/v1/auth"
 	"github.com/jfxdev/gardarr/internal/routes/api/v1/category"
@@ -176,17 +180,7 @@ func Run(cmd *cobra.Command, args []string) error {
 
 	// Initialize agent service if in standalone mode
 	if isStandalone {
-		log.Println("🤖 Initializing agent service...")
-		// Start agent service in a goroutine
-		go func() {
-			if err := agent.Run(cmd, args); err != nil {
-				log.Printf("Error running agent service: %v", err)
-			}
-		}()
-
-		// Give the agent service a moment to start up
-		time.Sleep(2 * time.Second)
-		log.Println("✅ Agent service started successfully on port 3100")
+		bootstrapStandaloneAgent(cmd, args)
 	}
 
 	srv := &http.Server{
@@ -473,4 +467,93 @@ func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statist
 	router.NoRoute(spaFallbackHandler)
 
 	return nil
+}
+
+// bootstrapStandaloneAgent launches the embedded agent goroutine and probes
+// its health endpoint until the agent reports a healthy connection.  The probe
+// is tied to a cancellable context so it aborts immediately on SIGINT/SIGTERM.
+// If the agent does not become healthy within the timeout the process exits.
+func bootstrapStandaloneAgent(cmd *cobra.Command, args []string) {
+	log.Println("🤖 Initializing agent service...")
+
+	// Start agent service in a goroutine
+	go func() {
+		if err := agent.Run(cmd, args); err != nil {
+			log.Printf("Error running agent service: %v", err)
+		}
+	}()
+
+	agentPort := env.Get(constants.AgentPortEnv).Default("3100").Value()
+	agentHealthURL := fmt.Sprintf("http://127.0.0.1:%s/v1/health/liveness", agentPort)
+	probeClient := &http.Client{Timeout: 1 * time.Second}
+
+	// Create a context that is cancelled on SIGINT/SIGTERM or after 15s,
+	// so the probe loop can be aborted immediately on shutdown.
+	sigCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	probeCtx, probeCancel := context.WithTimeout(sigCtx, 15*time.Second)
+	defer probeCancel()
+
+	ready, lastResult := probeAgentHealth(probeCtx, probeClient, agentHealthURL)
+
+	if ready {
+		log.Printf("✅ Agent service started successfully on port %s", agentPort)
+		return
+	}
+
+	if lastResult != nil {
+		log.Fatalf("❌ Agent service failed health check on port %s (error_code=%q, message=%q, permanent=%v)",
+			agentPort, lastResult.ErrorCode, lastResult.Message, lastResult.Permanent)
+	} else {
+		log.Fatalf("❌ Agent service failed health check on port %s (no successful probe response)", agentPort)
+	}
+}
+
+// probeAgentHealth polls the agent liveness endpoint until a healthy response
+// is received or the context expires.  It returns whether the agent became
+// ready and the last validation result (nil when no parseable response arrived).
+func probeAgentHealth(ctx context.Context, client *http.Client, url string) (bool, *agentcheck.Result) {
+	var lastResult *agentcheck.Result
+	for {
+		result := doAgentProbe(ctx, client, url)
+		if result != nil {
+			lastResult = result
+			if result.Healthy {
+				return true, lastResult
+			}
+		}
+
+		select {
+		case <-ctx.Done():
+			return false, lastResult
+		case <-time.After(500 * time.Millisecond):
+		}
+	}
+}
+
+// doAgentProbe performs a single HTTP probe against the agent health endpoint
+// and returns the validated result, or nil if the attempt failed at the
+// network/parse level.
+func doAgentProbe(ctx context.Context, client *http.Client, url string) *agentcheck.Result {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil
+	}
+	body, readErr := io.ReadAll(resp.Body)
+	resp.Body.Close()
+
+	if readErr != nil || resp.StatusCode != http.StatusOK {
+		return nil
+	}
+
+	var health models.AgentLivenessResponse
+	if json.Unmarshal(body, &health) != nil {
+		return nil
+	}
+	return agentcheck.ValidateLiveness(&health)
 }
