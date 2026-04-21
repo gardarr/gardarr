@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -18,9 +20,11 @@ import (
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
 	"github.com/jfxdev/gardarr/cmd/agent"
+	"github.com/jfxdev/gardarr/internal/agentcheck"
 	"github.com/jfxdev/gardarr/internal/constants"
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/middlewares"
+	"github.com/jfxdev/gardarr/internal/models"
 	"github.com/jfxdev/gardarr/internal/routes/api/v1/agents"
 	"github.com/jfxdev/gardarr/internal/routes/api/v1/auth"
 	"github.com/jfxdev/gardarr/internal/routes/api/v1/category"
@@ -176,38 +180,7 @@ func Run(cmd *cobra.Command, args []string) error {
 
 	// Initialize agent service if in standalone mode
 	if isStandalone {
-		log.Println("🤖 Initializing agent service...")
-		// Start agent service in a goroutine
-		go func() {
-			if err := agent.Run(cmd, args); err != nil {
-				log.Printf("Error running agent service: %v", err)
-			}
-		}()
-
-		// Wait for agent HTTP server to be ready instead of using a fixed sleep.
-		// Probe the health endpoint with retries to ensure the agent is accepting connections.
-		agentPort := env.Get(constants.AgentPortEnv).Default("3100").Value()
-		agentHealthURL := fmt.Sprintf("http://127.0.0.1:%s/v1/health/liveness", agentPort)
-		probeClient := &http.Client{Timeout: 1 * time.Second}
-
-		ready := false
-		for attempt := 0; attempt < 30; attempt++ {
-			resp, err := probeClient.Get(agentHealthURL)
-			if err == nil {
-				resp.Body.Close()
-				if resp.StatusCode == http.StatusOK {
-					ready = true
-					break
-				}
-			}
-			time.Sleep(500 * time.Millisecond)
-		}
-
-		if ready {
-			log.Printf("✅ Agent service started successfully on port %s", agentPort)
-		} else {
-			log.Printf("⚠️ Agent service may not be fully ready on port %s, continuing anyway", agentPort)
-		}
+		bootstrapStandaloneAgent(cmd, args)
 	}
 
 	srv := &http.Server{
@@ -494,4 +467,76 @@ func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statist
 	router.NoRoute(spaFallbackHandler)
 
 	return nil
+}
+
+// bootstrapStandaloneAgent launches the embedded agent goroutine and probes
+// its health endpoint until the agent reports a healthy connection.  The probe
+// is tied to a cancellable context so it aborts immediately on SIGINT/SIGTERM.
+// If the agent does not become healthy within the timeout the process exits.
+func bootstrapStandaloneAgent(cmd *cobra.Command, args []string) {
+	log.Println("🤖 Initializing agent service...")
+
+	// Start agent service in a goroutine
+	go func() {
+		if err := agent.Run(cmd, args); err != nil {
+			log.Printf("Error running agent service: %v", err)
+		}
+	}()
+
+	// Wait for agent HTTP server to be ready instead of using a fixed sleep.
+	// Probe the health endpoint with retries to ensure the agent is accepting connections.
+	agentPort := env.Get(constants.AgentPortEnv).Default("3100").Value()
+	agentHealthURL := fmt.Sprintf("http://127.0.0.1:%s/v1/health/liveness", agentPort)
+	probeClient := &http.Client{Timeout: 1 * time.Second}
+
+	// Create a context that is cancelled on SIGINT/SIGTERM or after 15s,
+	// so the probe loop can be aborted immediately on shutdown.
+	sigCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	probeCtx, probeCancel := context.WithTimeout(sigCtx, 15*time.Second)
+	defer probeCancel()
+
+	ready := false
+	var lastResult *agentcheck.Result
+	for {
+		req, reqErr := http.NewRequestWithContext(probeCtx, http.MethodGet, agentHealthURL, nil)
+		if reqErr != nil {
+			break
+		}
+		resp, err := probeClient.Do(req)
+		if err == nil {
+			body, readErr := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if readErr == nil && resp.StatusCode == http.StatusOK {
+				var health models.AgentLivenessResponse
+				if json.Unmarshal(body, &health) == nil {
+					result := agentcheck.ValidateLiveness(&health)
+					lastResult = result
+					if result.Healthy {
+						ready = true
+						break
+					}
+				}
+			}
+		}
+
+		select {
+		case <-probeCtx.Done():
+		case <-time.After(500 * time.Millisecond):
+			continue
+		}
+		break
+	}
+
+	if ready {
+		log.Printf("✅ Agent service started successfully on port %s", agentPort)
+		return
+	}
+
+	if lastResult != nil {
+		log.Fatalf("❌ Agent service failed health check on port %s (error_code=%q, message=%q, permanent=%v)",
+			agentPort, lastResult.ErrorCode, lastResult.Message, lastResult.Permanent)
+	} else {
+		log.Fatalf("❌ Agent service failed health check on port %s (no successful probe response)", agentPort)
+	}
 }
