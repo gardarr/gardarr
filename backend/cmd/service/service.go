@@ -483,8 +483,6 @@ func bootstrapStandaloneAgent(cmd *cobra.Command, args []string) {
 		}
 	}()
 
-	// Wait for agent HTTP server to be ready instead of using a fixed sleep.
-	// Probe the health endpoint with retries to ensure the agent is accepting connections.
 	agentPort := env.Get(constants.AgentPortEnv).Default("3100").Value()
 	agentHealthURL := fmt.Sprintf("http://127.0.0.1:%s/v1/health/liveness", agentPort)
 	probeClient := &http.Client{Timeout: 1 * time.Second}
@@ -496,37 +494,7 @@ func bootstrapStandaloneAgent(cmd *cobra.Command, args []string) {
 	probeCtx, probeCancel := context.WithTimeout(sigCtx, 15*time.Second)
 	defer probeCancel()
 
-	ready := false
-	var lastResult *agentcheck.Result
-	for {
-		req, reqErr := http.NewRequestWithContext(probeCtx, http.MethodGet, agentHealthURL, nil)
-		if reqErr != nil {
-			break
-		}
-		resp, err := probeClient.Do(req)
-		if err == nil {
-			body, readErr := io.ReadAll(resp.Body)
-			resp.Body.Close()
-			if readErr == nil && resp.StatusCode == http.StatusOK {
-				var health models.AgentLivenessResponse
-				if json.Unmarshal(body, &health) == nil {
-					result := agentcheck.ValidateLiveness(&health)
-					lastResult = result
-					if result.Healthy {
-						ready = true
-						break
-					}
-				}
-			}
-		}
-
-		select {
-		case <-probeCtx.Done():
-		case <-time.After(500 * time.Millisecond):
-			continue
-		}
-		break
-	}
+	ready, lastResult := probeAgentHealth(probeCtx, probeClient, agentHealthURL)
 
 	if ready {
 		log.Printf("✅ Agent service started successfully on port %s", agentPort)
@@ -539,4 +507,53 @@ func bootstrapStandaloneAgent(cmd *cobra.Command, args []string) {
 	} else {
 		log.Fatalf("❌ Agent service failed health check on port %s (no successful probe response)", agentPort)
 	}
+}
+
+// probeAgentHealth polls the agent liveness endpoint until a healthy response
+// is received or the context expires.  It returns whether the agent became
+// ready and the last validation result (nil when no parseable response arrived).
+func probeAgentHealth(ctx context.Context, client *http.Client, url string) (bool, *agentcheck.Result) {
+	var lastResult *agentcheck.Result
+	for {
+		result := doAgentProbe(ctx, client, url)
+		if result != nil {
+			lastResult = result
+			if result.Healthy {
+				return true, lastResult
+			}
+		}
+
+		select {
+		case <-ctx.Done():
+			return false, lastResult
+		case <-time.After(500 * time.Millisecond):
+		}
+	}
+}
+
+// doAgentProbe performs a single HTTP probe against the agent health endpoint
+// and returns the validated result, or nil if the attempt failed at the
+// network/parse level.
+func doAgentProbe(ctx context.Context, client *http.Client, url string) *agentcheck.Result {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil
+	}
+	body, readErr := io.ReadAll(resp.Body)
+	resp.Body.Close()
+
+	if readErr != nil || resp.StatusCode != http.StatusOK {
+		return nil
+	}
+
+	var health models.AgentLivenessResponse
+	if json.Unmarshal(body, &health) != nil {
+		return nil
+	}
+	return agentcheck.ValidateLiveness(&health)
 }
