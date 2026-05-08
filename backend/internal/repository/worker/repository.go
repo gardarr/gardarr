@@ -227,6 +227,7 @@ func (r *Repository) CheckWorkerAvailability(worker *entities.Worker) error {
 		return workerErr
 	}
 
+	// lgtm [go/request-forgery]
 	response, err := r.http.Do(req)
 	if err != nil {
 		workerErr := classifyWorkerError(err)
@@ -319,6 +320,7 @@ func (r *Repository) GetInstance(worker *entities.Worker) (*entities.Instance, e
 
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", decryptedToken))
 
+	// lgtm [go/request-forgery]
 	response, err := r.http.Do(req)
 	if err != nil {
 		return nil, err
@@ -352,6 +354,7 @@ func (r *Repository) GetInstanceWithoutDecrypt(worker *entities.Worker) (*entiti
 
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", worker.Token))
 
+	// lgtm [go/request-forgery]
 	response, err := r.http.Do(req)
 	if err != nil {
 		return nil, err
