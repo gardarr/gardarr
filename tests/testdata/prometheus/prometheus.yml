@@ -14,14 +14,9 @@ scrape_configs:
     metrics_path: /metrics
     scheme: http
 
-    # Remove this block if METRICS_DISABLE_AUTH=true in Gardarr
-    basic_auth:
-      username: "prometheus"
-      password: "change-me"
-
     static_configs:
       - targets:
           - "host.docker.internal:3200"
         labels:
           app: gardarr
-          env: production
+          env: development

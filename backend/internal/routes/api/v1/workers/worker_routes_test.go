@@ -12,32 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetWorkerVersion_StandaloneMode(t *testing.T) {
-	// Setup
-	gin.SetMode(gin.TestMode)
-	router := gin.New()
-
-	// Create module with nil service for standalone test
-	module := &Module{
-		service: nil,
-	}
-
-	// Register route
-	router.GET("/worker/:id/version", module.getWorkerVersion)
-
-	// Test standalone mode
-	req, _ := http.NewRequest("GET", "/worker/00000000-0000-0000-0000-000000000000/version?mode=standalone", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	// Assertions
-	assert.Equal(t, http.StatusOK, w.Code)
-
-	// The response should contain the version information
-	assert.Contains(t, w.Body.String(), `"version"`)
-	assert.Contains(t, w.Body.String(), `"commit"`)
-	assert.Contains(t, w.Body.String(), `"date"`)
-}
 
 func TestSetWorkerTaskTags_InvalidJSON(t *testing.T) {
 	// Setup

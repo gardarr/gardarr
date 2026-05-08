@@ -12,7 +12,6 @@ import {
   Wifi,
   Activity,
   AlertTriangle,
-  Lock,
   Edit,
   ExternalLink
 } from "lucide-react";

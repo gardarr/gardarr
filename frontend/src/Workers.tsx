@@ -19,7 +19,6 @@ import {
   HardDrive,
   Wifi,
   Activity,
-  X,
   Check,
   Eye,
   EyeOff,
@@ -30,7 +29,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { workerService } from "./services/workers";
-import type { Worker, CreateWorkerRequest, UpdateWorkerRequest } from "./types/worker";
+import type { Worker, UpdateWorkerRequest } from "./types/worker";
 import { toast } from "sonner";
 import { WorkerIcon } from "./components/ui/WorkerIcon";
 import { availableIcons, availableColors } from "./utils/workerUtils";
