@@ -48,7 +48,7 @@
   "navigation": {
     "dashboard": "Dashboard",
     "torrents": "Torrents",
-    "agents": "Agents",
+    "workers": "Workers",
     "categories": "Categories",
     "users": "Users",
     "analytics": "Analytics",
@@ -156,16 +156,16 @@
   "dashboard": {
     "title": "Dashboard",
     "subtitle": "Overview of your Gardarr server",
-    "description": "Real-time analytics and insights for your torrent agents and tasks",
+    "description": "Real-time analytics and insights for your torrent workers and tasks",
     "statisticsDisabled": "Statistics calculation is disabled. Data may not be displayed correctly.",
     "refreshNow": "Refresh now",
-    "loadingAgents": "Loading agents...",
-    "noAgentsConfigured": "No agents configured",
-    "noAgentsConfiguredDesc": "Configure at least one agent to view dashboard metrics",
-    "agentsWithError": "Agents with error",
-    "agentsWithErrorDesc": "All configured agents have errors. Please fix the agent configuration to view dashboard metrics.",
-    "fixAgents": "Fix Agents",
-    "configureAgents": "Configure Agents",
+    "loadingWorkers": "Loading workers...",
+    "noWorkersConfigured": "No workers configured",
+    "noWorkersConfiguredDesc": "Configure at least one worker to view dashboard metrics",
+    "workersWithError": "Workers with error",
+    "workersWithErrorDesc": "All configured workers have errors. Please fix the worker configuration to view dashboard metrics.",
+    "fixWorkers": "Fix Workers",
+    "configureWorkers": "Configure Workers",
     "activeDownloads": "Active Downloads",
     "activeDownloadsDesc": "+12% compared to last month",
     "onlineUsers": "Online Users",
@@ -215,6 +215,7 @@
       "selectPlaceholder": "Select a language...",
       "current": "Current Language",
       "saveSuccess": "Language changed successfully",
+      "saveChanges": "Save Changes",
       "languages": {
         "en-US": "English (United States)",
         "pt-BR": "Portuguese (Brazil)"
@@ -263,11 +264,11 @@
     },
     "imageStorage": {
       "title": "Image Storage",
-      "description": "Manage uploaded torrent images per agent. View disk usage and clean up unused files.",
+      "description": "Manage uploaded torrent images per worker. View disk usage and clean up unused files.",
       "totalImages": "Total Images",
       "diskUsage": "Disk Usage",
-      "byAgent": "By Agent",
-      "unknownAgent": "Unknown Agent",
+      "byWorker": "By Worker",
+      "unknownWorker": "Unknown Worker",
       "removed": "removed",
       "images": "images",
       "delete": "Delete",
@@ -283,9 +284,9 @@
         "title": "Delete Orphan Files",
         "description": "This will permanently delete all orphan image files from disk. This action cannot be undone."
       },
-      "confirmDeleteAgent": {
-        "title": "Delete Agent Images",
-        "description": "This will permanently delete all images for this agent from disk and remove their associations. This action cannot be undone."
+      "confirmDeleteWorker": {
+        "title": "Delete Worker Images",
+        "description": "This will permanently delete all images for this worker from disk and remove their associations. This action cannot be undone."
       },
       "imagesDeleted": "{{count}} images deleted",
       "orphansDeleted": "{{count}} orphan files deleted",
@@ -327,7 +328,7 @@
     "description": {
       "title": "About the Project",
       "text1": "Gardarr is a modern, lightweight management and analytics tool designed specifically for qBittorrent. Built with a focus on mobile optimization, it provides an intuitive interface for monitoring and managing your torrents from any device.",
-      "text2": "The project is open-source and community-driven, prioritizing clean, maintainable code that can be self-hosted by anyone. Whether you're managing a single instance or multiple agents, Gardarr offers the tools you need in a beautiful, responsive interface."
+      "text2": "The project is open-source and community-driven, prioritizing clean, maintainable code that can be self-hosted by anyone. Whether you're managing a single instance or multiple workers, Gardarr offers the tools you need in a beautiful, responsive interface."
     },
     "features": {
       "title": "Key Features",
@@ -423,16 +424,16 @@
       "passwordsDoNotMatch": "Passwords do not match"
     }
   },
-  "agents": {
-    "title": "Agents",
+  "workers": {
+    "title": "Workers",
     "subtitle": "Manage your torrent clients and connections",
     "refresh": "Refresh",
-    "addAgent": "Add Agent",
+    "addWorker": "Add Worker",
     "cancel": "Cancel",
-    "createNewAgent": "Create New Agent",
-    "editAgent": "Edit Agent",
-    "deleteAgent": "Delete Agent",
-    "agentDetails": "Agent Details",
+    "createNewWorker": "Create New Worker",
+    "editWorker": "Edit Worker",
+    "deleteWorker": "Delete Worker",
+    "workerDetails": "Worker Details",
     "name": "Name",
     "type": "Type",
     "address": "Address",
@@ -440,24 +441,28 @@
     "color": "Color",
     "icon": "Icon",
     "preview": "Preview",
-    "createAgent": "Create Agent",
-    "updateAgent": "Update Agent",
-    "searchAgents": "Search agents...",
-    "loadingAgents": "Loading agents...",
-    "noAgentsFound": "No agents found",
-    "noAgentsMatch": "No agents match your search criteria.",
-    "getStarted": "Get started by adding your first agent.",
-    "agentName": "Agent Name",
+    "createWorker": "Create Worker",
+    "updateWorker": "Update Worker",
+    "searchWorkers": "Search workers...",
+    "loadingWorkers": "Loading workers...",
+    "noWorkersFound": "No workers found",
+    "noWorkersMatch": "No workers match your search criteria.",
+    "getStarted": "Get started by adding your first worker.",
+    "workerName": "Worker Name",
     "authenticationToken": "Authentication token",
     "newAuthenticationToken": "New authentication token",
     "leaveEmptyToKeep": "leave empty to keep current",
+    "generateToken": "Generate token",
+    "copyToken": "Copy token",
+    "tokenCopied": "Token copied!",
+    "tokenCopyFailed": "Failed to copy token",
     "info": "Info",
     "stats": "Stats",
     "instanceInformation": "Instance Information",
     "application": "Application",
     "version": "Version",
     "api": "API",
-    "agent": "Agent",
+    "worker": "Worker",
     "commit": "Commit",
     "date": "Date",
     "loadingVersion": "Loading version...",
@@ -489,10 +494,14 @@
     "clickToViewDetails": "Click to view error details",
     "errors": {
       "fillRequiredFields": "Please fill in all required fields",
-      "failedToLoad": "Failed to load agents",
-      "failedToDelete": "Failed to delete agent",
-      "failedToCreate": "Failed to create agent",
-      "failedToUpdate": "Failed to update agent",
+      "nameRequired": "Worker name is required",
+      "addressRequired": "Worker address is required",
+      "tokenRequired": "Authentication token is required",
+      "connectionFailed": "Could not connect to the instance",
+      "failedToLoad": "Failed to load workers",
+      "failedToDelete": "Failed to delete worker",
+      "failedToCreate": "Failed to create worker",
+      "failedToUpdate": "Failed to update worker",
       "noChangesDetected": "No changes detected"
     },
     "errorCodes": {
@@ -528,9 +537,9 @@
         "title": "Network Unreachable",
         "description": "Cannot reach the server on the network. Check network connectivity and firewall rules."
       },
-      "AGENT_UNREACHABLE": {
-        "title": "Agent Unreachable",
-        "description": "The Gardarr agent is not responding. Verify the agent is running and the address is correct."
+      "WORKER_UNREACHABLE": {
+        "title": "Worker Unreachable",
+        "description": "The Gardarr worker is not responding. Verify the worker is running and the address is correct."
       },
       "BAD_GATEWAY": {
         "title": "Bad Gateway",
@@ -546,21 +555,21 @@
       }
     },
     "success": {
-      "deleted": "Agent deleted successfully",
-      "created": "Agent created successfully",
-      "updated": "Agent updated successfully"
+      "deleted": "Worker deleted successfully",
+      "created": "Worker created successfully",
+      "updated": "Worker updated successfully"
     },
     "confirmDelete": {
-      "title": "Are you sure you want to delete this agent?",
+      "title": "Are you sure you want to delete this worker?",
       "description": "This action cannot be undone."
     },
     "standalone": {
-      "title": "Standalone Agent",
-      "description": "This agent is initialized with the default Gardarr instance and cannot be modified or deleted.",
-      "cannotDelete": "Cannot Delete Standalone Agent",
-      "cannotDeleteDescription": "Standalone agents are initialized with the default Gardarr instance and cannot be deleted for system integrity.",
-      "cannotModify": "This is a standalone agent and cannot be modified.",
-      "tooltip": "Standalone agents cannot be edited"
+      "title": "Standalone Worker",
+      "description": "This worker is initialized with the default Gardarr instance and cannot be modified or deleted.",
+      "cannotDelete": "Cannot Delete Standalone Worker",
+      "cannotDeleteDescription": "Standalone workers are initialized with the default Gardarr instance and cannot be deleted for system integrity.",
+      "cannotModify": "This is a standalone worker and cannot be modified.",
+      "tooltip": "Standalone workers cannot be edited"
     },
     "status": {
       "active": "Active",
@@ -667,16 +676,16 @@
         "placeholder": "Type a tag and press Enter",
         "autoFilled": "auto-filled"
       },
-      "agent": {
-        "label": "Agent",
-        "noneAvailable": "No active agent available",
-        "select": "Select an agent",
+      "worker": {
+        "label": "Worker",
+        "noneAvailable": "No active worker available",
+        "select": "Select a worker",
         "freeSpace": "Free disk space:"
       },
       "submit": "Add",
       "submitting": "Adding...",
       "errors": {
-        "agentRequired": "Select an agent",
+        "workerRequired": "Select a worker",
         "magnetRequired": "Magnet URI is required",
         "magnetInvalidPrefix": "Magnet URI must start with 'magnet:'",
         "categoryRequired": "Select a category",
@@ -691,8 +700,8 @@
       "resume": "Resume auto-refresh",
       "paused": "Paused"
     },
-    "agent": "Agent",
-    "agents": "Agents",
+    "worker": "Worker",
+    "workers": "Workers",
     "of": "of",
     "torrents": "torrents",
     "logs": {
@@ -705,14 +714,14 @@
     "tryAgain": "Try again",
     "noTorrents": "No torrents found",
     "noTorrentsDesc": "Add a torrent to start downloading",
-    "noAgents": "No agents available",
-    "noAgentsDesc": "You need to register an agent before managing torrents. Add your first torrent client to get started.",
-    "addFirstAgent": "Add Agent",
-    "agentError": "Agent Error",
-    "agentErrorDesc": "Your agent is experiencing an error and needs to be fixed before managing torrents. Please check the agent configuration and try again.",
-    "fixAgent": "Fix Agent",
-    "noTorrentsWithAgents": "No torrents yet",
-    "noTorrentsWithAgentsDesc": "You have agents configured but no torrents. Add your first torrent to start downloading.",
+    "noWorkers": "No workers available",
+    "noWorkersDesc": "You need to register a worker before managing torrents. Add your first torrent client to get started.",
+    "addFirstWorker": "Add Worker",
+    "workerError": "Worker Error",
+    "workerErrorDesc": "Your worker is experiencing an error and needs to be fixed before managing torrents. Please check the worker configuration and try again.",
+    "fixWorker": "Fix Worker",
+    "noTorrentsWithWorkers": "No torrents yet",
+    "noTorrentsWithWorkersDesc": "You have workers configured but no torrents. Add your first torrent to start downloading.",
     "page": "Page",
     "previous": "Previous",
     "next": "Next",
@@ -733,7 +742,7 @@
     "name": "Name",
     "actions": "Actions",
     "filters": {
-      "allAgents": "All Agents",
+      "allWorkers": "All Workers",
       "allStatuses": "All Statuses",
       "allCategories": "All Categories",
       "allTags": "All Tags",
@@ -744,7 +753,7 @@
       "none": "None",
       "categoriesCount": "categories",
       "noCategoriesAvailable": "No categories available",
-      "agents": "Agents",
+      "workers": "Workers",
       "status": "Status",
       "categories": "Categories",
       "tags": "Tags",
@@ -779,8 +788,8 @@
       "deleteBulkSuccess": "{{count}} torrent removed successfully",
       "deleteBulkSuccess_plural": "{{count}} torrents removed successfully",
       "deleteBulkError": "Error removing torrent(s)",
-      "someAgentsFailed": "Some agents failed to load tasks",
-      "agentIdNotFound": "Agent ID not found for this torrent",
+      "someWorkersFailed": "Some workers failed to load tasks",
+      "workerIdNotFound": "Worker ID not found for this torrent",
       "resumeSuccess": "Torrent resumed successfully",
       "pauseSuccess": "Torrent paused successfully",
       "forceDownloadSuccess": "Force download started successfully",
@@ -814,11 +823,11 @@
       "selectedCount_plural": "{{count}} selected"
     },
     "addFile": "Add file",
-    "agentErrorWarning": {
-      "title": "Agent Errors Detected",
-      "description": "Some agents have errors that need to be fixed. This may affect task management and monitoring.",
-      "descriptionShort": "Some agents have errors that need to be fixed.",
-      "fixAgents": "Fix Agents",
+    "workerErrorWarning": {
+      "title": "Worker Errors Detected",
+      "description": "Some workers have errors that need to be fixed. This may affect task management and monitoring.",
+      "descriptionShort": "Some workers have errors that need to be fixed.",
+      "fixWorkers": "Fix Workers",
       "fix": "Fix"
     },
     "updateInterval": {
@@ -1017,7 +1026,7 @@
     "general": {
       "title": "General Information",
       "state": "State:",
-      "agent": "Agent:",
+      "worker": "Worker:",
       "createdAt": "Created at",
       "completedAt": "Completed at"
     },

@@ -37,16 +37,16 @@ export interface ThemeUpdateRequest {
   theme: string;
 }
 
-export interface AgentImageStats {
-  agent_id: string;
-  agent_name: string;
+export interface WorkerImageStats {
+  worker_id: string;
+  worker_name: string;
   is_removed: boolean;
   image_count: number;
   total_size_bytes: number;
 }
 
 export interface ImageStorageStatsResponse {
-  agents: AgentImageStats[];
+  workers: WorkerImageStats[];
   orphan_count: number;
   orphan_size_bytes: number;
   total_size_bytes: number;
@@ -150,7 +150,7 @@ class SettingsService {
     return {};
   }
   /**
-   * Gets image storage stats per agent
+   * Gets image storage stats per worker
    */
   async getImageStorageStats(): Promise<{ data?: ImageStorageStatsResponse; error?: string }> {
     const response = await api.get<ImageStorageStatsResponse>("/settings/images/stats");
@@ -163,10 +163,10 @@ class SettingsService {
   }
 
   /**
-   * Deletes all images for a specific agent
+   * Deletes all images for a specific worker
    */
-  async deleteAgentImages(agentId: string): Promise<{ data?: DeleteImagesResponse; error?: string }> {
-    const response = await api.delete<DeleteImagesResponse>(`/settings/images/agent/${agentId}`);
+  async deleteWorkerImages(workerId: string): Promise<{ data?: DeleteImagesResponse; error?: string }> {
+    const response = await api.delete<DeleteImagesResponse>(`/settings/images/worker/${workerId}`);
     
     if (response.error) {
       return { error: response.error };

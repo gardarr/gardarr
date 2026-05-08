@@ -14,7 +14,7 @@ import { syncLimitModes, getLimitValue } from "@/utils/limitUtils";
 interface TorrentLimitModalProps {
   isOpen: boolean;
   onClose: () => void;
-  agentId: string;
+  workerId: string;
   taskIds: string[];
   taskName?: string;
   taskStatus?: string;
@@ -23,7 +23,7 @@ interface TorrentLimitModalProps {
 export function TorrentLimitModal({
   isOpen,
   onClose,
-  agentId,
+  workerId,
   taskIds,
   taskName,
   taskStatus: taskStatusProp
@@ -52,7 +52,7 @@ export function TorrentLimitModal({
 
   // Load limits when modal opens
   const loadLimits = useCallback(async () => {
-    if (!agentId || taskIds.length === 0) return;
+    if (!workerId || taskIds.length === 0) return;
 
     setIsLoading(true);
     setError(null);
@@ -61,7 +61,7 @@ export function TorrentLimitModal({
     try {
       // Load limits from all selected tasks
       const responses = await Promise.all(
-        taskIds.map(id => torrentService.getTaskLimits(agentId, id))
+        taskIds.map(id => torrentService.getTaskLimits(workerId, id))
       );
 
       // Check for errors
@@ -114,13 +114,13 @@ export function TorrentLimitModal({
     } finally {
       setIsLoading(false);
     }
-  }, [agentId, taskIds]);
+  }, [workerId, taskIds]);
 
   useEffect(() => {
-    if (isOpen && agentId && taskIds.length > 0) {
+    if (isOpen && workerId && taskIds.length > 0) {
       loadLimits();
     }
-  }, [isOpen, agentId, taskIds, loadLimits]);
+  }, [isOpen, workerId, taskIds, loadLimits]);
 
   // Close modal on Escape key
   useEffect(() => {
@@ -140,7 +140,7 @@ export function TorrentLimitModal({
     if (limits.download_limit > 0) {
       // Apply to all selected tasks
       const responses = await Promise.all(
-        taskIds.map(id => torrentService.setTaskDownloadLimit(agentId, id, limits.download_limit))
+        taskIds.map(id => torrentService.setTaskDownloadLimit(workerId, id, limits.download_limit))
       );
       
       const errors = responses.filter(r => r.error);
@@ -156,7 +156,7 @@ export function TorrentLimitModal({
     if (limits.upload_limit > 0) {
       // Apply to all selected tasks
       const responses = await Promise.all(
-        taskIds.map(id => torrentService.setTaskUploadLimit(agentId, id, limits.upload_limit))
+        taskIds.map(id => torrentService.setTaskUploadLimit(workerId, id, limits.upload_limit))
       );
       
       const errors = responses.filter(r => r.error);
@@ -172,7 +172,7 @@ export function TorrentLimitModal({
     // Apply to all selected tasks
     const responses = await Promise.all(
       taskIds.map(id => torrentService.setTaskShareLimit(
-        agentId,
+        workerId,
         id,
         limits.ratio_limit,
         limits.seeding_time_limit,
@@ -189,7 +189,7 @@ export function TorrentLimitModal({
   };
 
   const handleSave = async () => {
-    if (!agentId || taskIds.length === 0) return;
+    if (!workerId || taskIds.length === 0) return;
 
     setIsSaving(true);
     setError(null);

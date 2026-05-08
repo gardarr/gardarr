@@ -154,5 +154,5 @@ type TaskShareLimit struct {
 
 type TaskListResult struct {
 	Tasks  []*Task           `json:"tasks"`
-	Errors map[string]string `json:"errors"` // Map of AgentUUID -> ErrorMessage
+	Errors map[string]string `json:"errors"` // Map of WorkerUUID -> ErrorMessage
 }

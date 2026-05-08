@@ -7,12 +7,11 @@ import {
   ContextMenuContent,
   ContextMenuItem
 } from "@/components/ui/context-menu";
-import { Play, Pause, Trash2, Zap, Radio, CheckCircle, BarChart3, Settings, Info } from "lucide-react";
-import { useSetup } from "@/contexts/SetupContextBase";
+import { Play, Pause, Trash2, Zap, Radio, CheckCircle, Settings, Info } from "lucide-react";
 
 type TorrentContextMenuProps = {
   taskId: string;
-  agentId?: string;
+  workerId?: string;
   children: React.ReactNode;
   onStart?: (taskId: string) => void;
   onStop?: (taskId: string) => void;
@@ -20,8 +19,7 @@ type TorrentContextMenuProps = {
   onForceDownload?: (taskId: string) => void;
   onForceReannounce?: (taskId: string) => void;
   onForceRecheck?: (taskId: string) => void;
-  onMetrics?: (taskId: string, agentId?: string) => void;
-  onLimits?: (taskId: string, agentId?: string) => void;
+  onLimits?: (taskId: string, workerId?: string) => void;
   onShowDetails?: (taskId: string) => void;
   selectionMode?: boolean;
   selectedIds?: Set<string>;
@@ -30,10 +28,9 @@ type TorrentContextMenuProps = {
 
 export default function TorrentContextMenu(props: TorrentContextMenuProps) {
   const { t } = useTranslation();
-  const { taskId, agentId, children, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits, onShowDetails, selectionMode, selectedIds, onRequestDelete } = props;
+  const { taskId, workerId, children, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onLimits, onShowDetails, selectionMode, selectedIds, onRequestDelete } = props;
 
   const [isMenuReady, setIsMenuReady] = React.useState(false);
-  const { statisticsEnabled } = useSetup();
 
   const handleStart = React.useCallback((e: React.MouseEvent) => {
     if (!isMenuReady) { e.preventDefault(); e.stopPropagation(); return; }
@@ -99,23 +96,14 @@ export default function TorrentContextMenu(props: TorrentContextMenuProps) {
     }
   }, [isMenuReady, onForceRecheck, taskId, selectionMode, selectedIds]);
 
-  const handleMetrics = React.useCallback((e: React.MouseEvent) => {
-    if (!isMenuReady) { e.preventDefault(); e.stopPropagation(); return; }
-    e.preventDefault();
-    e.stopPropagation();
-    if (onMetrics) {
-      onMetrics(taskId, agentId);
-    }
-  }, [isMenuReady, onMetrics, taskId, agentId]);
-
   const handleLimits = React.useCallback((e: React.MouseEvent) => {
     if (!isMenuReady) { e.preventDefault(); e.stopPropagation(); return; }
     e.preventDefault();
     e.stopPropagation();
     if (onLimits) {
-      onLimits(taskId, agentId);
+      onLimits(taskId, workerId);
     }
-  }, [isMenuReady, onLimits, taskId, agentId]);
+  }, [isMenuReady, onLimits, taskId, workerId]);
 
   const handleShowDetails = React.useCallback((e: React.MouseEvent) => {
     if (!isMenuReady) { e.preventDefault(); e.stopPropagation(); return; }
@@ -167,10 +155,6 @@ export default function TorrentContextMenu(props: TorrentContextMenuProps) {
         <ContextMenuItem onClick={handleForceRecheck} disabled={!onForceRecheck}>
           <CheckCircle />
           {t("torrents.forceRecheck")}
-        </ContextMenuItem>
-        <ContextMenuItem onClick={handleMetrics} disabled={!onMetrics || !statisticsEnabled}>
-          <BarChart3 />
-          {t("torrents.metrics")}
         </ContextMenuItem>
         <ContextMenuItem onClick={handleLimits}>
           <Settings />

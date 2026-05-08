@@ -10,7 +10,7 @@ import (
 // Event represents a system event in the database
 type Event struct {
 	UUID      uuid.UUID `gorm:"type:uuid;primaryKey;uniqueIndex"`
-	AgentID   uuid.UUID `gorm:"type:uuid;index;not null"`
+	WorkerID  uuid.UUID `gorm:"type:uuid;column:worker_id;index;not null"`
 	Type      string    `gorm:"size:100;index;not null"`
 	TaskHash  string    `gorm:"size:255;index"`
 	OldValue  string    `gorm:"size:255"`
@@ -32,7 +32,7 @@ func (e *Event) BeforeCreate(tx *gorm.DB) (err error) {
 // EventResponse represents the response body for event operations
 type EventResponse struct {
 	UUID      string                 `json:"uuid"`
-	AgentID   string                 `json:"agent_id"`
+	WorkerID  string                 `json:"worker_id"`
 	Type      string                 `json:"type"`
 	TaskHash  string                 `json:"task_hash,omitempty"`
 	OldValue  string                 `json:"old_value,omitempty"`

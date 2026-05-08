@@ -73,7 +73,7 @@ func ValidatePathComponent(component string) error {
 
 // ValidateSafePathComponent performs strict validation on a path component,
 // ensuring it only contains safe alphanumeric characters, dashes, underscores, and dots.
-// This is useful for user-provided identifiers like agent IDs.
+// This is useful for user-provided identifiers like worker IDs.
 func ValidateSafePathComponent(component string) error {
 	if err := ValidatePathComponent(component); err != nil {
 		return err
@@ -119,7 +119,6 @@ func SafeJoinPath(base string, components ...string) (string, error) {
 // ValidateDataDirectories ensures that required data directories exist and are writable.
 // This function is typically called with directories obtained from environment variables:
 // - TORRENT_IMAGE_UPLOAD_DIR (default: /media/uploads/images)
-// - STATISTICS_DIR (default: /data/statistics)
 // The directories will be created if they don't exist, with permissions 0755.
 func ValidateDataDirectories(dataDirs ...string) error {
 	for _, dir := range dataDirs {

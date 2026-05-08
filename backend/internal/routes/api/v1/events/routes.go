@@ -46,7 +46,7 @@ func (m *Module) Register() {
 // listEvents retrieves events with optional filters
 func (m *Module) listEvents(c *gin.Context) {
 	// Parse query parameters
-	agentIDStr := c.Query("agent_id")
+	workerIDStr := c.Query("worker_id")
 	eventType := c.Query("type")
 	limitStr := c.DefaultQuery("limit", "50")
 	offsetStr := c.DefaultQuery("offset", "0")
@@ -64,10 +64,10 @@ func (m *Module) listEvents(c *gin.Context) {
 		offset = 0
 	}
 
-	var agentID *uuid.UUID
-	if agentIDStr != "" {
-		if parsed, err := uuid.Parse(agentIDStr); err == nil {
-			agentID = &parsed
+	var workerID *uuid.UUID
+	if workerIDStr != "" {
+		if parsed, err := uuid.Parse(workerIDStr); err == nil {
+			workerID = &parsed
 		}
 	}
 
@@ -77,7 +77,7 @@ func (m *Module) listEvents(c *gin.Context) {
 	}
 
 	// Get events from service
-	eventsList, total, err := m.eventService.ListEvents(c.Request.Context(), agentID, eventTypePtr, limit, offset)
+	eventsList, total, err := m.eventService.ListEvents(c.Request.Context(), workerID, eventTypePtr, limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to retrieve events",

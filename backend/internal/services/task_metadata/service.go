@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jfxdev/gardarr/internal/constants"
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/models"
@@ -385,53 +384,51 @@ func (s *Service) scanUploadDir() (map[string]uploadFileInfo, error) {
 	return filesByPath, nil
 }
 
-// queryHashToAgentID maps task hashes to their agent IDs via the task_states table.
-func (s *Service) queryHashToAgentID(ctx context.Context, taskHashes []string) (map[string]string, error) {
-	hashToAgentID := make(map[string]string)
+// queryHashToWorkerID maps task hashes to their worker IDs via the task_states table.
+func (s *Service) queryHashToWorkerID(ctx context.Context, taskHashes []string) (map[string]string, error) {
+	hashToWorkerID := make(map[string]string)
 	if len(taskHashes) == 0 {
-		return hashToAgentID, nil
+		return hashToWorkerID, nil
 	}
 	var taskStates []struct {
-		Hash    string    `gorm:"column:hash"`
-		AgentID uuid.UUID `gorm:"column:agent_id"`
+		Hash     string    `gorm:"column:hash"`
+		WorkerID uuid.UUID `gorm:"column:worker_id"`
 	}
 	if err := s.db.DB.WithContext(ctx).
 		Table("task_states").
-		Select("hash, agent_id").
+		Select("hash, worker_id").
 		Where("hash IN ?", taskHashes).
 		Find(&taskStates).Error; err != nil {
 		return nil, fmt.Errorf("failed to query task_states: %w", err)
 	}
 	for _, ts := range taskStates {
-		hashToAgentID[ts.Hash] = ts.AgentID.String()
+		hashToWorkerID[ts.Hash] = ts.WorkerID.String()
 	}
-	return hashToAgentID, nil
+	return hashToWorkerID, nil
 }
 
-// queryAgentNames returns a map of agent UUID strings to their display names.
-func (s *Service) queryAgentNames(ctx context.Context) map[string]string {
-	agentNames := make(map[string]string)
-	var agents []struct {
+// queryWorkerNames returns a map of worker UUID strings to their display names.
+func (s *Service) queryWorkerNames(ctx context.Context) map[string]string {
+	workerNames := make(map[string]string)
+	var workers []struct {
 		UUID uuid.UUID `gorm:"column:uuid"`
 		Name string    `gorm:"column:name"`
 	}
 	if err := s.db.DB.WithContext(ctx).
-		Table("agents").
+		Table("workers").
 		Select("uuid, name").
-		Find(&agents).Error; err != nil {
-		slog.Warn("failed to query agents", "error", err)
-		return agentNames
+		Find(&workers).Error; err != nil {
+		slog.Warn("failed to query workers", "error", err)
+		return workerNames
 	}
-	for _, a := range agents {
-		agentNames[a.UUID.String()] = a.Name
+	for _, w := range workers {
+		workerNames[w.UUID.String()] = w.Name
 	}
-	// Standalone agents are not stored in the DB — register the nil UUID explicitly
-	agentNames[constants.StandaloneAgentUUID.String()] = "Standalone"
-	return agentNames
+	return workerNames
 }
 
-// GetImageStorageStatsByAgent returns per-agent image storage stats using a filesystem-first approach
-func (s *Service) GetImageStorageStatsByAgent(ctx context.Context) (*models.ImageStorageStatsResponse, error) {
+// GetImageStorageStatsByWorker returns per-worker image storage stats using a filesystem-first approach
+func (s *Service) GetImageStorageStatsByWorker(ctx context.Context) (*models.ImageStorageStatsResponse, error) {
 	// 1. Scan uploadDir for all files
 	filesByPath, err := s.scanUploadDir()
 	if err != nil {
@@ -456,21 +453,21 @@ func (s *Service) GetImageStorageStatsByAgent(ctx context.Context) (*models.Imag
 		}
 	}
 
-	// 4. Query TaskState to map task_hash → agent_id
-	hashToAgentID, err := s.queryHashToAgentID(ctx, taskHashes)
+	// 4. Query TaskState to map task_hash → worker_id
+	hashToWorkerID, err := s.queryHashToWorkerID(ctx, taskHashes)
 	if err != nil {
 		return nil, err
 	}
 
-	// 5. Get all known agent UUIDs and names
-	agentNames := s.queryAgentNames(ctx)
+	// 5. Get all known worker UUIDs and names
+	workerNames := s.queryWorkerNames(ctx)
 
-	// 6. Group files by agent
-	type agentAccum struct {
+	// 6. Group files by worker
+	type workerAccum struct {
 		count int
 		size  int64
 	}
-	agentStats := make(map[string]*agentAccum)
+	workerStats := make(map[string]*workerAccum)
 	var orphanCount int
 	var orphanSize int64
 	var totalSize int64
@@ -488,28 +485,28 @@ func (s *Service) GetImageStorageStatsByAgent(ctx context.Context) (*models.Imag
 			continue
 		}
 
-		agentID, hasAgent := hashToAgentID[meta.TaskHash]
-		if !hasAgent {
+		workerID, hasWorker := hashToWorkerID[meta.TaskHash]
+		if !hasWorker {
 			// TaskMetadata exists but no TaskState → orphan (task removed)
 			orphanCount++
 			orphanSize += fi.size
 			continue
 		}
 
-		if _, ok := agentStats[agentID]; !ok {
-			agentStats[agentID] = &agentAccum{}
+		if _, ok := workerStats[workerID]; !ok {
+			workerStats[workerID] = &workerAccum{}
 		}
-		agentStats[agentID].count++
-		agentStats[agentID].size += fi.size
+		workerStats[workerID].count++
+		workerStats[workerID].size += fi.size
 	}
 
 	// 7. Build response
-	var agentList []models.AgentImageStats
-	for agentID, stats := range agentStats {
-		name, isActive := agentNames[agentID]
-		agentList = append(agentList, models.AgentImageStats{
-			AgentID:        agentID,
-			AgentName:      name,
+	var workerList []models.WorkerImageStats
+	for workerID, stats := range workerStats {
+		name, isActive := workerNames[workerID]
+		workerList = append(workerList, models.WorkerImageStats{
+			WorkerID:       workerID,
+			WorkerName:     name,
 			IsRemoved:      !isActive,
 			ImageCount:     stats.count,
 			TotalSizeBytes: stats.size,
@@ -517,7 +514,7 @@ func (s *Service) GetImageStorageStatsByAgent(ctx context.Context) (*models.Imag
 	}
 
 	return &models.ImageStorageStatsResponse{
-		Agents:          agentList,
+		Workers:         workerList,
 		OrphanCount:     orphanCount,
 		OrphanSizeBytes: orphanSize,
 		TotalSizeBytes:  totalSize,
@@ -525,14 +522,14 @@ func (s *Service) GetImageStorageStatsByAgent(ctx context.Context) (*models.Imag
 	}, nil
 }
 
-// DeleteImagesByAgent deletes all images belonging to a specific agent
-func (s *Service) DeleteImagesByAgent(ctx context.Context, agentID string) (int, error) {
-	// 1. Get all task hashes belonging to this agent from TaskState
+// DeleteImagesByWorker deletes all images belonging to a specific worker
+func (s *Service) DeleteImagesByWorker(ctx context.Context, workerID string) (int, error) {
+	// 1. Get all task hashes belonging to this worker from TaskState
 	var taskHashes []string
 	if err := s.db.DB.WithContext(ctx).
 		Table("task_states").
 		Select("hash").
-		Where("agent_id = ?", agentID).
+		Where("worker_id = ?", workerID).
 		Pluck("hash", &taskHashes).Error; err != nil {
 		return 0, fmt.Errorf("failed to query task_states: %w", err)
 	}
@@ -626,7 +623,7 @@ func (s *Service) clearImagePaths(ctx context.Context, hashes []string) {
 // DeleteOrphanImages deletes orphan files from uploadDir.
 // An orphan is either: (a) a file not referenced by any TaskMetadata, or
 // (b) a file referenced by TaskMetadata but whose task_hash has no TaskState.
-// This method mirrors the exact same filesystem-first classification used by GetImageStorageStatsByAgent.
+// This method mirrors the exact same filesystem-first classification used by GetImageStorageStatsByWorker.
 func (s *Service) DeleteOrphanImages(ctx context.Context) (int, error) {
 	// 1. Scan uploadDir for all files (filesystem-first, matching stats logic)
 	filesByPath, err := s.scanUploadDir()
@@ -652,7 +649,7 @@ func (s *Service) DeleteOrphanImages(ctx context.Context) (int, error) {
 		}
 	}
 
-	// 4. Query TaskState to find which hashes still have an agent link
+	// 4. Query TaskState to find which hashes still have an worker link
 	hashHasState, err := s.queryHashesWithState(ctx, taskHashes)
 	if err != nil {
 		return 0, err

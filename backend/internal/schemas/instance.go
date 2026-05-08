@@ -6,18 +6,18 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-// AgentCreateSchema represents the request body for creating an agent
-type AgentCreateSchema struct {
+// WorkerCreateSchema represents the request body for creating a worker
+type WorkerCreateSchema struct {
 	Name    string `json:"name"     binding:"required"`
-	Type    string `json:"type"     binding:"required,instancetype"`
+	Type    string `json:"type"     binding:"omitempty,instancetype"`
 	Address string `json:"address"  binding:"required"`
 	Token   string `json:"token"    binding:"required"`
 	Icon    string `json:"icon"     binding:"omitempty,max=100"`
 	Color   string `json:"color"    binding:"omitempty,max=50"`
 }
 
-// AgentUpdateSchema represents the request body for updating an agent
-type AgentUpdateSchema struct {
+// WorkerUpdateSchema represents the request body for updating a worker
+type WorkerUpdateSchema struct {
 	Name    string `json:"name"     binding:"omitempty"`
 	Address string `json:"address"  binding:"omitempty"`
 	Token   string `json:"token"    binding:"omitempty"`

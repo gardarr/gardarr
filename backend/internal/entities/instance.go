@@ -51,8 +51,8 @@ type InstanceTransfer struct {
 
 // ConnectionStatus represents the detailed connection state
 type ConnectionStatus struct {
-	Status    string         // One of ConnectionStatus* constants
-	ErrorCode AgentErrorCode // Specific error code
-	Message   string         // Human-readable error message
-	Permanent bool           // True if error requires user intervention
+	Status    string          // One of ConnectionStatus* constants
+	ErrorCode WorkerErrorCode // Specific error code
+	Message   string          // Human-readable error message
+	Permanent bool            // True if error requires user intervention
 }

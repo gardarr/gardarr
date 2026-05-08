@@ -16,7 +16,7 @@ func MatchesEvent(filter *entities.EventFilter, event *entities.Event) bool {
 	}
 
 	// If all filter fields are empty, match all events
-	if filter.EventTypeFilter == "" && len(filter.StatusFilter) == 0 && 
+	if filter.EventTypeFilter == "" && len(filter.StatusFilter) == 0 &&
 		len(filter.CategoryFilter) == 0 && len(filter.NameTerms) == 0 {
 		return true
 	}
@@ -100,4 +100,3 @@ func containsAnyTerm(text string, terms []string) bool {
 	}
 	return false
 }
-

@@ -352,12 +352,12 @@ func TestValidateSafePathComponent(t *testing.T) {
 		},
 		{
 			name:      "valid alphanumeric",
-			component: "agent123",
+			component: "worker123",
 			wantErr:   false,
 		},
 		{
 			name:      "valid with underscore",
-			component: "my_agent_01",
+			component: "my_worker_01",
 			wantErr:   false,
 		},
 		{
@@ -372,12 +372,12 @@ func TestValidateSafePathComponent(t *testing.T) {
 		},
 		{
 			name:      "contains special characters",
-			component: "agent@123",
+			component: "worker@123",
 			wantErr:   true,
 		},
 		{
 			name:      "contains spaces",
-			component: "my agent",
+			component: "my worker",
 			wantErr:   true,
 		},
 		{

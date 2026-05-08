@@ -13,7 +13,7 @@ import type {
  * Serviço para comunicação com a API v1/tasks do backend
  */
 export class TorrentService {
-  private readonly baseEndpoint = '/agents/tasks';
+  private readonly baseEndpoint = '/workers/tasks';
 
   /**
    * Lista todos os torrents/tasks
@@ -23,136 +23,136 @@ export class TorrentService {
   }
 
   /**
-   * Lista tasks de um agente específico
+   * Lista tasks de um worker específico
    */
-  async listAgentTasks(agentId: string): Promise<ApiResponse<Task[]>> {
-    return api.get<Task[]>(`/agent/${agentId}/tasks`);
+  async listWorkerTasks(workerId: string): Promise<ApiResponse<Task[]>> {
+    return api.get<Task[]>(`/worker/${workerId}/tasks`);
   }
 
   /**
-   * Cria uma nova task/torrent para um agente específico
+   * Cria uma nova task/torrent para um worker específico
    */
-  async createTask(agentId: string, taskData: CreateTaskRequest): Promise<ApiResponse<null>> {
-    return api.post<null>(`/agent/${agentId}/task`, taskData);
+  async createTask(workerId: string, taskData: CreateTaskRequest): Promise<ApiResponse<null>> {
+    return api.post<null>(`/worker/${workerId}/task`, taskData);
   }
 
   /**
    * Remove uma task/torrent
    */
-  async deleteTask(agentId: string, taskId: string, purge: boolean = false): Promise<ApiResponse<null>> {
-    const endpoint = `/agent/${agentId}/task/${taskId}${purge ? '?purge=true' : ''}`;
+  async deleteTask(workerId: string, taskId: string, purge: boolean = false): Promise<ApiResponse<null>> {
+    const endpoint = `/worker/${workerId}/task/${taskId}${purge ? '?purge=true' : ''}`;
     return api.delete<null>(endpoint);
   }
 
   /**
    * Pausa uma task/torrent (stop)
    */
-  async pauseTask(agentId: string, taskId: string): Promise<ApiResponse<null>> {
-    return api.post<null>(`/agent/${agentId}/task/${taskId}/stop`);
+  async pauseTask(workerId: string, taskId: string): Promise<ApiResponse<null>> {
+    return api.post<null>(`/worker/${workerId}/task/${taskId}/stop`);
   }
 
   /**
    * Retoma uma task/torrent (start)
    */
-  async resumeTask(agentId: string, taskId: string): Promise<ApiResponse<null>> {
-    return api.post<null>(`/agent/${agentId}/task/${taskId}/start`);
+  async resumeTask(workerId: string, taskId: string): Promise<ApiResponse<null>> {
+    return api.post<null>(`/worker/${workerId}/task/${taskId}/start`);
   }
 
   /**
    * Força download de uma task/torrent
    */
-  async forceDownloadTask(agentId: string, taskId: string): Promise<ApiResponse<null>> {
-    return api.post<null>(`/agent/${agentId}/task/${taskId}/force_download`);
+  async forceDownloadTask(workerId: string, taskId: string): Promise<ApiResponse<null>> {
+    return api.post<null>(`/worker/${workerId}/task/${taskId}/force_download`);
   }
 
   /**
    * Força reannounce de uma task/torrent
    */
-  async forceReannounceTask(agentId: string, taskId: string): Promise<ApiResponse<null>> {
-    return api.post<null>(`/agent/${agentId}/task/${taskId}/force_reannounce`);
+  async forceReannounceTask(workerId: string, taskId: string): Promise<ApiResponse<null>> {
+    return api.post<null>(`/worker/${workerId}/task/${taskId}/force_reannounce`);
   }
 
   /**
    * Força recheck de uma task/torrent
    */
-  async forceRecheckTask(agentId: string, taskId: string): Promise<ApiResponse<null>> {
-    return api.post<null>(`/agent/${agentId}/task/${taskId}/force_recheck`);
+  async forceRecheckTask(workerId: string, taskId: string): Promise<ApiResponse<null>> {
+    return api.post<null>(`/worker/${workerId}/task/${taskId}/force_recheck`);
   }
 
   /**
    * Ativa/desativa super seeding de uma task/torrent
    */
-  async toggleSuperSeeding(agentId: string, taskId: string, enabled: boolean): Promise<ApiResponse<null>> {
-    return api.post<null>(`/agent/${agentId}/task/${taskId}/super_seeding`, { enabled });
+  async toggleSuperSeeding(workerId: string, taskId: string, enabled: boolean): Promise<ApiResponse<null>> {
+    return api.post<null>(`/worker/${workerId}/task/${taskId}/super_seeding`, { enabled });
   }
 
   /**
    * Renomeia uma task/torrent
    */
-  async renameTask(agentId: string, taskId: string, newName: string): Promise<ApiResponse<null>> {
-    return api.post<null>(`/agent/${agentId}/task/${taskId}/rename`, { new_name: newName });
+  async renameTask(workerId: string, taskId: string, newName: string): Promise<ApiResponse<null>> {
+    return api.post<null>(`/worker/${workerId}/task/${taskId}/rename`, { new_name: newName });
   }
 
   /**
    * Altera o caminho (location) de uma task/torrent
    */
-  async setTaskLocation(agentId: string, taskId: string, location: string): Promise<ApiResponse<null>> {
-    return api.post<null>(`/agent/${agentId}/task/${taskId}/location`, { location });
+  async setTaskLocation(workerId: string, taskId: string, location: string): Promise<ApiResponse<null>> {
+    return api.post<null>(`/worker/${workerId}/task/${taskId}/location`, { location });
   }
 
   /**
    * Lista os arquivos de uma task/torrent específica
    */
-  async listTaskFiles(agentId: string, taskId: string): Promise<ApiResponse<TaskFile[]>> {
-    return api.get<TaskFile[]>(`/agent/${agentId}/task/${taskId}/files`);
+  async listTaskFiles(workerId: string, taskId: string): Promise<ApiResponse<TaskFile[]>> {
+    return api.get<TaskFile[]>(`/worker/${workerId}/task/${taskId}/files`);
   }
 
   /**
    * Atualiza as tags de uma task/torrent
    */
-  async updateTaskTags(agentId: string, taskId: string, tags: string[]): Promise<ApiResponse<null>> {
-    return api.put<null>(`/agent/${agentId}/task/${taskId}/tags`, { tags });
+  async updateTaskTags(workerId: string, taskId: string, tags: string[]): Promise<ApiResponse<null>> {
+    return api.put<null>(`/worker/${workerId}/task/${taskId}/tags`, { tags });
   }
 
   /**
    * Atualiza a categoria de uma task/torrent
    */
-  async updateTaskCategory(agentId: string, taskId: string, category: string): Promise<ApiResponse<null>> {
-    return api.put<null>(`/agent/${agentId}/task/${taskId}/category`, { category });
+  async updateTaskCategory(workerId: string, taskId: string, category: string): Promise<ApiResponse<null>> {
+    return api.put<null>(`/worker/${workerId}/task/${taskId}/category`, { category });
   }
 
   /**
    * Obtém os limites de uma task/torrent específica
    */
-  async getTaskLimits(agentId: string, taskId: string): Promise<ApiResponse<TaskLimits>> {
-    return api.get<TaskLimits>(`/agent/${agentId}/task/${taskId}/limits`);
+  async getTaskLimits(workerId: string, taskId: string): Promise<ApiResponse<TaskLimits>> {
+    return api.get<TaskLimits>(`/worker/${workerId}/task/${taskId}/limits`);
   }
 
   /**
    * Define o limite de download de uma task/torrent
    */
-  async setTaskDownloadLimit(agentId: string, taskId: string, limit: number): Promise<ApiResponse<null>> {
-    return api.post<null>(`/agent/${agentId}/task/${taskId}/limit_download_rate`, { limit });
+  async setTaskDownloadLimit(workerId: string, taskId: string, limit: number): Promise<ApiResponse<null>> {
+    return api.post<null>(`/worker/${workerId}/task/${taskId}/limit_download_rate`, { limit });
   }
 
   /**
    * Define o limite de upload de uma task/torrent
    */
-  async setTaskUploadLimit(agentId: string, taskId: string, limit: number): Promise<ApiResponse<null>> {
-    return api.post<null>(`/agent/${agentId}/task/${taskId}/limit_upload_rate`, { limit });
+  async setTaskUploadLimit(workerId: string, taskId: string, limit: number): Promise<ApiResponse<null>> {
+    return api.post<null>(`/worker/${workerId}/task/${taskId}/limit_upload_rate`, { limit });
   }
 
   /**
    * Define o limite de compartilhamento (share limit) de uma task/torrent
    */
   async setTaskShareLimit(
-    agentId: string,
+    workerId: string,
     taskId: string,
     ratioLimit: number,
     seedingTimeLimit: number,
     inactiveSeedingTimeLimit: number
   ): Promise<ApiResponse<null>> {
-    return api.put<null>(`/agent/${agentId}/task/${taskId}/share_limit`, {
+    return api.put<null>(`/worker/${workerId}/task/${taskId}/share_limit`, {
       ratio_limit: ratioLimit,
       seeding_time_limit: seedingTimeLimit,
       inactive_seeding_time_limit: inactiveSeedingTimeLimit

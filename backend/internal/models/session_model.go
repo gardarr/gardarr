@@ -33,3 +33,17 @@ func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
 func (s *Session) IsExpired() bool {
 	return time.Now().After(s.ExpiresAt)
 }
+
+// AuthResponse represents the response body for authentication operations
+type AuthResponse struct {
+	User *UserResponse `json:"user"`
+}
+
+// SessionResponse represents the response body for session information
+type SessionResponse struct {
+	ID        string    `json:"id"`
+	UserAgent string    `json:"user_agent"`
+	IPAddress string    `json:"ip_address"`
+	CreatedAt time.Time `json:"created_at"`
+	ExpiresAt time.Time `json:"expires_at"`
+}

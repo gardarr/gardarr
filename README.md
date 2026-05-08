@@ -93,7 +93,7 @@ Gardarr is a **modern, lightweight management and analytics platform for qBittor
 - [📋 Requirements](#-requirements)
 - [🚀 Getting Started](#-getting-started)
   - [Standalone Mode](#-standalone-mode)
-  - [Distributed Agent Mode](#-distributed-agent-mode)
+  - [Distributed Worker Mode](#-distributed-worker-mode)
 - [🏗️ Architecture](#-architecture)
 - [🏆 Ratio Grading System](#-ratio-grading-system)
 - [🔌 Integrations & Events](#-integrations--events)
@@ -111,7 +111,7 @@ Gardarr is a **modern, lightweight management and analytics platform for qBittor
 
 ## ✨ Key Features
 
-- **🔌 Multi-Agent Management**: Centralized dashboard to manage multiple qBittorrent instances across different servers.
+- **🔌 Multi-Worker Management**: Centralized dashboard to manage multiple qBittorrent instances across different servers.
 - **⚡ Torrent Control**: Full control to add, pause, resume, delete, and prioritize torrents.
 - **📊 Advanced Analytics**:
   - Real-time download/upload speed monitoring.
@@ -160,12 +160,12 @@ docker-compose up -d
 ```
 Access the dashboard at `http://localhost:3200`.
 
-### 🔌 Distributed Agent Mode
+### 🔌 Distributed Worker Mode
 For managing multiple instances.
 
-1. **Generate an Agent Secret**:
+1. **Generate a worker secret**:
    
-   The `AGENT_SECRET` is used to secure communication between the main service and remote agents. Generate a secure random key using one of these methods:
+   The `WORKER_SECRET` secures communication between the main service and remote workers. Generate a secure random key using one of these methods:
 
    **Option 1: Using OpenSSL**
    ```bash
@@ -179,33 +179,33 @@ For managing multiple instances.
 
    Copy the generated key and add it to your `.env` file:
    ```bash
-   AGENT_SECRET=your_generated_secret_here
+   WORKER_SECRET=your_generated_secret_here
    ```
 
-2. **Deploy the Main Service**:
+2. **Deploy the main service**:
    ```bash
    cp examples/default/docker-compose.yml docker-compose.yml
    docker-compose up -d
    ```
 
-3. **Register Agents**:
-   - Go to the UI → Settings → Agents.
-   - Generate a new Agent Key.
-   - Deploy a Gardarr Agent container on your remote server using the generated key.
+3. **Register workers**:
+   - Go to the UI → Settings → Workers.
+   - Generate a new worker key.
+   - Deploy a Gardarr worker container on your remote server using the generated key.
 
 ## 🏗️ Architecture
 
 Gardarr is designed with flexibility in mind, offering two primary operational modes:
 
 ### 1. Standalone Mode (Single Server)
-Ideal for home users with a single media server. The application runs as a single process containing both the **Management Service** and an **Embedded Agent**.
+Ideal for home users with a single media server. The application runs as a single process containing both the **management service** and an **embedded worker**.
 - **Simplicity**: One container to deploy.
 - **Efficiency**: Direct communication with local qBittorrent.
 
 ### 2. Distributed Mode (Multi-Server)
 Designed for power users with multiple seedboxes or servers.
 - **Central Service**: The main web application and database.
-- **Remote Agents**: Lightweight binaries deployed alongside each qBittorrent instance that communicate securely with the Central Service.
+- **Remote workers**: Lightweight binaries deployed alongside each qBittorrent instance that communicate securely with the central service.
 
 ## 🏆 Ratio Grading System
 
@@ -227,7 +227,7 @@ The platform features a robust event-driven architecture to keep you connected.
 Automatically tracks and persists torrent lifecycle events (state changes, additions, removals, completions) with configurable retention via `EVENT_RETENTION_DAYS`.
 
 **Features:**
-- Real-time statistics and filtering by event type
+- Real-time event tracking and filtering by event type
 - Search by torrent name or hash with pagination
 - Visual indicators with color-coded badges and timestamps
 
@@ -239,12 +239,30 @@ A comprehensive interface to monitor all torrent activity with event types: `sta
 
 Connect to external services (Discord, Slack, n8n, Home Assistant) with multiple endpoints, event filtering, and delivery logging.
 
-## 📊 Metrics & Analytics
+## 📊 Metrics & Monitoring
 
-Comprehensive monitoring for torrent performance and agent health.
+The application exposes Prometheus-compatible metrics at the `/metrics` endpoint for integration with observability stacks.
 
-- **Torrent Metrics**: Network statistics, lifetime timeline, progress tracking, and file management
-- **Agent Metrics**: Real-time speeds, storage usage, ratio statistics, activity analytics, and multi-agent aggregation
+**Metrics Categories:**
+- **Task Metrics**: Download/upload speeds, progress, ratio, seeders/leechers, size, state (labeled by worker_id, task_id, task_name)
+- **Worker Metrics**: Status, free disk space, global ratio, qBittorrent version, all-time downloaded/uploaded (labeled by worker_id, worker_name)
+- **Server Metrics**: Total workers count by status (ACTIVE, ERRORED, INACTIVE)
+
+**Configuration:**
+- Set `METRICS_USERNAME` and `METRICS_PASSWORD` to enable the endpoint with Basic Auth
+- If not set, the `/metrics` endpoint will not be registered
+
+**Example Prometheus scrape configuration:**
+```yaml
+scrape_configs:
+  - job_name: 'gardarr'
+    basic_auth:
+      username: 'prometheus'
+      password: 'your-secure-password'
+    static_configs:
+      - targets: ['gardarr:3200']
+    metrics_path: '/metrics'
+```
 
 ## 🎨 Customization
 
@@ -294,7 +312,7 @@ Gardarr is configured via environment variables. Create a `.env` file in the roo
 |----------|-------------|---------|
 | `APP_PORT` | Port for the web interface | `3200` |
 | `APP_URL` | Public URL (CORS, cookies). Origin-only, no trailing slash | `http://localhost:3200` |
-| `APP_MODE` | Set to `standalone` to enable embedded agent | - |
+| `APP_MODE` | Set to `standalone` to enable the embedded worker | - |
 | `GIN_MODE` | `debug` or `release` (enables HSTS) | `release` |
 | `LOG_LEVEL` | Log level: `DEBUG`, `INFO`, `WARN`, `ERROR` | `INFO` |
 
@@ -318,16 +336,16 @@ Gardarr is configured via environment variables. Create a `.env` file in the roo
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `ENCRYPTION_KEY` | Key for encrypting sensitive data (agent tokens) | - |
+| `ENCRYPTION_KEY` | Key for encrypting sensitive data (worker tokens) | - |
 | `CUSTOM_CSP` | Custom Content Security Policy override | Built-in CSP |
 
-### Agent (Standalone Mode)
+### Worker (embedded / remote authentication)
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `AGENT_PORT` | Port for the embedded agent service | `3100` |
-| `AGENT_SECRET` | Secret key for agent authentication | Auto-generated |
-| `AGENT_TIMEOUT_SECONDS` | Timeout for agent communication | `3` |
+| `WORKER_PORT` | Port for the embedded worker service (standalone mode) | `3100` |
+| `WORKER_SECRET` | Shared secret for worker authentication | Auto-generated |
+| `WORKER_TIMEOUT_SECONDS` | HTTP timeout (seconds) when calling workers | `10` |
 
 ### qBittorrent (Standalone Mode)
 
@@ -340,15 +358,12 @@ Gardarr is configured via environment variables. Create a `.env` file in the roo
 | `QBITTORRENT_MAX_RETRIES` | Max retries on failure | `0` |
 | `QBITTORRENT_RETRY_BACKOFF` | Retry backoff (seconds) | `1` |
 
-### Statistics
+### Prometheus Metrics
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `STATISTICS_ENABLED` | Enable statistics collection | `true` |
-| `STATISTICS_DIR` | Directory for statistics data | `/data/statistics` |
-| `STATISTICS_INTERVAL` | Polling interval | `30s` |
-| `STATISTICS_RETENTION_DAYS` | Days to retain (0 = forever) | `0` |
-| `STATISTICS_PURGE_INTERVAL` | Purge check interval | `30m` |
+| `METRICS_USERNAME` | Username for /metrics Basic Auth | (not set) |
+| `METRICS_PASSWORD` | Password for /metrics Basic Auth | (not set) |
 
 ### Events
 
@@ -374,7 +389,7 @@ make dev
 - [ ] **Integrations Page**: Support for external integrations (Jellyfin, Ntfy, etc.).
 - [ ] **Smart Speed Limits**: Schedule-based and adaptive speed limits.
 - [ ] **OIDC Authentication**: SSO support.
-- [ ] **Cross-Host Transfer**: SCP transfer between agents.
+- [ ] **Cross-Host Transfer**: SCP transfer between workers.
 
 ## 📄 License
 

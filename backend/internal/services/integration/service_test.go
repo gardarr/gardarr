@@ -59,7 +59,7 @@ func TestServiceStartEnabled(t *testing.T) {
 	// Send a test event
 	testEvent := &entities.Event{
 		UUID:     uuid.New(),
-		AgentID:  uuid.New(),
+		WorkerID: uuid.New(),
 		Type:     constants.EventTypeTorrentStateChange,
 		TaskHash: "test-hash",
 		OldValue: "paused",
@@ -116,7 +116,7 @@ func TestProcessEventValidEvent(t *testing.T) {
 
 	testEvent := &entities.Event{
 		UUID:     uuid.New(),
-		AgentID:  uuid.New(),
+		WorkerID: uuid.New(),
 		Type:     constants.EventTypeTorrentCompleted,
 		TaskHash: "valid-hash",
 		NewValue: "uploading",
@@ -181,7 +181,7 @@ func TestConcurrentReloadAndProcessEvent(t *testing.T) {
 		for i := 0; i < 50; i++ {
 			testEvent := &entities.Event{
 				UUID:     uuid.New(),
-				AgentID:  uuid.New(),
+				WorkerID: uuid.New(),
 				Type:     constants.EventTypeTorrentStateChange,
 				TaskHash: "test-hash",
 				NewValue: "downloading",

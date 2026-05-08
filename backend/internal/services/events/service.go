@@ -24,7 +24,7 @@ const (
 // Service handles event tracking and state change detection
 type Service struct {
 	repo          *event.Repository
-	taskStates    map[uuid.UUID]map[string]*entities.TaskState // agentID -> taskHash -> state
+	taskStates    map[uuid.UUID]map[string]*entities.TaskState // workerID -> taskHash -> state
 	mu            sync.RWMutex
 	retentionDays int
 	eventChan     chan *entities.Event // Optional channel for real-time event emission
@@ -60,7 +60,7 @@ func (s *Service) LoadStates(ctx context.Context) error {
 	s.mu.Unlock()
 
 	slog.Info("task states loaded from database",
-		"agents", len(states),
+		"workers", len(states),
 	)
 
 	return nil
@@ -123,7 +123,7 @@ type completionCheck struct {
 }
 
 // TrackTasks processes current tasks and detects state changes
-func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentID uuid.UUID, timestamp time.Time) error {
+func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, workerID uuid.UUID, timestamp time.Time) error {
 	if len(tasks) == 0 {
 		return nil
 	}
@@ -139,12 +139,12 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 			s.mu.Lock()
 			defer s.mu.Unlock()
 
-			// Ensure agent map exists
-			if s.taskStates[agentID] == nil {
-				s.taskStates[agentID] = make(map[string]*entities.TaskState)
+			// Ensure worker map exists
+			if s.taskStates[workerID] == nil {
+				s.taskStates[workerID] = make(map[string]*entities.TaskState)
 			}
 
-			lastState, exists := s.taskStates[agentID][t.Hash]
+			lastState, exists := s.taskStates[workerID][t.Hash]
 
 			// Debug log for state comparison
 			if exists {
@@ -160,8 +160,8 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 
 			// New task detected
 			if !exists {
-				s.taskStates[agentID][t.Hash] = &entities.TaskState{
-					AgentID:   agentID,
+				s.taskStates[workerID][t.Hash] = &entities.TaskState{
+					WorkerID:  workerID,
 					Hash:      t.Hash,
 					State:     t.State,
 					Progress:  t.Progress,
@@ -179,7 +179,7 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 				// Create task added event
 				eventsChan <- &entities.Event{
 					UUID:      uuid.New(),
-					AgentID:   agentID,
+					WorkerID:  workerID,
 					Type:      constants.EventTypeTorrentAdded,
 					TaskHash:  t.Hash,
 					NewValue:  t.State,
@@ -231,7 +231,7 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 				// Create state change event
 				eventsChan <- &entities.Event{
 					UUID:      uuid.New(),
-					AgentID:   agentID,
+					WorkerID:  workerID,
 					Type:      constants.EventTypeTorrentStateChange,
 					TaskHash:  t.Hash,
 					OldValue:  oldState,
@@ -240,10 +240,10 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 					CreatedAt: timestamp,
 				}
 
-			// Check if task just completed - queue for verification to prevent duplicates on restart
-			if t.Progress >= 1.0 && !wasCompleted && !isErrorState(t.State) {
-				completionChecksChan <- s.buildCompletionCheck(agentID, t, timestamp)
-			}
+				// Check if task just completed - queue for verification to prevent duplicates on restart
+				if t.Progress >= 1.0 && !wasCompleted && !isErrorState(t.State) {
+					completionChecksChan <- s.buildCompletionCheck(workerID, t, timestamp)
+				}
 			} else if lastState.Progress != t.Progress {
 				// Progress changed but state didn't
 				oldProgress := lastState.Progress
@@ -260,10 +260,10 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 					timestamp: timestamp,
 				}
 
-			// Check if task just reached 100% - queue for verification to prevent duplicates on restart
-			if t.Progress >= 1.0 && !wasCompleted && !isErrorState(t.State) {
-				completionChecksChan <- s.buildCompletionCheck(agentID, t, timestamp)
-			}
+				// Check if task just reached 100% - queue for verification to prevent duplicates on restart
+				if t.Progress >= 1.0 && !wasCompleted && !isErrorState(t.State) {
+					completionChecksChan <- s.buildCompletionCheck(workerID, t, timestamp)
+				}
 			}
 		}(task)
 	}
@@ -278,10 +278,10 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 		wg.Add(1)
 		go func(u stateUpdate) {
 			defer wg.Done()
-			if err := s.repo.SaveTaskState(ctx, agentID, u.hash, u.state, u.progress, u.timestamp); err != nil {
+			if err := s.repo.SaveTaskState(ctx, workerID, u.hash, u.state, u.progress, u.timestamp); err != nil {
 				slog.Error(logMsgFailedToSaveTaskState,
 					"error", err,
-					"agent_id", agentID.String(),
+					"worker_id", workerID.String(),
 					"task_hash", u.hash,
 				)
 			}
@@ -290,26 +290,26 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, agentI
 	wg.Wait()
 
 	// Process events
-	s.processEvents(ctx, eventsChan, agentID)
+	s.processEvents(ctx, eventsChan, workerID)
 
 	// Process completion events with deduplication check
 	// This prevents false "completed" events after app restart when the persisted
 	// progress was less than 100% but the torrent was already completed
-	s.processCompletionEvents(ctx, completionChecksChan, agentID)
+	s.processCompletionEvents(ctx, completionChecksChan, workerID)
 
 	return nil
 }
 
 // processCompletionEvents handles completion events with deduplication
 // It checks if a completion event already exists in the database before creating a new one
-func (s *Service) processCompletionEvents(ctx context.Context, checksChan <-chan completionCheck, agentID uuid.UUID) {
+func (s *Service) processCompletionEvents(ctx context.Context, checksChan <-chan completionCheck, workerID uuid.UUID) {
 	for check := range checksChan {
 		// Verify if this torrent already has a completion event
-		hasExisting, err := s.repo.HasCompletedEvent(ctx, agentID, check.event.TaskHash)
+		hasExisting, err := s.repo.HasCompletedEvent(ctx, workerID, check.event.TaskHash)
 		if err != nil {
 			slog.Error("failed to check for existing completion event",
 				"error", err,
-				"agent_id", agentID.String(),
+				"worker_id", workerID.String(),
 				"task_hash", check.event.TaskHash,
 			)
 			continue
@@ -318,7 +318,7 @@ func (s *Service) processCompletionEvents(ctx context.Context, checksChan <-chan
 		if hasExisting {
 			slog.Debug("skipping duplicate completion event",
 				"task_hash", check.event.TaskHash,
-				"agent_id", agentID.String(),
+				"worker_id", workerID.String(),
 			)
 			continue
 		}
@@ -327,7 +327,7 @@ func (s *Service) processCompletionEvents(ctx context.Context, checksChan <-chan
 		if err := s.repo.CreateEvent(ctx, check.event); err != nil {
 			slog.Error("failed to create completion event",
 				"error", err,
-				"agent_id", agentID.String(),
+				"worker_id", workerID.String(),
 				"task_hash", check.event.TaskHash,
 			)
 			continue
@@ -372,11 +372,11 @@ func (s *Service) buildBaseMetadata(t *entities.Task) map[string]interface{} {
 }
 
 // buildCompletionCheck creates a completion check for a completed task
-func (s *Service) buildCompletionCheck(agentID uuid.UUID, t *entities.Task, timestamp time.Time) completionCheck {
+func (s *Service) buildCompletionCheck(workerID uuid.UUID, t *entities.Task, timestamp time.Time) completionCheck {
 	return completionCheck{
 		event: &entities.Event{
 			UUID:      uuid.New(),
-			AgentID:   agentID,
+			WorkerID:  workerID,
 			Type:      constants.EventTypeTorrentCompleted,
 			TaskHash:  t.Hash,
 			NewValue:  t.State,
@@ -387,12 +387,12 @@ func (s *Service) buildCompletionCheck(agentID uuid.UUID, t *entities.Task, time
 }
 
 // processEvents handles event persistence and real-time emission
-func (s *Service) processEvents(ctx context.Context, eventsChan <-chan *entities.Event, agentID uuid.UUID) {
+func (s *Service) processEvents(ctx context.Context, eventsChan <-chan *entities.Event, workerID uuid.UUID) {
 	for event := range eventsChan {
 		if err := s.repo.CreateEvent(ctx, event); err != nil {
 			slog.Error("failed to create event",
 				"error", err,
-				"agent_id", agentID.String(),
+				"worker_id", workerID.String(),
 				"event_type", event.Type,
 				"task_hash", event.TaskHash,
 			)
@@ -411,7 +411,7 @@ func (s *Service) processEvents(ctx context.Context, eventsChan <-chan *entities
 }
 
 // DetectRemovedTasks checks for tasks that are no longer present concurrently
-func (s *Service) DetectRemovedTasks(ctx context.Context, currentTasks []*entities.Task, agentID uuid.UUID, timestamp time.Time) error {
+func (s *Service) DetectRemovedTasks(ctx context.Context, currentTasks []*entities.Task, workerID uuid.UUID, timestamp time.Time) error {
 	// Build map of current task hashes
 	currentHashes := make(map[string]bool)
 	for _, task := range currentTasks {
@@ -419,10 +419,10 @@ func (s *Service) DetectRemovedTasks(ctx context.Context, currentTasks []*entiti
 	}
 
 	s.mu.Lock()
-	// Collect hashes to check for this specific agent
+	// Collect hashes to check for this specific worker
 	var hashesToCheck []string
-	if agentTasks, exists := s.taskStates[agentID]; exists {
-		for hash := range agentTasks {
+	if workerTasks, exists := s.taskStates[workerID]; exists {
+		for hash := range workerTasks {
 			if !currentHashes[hash] {
 				hashesToCheck = append(hashesToCheck, hash)
 			}
@@ -447,7 +447,7 @@ func (s *Service) DetectRemovedTasks(ctx context.Context, currentTasks []*entiti
 
 			// Copy fields under lock to avoid data race
 			s.mu.RLock()
-			state, exists := s.taskStates[agentID][h]
+			state, exists := s.taskStates[workerID][h]
 			var lastState string
 			var lastProgress float64
 			if exists {
@@ -463,7 +463,7 @@ func (s *Service) DetectRemovedTasks(ctx context.Context, currentTasks []*entiti
 			// Task removed - create event (using copied values)
 			eventsChan <- &entities.Event{
 				UUID:     uuid.New(),
-				AgentID:  agentID,
+				WorkerID: workerID,
 				Type:     constants.EventTypeTorrentRemoved,
 				TaskHash: h,
 				OldValue: lastState,
@@ -486,15 +486,15 @@ func (s *Service) DetectRemovedTasks(ctx context.Context, currentTasks []*entiti
 	}()
 
 	// Process events
-	s.processEvents(ctx, eventsChan, agentID)
+	s.processEvents(ctx, eventsChan, workerID)
 
 	// Remove from tracked states (under lock) and collect hashes for DB deletion
 	var hashesToDelete []string
 	s.mu.Lock()
-	if agentTasks, exists := s.taskStates[agentID]; exists {
+	if workerTasks, exists := s.taskStates[workerID]; exists {
 		for hash := range removedHashes {
-			if _, taskExists := agentTasks[hash]; taskExists {
-				delete(agentTasks, hash)
+			if _, taskExists := workerTasks[hash]; taskExists {
+				delete(workerTasks, hash)
 				hashesToDelete = append(hashesToDelete, hash)
 			}
 		}
@@ -503,10 +503,10 @@ func (s *Service) DetectRemovedTasks(ctx context.Context, currentTasks []*entiti
 
 	// Delete from database (no lock held)
 	for _, hash := range hashesToDelete {
-		if err := s.repo.DeleteTaskState(ctx, agentID, hash); err != nil {
+		if err := s.repo.DeleteTaskState(ctx, workerID, hash); err != nil {
 			slog.Error(logMsgFailedToDeleteTaskState,
 				"error", err,
-				"agent_id", agentID.String(),
+				"worker_id", workerID.String(),
 				"task_hash", hash,
 			)
 		}
@@ -516,8 +516,8 @@ func (s *Service) DetectRemovedTasks(ctx context.Context, currentTasks []*entiti
 }
 
 // ListEvents retrieves events with optional filters
-func (s *Service) ListEvents(ctx context.Context, agentID *uuid.UUID, eventType *string, limit int, offset int) ([]*entities.Event, int64, error) {
-	return s.repo.ListEvents(ctx, agentID, eventType, limit, offset)
+func (s *Service) ListEvents(ctx context.Context, workerID *uuid.UUID, eventType *string, limit int, offset int) ([]*entities.Event, int64, error) {
+	return s.repo.ListEvents(ctx, workerID, eventType, limit, offset)
 }
 
 // GetEventByUUID retrieves an event by its UUID
@@ -548,15 +548,15 @@ func (s *Service) CleanStaleStates(ctx context.Context) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	for agentID, agentTasks := range s.taskStates {
-		for hash, state := range agentTasks {
+	for workerID, workerTasks := range s.taskStates {
+		for hash, state := range workerTasks {
 			if state.UpdatedAt.Before(cutoff) {
-				delete(agentTasks, hash)
+				delete(workerTasks, hash)
 			}
 		}
-		// Remove empty agent maps
-		if len(agentTasks) == 0 {
-			delete(s.taskStates, agentID)
+		// Remove empty worker maps
+		if len(workerTasks) == 0 {
+			delete(s.taskStates, workerID)
 		}
 	}
 }

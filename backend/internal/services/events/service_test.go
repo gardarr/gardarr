@@ -180,14 +180,14 @@ func TestLoadStates(t *testing.T) {
 	assert.NotNil(t, svc.taskStates)
 
 	// Add some states to the database
-	agentID := uuid.New()
+	workerID := uuid.New()
 	hash1 := "test-hash-1"
 	hash2 := "test-hash-2"
 
-	err = svc.repo.SaveTaskState(ctx, agentID, hash1, constants.TaskStatusUploading, 0.5, time.Now())
+	err = svc.repo.SaveTaskState(ctx, workerID, hash1, constants.TaskStatusUploading, 0.5, time.Now())
 	require.NoError(t, err)
 
-	err = svc.repo.SaveTaskState(ctx, agentID, hash2, constants.TaskStatusDownloading, 0.75, time.Now())
+	err = svc.repo.SaveTaskState(ctx, workerID, hash2, constants.TaskStatusDownloading, 0.75, time.Now())
 	require.NoError(t, err)
 
 	// Reload states
@@ -198,15 +198,15 @@ func TestLoadStates(t *testing.T) {
 	svc.mu.RLock()
 	defer svc.mu.RUnlock()
 
-	assert.Contains(t, svc.taskStates, agentID)
-	assert.Contains(t, svc.taskStates[agentID], hash1)
-	assert.Contains(t, svc.taskStates[agentID], hash2)
+	assert.Contains(t, svc.taskStates, workerID)
+	assert.Contains(t, svc.taskStates[workerID], hash1)
+	assert.Contains(t, svc.taskStates[workerID], hash2)
 
-	state1 := svc.taskStates[agentID][hash1]
+	state1 := svc.taskStates[workerID][hash1]
 	assert.Equal(t, constants.TaskStatusUploading, state1.State)
 	assert.Equal(t, 0.5, state1.Progress)
 
-	state2 := svc.taskStates[agentID][hash2]
+	state2 := svc.taskStates[workerID][hash2]
 	assert.Equal(t, constants.TaskStatusDownloading, state2.State)
 	assert.Equal(t, 0.75, state2.Progress)
 }
@@ -217,7 +217,7 @@ func TestTrackTasks_NewTask(t *testing.T) {
 	require.NoError(t, err)
 	ctx := context.Background()
 
-	agentID := uuid.New()
+	workerID := uuid.New()
 	timestamp := time.Now()
 
 	tasks := []*entities.Task{
@@ -229,12 +229,12 @@ func TestTrackTasks_NewTask(t *testing.T) {
 		},
 	}
 
-	err = svc.TrackTasks(ctx, tasks, agentID, timestamp)
+	err = svc.TrackTasks(ctx, tasks, workerID, timestamp)
 	require.NoError(t, err)
 
 	// Verify state was saved in memory
 	svc.mu.RLock()
-	state := svc.taskStates[agentID]["new-task-hash"]
+	state := svc.taskStates[workerID]["new-task-hash"]
 	svc.mu.RUnlock()
 
 	assert.NotNil(t, state)
@@ -242,7 +242,7 @@ func TestTrackTasks_NewTask(t *testing.T) {
 	assert.Equal(t, 0.25, state.Progress)
 
 	// Verify state was persisted to database
-	states, err := svc.repo.LoadTaskStates(ctx, agentID)
+	states, err := svc.repo.LoadTaskStates(ctx, workerID)
 	require.NoError(t, err)
 	assert.Contains(t, states, "new-task-hash")
 }
@@ -253,14 +253,14 @@ func TestTrackTasks_SignificantStateChange(t *testing.T) {
 	require.NoError(t, err)
 	ctx := context.Background()
 
-	agentID := uuid.New()
+	workerID := uuid.New()
 	taskHash := "test-hash"
 
 	// Set initial state
 	svc.mu.Lock()
-	svc.taskStates[agentID] = map[string]*entities.TaskState{
+	svc.taskStates[workerID] = map[string]*entities.TaskState{
 		taskHash: {
-			AgentID:   agentID,
+			WorkerID:  workerID,
 			Hash:      taskHash,
 			State:     constants.TaskStatusDownloading,
 			Progress:  0.5,
@@ -279,12 +279,12 @@ func TestTrackTasks_SignificantStateChange(t *testing.T) {
 		},
 	}
 
-	err = svc.TrackTasks(ctx, tasks, agentID, time.Now())
+	err = svc.TrackTasks(ctx, tasks, workerID, time.Now())
 	require.NoError(t, err)
 
 	// Verify state was updated
 	svc.mu.RLock()
-	state := svc.taskStates[agentID][taskHash]
+	state := svc.taskStates[workerID][taskHash]
 	svc.mu.RUnlock()
 
 	assert.Equal(t, constants.TaskStatusUploading, state.State)
@@ -297,14 +297,14 @@ func TestTrackTasks_InsignificantStateChange(t *testing.T) {
 	require.NoError(t, err)
 	ctx := context.Background()
 
-	agentID := uuid.New()
+	workerID := uuid.New()
 	taskHash := "test-hash"
 
 	// Set initial state
 	svc.mu.Lock()
-	svc.taskStates[agentID] = map[string]*entities.TaskState{
+	svc.taskStates[workerID] = map[string]*entities.TaskState{
 		taskHash: {
-			AgentID:   agentID,
+			WorkerID:  workerID,
 			Hash:      taskHash,
 			State:     constants.TaskStatusUploading,
 			Progress:  0.5,
@@ -323,18 +323,18 @@ func TestTrackTasks_InsignificantStateChange(t *testing.T) {
 		},
 	}
 
-	err = svc.TrackTasks(ctx, tasks, agentID, time.Now())
+	err = svc.TrackTasks(ctx, tasks, workerID, time.Now())
 	require.NoError(t, err)
 
 	// Verify state was updated in memory
 	svc.mu.RLock()
-	state := svc.taskStates[agentID][taskHash]
+	state := svc.taskStates[workerID][taskHash]
 	svc.mu.RUnlock()
 
 	assert.Equal(t, constants.TaskStatusStalledUpload, state.State)
 
 	// Verify state was persisted to database even for insignificant changes
-	states, err := svc.repo.LoadTaskStates(ctx, agentID)
+	states, err := svc.repo.LoadTaskStates(ctx, workerID)
 	require.NoError(t, err)
 	assert.Equal(t, constants.TaskStatusStalledUpload, states[taskHash].State)
 }

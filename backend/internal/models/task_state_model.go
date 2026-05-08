@@ -9,7 +9,7 @@ import (
 
 // TaskState represents the last known state of a task in the database
 type TaskState struct {
-	AgentID   uuid.UUID `gorm:"type:uuid;primaryKey;index;not null"`
+	WorkerID  uuid.UUID `gorm:"type:uuid;column:worker_id;primaryKey;index;not null"`
 	Hash      string    `gorm:"type:varchar(255);primaryKey;index;not null"`
 	State     string    `gorm:"type:varchar(100);not null"`
 	Progress  float64   `gorm:"type:real;not null;default:0"`

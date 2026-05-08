@@ -12,7 +12,7 @@ type EventFilter struct {
 	UUID            uuid.UUID `gorm:"type:uuid;primaryKey"`
 	IntegrationID   uuid.UUID `gorm:"type:uuid;not null;index:idx_integration_type"`
 	IntegrationType string    `gorm:"size:50;not null;index:idx_integration_type"`
-	EventTypeFilter string    `gorm:"size:100"` // Single event type string
+	EventTypeFilter string    `gorm:"size:100"`  // Single event type string
 	StatusFilter    string    `gorm:"type:text"` // JSON array of strings
 	CategoryFilter  string    `gorm:"type:text"` // JSON array of strings
 	NameTerms       string    `gorm:"type:text"` // JSON array of strings
@@ -50,4 +50,3 @@ type EventFilterResponse struct {
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
 }
-

@@ -9,14 +9,14 @@ import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { torrentService } from "./services/torrents";
-import { agentService } from "./services/agents";
+import { workerService } from "./services/workers";
 import { categoryService } from "./services/categories";
 import { preferencesService } from "@/services/preferences";
 import { useTorrentFilters } from "@/components/TorrentFilters";
 import type { Task, CreateTaskRequest, TaskMetadata } from "./types/torrent";
-import type { Agent, AgentStatus } from "./types/agent";
+import type { Worker, WorkerStatus } from "./types/worker";
 import type { Category } from "./types/category";
-import AgentFilter from "@/components/ui/AgentFilter";
+import WorkerFilter from "@/components/ui/WorkerFilter";
 import StatusFilter from "@/components/ui/StatusFilter";
 import CategoryFilter from "@/components/ui/CategoryFilter";
 import { ListFilter } from "@/components/ui/ListFilter";
@@ -25,7 +25,6 @@ import { useFilterControls } from "@/hooks/useFilterControls";
 import { TorrentDetailsModal } from "@/components/TorrentDetailsModal";
 import { TorrentDeleteModal } from "@/components/TorrentDeleteModal";
 import { AddTorrentModal } from "@/components/AddTorrentModal";
-import { TorrentMetricsModal } from "@/components/TorrentMetricsModal";
 import { TorrentLimitModal } from "@/components/TorrentLimitModal";
 import TorrentListMobile from "@/components/TorrentListMobile";
 import TorrentsTable from "@/components/TorrentsTable";
@@ -72,11 +71,11 @@ type Torrent = {
   ratio: number;
   numSeeds: number;
   numLeechs: number;
-  agentName?: string;
-  agentStatus?: AgentStatus;
-  agentUUID?: string;
-  agentIcon?: string;
-  agentColor?: string;
+  workerName?: string;
+  workerStatus?: WorkerStatus;
+  workerUUID?: string;
+  workerIcon?: string;
+  workerColor?: string;
   category: string;
   tags: string[];
   metadata?: TaskMetadata | null;
@@ -106,11 +105,11 @@ function mapTaskToTorrent(task: Task): Torrent {
     ratio: task.ratio,
     numSeeds: task.pairs?.seeders || 0,
     numLeechs: task.pairs?.leechers || 0,
-    agentName: task.agent?.name,
-    agentStatus: task.agent?.status,
-    agentUUID: task.agent?.uuid,
-    agentIcon: task.agent?.icon,
-    agentColor: task.agent?.color,
+    workerName: task.worker?.name,
+    workerStatus: task.worker?.status,
+    workerUUID: task.worker?.uuid,
+    workerIcon: task.worker?.icon,
+    workerColor: task.worker?.color,
     category: task.category || "",
     tags: task.tags || [],
     metadata: task.metadata,
@@ -128,10 +127,10 @@ export default function TorrentsPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortType, setSortType] = useState<SortType>("priority");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [agentsLoading, setAgentsLoading] = useState(true);
+  const [workers, setWorkers] = useState<Worker[]>([]);
+  const [workersLoading, setWorkersLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedAgentIds, setSelectedAgentIds] = useState<Set<string>>(new Set());
+  const [selectedWorkerIds, setSelectedWorkerIds] = useState<Set<string>>(new Set());
   const [selectedStatuses, setSelectedStatuses] = useState<Set<TorrentStatus>>(new Set());
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
@@ -142,15 +141,9 @@ export default function TorrentsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [originalTasks, setOriginalTasks] = useState<Task[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isMetricsModalOpen, setIsMetricsModalOpen] = useState(false);
-  const [metricsTaskId, setMetricsTaskId] = useState<string>("");
-  const [metricsAgentId, setMetricsAgentId] = useState<string>("");
-  const [metricsTaskName, setMetricsTaskName] = useState<string>("");
-  const [metricsSelectedCount, setMetricsSelectedCount] = useState<number>(1);
-  const [metricsTaskIds, setMetricsTaskIds] = useState<string[]>([]);
   const [isLimitsModalOpen, setIsLimitsModalOpen] = useState(false);
   const [limitsTaskIds, setLimitsTaskIds] = useState<string[]>([]);
-  const [limitsAgentId, setLimitsAgentId] = useState<string>("");
+  const [limitsWorkerId, setLimitsWorkerId] = useState<string>("");
   const [limitsTaskName, setLimitsTaskName] = useState<string>("");
   const [limitsTaskStatus, setLimitsTaskStatus] = useState<string>("");
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false);
@@ -256,7 +249,7 @@ export default function TorrentsPage() {
   }, [torrents]);
 
   // Filter controls using custom hook
-  const agentControls = useFilterControls(selectedAgentIds, setSelectedAgentIds, agents.map(a => a.uuid));
+  const workerControls = useFilterControls(selectedWorkerIds, setSelectedWorkerIds, workers.map(a => a.uuid));
   const statusControls = useFilterControls(selectedStatuses, setSelectedStatuses, availableStatuses);
   const categoryControls = useFilterControls(selectedCategories, setSelectedCategories, availableCategories);
   const tagControls = useFilterControls(selectedTags, setSelectedTags, availableTags);
@@ -265,50 +258,50 @@ export default function TorrentsPage() {
   // Carregar torrents da API
   const loadTorrents = useCallback(async () => {
     try {
-      // Verificar se há pelo menos um agente funcional (não erro) antes de tentar carregar tasks
-      const functionalAgents = agents.filter(agent => agent.status !== 'ERRORED');
-      if (functionalAgents.length === 0) {
-        // Se não há agentes funcionais, limpar tasks e marcar como completo
+      // Verificar se há pelo menos um worker funcional (não erro) antes de tentar carregar tasks
+      const functionalWorkers = workers.filter(worker => worker.status !== 'ERRORED');
+      if (functionalWorkers.length === 0) {
+        // Se não há workers funcionais, limpar tasks e marcar como completo
         setOriginalTasks([]);
         setTorrents([]);
         setInitialLoadComplete(true);
         return;
       }
 
-      // Carregar tasks apenas dos agentes funcionais
+      // Carregar tasks apenas dos workers funcionais
       const allTasks: Task[] = [];
       const errors: Record<string, string> = {};
 
-      // Buscar tasks de cada agente funcional individualmente
+      // Buscar tasks de cada worker funcional individualmente
       await Promise.allSettled(
-        functionalAgents.map(async (agent) => {
+        functionalWorkers.map(async (worker) => {
           try {
-            const response = await torrentService.listAgentTasks(agent.uuid);
+            const response = await torrentService.listWorkerTasks(worker.uuid);
             if (response?.data) {
-              // Adicionar informações do agente a cada task
-              const tasksWithAgent = response.data.map(task => ({
+              // Adicionar informações do worker a cada task
+              const tasksWithWorker = response.data.map(task => ({
                 ...task,
-                agent: agent
+                worker: worker
               }));
-              allTasks.push(...tasksWithAgent);
+              allTasks.push(...tasksWithWorker);
             } else if (response?.error) {
-              errors[agent.uuid] = response.error;
+              errors[worker.uuid] = response.error;
             }
           } catch (err) {
-            errors[agent.uuid] = err instanceof Error ? err.message : 'Unknown error';
+            errors[worker.uuid] = err instanceof Error ? err.message : 'Unknown error';
           }
         })
       );
 
       // Mostrar erros se houver
       if (Object.keys(errors).length > 0) {
-        const errorMessages = Object.entries(errors).map(([agentId, error]) => {
-          const agent = agents.find(a => a.uuid === agentId);
-          return `Agent ${agent?.name || agentId}: ${error}`;
+        const errorMessages = Object.entries(errors).map(([workerId, error]) => {
+          const worker = workers.find(a => a.uuid === workerId);
+          return `Worker ${worker?.name || workerId}: ${error}`;
         });
 
-        console.warn('Some agents failed to load tasks:', errorMessages);
-        toast.warning(t('torrents.notifications.someAgentsFailed'), {
+        console.warn('Some workers failed to load tasks:', errorMessages);
+        toast.warning(t('torrents.notifications.someWorkersFailed'), {
           description: errorMessages.join('\n'),
           duration: 5000,
         });
@@ -322,36 +315,36 @@ export default function TorrentsPage() {
     } finally {
       setInitialLoadComplete(true);
     }
-  }, [t, agents]);
+  }, [t, workers]);
 
   // Atualização silenciosa para não afetar UI (sem spinner)
   const refreshTorrentsSilently = useCallback(async (): Promise<Task[]> => {
     try {
-      // Verificar se há pelo menos um agente funcional (não erro) antes de tentar carregar tasks
-      const functionalAgents = agents.filter(agent => agent.status !== 'ERRORED');
-      if (functionalAgents.length === 0) {
-        // Se não há agentes funcionais, limpar tasks e retornar
+      // Verificar se há pelo menos um worker funcional (não erro) antes de tentar carregar tasks
+      const functionalWorkers = workers.filter(worker => worker.status !== 'ERRORED');
+      if (functionalWorkers.length === 0) {
+        // Se não há workers funcionais, limpar tasks e retornar
         setOriginalTasks([]);
         setTorrents([]);
         return [];
       }
 
-      // Buscar tasks de cada agente funcional individualmente
+      // Buscar tasks de cada worker funcional individualmente
       const allTasks: Task[] = [];
 
       await Promise.allSettled(
-        functionalAgents.map(async (agent) => {
+        functionalWorkers.map(async (worker) => {
           try {
-            const response = await torrentService.listAgentTasks(agent.uuid);
+            const response = await torrentService.listWorkerTasks(worker.uuid);
             if (response?.data) {
-              const tasksWithAgent = response.data.map(task => ({
+              const tasksWithWorker = response.data.map(task => ({
                 ...task,
-                agent: agent
+                worker: worker
               }));
-              allTasks.push(...tasksWithAgent);
+              allTasks.push(...tasksWithWorker);
             }
           } catch {
-            // silencioso - ignorar erros individuais de agentes
+            // silencioso - ignorar erros individuais de workers
           }
         })
       );
@@ -364,27 +357,27 @@ export default function TorrentsPage() {
       // silencioso
       return [];
     }
-  }, [agents]);
+  }, [workers]);
 
-  // Carregar agents da API
-  const loadAgents = useCallback(async () => {
+  // Carregar workers da API
+  const loadWorkers = useCallback(async () => {
     try {
-      setAgentsLoading(true);
-      const response = await agentService.listAgents();
+      setWorkersLoading(true);
+      const response = await workerService.listWorkers();
       if (response.error) {
-        setAgents([]);
+        setWorkers([]);
         return;
       }
       if (response.data) {
-        setAgents(response.data);
+        setWorkers(response.data);
       } else {
-        setAgents([]);
+        setWorkers([]);
       }
     } catch {
-      // silencioso; filtro de agentes é opcional
-      setAgents([]);
+      // silencioso; filtro de workers é opcional
+      setWorkers([]);
     } finally {
-      setAgentsLoading(false);
+      setWorkersLoading(false);
     }
   }, []);
 
@@ -429,8 +422,8 @@ export default function TorrentsPage() {
 
       await Promise.allSettled(ids.map(async (id) => {
         const t = source.find(x => x.id === id);
-        if (t?.agentUUID) {
-          await torrentService.deleteTask(t.agentUUID, id, purge);
+        if (t?.workerUUID) {
+          await torrentService.deleteTask(t.workerUUID, id, purge);
         }
       }));
 
@@ -479,35 +472,7 @@ export default function TorrentsPage() {
     setSelectedTorrent(null);
   };
 
-  // Abrir modal de métricas
-  const handleShowMetrics = (taskId: string, agentId?: string) => {
-    const task = originalTasks.find(t => t.id === taskId);
-
-    // Se está em modo de seleção e há múltiplos torrents selecionados, usar a seleção
-    const isBulkView = selectionMode && selectedIds.size > 1;
-    const count = isBulkView ? selectedIds.size : 1;
-    const taskIds = isBulkView ? Array.from(selectedIds) : [taskId];
-
-    setMetricsTaskId(taskId);
-    setMetricsAgentId(agentId || "");
-    setMetricsTaskName(task?.name || "");
-    setMetricsSelectedCount(count);
-    setMetricsTaskIds(taskIds);
-    setIsMetricsModalOpen(true);
-  };
-
-  // Fechar modal de métricas
-  const handleCloseMetricsModal = () => {
-    setIsMetricsModalOpen(false);
-    setMetricsTaskId("");
-    setMetricsAgentId("");
-    setMetricsTaskName("");
-    setMetricsSelectedCount(1);
-    setMetricsTaskIds([]);
-  };
-
-  // Abrir modal de limites
-  const handleShowLimits = (taskId: string, agentId?: string) => {
+  const handleShowLimits = (taskId: string, workerId?: string) => {
     const task = originalTasks.find(t => t.id === taskId);
 
     // Se está em modo de seleção e há múltiplos torrents selecionados, usar a seleção
@@ -515,7 +480,7 @@ export default function TorrentsPage() {
     const taskIds = isBulkEdit ? Array.from(selectedIds) : [taskId];
 
     setLimitsTaskIds(taskIds);
-    setLimitsAgentId(agentId || "");
+    setLimitsWorkerId(workerId || "");
     setLimitsTaskName(task?.name || "");
     setLimitsTaskStatus(task?.state || "");
     setIsLimitsModalOpen(true);
@@ -525,7 +490,7 @@ export default function TorrentsPage() {
   const handleCloseLimitsModal = () => {
     setIsLimitsModalOpen(false);
     setLimitsTaskIds([]);
-    setLimitsAgentId("");
+    setLimitsWorkerId("");
     setLimitsTaskName("");
     setLimitsTaskStatus("");
   };
@@ -549,17 +514,17 @@ export default function TorrentsPage() {
   const handleGenericTorrentAction = async (
     torrentId: string,
     actionName: string,
-    actionFn: (agentId: string, taskId: string) => Promise<{ error?: string }>,
+    actionFn: (workerId: string, taskId: string) => Promise<{ error?: string }>,
     successMessage: string
   ) => {
     try {
       const task = originalTasks.find(t => t.id === torrentId);
-      if (!task || !task.agent?.uuid) {
-        toast.error(t('torrents.notifications.agentIdNotFound'));
+      if (!task || !task.worker?.uuid) {
+        toast.error(t('torrents.notifications.workerIdNotFound'));
         return;
       }
 
-      const response = await actionFn(task.agent.uuid, torrentId);
+      const response = await actionFn(task.worker.uuid, torrentId);
       if (response.error) {
         toast.error(response.error);
         return;
@@ -567,7 +532,7 @@ export default function TorrentsPage() {
 
       toast.success(successMessage);
 
-      // Recarregar dados de todos os agentes sem fechar o modal
+      // Recarregar dados de todos os workers sem fechar o modal
       const updatedTasks = await refreshTorrentsSilently();
 
       // Atualizar o torrent selecionado para refletir mudanças
@@ -624,12 +589,12 @@ export default function TorrentsPage() {
   const handleRenameTorrent = async (torrentId: string, newName: string) => {
     try {
       const task = originalTasks.find(t => t.id === torrentId);
-      if (!task || !task.agent?.uuid) {
-        toast.error(t('torrents.notifications.agentIdNotFound'));
+      if (!task || !task.worker?.uuid) {
+        toast.error(t('torrents.notifications.workerIdNotFound'));
         return;
       }
 
-      const response = await torrentService.renameTask(task.agent.uuid, torrentId, newName);
+      const response = await torrentService.renameTask(task.worker.uuid, torrentId, newName);
       if (response.error) {
         toast.error(response.error);
         return;
@@ -637,7 +602,7 @@ export default function TorrentsPage() {
 
       toast.success(t('torrents.notifications.renameSuccess'));
 
-      // Recarregar dados de todos os agentes sem fechar o modal
+      // Recarregar dados de todos os workers sem fechar o modal
       const updatedTasks = await refreshTorrentsSilently();
 
       // Atualizar o torrent selecionado para refletir mudanças
@@ -653,12 +618,12 @@ export default function TorrentsPage() {
   const handleSetLocationTorrent = async (torrentId: string, location: string) => {
     try {
       const task = originalTasks.find(t => t.id === torrentId);
-      if (!task || !task.agent?.uuid) {
-        toast.error(t('torrents.notifications.agentIdNotFound'));
+      if (!task || !task.worker?.uuid) {
+        toast.error(t('torrents.notifications.workerIdNotFound'));
         return;
       }
 
-      const response = await torrentService.setTaskLocation(task.agent.uuid, torrentId, location);
+      const response = await torrentService.setTaskLocation(task.worker.uuid, torrentId, location);
       if (response.error) {
         toast.error(response.error);
         return;
@@ -666,7 +631,7 @@ export default function TorrentsPage() {
 
       toast.success(t('torrents.notifications.pathChangeSuccess'));
 
-      // Recarregar dados de todos os agentes sem fechar o modal
+      // Recarregar dados de todos os workers sem fechar o modal
       const updatedTasks = await refreshTorrentsSilently();
 
       // Atualizar o torrent selecionado para refletir mudanças
@@ -682,12 +647,12 @@ export default function TorrentsPage() {
   const handleDeleteTorrent = async (torrentId: string, purge: boolean = false) => {
     try {
       const task = originalTasks.find(t => t.id === torrentId);
-      if (!task || !task.agent?.uuid) {
-        toast.error(t('torrents.notifications.agentIdNotFound'));
+      if (!task || !task.worker?.uuid) {
+        toast.error(t('torrents.notifications.workerIdNotFound'));
         return;
       }
 
-      const response = await torrentService.deleteTask(task.agent.uuid, torrentId, purge);
+      const response = await torrentService.deleteTask(task.worker.uuid, torrentId, purge);
 
       if (response.error) {
         toast.error(response.error);
@@ -707,9 +672,9 @@ export default function TorrentsPage() {
   };
 
   // Criar novo torrent
-  const handleCreateTorrent = async (agentId: string, taskData: CreateTaskRequest) => {
+  const handleCreateTorrent = async (workerId: string, taskData: CreateTaskRequest) => {
     try {
-      const response = await torrentService.createTask(agentId, taskData);
+      const response = await torrentService.createTask(workerId, taskData);
 
       if (response.error) {
         // Fechar o modal e exibir toast com erro
@@ -742,9 +707,9 @@ export default function TorrentsPage() {
 
   // Carregar dados na inicialização
   useEffect(() => {
-    loadAgents();
+    loadWorkers();
     loadCategories();
-  }, [loadAgents, loadCategories]);
+  }, [loadWorkers, loadCategories]);
 
   // Cache da última lista não vazia para evitar flicker quando em seleção múltipla
   useEffect(() => {
@@ -753,24 +718,24 @@ export default function TorrentsPage() {
     }
   }, [torrents]);
 
-  // Carregar torrents quando agents mudarem (para detectar mudanças de status)
+  // Carregar torrents quando workers mudarem (para detectar mudanças de status)
   useEffect(() => {
-    if (!agentsLoading) {
+    if (!workersLoading) {
       loadTorrents();
     }
-  }, [agents, loadTorrents, agentsLoading]);
+  }, [workers, loadTorrents, workersLoading]);
 
   // Intervalo de atualização automática com debounce e otimização de visibilidade
   useEffect(() => {
     // Skip if paused or interval is 0
     if (isRefreshPaused || refreshIntervalSec <= 0) return;
 
-    // Don't start auto-refresh until agents have been loaded
-    if (agentsLoading) return;
+    // Don't start auto-refresh until workers have been loaded
+    if (workersLoading) return;
 
-    // Pause refresh if there are no functional agents
-    const hasFunctionalAgents = agents.some(agent => agent.status !== 'ERRORED');
-    if (!hasFunctionalAgents) return;
+    // Pause refresh if there are no functional workers
+    const hasFunctionalWorkers = workers.some(worker => worker.status !== 'ERRORED');
+    if (!hasFunctionalWorkers) return;
 
     let timeoutId: NodeJS.Timeout;
     let isPageVisible = !document.hidden;
@@ -801,7 +766,7 @@ export default function TorrentsPage() {
       clearTimeout(timeoutId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [refreshIntervalSec, refreshTorrentsSilently, agentsLoading, agents, isRefreshPaused]);
+  }, [refreshIntervalSec, refreshTorrentsSilently, workersLoading, workers, isRefreshPaused]);
 
   // Handle clicking outside the add dropdown
   useEffect(() => {
@@ -835,8 +800,8 @@ export default function TorrentsPage() {
     searchTerm,
     sortType,
     sortDirection,
-    agents,
-    selectedAgentIds,
+    workers,
+    selectedWorkerIds,
     availableStatuses,
     selectedStatuses,
     availableCategories,
@@ -924,7 +889,7 @@ export default function TorrentsPage() {
 
 
   // Determinar se está em loading inicial
-  const isInitialLoading = !initialLoadComplete || agentsLoading;
+  const isInitialLoading = !initialLoadComplete || workersLoading;
 
   return (
     <div className="space-y-4 w-full pb-0">
@@ -942,12 +907,12 @@ export default function TorrentsPage() {
           </div>
         </div>
         {/* Controles de adicionar - sempre mostrar, mas desabilitar durante loading */}
-        {(isInitialLoading || (agents.length > 0 && agents.some(agent => agent.status !== 'ERRORED'))) && (
+        {(isInitialLoading || (workers.length > 0 && workers.some(worker => worker.status !== 'ERRORED'))) && (
           <div className="relative" ref={addDropdownRef}>
             <div className="flex">
               <Button
                 onClick={() => setIsAddModalOpen(true)}
-                disabled={isInitialLoading || agents.length === 0}
+                disabled={isInitialLoading || workers.length === 0}
                 className="rounded-r-none border-r-0"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -955,7 +920,7 @@ export default function TorrentsPage() {
               </Button>
               <Button
                 onClick={() => setIsAddDropdownOpen(!isAddDropdownOpen)}
-                disabled={isInitialLoading || agents.length === 0}
+                disabled={isInitialLoading || workers.length === 0}
                 className="rounded-l-none px-2 border-l-0"
                 aria-haspopup="listbox"
                 aria-expanded={isAddDropdownOpen}
@@ -986,34 +951,34 @@ export default function TorrentsPage() {
         )}
       </div>
 
-      {/* Aviso de erro nos agentes - mostrar se houver agentes com erro (mesmo durante loading) - apenas desktop */}
-      {!agentsLoading && agents.length > 0 && agents.some(agent => agent.status === 'ERRORED') && (
+      {/* Aviso de erro nos workers - mostrar se houver workers com erro (mesmo durante loading) - apenas desktop */}
+      {!workersLoading && workers.length > 0 && workers.some(worker => worker.status === 'ERRORED') && (
         <div className="hidden sm:block bg-destructive/10 border border-destructive/20 rounded-lg p-4 mb-4">
           <div className="flex items-center gap-3">
             <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0" />
             <div className="flex-1">
               <h3 className="text-sm font-medium text-destructive">
-                {t('torrents.agentErrorWarning.title')}
+                {t('torrents.workerErrorWarning.title')}
               </h3>
               <p className="text-sm text-destructive/80 mt-1">
-                {t('torrents.agentErrorWarning.description')}
+                {t('torrents.workerErrorWarning.description')}
               </p>
             </div>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate('/agents')}
+              onClick={() => navigate('/workers')}
               className="flex-shrink-0 border-destructive/20 text-destructive hover:bg-destructive/10"
             >
               <AlertTriangle className="h-4 w-4 mr-2" />
-              {t('torrents.agentErrorWarning.fixAgents')}
+              {t('torrents.workerErrorWarning.fixWorkers')}
             </Button>
           </div>
         </div>
       )}
 
       {/* Filtro de busca e controles - sempre exibir, desabilitar durante loading */}
-      {(isInitialLoading || (agents.length > 0 && agents.some(agent => agent.status !== 'ERRORED'))) && (
+      {(isInitialLoading || (workers.length > 0 && workers.some(worker => worker.status !== 'ERRORED'))) && (
         <div className="flex flex-col gap-4 w-full sm:gap-4 gap-0">
           {/* Desktop controls */}
           <div className="hidden sm:block">
@@ -1038,7 +1003,7 @@ export default function TorrentsPage() {
               showItemsPerPage={displayMode === "table"}
               onOpenFilters={() => setIsFilterSidebarOpen(true)}
               hasActiveFilters={
-                selectedAgentIds.size > 0 ||
+                selectedWorkerIds.size > 0 ||
                 selectedStatuses.size > 0 ||
                 selectedCategories.size > 0 ||
                 selectedTags.size > 0 ||
@@ -1052,28 +1017,28 @@ export default function TorrentsPage() {
             />
           </div>
 
-          {/* Aviso de erro nos agentes - mobile (mostrar mesmo durante loading) */}
-          {!agentsLoading && agents.some(agent => agent.status === 'ERRORED') && (
+          {/* Aviso de erro nos workers - mobile (mostrar mesmo durante loading) */}
+          {!workersLoading && workers.some(worker => worker.status === 'ERRORED') && (
             <div className="sm:hidden mb-4">
               <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <h3 className="text-xs font-medium text-destructive">
-                      {t('torrents.agentErrorWarning.title')}
+                      {t('torrents.workerErrorWarning.title')}
                     </h3>
                     <p className="text-xs text-destructive/80 mt-1">
-                      {t('torrents.agentErrorWarning.descriptionShort')}
+                      {t('torrents.workerErrorWarning.descriptionShort')}
                     </p>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => navigate('/agents')}
+                    onClick={() => navigate('/workers')}
                     className="flex-shrink-0 border-destructive/20 text-destructive hover:bg-destructive/10 h-7 px-2 text-xs"
                   >
                     <AlertTriangle className="h-3 w-3 mr-1" />
-                    {t('torrents.agentErrorWarning.fix')}
+                    {t('torrents.workerErrorWarning.fix')}
                   </Button>
                 </div>
               </div>
@@ -1103,7 +1068,7 @@ export default function TorrentsPage() {
               showItemsPerPage={displayMode === "table"}
               onOpenFilters={() => setIsFilterSidebarOpen(true)}
               hasActiveFilters={
-                selectedAgentIds.size > 0 ||
+                selectedWorkerIds.size > 0 ||
                 selectedStatuses.size > 0 ||
                 selectedCategories.size > 0 ||
                 selectedTags.size > 0 ||
@@ -1121,58 +1086,58 @@ export default function TorrentsPage() {
         </div>
       )}
 
-      {/* Estado vazio - sem agentes */}
-      {!isInitialLoading && agents.length === 0 && (
+      {/* Estado vazio - sem workers */}
+      {!isInitialLoading && workers.length === 0 && (
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <Server className="h-8 w-8 text-muted-foreground" />
             </EmptyMedia>
-            <EmptyTitle>{t('torrents.noAgents')}</EmptyTitle>
+            <EmptyTitle>{t('torrents.noWorkers')}</EmptyTitle>
             <EmptyDescription>
-              {t('torrents.noAgentsDesc')}
+              {t('torrents.noWorkersDesc')}
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button onClick={() => navigate('/agents')}>
+            <Button onClick={() => navigate('/workers')}>
               <Plus className="h-4 w-4 mr-2" />
-              {t('torrents.addFirstAgent')}
+              {t('torrents.addFirstWorker')}
             </Button>
           </EmptyContent>
         </Empty>
       )}
 
-      {/* Estado vazio - todos os agentes com erro */}
-      {!isInitialLoading && agents.length > 0 && agents.every(agent => agent.status === 'ERRORED') && (
+      {/* Estado vazio - todos os workers com erro */}
+      {!isInitialLoading && workers.length > 0 && workers.every(worker => worker.status === 'ERRORED') && (
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <AlertTriangle className="h-8 w-8 text-destructive" />
             </EmptyMedia>
-            <EmptyTitle>{t('torrents.agentError')}</EmptyTitle>
+            <EmptyTitle>{t('torrents.workerError')}</EmptyTitle>
             <EmptyDescription>
-              {t('torrents.agentErrorDesc')}
+              {t('torrents.workerErrorDesc')}
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button onClick={() => navigate('/agents')}>
+            <Button onClick={() => navigate('/workers')}>
               <AlertTriangle className="h-4 w-4 mr-2" />
-              {t('torrents.fixAgent')}
+              {t('torrents.fixWorker')}
             </Button>
           </EmptyContent>
         </Empty>
       )}
 
-      {/* Estado vazio - com agentes funcionais mas sem torrents */}
-      {!isInitialLoading && agents.length > 0 && agents.some(agent => agent.status !== 'ERRORED') && torrents.length === 0 && (
+      {/* Estado vazio - com workers funcionais mas sem torrents */}
+      {!isInitialLoading && workers.length > 0 && workers.some(worker => worker.status !== 'ERRORED') && torrents.length === 0 && (
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <Download className="h-8 w-8 text-muted-foreground" />
             </EmptyMedia>
-            <EmptyTitle>{t('torrents.noTorrentsWithAgents')}</EmptyTitle>
+            <EmptyTitle>{t('torrents.noTorrentsWithWorkers')}</EmptyTitle>
             <EmptyDescription>
-              {t('torrents.noTorrentsWithAgentsDesc')}
+              {t('torrents.noTorrentsWithWorkersDesc')}
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
@@ -1189,8 +1154,8 @@ export default function TorrentsPage() {
         <LoadingBar className="mb-4" />
       )}
 
-      {/* Conteúdo principal - apenas quando há agentes funcionais e torrents */}
-      {!isInitialLoading && agents.length > 0 && agents.some(agent => agent.status !== 'ERRORED') && torrents.length > 0 && (
+      {/* Conteúdo principal - apenas quando há workers funcionais e torrents */}
+      {!isInitialLoading && workers.length > 0 && workers.some(worker => worker.status !== 'ERRORED') && torrents.length > 0 && (
         <>
           {/* Layout para desktop - Tabela, Cards ou Lista baseado na preferência */}
           <div className="hidden md:block w-full">
@@ -1212,7 +1177,6 @@ export default function TorrentsPage() {
                 onForceDownload={handleForceDownloadTorrent}
                 onForceReannounce={handleForceReannounceTorrent}
                 onForceRecheck={handleForceRecheckTorrent}
-                onMetrics={handleShowMetrics}
                 onLimits={handleShowLimits}
                 onMetadataUpdate={handleMetadataUpdate}
                 compact={compact}
@@ -1236,7 +1200,6 @@ export default function TorrentsPage() {
                   onShowDetails={handleShowDetails}
                   onStart={handlePlayTorrent}
                   onStop={handlePauseTorrent}
-                  onMetrics={handleShowMetrics}
                   onRemove={(id) => handleDeleteTorrent(id, false)}
                   onForceDownload={handleForceDownloadTorrent}
                   onForceReannounce={handleForceReannounceTorrent}
@@ -1270,7 +1233,6 @@ export default function TorrentsPage() {
                   onShowDetails={handleShowDetails}
                   onStart={handlePlayTorrent}
                   onStop={handlePauseTorrent}
-                  onMetrics={handleShowMetrics}
                   onRemove={(id) => handleDeleteTorrent(id, false)}
                   onForceDownload={handleForceDownloadTorrent}
                   onForceReannounce={handleForceReannounceTorrent}
@@ -1308,7 +1270,6 @@ export default function TorrentsPage() {
               onShowDetails={handleShowDetails}
               onStart={handlePlayTorrent}
               onStop={handlePauseTorrent}
-              onMetrics={handleShowMetrics}
               onRemove={(id) => handleDeleteTorrent(id, false)}
               onForceDownload={handleForceDownloadTorrent}
               onForceReannounce={handleForceReannounceTorrent}
@@ -1355,29 +1316,16 @@ export default function TorrentsPage() {
           isOpen={isAddModalOpen}
           onClose={() => setIsAddModalOpen(false)}
           onSubmit={handleCreateTorrent}
-          agents={agents}
-        />
-      )}
-
-      {/* Modal de métricas do torrent - só renderiza quando aberto */}
-      {isMetricsModalOpen && metricsTaskId && (
-        <TorrentMetricsModal
-          isOpen={isMetricsModalOpen}
-          onClose={handleCloseMetricsModal}
-          taskId={metricsTaskId}
-          agentId={metricsAgentId}
-          taskName={metricsTaskName}
-          selectedCount={metricsSelectedCount}
-          taskIds={metricsTaskIds}
+          workers={workers}
         />
       )}
 
       {/* Modal de limites do torrent - só renderiza quando aberto */}
-      {isLimitsModalOpen && limitsAgentId && limitsTaskIds.length > 0 && (
+      {isLimitsModalOpen && limitsWorkerId && limitsTaskIds.length > 0 && (
         <TorrentLimitModal
           isOpen={isLimitsModalOpen}
           onClose={handleCloseLimitsModal}
-          agentId={limitsAgentId}
+          workerId={limitsWorkerId}
           taskIds={limitsTaskIds}
           taskName={limitsTaskName}
           taskStatus={limitsTaskStatus}
@@ -1445,20 +1393,20 @@ export default function TorrentsPage() {
             </div>
 
 
-            {/* Filtro de agentes */}
+            {/* Filtro de workers */}
             <div className="space-y-2">
               <label className="text-sm font-medium flex items-center gap-2">
                 <Server className="w-4 h-4 text-muted-foreground" />
-                {t('torrents.filters.agents')}
-                {selectedAgentIds.size > 0 && (
+                {t('torrents.filters.workers')}
+                {selectedWorkerIds.size > 0 && (
                   <div className="w-2 h-2 rounded-full bg-primary" />
                 )}
               </label>
-              <AgentFilter
-                agents={agents}
-                selectedAgentIds={selectedAgentIds}
-                onToggleAgent={agentControls.toggle}
-                onSetAll={agentControls.setAll}
+              <WorkerFilter
+                workers={workers}
+                selectedWorkerIds={selectedWorkerIds}
+                onToggleWorker={workerControls.toggle}
+                onSetAll={workerControls.setAll}
               />
             </div>
 

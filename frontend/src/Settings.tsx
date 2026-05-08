@@ -47,7 +47,7 @@ export default function SettingsPage() {
   const [imageStats, setImageStats] = useState<ImageStorageStatsResponse | null>(null);
   const [imageStatsLoading, setImageStatsLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ type: 'agent' | 'orphans'; agentId?: string; agentName?: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ type: 'worker' | 'orphans'; workerId?: string; workerName?: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const loadSettings = useCallback(async () => {
@@ -197,8 +197,8 @@ export default function SettingsPage() {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      if (deleteTarget.type === 'agent' && deleteTarget.agentId) {
-        const result = await settingsService.deleteAgentImages(deleteTarget.agentId);
+      if (deleteTarget.type === 'worker' && deleteTarget.workerId) {
+        const result = await settingsService.deleteWorkerImages(deleteTarget.workerId);
         if (result.error) {
           toast.error(t('settings.imageStorage.deleteError', { message: result.error }));
           return;
@@ -223,8 +223,8 @@ export default function SettingsPage() {
     }
   };
 
-  const openDeleteDialog = (type: 'agent' | 'orphans', agentId?: string, agentName?: string) => {
-    setDeleteTarget({ type, agentId, agentName });
+  const openDeleteDialog = (type: 'worker' | 'orphans', workerId?: string, workerName?: string) => {
+    setDeleteTarget({ type, workerId, workerName });
     setDeleteDialogOpen(true);
   };
 
@@ -266,37 +266,37 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Per-agent table */}
-          {imageStats.agents && imageStats.agents.length > 0 && (
+          {/* Per-worker table */}
+          {imageStats.workers && imageStats.workers.length > 0 && (
             <div className="space-y-2">
               <h4 className="text-sm font-medium text-muted-foreground">
-                {t("settings.imageStorage.byAgent")}
+                {t("settings.imageStorage.byWorker")}
               </h4>
               <div className="border rounded-lg divide-y">
-                {imageStats.agents.map((agent) => (
-                  <div key={agent.agent_id} className="flex items-center justify-between p-3">
+                {imageStats.workers.map((worker) => (
+                  <div key={worker.worker_id} className="flex items-center justify-between p-3">
                     <div className="flex items-center gap-2 min-w-0">
-                      {agent.is_removed && (
+                      {worker.is_removed && (
                         <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
                       )}
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">
-                          {agent.agent_name || t("settings.imageStorage.unknownAgent")}
-                          {agent.is_removed && (
+                          {worker.worker_name || t("settings.imageStorage.unknownWorker")}
+                          {worker.is_removed && (
                             <span className="ml-2 text-xs text-amber-500 font-normal">
                               ({t("settings.imageStorage.removed")})
                             </span>
                           )}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {agent.image_count} {t("settings.imageStorage.images")} · {formatBytes(agent.total_size_bytes)}
+                          {worker.image_count} {t("settings.imageStorage.images")} · {formatBytes(worker.total_size_bytes)}
                         </p>
                       </div>
                     </div>
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => openDeleteDialog('agent', agent.agent_id, agent.agent_name)}
+                      onClick={() => openDeleteDialog('worker', worker.worker_id, worker.worker_name)}
                       disabled={deleting}
                       className="flex-shrink-0"
                     >
@@ -552,12 +552,12 @@ export default function SettingsPage() {
             <DialogTitle>
               {deleteTarget?.type === 'orphans'
                 ? t("settings.imageStorage.confirmDeleteOrphans.title")
-                : t("settings.imageStorage.confirmDeleteAgent.title")}
+                : t("settings.imageStorage.confirmDeleteWorker.title")}
             </DialogTitle>
             <DialogDescription>
               {deleteTarget?.type === 'orphans'
                 ? t("settings.imageStorage.confirmDeleteOrphans.description")
-                : t("settings.imageStorage.confirmDeleteAgent.description")}
+                : t("settings.imageStorage.confirmDeleteWorker.description")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

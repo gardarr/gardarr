@@ -4,7 +4,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import TorrentContextMenu from "@/components/TorrentContextMenu";
 import { RatioBadge } from "@/components/RatioBadge";
-import { AgentIcon } from "@/components/ui/AgentIcon";
+import { WorkerIcon } from "@/components/ui/WorkerIcon";
 import { getStatusBackgroundColor, type TorrentStatus } from "@/components/TorrentStatusIcon";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatBytes, formatBytesPerSecond } from "@/utils/bytes";
@@ -32,18 +32,18 @@ export type MobileTorrent = {
   ratio: number;
   numSeeds: number;
   numLeechs: number;
-  agentName?: string;
-  agentStatus?: string;
-  agentUUID?: string;
-  agentIcon?: string;
-  agentColor?: string;
+  workerName?: string;
+  workerStatus?: string;
+  workerUUID?: string;
+  workerIcon?: string;
+  workerColor?: string;
   category: string;
   tags: string[];
   metadata?: TaskMetadata | null;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits, onMetadataUpdate: _onMetadataUpdate, compact, selectionMode, selected, onToggleSelect, selectedIds, onRequestDelete }: Readonly<{
+export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onLimits, onMetadataUpdate: _onMetadataUpdate, compact, selectionMode, selected, onToggleSelect, selectedIds, onRequestDelete }: Readonly<{
   torrent: MobileTorrent;
   onShowDetails: (id: string) => void;
   onStart: (id: string) => void;
@@ -52,8 +52,7 @@ export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove,
   onForceDownload: (id: string) => void;
   onForceReannounce: (id: string) => void;
   onForceRecheck: (id: string) => void;
-  onMetrics?: (taskId: string, agentId?: string) => void;
-  onLimits?: (taskId: string, agentId?: string) => void;
+  onLimits?: (taskId: string, workerId?: string) => void;
   onMetadataUpdate?: () => void;
   compact?: boolean;
   selectionMode?: boolean;
@@ -88,7 +87,7 @@ export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove,
   return (
     <TorrentContextMenu
       taskId={torrent.id}
-      agentId={torrent.agentUUID}
+      workerId={torrent.workerUUID}
       selectionMode={selectionMode}
       selectedIds={selectedIds}
       onRequestDelete={onRequestDelete}
@@ -98,7 +97,7 @@ export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove,
       onForceDownload={onForceDownload}
       onForceReannounce={onForceReannounce}
       onForceRecheck={onForceRecheck}
-      onMetrics={onMetrics}
+
       onLimits={onLimits}
       onShowDetails={onShowDetails}
     >
@@ -144,7 +143,7 @@ export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove,
                   {truncateText(torrent.name)}
                 </CardTitle>
               </div>
-              {torrent.agentName && (
+              {torrent.workerName && (
                 <div className="flex-shrink-0 ml-2 inline-flex items-center gap-1">
                   <RatioBadge ratio={torrent.ratio} showValue={false} showIcon={true} />
                 </div>
@@ -221,21 +220,21 @@ export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove,
                   {truncateText(torrent.name)}
                 </CardTitle>
               </div>
-              {torrent.agentName && (
+              {torrent.workerName && (
                 <div className="flex-shrink-0 ml-2 flex items-center gap-2">
                   <RatioBadge ratio={torrent.ratio} showValue={false} showIcon={true} />
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="inline-flex items-center justify-center rounded-full border p-1">
-                        <AgentIcon
-                          iconName={torrent.agentIcon}
-                          color={torrent.agentColor}
+                        <WorkerIcon
+                          iconName={torrent.workerIcon}
+                          color={torrent.workerColor}
                           size="sm"
                         />
                       </div>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>{torrent.agentName}</p>
+                      <p>{torrent.workerName}</p>
                     </TooltipContent>
                   </Tooltip>
                 </div>

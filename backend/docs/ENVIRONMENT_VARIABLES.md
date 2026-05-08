@@ -26,16 +26,6 @@ This document lists all environment variables used by Gardarr backend.
   - `APP_URL=https://gardarr.example.com/app` (path included)
 - **Note**: When `APP_URL=http://localhost:3200`, the backend also allows `http://localhost:5173` for the Vite dev server.
 
-### `APP_MODE`
-- **Description**: Application mode for agent management
-- **Values**: `standalone` or not set (normal mode)
-- **Default**: Not set (normal mode)
-- **Example**: `APP_MODE=standalone`
-- **Note**: When set to `standalone`:
-  - Adds a mock agent with URL `http://127.0.0.1:3100`
-  - Automatically starts the agent service
-  - Both service and agent run together in the same process
-
 ### `GIN_MODE`
 - **Description**: Gin framework mode
 - **Values**: `debug` (development) or `release` (production)
@@ -116,7 +106,7 @@ This document lists all environment variables used by Gardarr backend.
 ## Security
 
 ### `ENCRYPTION_KEY`
-- **Description**: Key used to encrypt sensitive data (e.g., agent tokens)
+- **Description**: Key used to encrypt sensitive data (e.g., worker tokens)
 - **Default**: None (required for production)
 - **Example**: `ENCRYPTION_KEY=your-32-byte-encryption-key-here`
 - **Security**: Use `ENCRYPTION_KEY_FILE` with Docker secrets in production
@@ -129,31 +119,30 @@ This document lists all environment variables used by Gardarr backend.
 
 ---
 
-## Agent
+## Worker
 
-### `AGENT_PORT`
-- **Description**: Port for the embedded agent service (standalone mode)
+### `WORKER_PORT`
+- **Description**: Port for the worker HTTP service (when running the worker component)
 - **Default**: `3100`
-- **Example**: `AGENT_PORT=3100`
+- **Example**: `WORKER_PORT=3100`
 
-### `AGENT_SECRET`
-- **Description**: Secret key for agent authentication
-- **Default**: Auto-generated in standalone mode
-- **Example**: `AGENT_SECRET=your-secret-key`
-- **Security**: Use `AGENT_SECRET_FILE` with Docker secrets in production
+### `WORKER_SECRET`
+- **Description**: Shared secret for worker authentication
+- **Default**: None
+- **Example**: `WORKER_SECRET=your-secret-key`
+- **Security**: Use `WORKER_SECRET_FILE` with Docker secrets in production
 
-### `AGENT_TIMEOUT_SECONDS`
-- **Description**: Timeout in seconds for agent communication
-- **Default**: `3`
-- **Example**: `AGENT_TIMEOUT_SECONDS=10`
+### `WORKER_TIMEOUT_SECONDS`
+- **Description**: Timeout in seconds for HTTP calls from the backend to worker endpoints
+- **Default**: `10` (applied when not set or empty)
+- **Example**: `WORKER_TIMEOUT_SECONDS=15`
 
 ---
 
-## qBittorrent (Standalone Mode)
+## qBittorrent (Worker)
 
 ### `QBITTORRENT_URL`
-- **Description**: Base URL of the qBittorrent Web UI
-- **Default**: None (required in standalone mode)
+- **Description**: Base URL of the qBittorrent Web UI (required for worker)
 - **Example**: `QBITTORRENT_URL=http://localhost:8080`
 
 ### `QBITTORRENT_USERNAME`
@@ -183,38 +172,30 @@ This document lists all environment variables used by Gardarr backend.
 - **Example**: `QBITTORRENT_RETRY_BACKOFF=2`
 
 ### `QBITTORRENT_LOGIN_MAX_RETRIES`
-- **Description**: Maximum number of consecutive authentication failures before the agent gives up and shuts down (triggering a Docker restart). Distinct from `QBITTORRENT_MAX_RETRIES` which governs per-request retries.
+- **Description**: Maximum number of consecutive authentication failures before the worker gives up and shuts down (triggering a Docker restart). Distinct from `QBITTORRENT_MAX_RETRIES` which governs per-request retries.
 - **Default**: `5`
 - **Example**: `QBITTORRENT_LOGIN_MAX_RETRIES=5`
 
 ---
 
-## Statistics
+## Prometheus Metrics
 
-### `STATISTICS_ENABLED`
-- **Description**: Enable or disable statistics collection
-- **Default**: `true`
-- **Example**: `STATISTICS_ENABLED=false`
+### `METRICS_USERNAME`
+- **Description**: Username for Basic Auth on `/metrics` endpoint
+- **Default**: Not set (endpoint disabled if not set)
+- **Example**: `METRICS_USERNAME=prometheus`
+- **Note**: Both `METRICS_USERNAME` and `METRICS_PASSWORD` must be set to enable the endpoint
 
-### `STATISTICS_DIR`
-- **Description**: Directory for storing statistics data
-- **Default**: `/data/statistics`
-- **Example**: `STATISTICS_DIR=./data/statistics`
+### `METRICS_PASSWORD`
+- **Description**: Password for Basic Auth on `/metrics` endpoint
+- **Default**: Not set (endpoint disabled if not set)
+- **Example**: `METRICS_PASSWORD=your-secure-password`
+- **Security**: Use `METRICS_PASSWORD_FILE` with Docker secrets in production
 
-### `STATISTICS_INTERVAL`
-- **Description**: Interval for collecting statistics
+### `EVENT_POLL_INTERVAL`
+- **Description**: Interval for the event poller to check workers for task state changes
 - **Default**: `30s`
-- **Example**: `STATISTICS_INTERVAL=1m`
-
-### `STATISTICS_RETENTION_DAYS`
-- **Description**: Number of days to retain statistics data (0 = forever)
-- **Default**: `0`
-- **Example**: `STATISTICS_RETENTION_DAYS=90`
-
-### `STATISTICS_PURGE_INTERVAL`
-- **Description**: Interval for checking and purging old statistics
-- **Default**: `30m`
-- **Example**: `STATISTICS_PURGE_INTERVAL=1h`
+- **Example**: `EVENT_POLL_INTERVAL=1m`
 
 ---
 
@@ -248,12 +229,6 @@ LOG_LEVEL=DEBUG
 # Database (SQLite)
 DATABASE_DRIVER=sqlite
 DATABASE_FILE_PATH=./gardarr.db
-
-# Standalone mode
-# APP_MODE=standalone
-# QBITTORRENT_URL=http://localhost:8080
-# QBITTORRENT_USERNAME=admin
-# QBITTORRENT_PASSWORD=adminadmin
 ```
 
 ### Production (`.env.production`)
@@ -275,20 +250,11 @@ DATABASE_SSL_MODE=require
 # Security
 ENCRYPTION_KEY=your-32-byte-encryption-key-here
 
-# Statistics
-STATISTICS_RETENTION_DAYS=90
+# Prometheus Metrics (optional)
+METRICS_USERNAME=prometheus
+METRICS_PASSWORD=your-secure-password
+
 EVENT_RETENTION_DAYS=30
-```
-
-### Standalone Mode
-```bash
-APP_MODE=standalone
-APP_PORT=3200
-AGENT_PORT=3100
-
-QBITTORRENT_URL=http://localhost:8080
-QBITTORRENT_USERNAME=admin
-QBITTORRENT_PASSWORD=adminadmin
 ```
 
 ---

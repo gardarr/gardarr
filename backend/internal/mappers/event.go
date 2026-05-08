@@ -15,7 +15,7 @@ func ToEventResponse(event *entities.Event) *models.EventResponse {
 
 	return &models.EventResponse{
 		UUID:      event.UUID.String(),
-		AgentID:   event.AgentID.String(),
+		WorkerID:  event.WorkerID.String(),
 		Type:      event.Type,
 		TaskHash:  event.TaskHash,
 		OldValue:  event.OldValue,
@@ -39,7 +39,7 @@ func ToEventEntity(model *models.Event) *entities.Event {
 
 	return &entities.Event{
 		UUID:      model.UUID,
-		AgentID:   model.AgentID,
+		WorkerID:  model.WorkerID,
 		Type:      model.Type,
 		TaskHash:  model.TaskHash,
 		OldValue:  model.OldValue,

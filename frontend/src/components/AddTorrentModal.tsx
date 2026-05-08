@@ -3,56 +3,56 @@ import { X, Server, Check, ChevronsUpDown, HardDrive, Download, Link, FileText, 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AgentIcon } from "@/components/ui/AgentIcon";
+import { WorkerIcon } from "@/components/ui/WorkerIcon";
 import { SelectCategory } from "@/components/SelectCategory";
 import { SelectTags } from "@/components/SelectTags";
 import { convertMagnetUriToTaskMagnetLink } from "@/services/torrents";
 import { formatBytes } from "@/utils/bytes";
 import { useTranslation } from "react-i18next";
-import type { Agent } from "@/types/agent";
+import type { Worker } from "@/types/worker";
 import type { CreateTaskRequest, TaskMagnetLink } from "@/types/torrent";
 import type { Category } from "@/types/category";
 
 interface AddTorrentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (agentId: string, taskData: CreateTaskRequest) => Promise<void>;
-  agents: Agent[];
+  onSubmit: (workerId: string, taskData: CreateTaskRequest) => Promise<void>;
+  workers: Worker[];
 }
 
-export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorrentModalProps) {
+export function AddTorrentModal({ isOpen, onClose, onSubmit, workers }: AddTorrentModalProps) {
   const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedAgentId, setSelectedAgentId] = useState<string>("");
+  const [selectedWorkerId, setSelectedWorkerId] = useState<string>("");
   const [magnetUri, setMagnetUri] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
   const [category, setCategory] = useState("");
   const [directory, setDirectory] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [agentDropdownOpen, setAgentDropdownOpen] = useState(false);
+  const [workerDropdownOpen, setWorkerDropdownOpen] = useState(false);
   const [parsedMagnetLink, setParsedMagnetLink] = useState<TaskMagnetLink | null>(null);
-  const agentDropdownRef = useRef<HTMLDivElement>(null);
+  const workerDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Filter only active agents
-  const activeAgents = useMemo(() => {
-    return agents.filter(agent => agent.status === 'ACTIVE');
-  }, [agents]);
+  // Filter only active workers
+  const activeWorkers = useMemo(() => {
+    return workers.filter(worker => worker.status === 'ACTIVE');
+  }, [workers]);
 
-  // Get selected agent info
-  const selectedAgent = useMemo(() => {
-    return activeAgents.find(agent => agent.uuid === selectedAgentId);
-  }, [activeAgents, selectedAgentId]);
+  // Get selected worker info
+  const selectedWorker = useMemo(() => {
+    return activeWorkers.find(worker => worker.uuid === selectedWorkerId);
+  }, [activeWorkers, selectedWorkerId]);
 
-  // Get free space of selected agent
+  // Get free space of selected worker
   const freeSpace = useMemo(() => {
-    return selectedAgent?.instance?.server?.free_space_on_disk || 0;
-  }, [selectedAgent]);
+    return selectedWorker?.instance?.server?.free_space_on_disk || 0;
+  }, [selectedWorker]);
 
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
-      setSelectedAgentId(activeAgents.length > 0 ? activeAgents[0].uuid : "");
+      setSelectedWorkerId(activeWorkers.length > 0 ? activeWorkers[0].uuid : "");
       setSelectedCategoryId("");
       setMagnetUri("");
       setCategory("");
@@ -62,7 +62,7 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
       setParsedMagnetLink(null);
       setIsSubmitting(false);
     }
-  }, [isOpen, activeAgents]);
+  }, [isOpen, activeWorkers]);
 
   // Parse magnet URI when it changes
   useEffect(() => {
@@ -89,10 +89,10 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
     }
   };
 
-  const handleAgentChange = (agentId: string) => {
-    setSelectedAgentId(agentId);
-    setErrors({ ...errors, agent: "" });
-    setAgentDropdownOpen(false);
+  const handleWorkerChange = (workerId: string) => {
+    setSelectedWorkerId(workerId);
+    setErrors({ ...errors, worker: "" });
+    setWorkerDropdownOpen(false);
   };
 
   // Close modal on Escape key
@@ -109,26 +109,26 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
     }
   }, [isOpen, onClose]);
 
-  // Close agent dropdown when clicking outside
+  // Close worker dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (agentDropdownRef.current && !agentDropdownRef.current.contains(event.target as Node)) {
-        setAgentDropdownOpen(false);
+      if (workerDropdownRef.current && !workerDropdownRef.current.contains(event.target as Node)) {
+        setWorkerDropdownOpen(false);
       }
     };
 
-    if (agentDropdownOpen) {
+    if (workerDropdownOpen) {
       document.addEventListener("mousedown", handleClickOutside);
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
-  }, [agentDropdownOpen]);
+  }, [workerDropdownOpen]);
 
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!selectedAgentId) {
-      newErrors.agent = t("torrents.addModal.errors.agentRequired");
+    if (!selectedWorkerId) {
+      newErrors.worker = t("torrents.addModal.errors.workerRequired");
     }
 
     if (!magnetUri.trim()) {
@@ -166,7 +166,7 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
         ...(directory.trim() && { directory: directory.trim() }),
       };
 
-      await onSubmit(selectedAgentId, taskData);
+      await onSubmit(selectedWorkerId, taskData);
       // Fechar modal apenas se sucesso (onSubmit irá fechar em caso de erro)
       onClose();
     } finally {
@@ -314,28 +314,28 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
             helpText={`(${t("torrents.addModal.tags.autoFilled")})`}
           />
 
-          {/* Agent Selection */}
+          {/* Worker Selection */}
           <div className="space-y-2">
-            <Label htmlFor="agent" className="flex items-center gap-2">
+            <Label htmlFor="worker" className="flex items-center gap-2">
               <Server className="h-4 w-4" />
-              {t("torrents.addModal.agent.label")} <span className="text-destructive">*</span>
+              {t("torrents.addModal.worker.label")} <span className="text-destructive">*</span>
             </Label>
-            <div className="relative" ref={agentDropdownRef}>
+            <div className="relative" ref={workerDropdownRef}>
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setAgentDropdownOpen(!agentDropdownOpen)}
-                disabled={activeAgents.length === 0}
-                className={`w-full justify-between ${errors.agent ? "border-destructive" : ""}`}
+                onClick={() => setWorkerDropdownOpen(!workerDropdownOpen)}
+                disabled={activeWorkers.length === 0}
+                className={`w-full justify-between ${errors.worker ? "border-destructive" : ""}`}
               >
                 <div className="flex items-center gap-2">
-                  {selectedAgentId ? (
+                  {selectedWorkerId ? (
                     (() => {
-                      const selectedAgent = activeAgents.find(agent => agent.uuid === selectedAgentId);
-                      return selectedAgent ? (
-                        <AgentIcon 
-                          iconName={selectedAgent.icon}
-                          color={selectedAgent.color}
+                      const selectedWorker = activeWorkers.find(worker => worker.uuid === selectedWorkerId);
+                      return selectedWorker ? (
+                        <WorkerIcon 
+                          iconName={selectedWorker.icon}
+                          color={selectedWorker.color}
                           size="sm"
                         />
                       ) : (
@@ -346,33 +346,33 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
                     <Server className="h-4 w-4 text-muted-foreground" />
                   )}
                   <span className="truncate">
-                    {selectedAgentId 
-                      ? activeAgents.find(agent => agent.uuid === selectedAgentId)?.name 
-                      : activeAgents.length === 0 
-                        ? t("torrents.addModal.agent.noneAvailable")
-                        : t("torrents.addModal.agent.select")
+                    {selectedWorkerId 
+                      ? activeWorkers.find(worker => worker.uuid === selectedWorkerId)?.name 
+                      : activeWorkers.length === 0 
+                        ? t("torrents.addModal.worker.noneAvailable")
+                        : t("torrents.addModal.worker.select")
                     }
                   </span>
                 </div>
                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
               
-              {agentDropdownOpen && activeAgents.length > 0 && (
+              {workerDropdownOpen && activeWorkers.length > 0 && (
                 <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-auto">
-                  {activeAgents.map((agent) => (
+                  {activeWorkers.map((worker) => (
                     <button
-                      key={agent.uuid}
+                      key={worker.uuid}
                       type="button"
-                      onClick={() => handleAgentChange(agent.uuid)}
+                      onClick={() => handleWorkerChange(worker.uuid)}
                       className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground text-left"
                     >
-                      <AgentIcon 
-                        iconName={agent.icon}
-                        color={agent.color}
+                      <WorkerIcon 
+                        iconName={worker.icon}
+                        color={worker.color}
                         size="md"
                       />
-                      <span className="flex-1 truncate">{agent.name}</span>
-                      {selectedAgentId === agent.uuid && (
+                      <span className="flex-1 truncate">{worker.name}</span>
+                      {selectedWorkerId === worker.uuid && (
                         <Check className="h-4 w-4 text-primary" />
                       )}
                     </button>
@@ -380,13 +380,13 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
                 </div>
               )}
             </div>
-            {errors.agent && (
-              <p className="text-sm text-destructive">{errors.agent}</p>
+            {errors.worker && (
+              <p className="text-sm text-destructive">{errors.worker}</p>
             )}
-            {selectedAgentId && freeSpace > 0 && (
+            {selectedWorkerId && freeSpace > 0 && (
               <div className="mt-1 text-xs text-muted-foreground flex items-center gap-1">
                 <HardDrive className="h-3 w-3" />
-                <span>{t("torrents.addModal.agent.freeSpace")} {formatBytes(freeSpace)}</span>
+                <span>{t("torrents.addModal.worker.freeSpace")} {formatBytes(freeSpace)}</span>
               </div>
             )}
           </div>
@@ -403,7 +403,7 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, agents }: AddTorren
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || activeAgents.length === 0}
+              disabled={isSubmitting || activeWorkers.length === 0}
             >
               {isSubmitting ? t("torrents.addModal.submitting") : t("torrents.addModal.submit")}
             </Button>

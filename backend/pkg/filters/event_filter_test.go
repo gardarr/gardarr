@@ -323,7 +323,7 @@ func TestMatchesEventRealWorldScenarioCompletedTorrents(t *testing.T) {
 
 	completedEvent := &entities.Event{
 		UUID:      uuid.New(),
-		AgentID:   uuid.New(),
+		WorkerID:  uuid.New(),
 		Type:      constants.EventTypeTorrentStateChange,
 		TaskHash:  "abc123",
 		OldValue:  "downloading",
@@ -342,7 +342,7 @@ func TestMatchesEventRealWorldScenarioCompletedTorrents(t *testing.T) {
 
 	downloadingEvent := &entities.Event{
 		UUID:      uuid.New(),
-		AgentID:   uuid.New(),
+		WorkerID:  uuid.New(),
 		Type:      constants.EventTypeTorrentStateChange,
 		TaskHash:  "def456",
 		OldValue:  "paused",

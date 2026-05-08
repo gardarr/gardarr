@@ -462,7 +462,7 @@ func (m *Module) testWebhook(c *gin.Context) {
 	// Create test event
 	testEvent := &entities.Event{
 		UUID:     uuid.New(),
-		AgentID:  uuid.New(),
+		WorkerID: uuid.New(),
 		Type:     "test.webhook",
 		TaskHash: "test_" + uuid.New().String()[:8],
 		OldValue: "downloading",

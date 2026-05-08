@@ -44,10 +44,10 @@ func Register(m *migration.Migrator) {
 			Version:     "004_create_agents_table",
 			Description: "Cria a tabela de agents",
 			Up: func(db *gorm.DB) error {
-				return db.AutoMigrate(&models.Agent{})
+				return db.AutoMigrate(&models.Worker{})
 			},
 			Down: func(db *gorm.DB) error {
-				return db.Migrator().DropTable(&models.Agent{})
+				return db.Migrator().DropTable(&models.Worker{})
 			},
 		},
 		{
@@ -68,28 +68,6 @@ func Register(m *migration.Migrator) {
 			},
 			Down: func(db *gorm.DB) error {
 				return db.Migrator().DropTable(&models.PasswordResetToken{})
-			},
-		},
-		{
-			Version:     "007_create_statistics_indexes",
-			Description: "Cria tabelas de índice para arquivos JSONL de estatísticas",
-			Up: func(db *gorm.DB) error {
-				if err := db.AutoMigrate(&models.StatsFileIndex{}); err != nil {
-					return err
-				}
-				if err := db.AutoMigrate(&models.StatsFileHourSummary{}); err != nil {
-					return err
-				}
-				return nil
-			},
-			Down: func(db *gorm.DB) error {
-				if err := db.Migrator().DropTable(&models.StatsFileHourSummary{}); err != nil {
-					return err
-				}
-				if err := db.Migrator().DropTable(&models.StatsFileIndex{}); err != nil {
-					return err
-				}
-				return nil
 			},
 		},
 		{
@@ -185,13 +163,13 @@ func Register(m *migration.Migrator) {
 					Where("torrent_display_mode = ?", "default").
 					Update("torrent_display_mode", "table").Error
 			},
-		Down: func(db *gorm.DB) error {
-			// No-op: reverting torrent_display_mode changes is intentionally disabled.
-			// Rolling back would overwrite user-set preferences (table/card/list) with "default",
-			// which is destructive and irreversible. Users who manually changed their display
-			// mode would lose their preference.
-			return nil
-		},
+			Down: func(db *gorm.DB) error {
+				// No-op: reverting torrent_display_mode changes is intentionally disabled.
+				// Rolling back would overwrite user-set preferences (table/card/list) with "default",
+				// which is destructive and irreversible. Users who manually changed their display
+				// mode would lose their preference.
+				return nil
+			},
 		},
 		{
 			Version:     "019_create_webhook_history_table",
@@ -323,6 +301,57 @@ func Register(m *migration.Migrator) {
 						return err
 					}
 				}
+				return nil
+			},
+		},
+		{
+			Version:     "023_rename_agents_to_workers",
+			Description: "Renomeia tabela agents para workers e colunas agent_id para worker_id",
+			Up: func(db *gorm.DB) error {
+				if db.Migrator().HasTable("agents") {
+					if err := db.Migrator().RenameTable("agents", "workers"); err != nil {
+						return err
+					}
+				}
+				if db.Migrator().HasColumn(&models.Event{}, "agent_id") {
+					if err := db.Migrator().RenameColumn(&models.Event{}, "agent_id", "worker_id"); err != nil {
+						return err
+					}
+				}
+				if db.Migrator().HasColumn(&models.TaskState{}, "agent_id") {
+					if err := db.Migrator().RenameColumn(&models.TaskState{}, "agent_id", "worker_id"); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			Down: func(db *gorm.DB) error {
+				if db.Migrator().HasTable("workers") {
+					if err := db.Migrator().RenameTable("workers", "agents"); err != nil {
+						return err
+					}
+				}
+				if db.Migrator().HasColumn(&models.Event{}, "worker_id") {
+					if err := db.Migrator().RenameColumn(&models.Event{}, "worker_id", "agent_id"); err != nil {
+						return err
+					}
+				}
+				if db.Migrator().HasColumn(&models.TaskState{}, "worker_id") {
+					if err := db.Migrator().RenameColumn(&models.TaskState{}, "worker_id", "agent_id"); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		},
+		{
+			Version:     "024_remove_standalone_worker",
+			Description: "Remove worker standalone do banco de dados (se existir)",
+			Up: func(db *gorm.DB) error {
+				return db.Where("uuid = ?", "00000000-0000-0000-0000-000000000000").Delete(&models.Worker{}).Error
+			},
+			Down: func(db *gorm.DB) error {
+				// No-op: não queremos recriar o worker se fizer rollback
 				return nil
 			},
 		},

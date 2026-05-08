@@ -1,6 +1,6 @@
 // AppLayout.tsx
 import { Button } from "@/components/ui/button";
-import { Settings, Users, BarChart3, ArrowDownUp, Menu, Sun, Moon, Info, LogOut, FolderOpen, UserCircle, Server, Plug, History } from "lucide-react";
+import { Settings, Users, ArrowDownUp, Menu, Sun, Moon, Info, LogOut, FolderOpen, UserCircle, Server, Plug, History } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import PageTransition from "@/components/PageTransition";
@@ -9,7 +9,6 @@ import { useAuth } from "@/contexts/auth-hooks";
 import VariantColorSelectButton from "@/components/VariantColorSelectButton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import logoImage from "@/assets/img/logo/logo.png";
-import { useSetup } from "@/contexts/SetupContextBase";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
@@ -18,7 +17,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isDark, setIsDark] = useState<boolean>(false);
   const [isMobile, setIsMobile] = useState(false);
-  const { statisticsEnabled } = useSetup();
   const location = useLocation();
 
   useEffect(() => {
@@ -64,9 +62,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   const menuItems = [
-    ...(statisticsEnabled ? [{ href: "/", icon: BarChart3, label: t("navigation.dashboard"), key: "dashboard" }] : []),
     { href: "/torrents", icon: ArrowDownUp, label: t("navigation.torrents"), key: "torrents" },
-    { href: "/agents", icon: Server, label: t("navigation.agents"), key: "agents" },
+    { href: "/workers", icon: Server, label: t("navigation.workers"), key: "workers" },
     { href: "/categories", icon: FolderOpen, label: t("navigation.categories"), key: "categories" },
     // Only show Users menu item for admin users
     ...(user?.role === 'admin' ? [{ href: "/users", icon: Users, label: t("navigation.users"), key: "users" }] : []),
@@ -115,9 +112,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <ul className="space-y-1">
             {menuItems.map((item) => {
               const IconComponent = item.icon;
-              // Special handling for dashboard - should be active on "/" or "/agent/:agent_uuid" paths
+              // Special handling for dashboard - should be active on "/" or "/worker/:uuid" paths
               const isActive = item.href === "/"
-                ? (location.pathname === "/" || location.pathname.startsWith("/agent/"))
+                ? (location.pathname === "/" || location.pathname.startsWith("/worker/"))
                 : location.pathname === item.href || location.pathname.startsWith(item.href + "/");
               const isCollapsed = !sidebarOpen && !isMobile;
 
@@ -261,10 +258,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </Button>
             {/* Desktop: Show page title */}
             <h1 className="text-xl font-semibold hidden md:block">
-              {(location.pathname === "/" || location.pathname.startsWith("/agent/")) && t("navigation.dashboard")}
               {location.pathname === "/torrents" && t("navigation.torrents")}
               {location.pathname === "/instances" && "Instances"}
-              {location.pathname === "/agents" && t("navigation.agents")}
+              {location.pathname === "/workers" && t("navigation.workers")}
               {location.pathname === "/categories" && t("navigation.categories")}
               {location.pathname === "/users" && t("navigation.users")}
               {location.pathname === "/history" && t("navigation.history")}

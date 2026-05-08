@@ -10,7 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/models"
-	"github.com/jfxdev/gardarr/internal/services/statistics"
 )
 
 // setupTestRouter creates a test router with the setup routes
@@ -22,8 +21,8 @@ func setupTestRouter(t *testing.T) (*gin.Engine, *database.Database) {
 	// Create the API v1 group
 	v1 := router.Group("/api/v1")
 
-	// Register setup routes (eventService is nil for tests)
-	module := NewModule(v1, db, statistics.NewService(db, nil, nil))
+	// Register setup routes
+	module := NewModule(v1, db)
 	module.Register()
 
 	return router, db
