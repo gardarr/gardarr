@@ -336,27 +336,22 @@ func createMediaHandler(absMediaPath string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requestedFile := strings.TrimPrefix(c.Param("filepath"), "/")
 
-		// Security: validate path components to prevent traversal attacks
+		// Security: validate path components
 		if validateMediaPath(requestedFile) != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file path"})
 			return
 		}
 
-		// Build and validate full file path
-		fullPath := filepath.Clean(filepath.Join(absMediaPath, filepath.Clean(requestedFile)))
-
-		if !validations.IsPathWithinBase(absMediaPath, fullPath) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file path"})
-			return
-		}
-
-		// Check file exists and is not a directory
-		// Path already validated, so no need to validate again
-		info, err := os.Stat(fullPath)
-		if os.IsNotExist(err) {
+		// Use http.Dir which provides secure file access and inherently prevents directory traversal
+		fs := http.Dir(absMediaPath)
+		file, err := fs.Open(requestedFile)
+		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
 			return
 		}
+		defer file.Close()
+
+		info, err := file.Stat()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to access file"})
 			return
@@ -366,11 +361,12 @@ func createMediaHandler(absMediaPath string) gin.HandlerFunc {
 			return
 		}
 
-		// Set no-cache headers and serve file
+		// Set no-cache headers and serve file securely
 		c.Header("Cache-Control", "no-cache, no-store, must-revalidate, private")
 		c.Header("Pragma", "no-cache")
 		c.Header("Expires", "0")
-		c.File(fullPath)
+		
+		http.ServeContent(c.Writer, c.Request, info.Name(), info.ModTime(), file)
 	}
 }
 
