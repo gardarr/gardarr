@@ -33,7 +33,9 @@ interface AddWorkerModalProps {
 
 function generateToken(length = 40): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+  const randomValues = new Uint32Array(length);
+  window.crypto.getRandomValues(randomValues);
+  return Array.from(randomValues).map(val => chars[val % chars.length]).join("");
 }
 
 export function AddWorkerModal({ open, onOpenChange, onSuccess }: AddWorkerModalProps) {
