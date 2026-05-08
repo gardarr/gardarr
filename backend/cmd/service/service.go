@@ -331,33 +331,38 @@ func setRouter() {
 	router.Use(securityHeadersMiddleware())
 }
 
+// buildSafeMediaPath extracts and validates path components safely
+func buildSafeMediaPath(requestedFile string) (string, error) {
+	components := strings.Split(requestedFile, "/")
+	var safeComponents []string
+	for _, comp := range components {
+		if comp == "" || comp == "." || comp == ".." {
+			continue
+		}
+		if err := validations.ValidatePathComponent(comp); err != nil {
+			return "", err
+		}
+		// Using filepath.Base breaks the SonarQube taint trace (S2083)
+		safeComponents = append(safeComponents, filepath.Base(comp))
+	}
+	
+	if len(safeComponents) == 0 {
+		return "", errors.New("invalid file path")
+	}
+	
+	return filepath.Join(safeComponents...), nil
+}
+
 // createMediaHandler returns a handler for serving authenticated media files
 func createMediaHandler(absMediaPath string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requestedFile := strings.TrimPrefix(c.Param("filepath"), "/")
 
-		// Security: validate path components and reconstruct safely
-		components := strings.Split(requestedFile, "/")
-		var safeComponents []string
-		for _, comp := range components {
-			if comp == "" || comp == "." || comp == ".." {
-				continue
-			}
-			if err := validations.ValidatePathComponent(comp); err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file path"})
-				return
-			}
-			// Using filepath.Base breaks the SonarQube taint trace (S2083)
-			safeComponents = append(safeComponents, filepath.Base(comp))
-		}
-		
-		// If no valid components, return error
-		if len(safeComponents) == 0 {
+		safePath, err := buildSafeMediaPath(requestedFile)
+		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file path"})
 			return
 		}
-		
-		safePath := filepath.Join(safeComponents...)
 
 		// Use http.Dir which provides secure file access and inherently prevents directory traversal
 		fs := http.Dir(absMediaPath)
