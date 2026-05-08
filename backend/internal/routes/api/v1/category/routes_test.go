@@ -34,6 +34,21 @@ func setupTestRouter(t *testing.T) (*gin.Engine, *database.Database) {
 	return router, db
 }
 
+// sendJSONRequest is a helper to reduce test duplication
+func sendJSONRequest(router *gin.Engine, method, url string, body interface{}) *httptest.ResponseRecorder {
+	var reqBody []byte
+	if body != nil {
+		reqBody, _ = json.Marshal(body)
+	}
+	req, _ := http.NewRequest(method, url, bytes.NewBuffer(reqBody))
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	return w
+}
+
 func TestRoutes_CreateCategory_Success(t *testing.T) {
 	router, _ := setupTestRouter(t)
 
@@ -45,12 +60,7 @@ func TestRoutes_CreateCategory_Success(t *testing.T) {
 		"icon":         "folder-icon",
 	}
 
-	jsonBody, _ := json.Marshal(body)
-	req, _ := http.NewRequest("POST", "/api/v1/categories", bytes.NewBuffer(jsonBody))
-	req.Header.Set("Content-Type", "application/json")
-
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	w := sendJSONRequest(router, "POST", "/api/v1/categories", body)
 
 	if w.Code != http.StatusCreated {
 		t.Errorf("Expected status %d, got %d", http.StatusCreated, w.Code)
@@ -86,12 +96,7 @@ func TestRoutes_CreateCategory_ValidationError(t *testing.T) {
 		"default_tags": []string{"tag1"},
 	}
 
-	jsonBody, _ := json.Marshal(body)
-	req, _ := http.NewRequest("POST", "/api/v1/categories", bytes.NewBuffer(jsonBody))
-	req.Header.Set("Content-Type", "application/json")
-
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	w := sendJSONRequest(router, "POST", "/api/v1/categories", body)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, w.Code)
@@ -108,17 +113,11 @@ func TestRoutes_ListCategories(t *testing.T) {
 	}
 
 	for _, cat := range categories {
-		jsonBody, _ := json.Marshal(cat)
-		req, _ := http.NewRequest("POST", "/api/v1/categories", bytes.NewBuffer(jsonBody))
-		req.Header.Set("Content-Type", "application/json")
-		w := httptest.NewRecorder()
-		router.ServeHTTP(w, req)
+		sendJSONRequest(router, "POST", "/api/v1/categories", cat)
 	}
 
 	// List all categories
-	req, _ := http.NewRequest("GET", "/api/v1/categories", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	w := sendJSONRequest(router, "GET", "/api/v1/categories", nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("Expected status %d, got %d", http.StatusOK, w.Code)
@@ -143,11 +142,7 @@ func TestRoutes_GetCategoryByID_Success(t *testing.T) {
 		"default_tags": []string{"tag1"},
 	}
 
-	jsonBody, _ := json.Marshal(body)
-	req, _ := http.NewRequest("POST", "/api/v1/categories", bytes.NewBuffer(jsonBody))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	w := sendJSONRequest(router, "POST", "/api/v1/categories", body)
 
 	var created models.CategoryResponse
 	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
@@ -155,9 +150,7 @@ func TestRoutes_GetCategoryByID_Success(t *testing.T) {
 	}
 
 	// Get by ID
-	req, _ = http.NewRequest("GET", "/api/v1/categories/"+created.ID, nil)
-	w = httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	w = sendJSONRequest(router, "GET", "/api/v1/categories/"+created.ID, nil)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("Expected status %d, got %d", http.StatusOK, w.Code)
@@ -176,9 +169,7 @@ func TestRoutes_GetCategoryByID_Success(t *testing.T) {
 func TestRoutes_GetCategoryByID_NotFound(t *testing.T) {
 	router, _ := setupTestRouter(t)
 
-	req, _ := http.NewRequest("GET", "/api/v1/categories/non-existent-id", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	w := sendJSONRequest(router, "GET", "/api/v1/categories/non-existent-id", nil)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("Expected status %d, got %d", http.StatusNotFound, w.Code)
@@ -195,11 +186,7 @@ func TestRoutes_UpdateCategory_Success(t *testing.T) {
 		"color":        "#FF0000",
 	}
 
-	jsonBody, _ := json.Marshal(body)
-	req, _ := http.NewRequest("POST", "/api/v1/categories", bytes.NewBuffer(jsonBody))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	w := sendJSONRequest(router, "POST", "/api/v1/categories", body)
 
 	var created models.CategoryResponse
 	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
@@ -213,11 +200,7 @@ func TestRoutes_UpdateCategory_Success(t *testing.T) {
 		"icon":         "new-icon",
 	}
 
-	jsonBody, _ = json.Marshal(updateBody)
-	req, _ = http.NewRequest("PUT", "/api/v1/categories/"+created.ID, bytes.NewBuffer(jsonBody))
-	req.Header.Set("Content-Type", "application/json")
-	w = httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	w = sendJSONRequest(router, "PUT", "/api/v1/categories/"+created.ID, updateBody)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("Expected status %d, got %d", http.StatusOK, w.Code)
@@ -256,11 +239,7 @@ func TestRoutes_UpdateCategory_NameIsImmutable(t *testing.T) {
 		"default_tags": []string{"tag1"},
 	}
 
-	jsonBody, _ := json.Marshal(body)
-	req, _ := http.NewRequest("POST", "/api/v1/categories", bytes.NewBuffer(jsonBody))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	w := sendJSONRequest(router, "POST", "/api/v1/categories", body)
 
 	var created models.CategoryResponse
 	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
@@ -273,11 +252,7 @@ func TestRoutes_UpdateCategory_NameIsImmutable(t *testing.T) {
 		"default_tags": []string{"tag1", "tag2"},
 	}
 
-	jsonBody, _ = json.Marshal(updateBody)
-	req, _ = http.NewRequest("PUT", "/api/v1/categories/"+created.ID, bytes.NewBuffer(jsonBody))
-	req.Header.Set("Content-Type", "application/json")
-	w = httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	w = sendJSONRequest(router, "PUT", "/api/v1/categories/"+created.ID, updateBody)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("Expected status %d, got %d", http.StatusOK, w.Code)
@@ -301,11 +276,7 @@ func TestRoutes_UpdateCategory_NotFound(t *testing.T) {
 		"default_tags": []string{"tag1"},
 	}
 
-	jsonBody, _ := json.Marshal(body)
-	req, _ := http.NewRequest("PUT", "/api/v1/categories/non-existent-id", bytes.NewBuffer(jsonBody))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	w := sendJSONRequest(router, "PUT", "/api/v1/categories/non-existent-id", body)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("Expected status %d, got %d", http.StatusNotFound, w.Code)
@@ -321,11 +292,7 @@ func TestRoutes_DeleteCategory_Success(t *testing.T) {
 		"default_tags": []string{"tag1"},
 	}
 
-	jsonBody, _ := json.Marshal(body)
-	req, _ := http.NewRequest("POST", "/api/v1/categories", bytes.NewBuffer(jsonBody))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	w := sendJSONRequest(router, "POST", "/api/v1/categories", body)
 
 	var created models.CategoryResponse
 	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
@@ -333,18 +300,14 @@ func TestRoutes_DeleteCategory_Success(t *testing.T) {
 	}
 
 	// Delete the category
-	req, _ = http.NewRequest("DELETE", "/api/v1/categories/"+created.ID, nil)
-	w = httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	w = sendJSONRequest(router, "DELETE", "/api/v1/categories/"+created.ID, nil)
 
 	if w.Code != http.StatusNoContent {
 		t.Errorf("Expected status %d, got %d", http.StatusNoContent, w.Code)
 	}
 
 	// Verify deletion
-	req, _ = http.NewRequest("GET", "/api/v1/categories/"+created.ID, nil)
-	w = httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	w = sendJSONRequest(router, "GET", "/api/v1/categories/"+created.ID, nil)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("Expected status %d after deletion, got %d", http.StatusNotFound, w.Code)
@@ -354,9 +317,7 @@ func TestRoutes_DeleteCategory_Success(t *testing.T) {
 func TestRoutes_DeleteCategory_NotFound(t *testing.T) {
 	router, _ := setupTestRouter(t)
 
-	req, _ := http.NewRequest("DELETE", "/api/v1/categories/non-existent-id", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	w := sendJSONRequest(router, "DELETE", "/api/v1/categories/non-existent-id", nil)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("Expected status %d, got %d", http.StatusNotFound, w.Code)
