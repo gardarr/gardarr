@@ -39,7 +39,7 @@ export type FilterType = EventType | "all";
 
 export interface Event {
   uuid: string;
-  agent_id: string;
+  worker_id: string;
   type: EventType;
   task_hash: string;
   old_value?: string;

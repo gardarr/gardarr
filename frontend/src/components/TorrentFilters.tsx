@@ -74,15 +74,15 @@ interface Torrent {
   ratio: number;
   numSeeds: number;
   numLeechs: number;
-  agentName?: string;
-  agentUUID?: string;
-  agentIcon?: string;
-  agentColor?: string;
+  workerName?: string;
+  workerUUID?: string;
+  workerIcon?: string;
+  workerColor?: string;
   category: string;
   tags: string[];
 }
 
-interface Agent {
+interface Worker {
   uuid: string;
   name: string;
   status: string;
@@ -96,8 +96,8 @@ interface UseTorrentFiltersParams {
   searchTerm: string;
   sortType: SortType;
   sortDirection: "asc" | "desc";
-  agents: Agent[];
-  selectedAgentIds: Set<string>;
+  workers: Worker[];
+  selectedWorkerIds: Set<string>;
   availableStatuses: TorrentStatus[];
   selectedStatuses: Set<TorrentStatus>;
   availableCategories: string[];
@@ -116,8 +116,8 @@ export function useTorrentFilters({
   searchTerm,
   sortType,
   sortDirection,
-  agents,
-  selectedAgentIds,
+  workers,
+  selectedWorkerIds,
   availableStatuses,
   selectedStatuses,
   availableCategories,
@@ -132,10 +132,10 @@ export function useTorrentFilters({
     const source = torrents.length > 0 ? torrents : ((isRefreshing || selectionMode) ? lastNonEmptyTorrents : torrents);
     let filtered = source;
 
-    // Filtrar por agentes selecionados (size === 0 mostra todos, size > 0 filtra)
-    if (agents.length > 0 && selectedAgentIds.size > 0) {
+    // Filtrar por workers selecionados (size === 0 mostra todos, size > 0 filtra)
+    if (workers.length > 0 && selectedWorkerIds.size > 0) {
       filtered = filtered.filter((t) => {
-        return t.agentUUID && selectedAgentIds.has(t.agentUUID);
+        return t.workerUUID && selectedWorkerIds.has(t.workerUUID);
       });
     }
 
@@ -250,8 +250,8 @@ export function useTorrentFilters({
     searchTerm,
     sortType,
     sortDirection,
-    agents,
-    selectedAgentIds,
+    workers,
+    selectedWorkerIds,
     availableStatuses,
     selectedStatuses,
     availableCategories,

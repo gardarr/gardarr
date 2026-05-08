@@ -4,7 +4,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ChevronLeft, ChevronRight, SortAsc, SortDesc, ArrowUp, ArrowDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { RatioBadge } from "@/components/RatioBadge";
-import { AgentIcon } from "@/components/ui/AgentIcon";
+import { WorkerIcon } from "@/components/ui/WorkerIcon";
 import { type TorrentStatus } from "@/components/TorrentStatusIcon";
 import { StatusBadge } from "@/components/StatusBadge";
 import TorrentContextMenu from "@/components/TorrentContextMenu";
@@ -30,11 +30,11 @@ type Torrent = {
   ratio: number;
   numSeeds: number;
   numLeechs: number;
-  agentName?: string;
-  agentStatus?: string;
-  agentUUID?: string;
-  agentIcon?: string;
-  agentColor?: string;
+  workerName?: string;
+  workerStatus?: string;
+  workerUUID?: string;
+  workerIcon?: string;
+  workerColor?: string;
   category: string;
   tags: string[];
   metadata?: TaskMetadata | null;
@@ -57,8 +57,8 @@ interface TorrentsTableProps {
   onForceDownload: (id: string) => void;
   onForceReannounce: (id: string) => void;
   onForceRecheck: (id: string) => void;
-  onMetrics?: (taskId: string, agentId?: string) => void;
-  onLimits?: (taskId: string, agentId?: string) => void;
+  onMetrics?: (taskId: string, workerId?: string) => void;
+  onLimits?: (taskId: string, workerId?: string) => void;
   onMetadataUpdate?: () => void;
   compact?: boolean;
   selectionMode?: boolean;
@@ -87,7 +87,7 @@ const SpeedCell = ({ rate, total, isUpload, compact }: { rate: number, total: nu
   </div>
 );
 
-function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onMetrics, onLimits, selectionMode, selected, onToggleSelect, selectedIds, onRequestDelete, compact }: {
+function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onLimits, selectionMode, selected, onToggleSelect, selectedIds, onRequestDelete, compact }: {
   torrent: Torrent;
   onShowDetails: (id: string) => void;
   onStart: (id: string) => void;
@@ -96,8 +96,8 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
   onForceDownload: (id: string) => void;
   onForceReannounce: (id: string) => void;
   onForceRecheck: (id: string) => void;
-  onMetrics?: (taskId: string, agentId?: string) => void;
-  onLimits?: (taskId: string, agentId?: string) => void;
+  onMetrics?: (taskId: string, workerId?: string) => void;
+  onLimits?: (taskId: string, workerId?: string) => void;
   onMetadataUpdate?: () => void;
   selectionMode?: boolean;
   selected?: boolean;
@@ -123,7 +123,7 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
   return (
     <TorrentContextMenu
       taskId={torrent.id}
-      agentId={torrent.agentUUID}
+      workerId={torrent.workerUUID}
       selectionMode={selectionMode}
       selectedIds={selectedIds}
       onRequestDelete={onRequestDelete}
@@ -133,7 +133,7 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
       onForceDownload={onForceDownload}
       onForceReannounce={onForceReannounce}
       onForceRecheck={onForceRecheck}
-      onMetrics={onMetrics}
+
       onLimits={onLimits}
       onShowDetails={onShowDetails}
     >
@@ -195,19 +195,19 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
           />
         </td>
         <td className={cellClass}>
-          {torrent.agentName ? (
+          {torrent.workerName ? (
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="flex items-center justify-center">
-                  <AgentIcon
-                    iconName={torrent.agentIcon}
-                    color={torrent.agentColor}
+                  <WorkerIcon
+                    iconName={torrent.workerIcon}
+                    color={torrent.workerColor}
                     size={compact ? "sm" : "md"}
                   />
                 </div>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{torrent.agentName}</p>
+                <p>{torrent.workerName}</p>
               </TooltipContent>
             </Tooltip>
           ) : (
@@ -305,7 +305,7 @@ export default function TorrentsTable({
   onForceDownload,
   onForceReannounce,
   onForceRecheck,
-  onMetrics,
+ 
   onLimits,
   onMetadataUpdate,
   compact,
@@ -377,7 +377,7 @@ export default function TorrentsTable({
                   </div>
                 </th>
                 <th className={`px-4 ${compact ? 'py-1' : 'py-3'} text-left text-sm font-medium text-muted-foreground`}>
-                  {t('torrents.agent')}
+                  {t('torrents.worker')}
                 </th>
               </tr>
             </thead>
@@ -393,7 +393,7 @@ export default function TorrentsTable({
                   onForceDownload={onForceDownload}
                   onForceReannounce={onForceReannounce}
                   onForceRecheck={onForceRecheck}
-                  onMetrics={onMetrics}
+
                   onLimits={onLimits}
                   onMetadataUpdate={onMetadataUpdate}
                   selectionMode={selectionMode}

@@ -20,7 +20,6 @@ describe('SetupService', () => {
     it('should call api.get with correct endpoint', async () => {
       const mockStatus: SetupStatus = {
         initialized: true,
-        statistics_enabled: true,
       };
       vi.mocked(api.get).mockResolvedValue({ data: mockStatus, error: undefined });
 
@@ -32,7 +31,6 @@ describe('SetupService', () => {
     it('should return setup status from API when initialized', async () => {
       const mockStatus: SetupStatus = {
         initialized: true,
-        statistics_enabled: true,
       };
       vi.mocked(api.get).mockResolvedValue({ data: mockStatus, error: undefined });
 
@@ -45,7 +43,6 @@ describe('SetupService', () => {
     it('should return setup status from API when not initialized', async () => {
       const mockStatus: SetupStatus = {
         initialized: false,
-        statistics_enabled: false,
       };
       vi.mocked(api.get).mockResolvedValue({ data: mockStatus, error: undefined });
 
@@ -53,7 +50,6 @@ describe('SetupService', () => {
 
       expect(result.data).toEqual(mockStatus);
       expect(result.data?.initialized).toBe(false);
-      expect(result.data?.statistics_enabled).toBe(false);
       expect(result.error).toBeUndefined();
     });
 

@@ -1,9 +1,9 @@
 // Tipos para comunicação com a API v1/tasks
-import type { Agent } from "./agent";
+import type { Worker } from "./worker";
 
 export interface Task {
   id: string;
-  agent?: Agent;
+  worker?: Worker;
   name: string;
   hash: string;
   created_at: string;

@@ -31,7 +31,7 @@ import {
   Image
 } from "lucide-react";
 import { ProgressBar } from "@/components/ui/ProgressBar";
-import { AgentIcon } from "@/components/ui/AgentIcon";
+import { WorkerIcon } from "@/components/ui/WorkerIcon";
 import { TagBadge } from "@/components/ui/TagBadge";
 import { DeleteTorrentModal } from "@/components/DeleteTorrentModal";
 import { getStatusIcon, getStatusColor, getStatusBackgroundColor, type TorrentStatus } from "@/components/TorrentStatusIcon";
@@ -230,9 +230,9 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
   const handleEditCategory = async () => {
     if (isEditingCategory) {
       // Salvar
-      if (torrent && editedCategoryId.trim() !== '' && torrent.agent?.uuid) {
+      if (torrent && editedCategoryId.trim() !== '' && torrent.worker?.uuid) {
         try {
-          await torrentService.updateTaskCategory(torrent.agent.uuid, torrent.id, editedCategoryId);
+          await torrentService.updateTaskCategory(torrent.worker.uuid, torrent.id, editedCategoryId);
           
           // Update local state
           setCurrentCategory(editedCategoryId);
@@ -272,9 +272,9 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
   const handleEditTags = async () => {
     if (isEditingTags) {
       // Salvar
-      if (torrent && torrent.agent?.uuid) {
+      if (torrent && torrent.worker?.uuid) {
         try {
-          await torrentService.updateTaskTags(torrent.agent.uuid, torrent.id, editedTags);
+          await torrentService.updateTaskTags(torrent.worker.uuid, torrent.id, editedTags);
           
           // Update local state
           setCurrentTags([...editedTags]);
@@ -707,24 +707,24 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                             </div>
                           </div>
                         </div>
-                        {/* Agent with blur */}
-                        {torrent.agent && (
+                        {/* Worker row with blur */}
+                        {torrent.worker && (
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">{t('torrentDetails.general.agent', { defaultValue: 'Agent:' })}</span>
+                            <span className="text-sm font-medium">{t('torrentDetails.general.worker')}</span>
                             <div className="relative inline-flex items-center gap-2 px-2 py-1 rounded-md">
-                              {/* Blur overlay for agent badge */}
+                              {/* Blur overlay for worker badge */}
                               {torrent.metadata?.image_url && (
                                 <>
                                   <div className="absolute inset-0 bg-background/20 -z-10 rounded-md" style={{ backdropFilter: `blur(${Math.round((blurIntensity / 100) * 24)}px)` }} aria-hidden />
                                   <div className="absolute inset-0 bg-white/60 dark:bg-black/40 -z-10 rounded-md" aria-hidden />
                                 </>
                               )}
-                              <AgentIcon 
-                                iconName={torrent.agent.icon}
-                                color={torrent.agent.color}
+                              <WorkerIcon 
+                                iconName={torrent.worker.icon}
+                                color={torrent.worker.color}
                                 size="sm"
                               />
-                              <span className="text-sm text-muted-foreground">{torrent.agent.name}</span>
+                              <span className="text-sm text-muted-foreground">{torrent.worker.name}</span>
                             </div>
                           </div>
                         )}
@@ -989,7 +989,7 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
           {/* Arquivos do Torrent */}
           <Separator />
           <TorrentFilesList
-            agentId={torrent.agent?.uuid || ""}
+            workerId={torrent.worker?.uuid || ""}
             taskId={torrent.id}
             showAccordion={true}
             title={t('torrentDetails.files.title', { defaultValue: 'Lista de Arquivos' })}

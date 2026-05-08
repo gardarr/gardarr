@@ -6,11 +6,11 @@ import (
 )
 
 var (
-	ErrTaskNotFound     = errors.New("task not found")
-	ErrAgentNotFound    = errors.New("agent not found")
-	ErrInvalidUUID      = errors.New("invalid UUID format")
-	ErrInvalidInput     = errors.New("invalid input data")
-	ErrAgentUnavailable = errors.New("agent unavailable")
+	ErrTaskNotFound      = errors.New("task not found")
+	ErrWorkerNotFound    = errors.New("worker not found")
+	ErrInvalidUUID       = errors.New("invalid UUID format")
+	ErrInvalidInput      = errors.New("invalid input data")
+	ErrWorkerUnavailable = errors.New("worker unavailable")
 )
 
 // ResponseError represents an HTTP error response with status code and message
@@ -65,28 +65,28 @@ func ToResponseError(err error) *ResponseError {
 	switch {
 	case errors.Is(err, ErrTaskNotFound):
 		return NewNotFoundError("Task not found", err)
-	case errors.Is(err, ErrAgentNotFound):
-		return NewNotFoundError("Agent not found", err)
+	case errors.Is(err, ErrWorkerNotFound):
+		return NewNotFoundError("Worker not found", err)
 	case errors.Is(err, ErrInvalidUUID):
 		return NewBadRequestError("Invalid ID format", err)
 	case errors.Is(err, ErrInvalidInput):
 		return NewBadRequestError("Invalid request", err)
-	case errors.Is(err, ErrAgentUnavailable):
-		return NewServiceUnavailableError("Agent is unavailable", err)
+	case errors.Is(err, ErrWorkerUnavailable):
+		return NewServiceUnavailableError("Worker is unavailable", err)
 	}
 
 	// Check error message patterns for wrapped errors
 	switch {
 	case contains(errMsg, "invalid UUID format"):
 		return NewBadRequestError("Invalid ID format", err)
-	case contains(errMsg, "agent not found"):
-		return NewNotFoundError("Agent not found", err)
+	case contains(errMsg, "worker not found"):
+		return NewNotFoundError("Worker not found", err)
 	case contains(errMsg, "task not found"):
 		return NewNotFoundError("Task not found", err)
 	case contains(errMsg, "failed to create task"):
-		return NewServiceUnavailableError("Unable to create task on agent", err)
+		return NewServiceUnavailableError("Unable to create task on worker", err)
 	case contains(errMsg, "errors occurred while fetching tasks"):
-		return NewServiceUnavailableError("Unable to fetch tasks from agents", err)
+		return NewServiceUnavailableError("Unable to fetch tasks from workers", err)
 	default:
 		return NewInternalServerError("An unexpected error occurred", err)
 	}

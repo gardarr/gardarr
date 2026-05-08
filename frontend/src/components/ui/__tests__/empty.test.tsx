@@ -10,20 +10,20 @@ describe('Empty Component', () => {
           <EmptyMedia variant="icon">
             <Server className="h-8 w-8 text-muted-foreground" />
           </EmptyMedia>
-          <EmptyTitle>No agents available</EmptyTitle>
+          <EmptyTitle>No workers available</EmptyTitle>
           <EmptyDescription>
-            You need to register an agent before managing torrents.
+            You need to register a worker before managing torrents.
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
-          <button>Add Agent</button>
+          <button>Add Worker</button>
         </EmptyContent>
       </Empty>
     );
 
-    expect(screen.getByText('No agents available')).toBeInTheDocument();
-    expect(screen.getByText('You need to register an agent before managing torrents.')).toBeInTheDocument();
-    expect(screen.getByText('Add Agent')).toBeInTheDocument();
+    expect(screen.getByText('No workers available')).toBeInTheDocument();
+    expect(screen.getByText('You need to register a worker before managing torrents.')).toBeInTheDocument();
+    expect(screen.getByText('Add Worker')).toBeInTheDocument();
   });
 
   it('renders with default variant for EmptyMedia', () => {

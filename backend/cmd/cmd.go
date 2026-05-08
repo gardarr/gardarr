@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	"github.com/jfxdev/gardarr/cmd/agent"
 	"github.com/jfxdev/gardarr/cmd/generate"
 	"github.com/jfxdev/gardarr/cmd/service"
+	"github.com/jfxdev/gardarr/cmd/worker"
 	"github.com/spf13/cobra"
 )
 
@@ -15,7 +15,7 @@ var cmd = &cobra.Command{
 
 func init() {
 	cmd.AddCommand(generate.Command())
-	cmd.AddCommand(agent.Command())
+	cmd.AddCommand(worker.Command())
 }
 
 func Command() *cobra.Command {

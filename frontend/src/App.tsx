@@ -6,7 +6,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import AppLayout from './AppLayout'
 import TorrentsPage from './Torrents'
-import AgentsPage from './Agents'
+import WorkersPage from './Workers'
 import CategoriesPage from './Categories'
 import DashboardPage from './Dashboard'
 import HistoryPage from './History'
@@ -51,10 +51,10 @@ function App() {
                 }
               >
                 <Route index element={<DashboardPage />} />
-                <Route path="agent/:agent_uuid" element={<DashboardPage />} />
-                <Route path="agent/:agent_uuid/task/:uuid" element={<DashboardPage />} />
+                <Route path="worker/:worker_uuid" element={<DashboardPage />} />
+                <Route path="worker/:worker_uuid/task/:uuid" element={<DashboardPage />} />
                 <Route path="torrents" element={<TorrentsPage />} />
-                <Route path="agents" element={<AgentsPage />} />
+                <Route path="workers" element={<WorkersPage />} />
                 <Route path="categories" element={<CategoriesPage />} />
                 <Route path="history" element={<HistoryPage />} />
                 <Route path="integrations" element={<IntegrationsPage />} />

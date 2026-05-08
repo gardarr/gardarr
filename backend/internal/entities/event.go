@@ -9,7 +9,7 @@ import (
 // Event represents a system event
 type Event struct {
 	UUID      uuid.UUID
-	AgentID   uuid.UUID
+	WorkerID  uuid.UUID
 	Type      string
 	TaskHash  string
 	OldValue  string
@@ -20,7 +20,7 @@ type Event struct {
 
 // TaskState represents the last known state of a task
 type TaskState struct {
-	AgentID   uuid.UUID
+	WorkerID  uuid.UUID
 	Hash      string
 	State     string
 	Progress  float64

@@ -130,7 +130,7 @@ export function WebhookDocumentationModal({ isOpen, onClose }: WebhookDocumentat
                   <pre>{`{
   "event_id": "uuid",       // Unique event identifier
   "event_type": "string",   // Type of event (see Events tab)
-  "agent_id": "uuid",       // Agent that detected the change
+  "worker_id": "uuid",       // Worker that detected the change
   "task_hash": "string",    // Torrent hash identifier
   "old_value": "string",    // Previous value (for changes)
   "new_value": "string",    // New value
@@ -290,7 +290,7 @@ export function WebhookDocumentationModal({ isOpen, onClose }: WebhookDocumentat
 {`{
   "event_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "event_type": "torrent.state_change",
-  "agent_id": "7f8e9d10-c11b-12a3-4567-890abcdef123",
+  "worker_id": "7f8e9d10-c11b-12a3-4567-890abcdef123",
   "task_hash": "abc123def456",
   "old_value": "DOWNLOADING",
   "new_value": "UPLOADING",
@@ -317,7 +317,7 @@ export function WebhookDocumentationModal({ isOpen, onClose }: WebhookDocumentat
 {`{
   "event_id": "b2c3d4e5-f678-9012-3456-789abcdef012",
   "event_type": "torrent.added",
-  "agent_id": "7f8e9d10-c11b-12a3-4567-890abcdef123",
+  "worker_id": "7f8e9d10-c11b-12a3-4567-890abcdef123",
   "task_hash": "def789ghi012",
   "new_value": "DOWNLOADING",
   "metadata": {
@@ -345,7 +345,7 @@ export function WebhookDocumentationModal({ isOpen, onClose }: WebhookDocumentat
 {`{
   "event_id": "c3d4e5f6-7890-1234-5678-90abcdef1234",
   "event_type": "torrent.completed",
-  "agent_id": "7f8e9d10-c11b-12a3-4567-890abcdef123",
+  "worker_id": "7f8e9d10-c11b-12a3-4567-890abcdef123",
   "task_hash": "ghi345jkl678",
   "new_value": "UPLOADING",
   "metadata": {
@@ -370,7 +370,7 @@ export function WebhookDocumentationModal({ isOpen, onClose }: WebhookDocumentat
 {`{
   "event_id": "d4e5f678-9012-3456-7890-abcdef123456",
   "event_type": "torrent.removed",
-  "agent_id": "7f8e9d10-c11b-12a3-4567-890abcdef123",
+  "worker_id": "7f8e9d10-c11b-12a3-4567-890abcdef123",
   "task_hash": "jkl901mno234",
   "old_value": "UPLOADING",
   "metadata": {

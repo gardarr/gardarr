@@ -61,16 +61,14 @@ ENV PORT=${APP_PORT}
 VOLUME ["/data", "/media"]
 
 # Expose the application port (default service port)
-# Agent port (3100) should be exposed separately when running in agent mode
 EXPOSE ${APP_PORT}
 
 # Default user is 'appuser' (UID 1000). Override via docker-compose 'user:' directive
 # Example: user: "${UID:-1000}:${GID:-1000}"
 USER appuser
 
-# Healthcheck should be defined in docker-compose based on the running mode:
-# - Standalone: wget -q --spider http://localhost:3200/v1/health
-# - Agent: wget -q --spider http://localhost:3100/v1/health
+# Healthcheck should be defined in docker-compose:
+# wget -q --spider http://localhost:3200/v1/health
 
 # Default command runs the service
 CMD ["/app/main"]

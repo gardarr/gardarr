@@ -27,7 +27,7 @@ describe('TorrentService', () => {
 
       await torrentService.listTasks();
 
-      expect(api.get).toHaveBeenCalledWith('/agents/tasks');
+      expect(api.get).toHaveBeenCalledWith('/workers/tasks');
     });
 
     it('should return tasks from API', async () => {
@@ -76,7 +76,7 @@ describe('TorrentService', () => {
 
   describe('createTask', () => {
     it('should call api.post with correct endpoint and data', async () => {
-      const agentId = 'agent-123';
+      const workerId = 'worker-123';
       const taskData: CreateTaskRequest = {
         magnet_uri: 'magnet:?xt=urn:btih:abc123',
         category: 'movies',
@@ -84,13 +84,13 @@ describe('TorrentService', () => {
       };
       vi.mocked(api.post).mockResolvedValue({ data: null, error: undefined });
 
-      await torrentService.createTask(agentId, taskData);
+      await torrentService.createTask(workerId, taskData);
 
-      expect(api.post).toHaveBeenCalledWith(`/agent/${agentId}/task`, taskData);
+      expect(api.post).toHaveBeenCalledWith(`/worker/${workerId}/task`, taskData);
     });
 
     it('should return response from API', async () => {
-      const agentId = 'agent-123';
+      const workerId = 'worker-123';
       const taskData: CreateTaskRequest = {
         magnet_uri: 'magnet:?xt=urn:btih:abc123',
         category: 'movies',
@@ -98,7 +98,7 @@ describe('TorrentService', () => {
       };
       vi.mocked(api.post).mockResolvedValue({ data: null, error: undefined });
 
-      const result = await torrentService.createTask(agentId, taskData);
+      const result = await torrentService.createTask(workerId, taskData);
 
       expect(result.data).toBeNull();
       expect(result.error).toBeUndefined();
@@ -107,31 +107,31 @@ describe('TorrentService', () => {
 
   describe('deleteTask', () => {
     it('should call api.delete with correct endpoint without purge', async () => {
-      const agentId = 'agent-123';
+      const workerId = 'worker-123';
       const taskId = 'task-456';
       vi.mocked(api.delete).mockResolvedValue({ data: null, error: undefined });
 
-      await torrentService.deleteTask(agentId, taskId);
+      await torrentService.deleteTask(workerId, taskId);
 
-      expect(api.delete).toHaveBeenCalledWith(`/agent/${agentId}/task/${taskId}`);
+      expect(api.delete).toHaveBeenCalledWith(`/worker/${workerId}/task/${taskId}`);
     });
 
     it('should call api.delete with correct endpoint with purge', async () => {
-      const agentId = 'agent-123';
+      const workerId = 'worker-123';
       const taskId = 'task-456';
       vi.mocked(api.delete).mockResolvedValue({ data: null, error: undefined });
 
-      await torrentService.deleteTask(agentId, taskId, true);
+      await torrentService.deleteTask(workerId, taskId, true);
 
-      expect(api.delete).toHaveBeenCalledWith(`/agent/${agentId}/task/${taskId}?purge=true`);
+      expect(api.delete).toHaveBeenCalledWith(`/worker/${workerId}/task/${taskId}?purge=true`);
     });
 
     it('should return response from API', async () => {
-      const agentId = 'agent-123';
+      const workerId = 'worker-123';
       const taskId = 'task-456';
       vi.mocked(api.delete).mockResolvedValue({ data: null, error: undefined });
 
-      const result = await torrentService.deleteTask(agentId, taskId);
+      const result = await torrentService.deleteTask(workerId, taskId);
 
       expect(result.data).toBeNull();
       expect(result.error).toBeUndefined();
@@ -140,21 +140,21 @@ describe('TorrentService', () => {
 
   describe('pauseTask', () => {
     it('should call api.post with correct stop endpoint', async () => {
-      const agentId = 'agent-123';
+      const workerId = 'worker-123';
       const taskId = 'task-456';
       vi.mocked(api.post).mockResolvedValue({ data: null, error: undefined });
 
-      await torrentService.pauseTask(agentId, taskId);
+      await torrentService.pauseTask(workerId, taskId);
 
-      expect(api.post).toHaveBeenCalledWith(`/agent/${agentId}/task/${taskId}/stop`);
+      expect(api.post).toHaveBeenCalledWith(`/worker/${workerId}/task/${taskId}/stop`);
     });
 
     it('should return response from API', async () => {
-      const agentId = 'agent-123';
+      const workerId = 'worker-123';
       const taskId = 'task-456';
       vi.mocked(api.post).mockResolvedValue({ data: null, error: undefined });
 
-      const result = await torrentService.pauseTask(agentId, taskId);
+      const result = await torrentService.pauseTask(workerId, taskId);
 
       expect(result.data).toBeNull();
       expect(result.error).toBeUndefined();
@@ -163,21 +163,21 @@ describe('TorrentService', () => {
 
   describe('resumeTask', () => {
     it('should call api.post with correct start endpoint', async () => {
-      const agentId = 'agent-123';
+      const workerId = 'worker-123';
       const taskId = 'task-456';
       vi.mocked(api.post).mockResolvedValue({ data: null, error: undefined });
 
-      await torrentService.resumeTask(agentId, taskId);
+      await torrentService.resumeTask(workerId, taskId);
 
-      expect(api.post).toHaveBeenCalledWith(`/agent/${agentId}/task/${taskId}/start`);
+      expect(api.post).toHaveBeenCalledWith(`/worker/${workerId}/task/${taskId}/start`);
     });
 
     it('should return response from API', async () => {
-      const agentId = 'agent-123';
+      const workerId = 'worker-123';
       const taskId = 'task-456';
       vi.mocked(api.post).mockResolvedValue({ data: null, error: undefined });
 
-      const result = await torrentService.resumeTask(agentId, taskId);
+      const result = await torrentService.resumeTask(workerId, taskId);
 
       expect(result.data).toBeNull();
       expect(result.error).toBeUndefined();
@@ -186,21 +186,21 @@ describe('TorrentService', () => {
 
   describe('forceDownloadTask', () => {
     it('should call api.post with correct force_download endpoint', async () => {
-      const agentId = 'agent-123';
+      const workerId = 'worker-123';
       const taskId = 'task-456';
       vi.mocked(api.post).mockResolvedValue({ data: null, error: undefined });
 
-      await torrentService.forceDownloadTask(agentId, taskId);
+      await torrentService.forceDownloadTask(workerId, taskId);
 
-      expect(api.post).toHaveBeenCalledWith(`/agent/${agentId}/task/${taskId}/force_download`);
+      expect(api.post).toHaveBeenCalledWith(`/worker/${workerId}/task/${taskId}/force_download`);
     });
 
     it('should return response from API', async () => {
-      const agentId = 'agent-123';
+      const workerId = 'worker-123';
       const taskId = 'task-456';
       vi.mocked(api.post).mockResolvedValue({ data: null, error: undefined });
 
-      const result = await torrentService.forceDownloadTask(agentId, taskId);
+      const result = await torrentService.forceDownloadTask(workerId, taskId);
 
       expect(result.data).toBeNull();
       expect(result.error).toBeUndefined();
@@ -220,7 +220,7 @@ describe('TorrentService', () => {
 
     it('should handle API errors in createTask', async () => {
       const errorMessage = 'Invalid request';
-      const agentId = 'agent-123';
+      const workerId = 'worker-123';
       const taskData: CreateTaskRequest = {
         magnet_uri: 'invalid-url',
         category: 'movies',
@@ -228,7 +228,7 @@ describe('TorrentService', () => {
       };
       vi.mocked(api.post).mockResolvedValue({ data: null, error: errorMessage });
 
-      const result = await torrentService.createTask(agentId, taskData);
+      const result = await torrentService.createTask(workerId, taskData);
 
       expect(result.data).toBeNull();
       expect(result.error).toBe(errorMessage);
@@ -236,11 +236,11 @@ describe('TorrentService', () => {
 
     it('should handle API errors in deleteTask', async () => {
       const errorMessage = 'Not found';
-      const agentId = 'agent-123';
+      const workerId = 'worker-123';
       const taskId = 'task-456';
       vi.mocked(api.delete).mockResolvedValue({ data: null, error: errorMessage });
 
-      const result = await torrentService.deleteTask(agentId, taskId);
+      const result = await torrentService.deleteTask(workerId, taskId);
 
       expect(result.data).toBeNull();
       expect(result.error).toBe(errorMessage);
@@ -248,11 +248,11 @@ describe('TorrentService', () => {
 
     it('should handle API errors in pauseTask', async () => {
       const errorMessage = 'Task already paused';
-      const agentId = 'agent-123';
+      const workerId = 'worker-123';
       const taskId = 'task-456';
       vi.mocked(api.post).mockResolvedValue({ data: null, error: errorMessage });
 
-      const result = await torrentService.pauseTask(agentId, taskId);
+      const result = await torrentService.pauseTask(workerId, taskId);
 
       expect(result.data).toBeNull();
       expect(result.error).toBe(errorMessage);
@@ -260,11 +260,11 @@ describe('TorrentService', () => {
 
     it('should handle API errors in resumeTask', async () => {
       const errorMessage = 'Task already running';
-      const agentId = 'agent-123';
+      const workerId = 'worker-123';
       const taskId = 'task-456';
       vi.mocked(api.post).mockResolvedValue({ data: null, error: errorMessage });
 
-      const result = await torrentService.resumeTask(agentId, taskId);
+      const result = await torrentService.resumeTask(workerId, taskId);
 
       expect(result.data).toBeNull();
       expect(result.error).toBe(errorMessage);
@@ -272,11 +272,11 @@ describe('TorrentService', () => {
 
     it('should handle API errors in forceDownloadTask', async () => {
       const errorMessage = 'Unable to force download';
-      const agentId = 'agent-123';
+      const workerId = 'worker-123';
       const taskId = 'task-456';
       vi.mocked(api.post).mockResolvedValue({ data: null, error: errorMessage });
 
-      const result = await torrentService.forceDownloadTask(agentId, taskId);
+      const result = await torrentService.forceDownloadTask(workerId, taskId);
 
       expect(result.data).toBeNull();
       expect(result.error).toBe(errorMessage);

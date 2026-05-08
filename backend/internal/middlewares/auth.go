@@ -11,9 +11,9 @@ import (
 
 // RequireBearerToken validates the Authorization Bearer token against the value of the provided envKey.
 // Returns 403 when the token is missing or does not match the expected value.
-func RequireAgentBearerToken() gin.HandlerFunc {
+func RequireWorkerBearerToken() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		expected := strings.TrimSpace(env.Get(constants.AgentSecretEnv).Value())
+		expected := strings.TrimSpace(env.Get(constants.WorkerSecretEnv).Value())
 		authHeader := c.GetHeader("Authorization")
 
 		if expected == "" {

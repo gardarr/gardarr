@@ -490,7 +490,7 @@ export default function IntegrationWebhookPage() {
                 {'  "event_type": '}
                 <span className="bg-primary/20 text-primary px-1 rounded font-semibold">"torrent.added"</span>
                 {',\n'}
-                {'  "agent_id": "0c32bee5-1bc8-47c2-9b70-68971c3d4e59 ",\n'}
+                {'  "worker_id": "0c32bee5-1bc8-47c2-9b70-68971c3d4e59 ",\n'}
                 {'  "task_hash": "36x8a5j74vfrk0usr6xedby71gn69mqm6bblp5h2",\n'}
                 {'  "new_value": '}
                 <span className="bg-primary/20 text-primary px-1 rounded font-semibold">"STALLED_DOWNLOAD"</span>

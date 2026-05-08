@@ -136,7 +136,6 @@ ENV PORT=${APP_PORT}
 VOLUME ["/data", "/media"]
 
 # Expose the application port (default service port)
-# Agent port (3100) should be exposed separately when running in agent mode
 EXPOSE ${APP_PORT}
 
 # Run as nobody user by default (can be overridden with --user flag)

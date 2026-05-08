@@ -2,7 +2,7 @@
 
 ## Visão Geral
 
-O sistema de eventos rastreia automaticamente mudanças de estado dos torrents, integrando-se ao polling de estatísticas existente. Todos os eventos são armazenados em banco de dados com timestamps precisos e podem ser consultados via API.
+O sistema de eventos rastreia automaticamente mudanças de estado dos torrents através de um poller dedicado. Todos os eventos são armazenados em banco de dados com timestamps precisos e podem ser consultados via API.
 
 ## Tipos de Eventos
 
@@ -43,7 +43,7 @@ Disparado quando um torrent atinge 100% de progresso
 ```go
 type Event struct {
     UUID      uuid.UUID
-    AgentID   uuid.UUID
+    WorkerID  uuid.UUID
     Type      string // Usar constantes de constants.EventType*
     TaskHash  string
     OldValue  string
@@ -59,14 +59,14 @@ type Event struct {
 Lista eventos com filtros opcionais
 
 **Query Parameters:**
-- `agent_id` (string, opcional): UUID do agente
+- `worker_id` (string, opcional): UUID do worker
 - `type` (string, opcional): Tipo do evento
 - `limit` (int, default: 50, max: 200): Número de resultados
 - `offset` (int, default: 0): Offset para paginação
 
 **Exemplo:**
 ```bash
-curl -X GET "http://localhost:3200/v1/events?agent_id=abc-123&type=torrent.state_change&limit=10"
+curl -X GET "http://localhost:3200/v1/events?worker_id=abc-123&type=torrent.state_change&limit=10"
 ```
 
 **Response:**
@@ -75,7 +75,7 @@ curl -X GET "http://localhost:3200/v1/events?agent_id=abc-123&type=torrent.state
   "events": [
     {
       "uuid": "event-uuid",
-      "agent_id": "agent-uuid",
+      "worker_id": "worker-uuid",
       "type": "torrent.state_change",
       "task_hash": "abc123",
       "old_value": "DOWNLOADING",
@@ -100,21 +100,23 @@ Obtém um evento específico por UUID
 curl -X GET "http://localhost:3200/v1/events/event-uuid"
 ```
 
-## Integração com Statistics
+## Integração com Event Poller
 
-O sistema de eventos está integrado ao serviço de estatísticas (`internal/services/statistics`):
+O sistema de eventos é alimentado pelo serviço de event poller (`internal/services/eventpoller`):
 
 ```go
-// Em collectAgentData():
-if s.eventService != nil {
-    _ = s.eventService.TrackTasks(ctx, tasks, a.UUID, now)
-    _ = s.eventService.DetectRemovedTasks(ctx, tasks, a.UUID, now)
+// Em pollWorker(ctx, w, now):
+if err := s.eventService.TrackTasks(ctx, tasks, w.UUID, now); err != nil {
+    logger.Debug("event poller: track tasks error", ...)
+}
+if err := s.eventService.DetectRemovedTasks(ctx, tasks, w.UUID, now); err != nil {
+    logger.Debug("event poller: detect removed tasks error", ...)
 }
 ```
 
-- **Polling Interval**: Configurado via `STATISTICS_INTERVAL` (default: 30s)
+- **Polling Interval**: Configurado via `EVENT_POLL_INTERVAL` (default: 30s)
 - **Detecção Automática**: Compara estados a cada ciclo de polling
-- **Performance**: Execução concorrente por agente
+- **Performance**: Execução concorrente por worker
 
 ## Retenção de Dados
 
@@ -217,7 +219,7 @@ func (s *Service) NotifyWebhooks(event *Event) {
 - Sincronização com `sync.RWMutex`
 
 ### Concorrência Multi-Nível
-1. **Nível Agent**: Cada agente processado em goroutine separada
+1. **Nível Worker**: Cada worker processado em goroutine separada
 2. **Nível Task**: Cada task processada concorrentemente
    - `TrackTasks`: Goroutines para cada tarefa
    - `DetectRemovedTasks`: Goroutines para cada remoção
@@ -233,7 +235,7 @@ func (s *Service) NotifyWebhooks(event *Event) {
 
 ### Índices de Banco
 ```sql
-CREATE INDEX idx_events_agent_id ON events(agent_id);
+CREATE INDEX idx_events_worker_id ON events(worker_id);
 CREATE INDEX idx_events_type ON events(type);
 CREATE INDEX idx_events_task_hash ON events(task_hash);
 CREATE INDEX idx_events_created_at ON events(created_at);
@@ -245,12 +247,7 @@ CREATE INDEX idx_events_created_at ON events(created_at);
 ```env
 # Eventos - Sistema de rastreamento
 EVENT_RETENTION_DAYS=30        # Retenção de eventos (dias)
-
-# Estatísticas - Necessário para eventos funcionarem
-STATISTICS_ENABLED=true
-STATISTICS_INTERVAL=30s
-STATISTICS_DIR=./data/statistics
-STATISTICS_RETENTION_DAYS=7
+EVENT_POLL_INTERVAL=30s        # Intervalo de polling do event poller
 ```
 
 ### Recomendações por Ambiente
@@ -258,31 +255,30 @@ STATISTICS_RETENTION_DAYS=7
 **Desenvolvimento**:
 ```env
 EVENT_RETENTION_DAYS=7
-STATISTICS_INTERVAL=60s
+EVENT_POLL_INTERVAL=60s
 ```
 
 **Produção**:
 ```env
 EVENT_RETENTION_DAYS=90
-STATISTICS_INTERVAL=30s
+EVENT_POLL_INTERVAL=30s
 ```
 
 **Heavy Load** (muitos torrents):
 ```env
 EVENT_RETENTION_DAYS=30
-STATISTICS_INTERVAL=30s
+EVENT_POLL_INTERVAL=30s
 ```
 
 ## Troubleshooting
 
 ### Eventos não sendo criados
-1. Verificar se statistics está habilitado: `STATISTICS_ENABLED=true`
-2. Verificar logs do serviço de estatísticas
-3. Confirmar que migration foi aplicada: `009_create_events_table`
-4. Verificar se `EVENT_RETENTION_DAYS` não é 0 (se usar purge automático)
+1. Verificar logs do event poller
+2. Confirmar que migration foi aplicada: `009_create_events_table`
+3. Verificar se `EVENT_RETENTION_DAYS` não é 0 (se usar purge automático)
 
 ### Muitos eventos gerados
-1. Ajustar `STATISTICS_INTERVAL` para polling menos frequente
+1. Ajustar `EVENT_POLL_INTERVAL` para polling menos frequente
 2. Implementar filtros no frontend
 3. Configurar retenção menor: `EVENT_RETENTION_DAYS=7`
 4. Implementar purge automático agendado
@@ -305,10 +301,10 @@ const response = await api.get('/events', {
   }
 });
 
-// Filtrar por agente específico
-const agentEvents = await api.get('/events', {
+// Filtrar por worker específico
+const workerEvents = await api.get('/events', {
   params: {
-    agent_id: selectedAgent.uuid,
+    worker_id: selectedWorker.uuid,
     type: 'torrent.state_change'
   }
 });
@@ -333,5 +329,5 @@ const completed = await api.get('/events', {
 3. 📋 Implementar webhooks
 4. 📊 Adicionar métricas e analytics
 5. 🔔 Notificações em tempo real (WebSocket)
-6. 🎯 Filtros avançados (por data, múltiplos agentes, etc)
+6. 🎯 Filtros avançados (por data, múltiplos workers, etc)
 7. 📁 Export de eventos (CSV, JSON)

@@ -81,7 +81,7 @@ func TestSendEventSuccess(t *testing.T) {
 
 	testEvent := &entities.Event{
 		UUID:     uuid.New(),
-		AgentID:  uuid.New(),
+		WorkerID: uuid.New(),
 		Type:     constants.EventTypeTorrentCompleted,
 		TaskHash: "test-hash",
 		OldValue: "downloading",
@@ -107,7 +107,7 @@ func TestSendEventSuccess(t *testing.T) {
 	// Verify the received payload
 	assert.Equal(t, testEvent.UUID.String(), receivedPayload.EventID)
 	assert.Equal(t, testEvent.Type, receivedPayload.EventType)
-	assert.Equal(t, testEvent.AgentID.String(), receivedPayload.AgentID)
+	assert.Equal(t, testEvent.WorkerID.String(), receivedPayload.WorkerID)
 	assert.Equal(t, testEvent.TaskHash, receivedPayload.TaskHash)
 	assert.Equal(t, "downloading", receivedPayload.OldValue)
 	assert.Equal(t, "seeding", receivedPayload.NewValue)
@@ -135,7 +135,7 @@ func TestSendEventDisabled(t *testing.T) {
 
 	testEvent := &entities.Event{
 		UUID:      uuid.New(),
-		AgentID:   uuid.New(),
+		WorkerID:  uuid.New(),
 		Type:      constants.EventTypeTorrentStateChange,
 		TaskHash:  "test-hash",
 		CreatedAt: time.Now(),
@@ -157,7 +157,7 @@ func TestSendEventServerError(t *testing.T) {
 
 	testEvent := &entities.Event{
 		UUID:      uuid.New(),
-		AgentID:   uuid.New(),
+		WorkerID:  uuid.New(),
 		Type:      constants.EventTypeTorrentCompleted,
 		TaskHash:  "test-hash",
 		CreatedAt: time.Now(),
@@ -187,7 +187,7 @@ func TestSendEventWithoutTask(t *testing.T) {
 
 	testEvent := &entities.Event{
 		UUID:     uuid.New(),
-		AgentID:  uuid.New(),
+		WorkerID: uuid.New(),
 		Type:     constants.EventTypeTorrentRemoved,
 		TaskHash: "removed-hash",
 		OldValue: "seeding",
@@ -213,11 +213,11 @@ func TestBuildPayload(t *testing.T) {
 
 	now := time.Now()
 	eventID := uuid.New()
-	agentID := uuid.New()
+	workerID := uuid.New()
 
 	testEvent := &entities.Event{
 		UUID:     eventID,
-		AgentID:  agentID,
+		WorkerID: workerID,
 		Type:     constants.EventTypeTorrentCompleted,
 		TaskHash: "payload-hash",
 		OldValue: "downloading",
@@ -241,7 +241,7 @@ func TestBuildPayload(t *testing.T) {
 
 	assert.Equal(t, eventID.String(), payload.EventID)
 	assert.Equal(t, constants.EventTypeTorrentCompleted, payload.EventType)
-	assert.Equal(t, agentID.String(), payload.AgentID)
+	assert.Equal(t, workerID.String(), payload.WorkerID)
 	assert.Equal(t, "payload-hash", payload.TaskHash)
 	assert.Equal(t, "downloading", payload.OldValue)
 	assert.Equal(t, "completed", payload.NewValue)

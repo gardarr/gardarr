@@ -218,7 +218,7 @@ func (s *Service) processEvent(ctx context.Context, event *entities.Event) {
 	logger.Info("Event received",
 		"service", "integration",
 		"event_type", event.Type,
-		"agent_id", event.AgentID.String(),
+		"worker_id", event.WorkerID.String(),
 		"task_hash", event.TaskHash,
 		"task_name", meta.taskName,
 		"category", meta.category,

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import TorrentContextMenu from "@/components/TorrentContextMenu";
-import { AgentIcon } from "@/components/ui/AgentIcon";
+import { WorkerIcon } from "@/components/ui/WorkerIcon";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatBytesPerSecond } from "@/utils/bytes";
 import { Download, Upload, Image as ImageIcon } from "lucide-react";
@@ -18,8 +18,8 @@ interface TorrentListCompactProps {
   onForceDownload: (id: string) => void;
   onForceReannounce: (id: string) => void;
   onForceRecheck: (id: string) => void;
-  onMetrics?: (taskId: string, agentId?: string) => void;
-  onLimits?: (taskId: string, agentId?: string) => void;
+  onMetrics?: (taskId: string, workerId?: string) => void;
+  onLimits?: (taskId: string, workerId?: string) => void;
   onMetadataUpdate?: () => void;
   compact?: boolean;
   selectionMode?: boolean;
@@ -37,7 +37,7 @@ export function TorrentListCompact({
   onForceDownload,
   onForceReannounce,
   onForceRecheck,
-  onMetrics,
+ 
   onLimits,
   compact,
   selectionMode,
@@ -75,7 +75,7 @@ export function TorrentListCompact({
           <TorrentContextMenu
             key={torrent.id}
             taskId={torrent.id}
-            agentId={torrent.agentUUID}
+            workerId={torrent.workerUUID}
             selectionMode={selectionMode}
             selectedIds={selectedIds}
             onRequestDelete={onRequestDelete}
@@ -85,7 +85,7 @@ export function TorrentListCompact({
             onForceDownload={onForceDownload}
             onForceReannounce={onForceReannounce}
             onForceRecheck={onForceRecheck}
-            onMetrics={onMetrics}
+
             onLimits={onLimits}
             onShowDetails={onShowDetails}
           >
@@ -169,20 +169,20 @@ export function TorrentListCompact({
                     </div>
                   )}
 
-                  {/* Agent Icon */}
-                  {torrent.agentName && (
+                  {/* Worker Icon */}
+                  {torrent.workerName && (
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <div className="flex-shrink-0 inline-flex items-center justify-center rounded-full border p-1 bg-background/50">
-                          <AgentIcon
-                            iconName={torrent.agentIcon}
-                            color={torrent.agentColor}
+                          <WorkerIcon
+                            iconName={torrent.workerIcon}
+                            color={torrent.workerColor}
                             size="sm"
                           />
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>{torrent.agentName}</p>
+                        <p>{torrent.workerName}</p>
                       </TooltipContent>
                     </Tooltip>
                   )}

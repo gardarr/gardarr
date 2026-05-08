@@ -9,7 +9,7 @@ import { getStatusColor } from "@/components/TorrentStatusIcon";
 import { useTranslation } from "react-i18next";
 
 interface TorrentFilesListProps {
-  agentId: string;
+  workerId: string;
   taskId: string;
   onValueChange?: (value: string) => void;
   className?: string;
@@ -28,7 +28,7 @@ function formatBytes(bytes: number): string {
 
 
 export function TorrentFilesList({
-  agentId,
+  workerId,
   taskId,
   onValueChange,
   className = "",
@@ -55,13 +55,13 @@ export function TorrentFilesList({
   }, []);
 
   const loadFiles = async () => {
-    if (!agentId || !taskId) return;
+    if (!workerId || !taskId) return;
     
     setLoading(true);
     setError(null);
     
     try {
-      const response = await torrentService.listTaskFiles(agentId, taskId);
+      const response = await torrentService.listTaskFiles(workerId, taskId);
       if (response.error) {
         setError(response.error);
       } else if (response.data) {

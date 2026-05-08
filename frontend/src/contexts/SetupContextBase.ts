@@ -2,7 +2,6 @@ import { createContext, useContext } from "react";
 import type { SetupStatus } from "@/types/setup";
 
 export interface SetupContextState {
-    statisticsEnabled: boolean;
     loading: boolean;
     checkSetup: () => Promise<void>;
     status: SetupStatus | null;

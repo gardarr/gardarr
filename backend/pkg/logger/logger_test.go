@@ -79,10 +79,10 @@ func TestGetLogLevel(t *testing.T) {
 			} else {
 				os.Unsetenv("LOG_LEVEL")
 			}
-			
+
 			// Get level
 			level := getLogLevel()
-			
+
 			// Assert
 			assert.Equal(t, tt.expected, level)
 		})
@@ -171,4 +171,3 @@ func TestSetDefault(t *testing.T) {
 		slog.Info("test message using default logger")
 	})
 }
-

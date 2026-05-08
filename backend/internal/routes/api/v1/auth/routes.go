@@ -218,7 +218,7 @@ func (m *Module) setSessionCookie(c *gin.Context, token string, expiresAt int64)
 		token,
 		maxAge,
 		"/",
-		"",                          // domain
+		"",                           // domain
 		middlewares.IsSecureCookie(), // secure - true when APP_URL uses HTTPS
 		true,                         // httpOnly
 	)

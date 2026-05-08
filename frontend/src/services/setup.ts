@@ -8,7 +8,7 @@ type SetupResult =
 class SetupService {
   /**
    * Checks the current setup status
-   * Validates if the system has been initialized and if statistics are enabled
+   * Validates if the system has been initialized
    */
   async checkSetup(): Promise<SetupResult> {
     const response = await api.get<SetupStatus>("/setup");

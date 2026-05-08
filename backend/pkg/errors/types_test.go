@@ -107,15 +107,15 @@ func TestToResponseErrorTaskNotFound(t *testing.T) {
 	}
 }
 
-func TestToResponseErrorAgentNotFound(t *testing.T) {
-	respErr := ToResponseError(ErrAgentNotFound)
+func TestToResponseErrorWorkerNotFound(t *testing.T) {
+	respErr := ToResponseError(ErrWorkerNotFound)
 
 	if respErr.StatusCode != http.StatusNotFound {
 		t.Errorf("Expected status code %d, got %d", http.StatusNotFound, respErr.StatusCode)
 	}
 
-	if respErr.Message != "Agent not found" {
-		t.Errorf("Expected message 'Agent not found', got '%s'", respErr.Message)
+	if respErr.Message != "Worker not found" {
+		t.Errorf("Expected message 'Worker not found', got '%s'", respErr.Message)
 	}
 }
 
@@ -143,15 +143,15 @@ func TestToResponseErrorInvalidInput(t *testing.T) {
 	}
 }
 
-func TestToResponseErrorAgentUnavailable(t *testing.T) {
-	respErr := ToResponseError(ErrAgentUnavailable)
+func TestToResponseErrorWorkerUnavailable(t *testing.T) {
+	respErr := ToResponseError(ErrWorkerUnavailable)
 
 	if respErr.StatusCode != http.StatusServiceUnavailable {
 		t.Errorf("Expected status code %d, got %d", http.StatusServiceUnavailable, respErr.StatusCode)
 	}
 
-	if respErr.Message != "Agent is unavailable" {
-		t.Errorf("Expected message 'Agent is unavailable', got '%s'", respErr.Message)
+	if respErr.Message != "Worker is unavailable" {
+		t.Errorf("Expected message 'Worker is unavailable', got '%s'", respErr.Message)
 	}
 }
 
@@ -193,16 +193,16 @@ func TestToResponseError_WrappedInvalidUUID(t *testing.T) {
 	}
 }
 
-func TestToResponseErrorWrappedAgentNotFound(t *testing.T) {
-	wrappedErr := errors.New("agent not found: details here")
+func TestToResponseErrorWrappedWorkerNotFound(t *testing.T) {
+	wrappedErr := errors.New("worker not found: details here")
 	respErr := ToResponseError(wrappedErr)
 
 	if respErr.StatusCode != http.StatusNotFound {
 		t.Errorf("Expected status code %d, got %d", http.StatusNotFound, respErr.StatusCode)
 	}
 
-	if respErr.Message != "Agent not found" {
-		t.Errorf("Expected message 'Agent not found', got '%s'", respErr.Message)
+	if respErr.Message != "Worker not found" {
+		t.Errorf("Expected message 'Worker not found', got '%s'", respErr.Message)
 	}
 }
 
@@ -227,20 +227,20 @@ func TestToResponseErrorFailedToCreateTask(t *testing.T) {
 		t.Errorf("Expected status code %d, got %d", http.StatusServiceUnavailable, respErr.StatusCode)
 	}
 
-	if respErr.Message != "Unable to create task on agent" {
-		t.Errorf("Expected message 'Unable to create task on agent', got '%s'", respErr.Message)
+	if respErr.Message != "Unable to create task on worker" {
+		t.Errorf("Expected message 'Unable to create task on worker', got '%s'", respErr.Message)
 	}
 }
 
 func TestToResponseErrorErrorsFetchingTasks(t *testing.T) {
-	wrappedErr := errors.New("errors occurred while fetching tasks from agents: timeout")
+	wrappedErr := errors.New("errors occurred while fetching tasks from workers: timeout")
 	respErr := ToResponseError(wrappedErr)
 
 	if respErr.StatusCode != http.StatusServiceUnavailable {
 		t.Errorf("Expected status code %d, got %d", http.StatusServiceUnavailable, respErr.StatusCode)
 	}
 
-	if respErr.Message != "Unable to fetch tasks from agents" {
-		t.Errorf("Expected message 'Unable to fetch tasks from agents', got '%s'", respErr.Message)
+	if respErr.Message != "Unable to fetch tasks from workers" {
+		t.Errorf("Expected message 'Unable to fetch tasks from workers', got '%s'", respErr.Message)
 	}
 }

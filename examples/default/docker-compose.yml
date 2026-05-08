@@ -12,9 +12,6 @@ services:
       # APP_URL should be origin-only: http://example.com or http://localhost:3200 (no trailing slash or path)
       APP_URL: ${APP_URL:-http://gardarr.mydomain.com}
       APP_MODE: standalone
-      STATISTICS_ENABLED: true
-      STATISTICS_INTERVAL: 5s
-      STATISTICS_DIR: /data/statistics
     volumes:
       # Use /data to persist SQLite database
       - gardarr_data:/data
@@ -30,17 +27,18 @@ services:
       retries: 3
       start_period: 30s
 
-  gardarr-agent:
+  gardarr-worker:
     image: ghcr.io/jfxdev/gardarr:latest
-    container_name: gardarr-agent
+    container_name: gardarr-worker
     # Run as host user to ensure proper filesystem permissions
     user: "${UID:-1000}:${GID:-1000}"
-    command: ["/app/main", "agent"]
+    command: ["/app/main", "worker"]
     ports:
-      - "${AGENT_PORT:-3100}:3100"
+      - "${WORKER_PORT:-3100}:3100"
     environment:
-      AGENT_PORT: ${AGENT_PORT:-3100}
-      AGENT_SECRET: ${AGENT_SECRET}
+      WORKER_PORT: ${WORKER_PORT:-3100}
+      # Generate a random secret for the worker
+      WORKER_SECRET: ${WORKER_SECRET}
       # Replace the following placeholder values with your actual qBittorrent credentials
       QBITTORRENT_URL: "${QBITTORRENT_URL}"
       QBITTORRENT_USERNAME: "${QBITTORRENT_USERNAME}"

@@ -49,7 +49,7 @@ func (m *Module) Register() {
 
 	// Image storage management
 	protected.GET("/images/stats", m.getImageStorageStats)
-	protected.DELETE("/images/agent/:agent_id", m.deleteAgentImages)
+	protected.DELETE("/images/worker/:worker_id", m.deleteWorkerImages)
 	protected.DELETE("/images/orphans", m.deleteOrphanImages)
 }
 
@@ -170,9 +170,9 @@ func (m *Module) getLanguage(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-// getImageStorageStats returns per-agent image storage stats
+// getImageStorageStats returns per-worker image storage stats
 func (m *Module) getImageStorageStats(c *gin.Context) {
-	stats, err := m.metaSvc.GetImageStorageStatsByAgent(c.Request.Context())
+	stats, err := m.metaSvc.GetImageStorageStatsByWorker(c.Request.Context())
 	if err != nil {
 		slog.Error("failed to get image storage stats", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -184,27 +184,27 @@ func (m *Module) getImageStorageStats(c *gin.Context) {
 	c.JSON(http.StatusOK, stats)
 }
 
-// deleteAgentImages deletes all images for a specific agent
-func (m *Module) deleteAgentImages(c *gin.Context) {
-	agentID := c.Param("agent_id")
-	if agentID == "" {
+// deleteWorkerImages deletes all images for a specific worker
+func (m *Module) deleteWorkerImages(c *gin.Context) {
+	workerID := c.Param("worker_id")
+	if workerID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "agent_id is required",
+			"error": "worker_id is required",
 		})
 		return
 	}
 
-	deletedCount, err := m.metaSvc.DeleteImagesByAgent(c.Request.Context(), agentID)
+	deletedCount, err := m.metaSvc.DeleteImagesByWorker(c.Request.Context(), workerID)
 	if err != nil {
-		slog.Error("failed to delete agent images", "error", err, "agent_id", agentID)
+		slog.Error("failed to delete worker images", "error", err, "worker_id", workerID)
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to delete agent images",
+			"error": "Failed to delete worker images",
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":       "Agent images deleted successfully",
+		"message":       "Worker images deleted successfully",
 		"deleted_count": deletedCount,
 	})
 }

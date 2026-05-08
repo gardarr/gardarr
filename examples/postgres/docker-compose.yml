@@ -12,9 +12,6 @@ services:
       # APP_URL should be origin-only: http://example.com or http://localhost:3200 (no trailing slash or path)
       APP_URL: ${APP_URL:-http://gardarr.mydomain.com}
       APP_MODE: standalone
-      STATISTICS_ENABLED: true
-      STATISTICS_INTERVAL: 5s
-      STATISTICS_DIR: /data/statistics
     volumes:
       # Use /data if you're using SQLite for database
       - gardarr_data:/data

@@ -20,7 +20,7 @@ import (
 type Payload struct {
 	EventID   string                 `json:"event_id"`
 	EventType string                 `json:"event_type"`
-	AgentID   string                 `json:"agent_id"`
+	WorkerID  string                 `json:"worker_id"`
 	TaskHash  string                 `json:"task_hash"`
 	OldValue  string                 `json:"old_value,omitempty"`
 	NewValue  string                 `json:"new_value,omitempty"`
@@ -160,7 +160,7 @@ func (s *Service) buildPayload(event *entities.Event) *Payload {
 	return &Payload{
 		EventID:   event.UUID.String(),
 		EventType: event.Type,
-		AgentID:   event.AgentID.String(),
+		WorkerID:  event.WorkerID.String(),
 		TaskHash:  event.TaskHash,
 		OldValue:  event.OldValue,
 		NewValue:  event.NewValue,

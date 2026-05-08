@@ -8,7 +8,6 @@ import (
 	"github.com/jfxdev/gardarr/internal/mappers"
 	"github.com/jfxdev/gardarr/internal/models"
 	"github.com/jfxdev/gardarr/internal/services/setup"
-	"github.com/jfxdev/gardarr/internal/services/statistics"
 	"github.com/jfxdev/gardarr/internal/services/user"
 )
 
@@ -17,16 +16,14 @@ type Module struct {
 	group        *gin.RouterGroup
 	db           *database.Database
 	setupService *setup.Service
-	statsService *statistics.Service
 }
 
 // NewModule creates a new setup module
-func NewModule(router *gin.RouterGroup, db *database.Database, statsSvc *statistics.Service) *Module {
+func NewModule(router *gin.RouterGroup, db *database.Database) *Module {
 	return &Module{
 		group:        router.Group("/setup"),
 		db:           db,
 		setupService: setup.NewService(user.NewService(db)),
-		statsService: statsSvc,
 	}
 }
 
@@ -49,8 +46,7 @@ func (m *Module) checkSetup(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"initialized":        initialized,
-		"statistics_enabled": m.statsService != nil && m.statsService.Enabled(),
+		"initialized": initialized,
 	})
 }
 

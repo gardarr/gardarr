@@ -1,1 +1,0 @@
-Trocar favicon do app

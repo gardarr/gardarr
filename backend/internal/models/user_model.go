@@ -49,20 +49,6 @@ type ListUsersResponse struct {
 	Total int             `json:"total"`
 }
 
-// AuthResponse represents the response body for authentication operations
-type AuthResponse struct {
-	User *UserResponse `json:"user"`
-}
-
-// SessionResponse represents the response body for session information
-type SessionResponse struct {
-	ID        string    `json:"id"`
-	UserAgent string    `json:"user_agent"`
-	IPAddress string    `json:"ip_address"`
-	CreatedAt time.Time `json:"created_at"`
-	ExpiresAt time.Time `json:"expires_at"`
-}
-
 // TorrentDisplayModeResponse represents the response body for torrent display mode
 type TorrentDisplayModeResponse struct {
 	DisplayMode string `json:"display_mode"`

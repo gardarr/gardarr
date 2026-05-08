@@ -2,9 +2,7 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -19,13 +17,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
-	"github.com/jfxdev/gardarr/cmd/agent"
-	"github.com/jfxdev/gardarr/internal/agentcheck"
 	"github.com/jfxdev/gardarr/internal/constants"
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/middlewares"
-	"github.com/jfxdev/gardarr/internal/models"
-	"github.com/jfxdev/gardarr/internal/routes/api/v1/agents"
 	"github.com/jfxdev/gardarr/internal/routes/api/v1/auth"
 	"github.com/jfxdev/gardarr/internal/routes/api/v1/category"
 	eventsRoutes "github.com/jfxdev/gardarr/internal/routes/api/v1/events"
@@ -35,22 +29,22 @@ import (
 	"github.com/jfxdev/gardarr/internal/routes/api/v1/settings"
 	"github.com/jfxdev/gardarr/internal/routes/api/v1/setup"
 	"github.com/jfxdev/gardarr/internal/routes/api/v1/signup"
-	statsroutes "github.com/jfxdev/gardarr/internal/routes/api/v1/statistics"
 	"github.com/jfxdev/gardarr/internal/routes/api/v1/task_metadata"
 	"github.com/jfxdev/gardarr/internal/routes/api/v1/users"
 	"github.com/jfxdev/gardarr/internal/routes/api/v1/version"
+	"github.com/jfxdev/gardarr/internal/routes/api/v1/workers"
+	metricsRoutes "github.com/jfxdev/gardarr/internal/routes/metrics"
 	"github.com/jfxdev/gardarr/internal/schemas"
-	"github.com/jfxdev/gardarr/internal/services/agentmanager"
 	"github.com/jfxdev/gardarr/internal/services/crypto"
+	"github.com/jfxdev/gardarr/internal/services/eventpoller"
 	eventsService "github.com/jfxdev/gardarr/internal/services/events"
 	"github.com/jfxdev/gardarr/internal/services/integration"
 	settingsService "github.com/jfxdev/gardarr/internal/services/settings"
-	"github.com/jfxdev/gardarr/internal/services/statistics"
 	metadata "github.com/jfxdev/gardarr/internal/services/task_metadata"
+	"github.com/jfxdev/gardarr/internal/services/workermanager"
 	"github.com/spf13/cobra"
 
 	"github.com/jfxdev/gardarr/pkg/env"
-	"github.com/jfxdev/gardarr/pkg/gen"
 	"github.com/jfxdev/gardarr/pkg/validations"
 	"github.com/pkg/errors"
 )
@@ -86,10 +80,9 @@ func Run(cmd *cobra.Command, args []string) error {
 	// Get all directory paths from environment variables
 	mediaDir := getMediaDirectory()
 	dbPath := env.Get("DATABASE_FILE_PATH").Default("/data/gardarr_database.db").Value()
-	statsDir := env.Get("STATISTICS_DIR").Default("/data/statistics").Value()
 
-	// Validate all data directories (media and statistics)
-	if err := validations.ValidateDataDirectories(mediaDir, statsDir); err != nil {
+	// Validate data directories
+	if err := validations.ValidateDataDirectories(mediaDir); err != nil {
 		log.Printf("❌ Filesystem validation failed: %v", err)
 		return fmt.Errorf("filesystem validation failed: %w", err)
 	}
@@ -101,21 +94,6 @@ func Run(cmd *cobra.Command, args []string) error {
 	}
 
 	log.Println("✅ Filesystem validation passed - all directories are writable")
-
-	// Check if APP_MODE is set to standalone
-	appMode := env.Get(constants.AppModeEnv).Value()
-	isStandalone := appMode == constants.StandaloneMode
-
-	if isStandalone {
-		if env.Get(constants.AgentSecretEnv).Value() == "" {
-			secret, err := gen.GeneratePassword(32)
-			if err != nil {
-				return err
-			}
-			os.Setenv(constants.AgentSecretEnv, secret)
-		}
-		log.Println("🚀 Starting in STANDALONE mode - Service and Agent will run together")
-	}
 
 	cryptoSvc, err := crypto.NewCryptoService()
 	if err != nil {
@@ -147,7 +125,7 @@ func Run(cmd *cobra.Command, args []string) error {
 
 	setRouter()
 
-	agentSvc, err := agentmanager.NewService(db, cryptoSvc, baseURL, mediaDirectory)
+	workerSvc, err := workermanager.NewService(db, cryptoSvc, baseURL, mediaDirectory)
 	if err != nil {
 		return err
 	}
@@ -159,11 +137,11 @@ func Run(cmd *cobra.Command, args []string) error {
 	}
 	eventChan := eventSvc.EnableRealTimeEmission(100)
 
-	// Statistics (feature-flagged)
-	statsSvc := statistics.NewService(db, agentSvc, eventSvc)
-	ctx, cancelStats := context.WithCancel(context.Background())
-	defer cancelStats()
-	statsSvc.Start(ctx)
+	// Event poller — polls workers for task state changes to feed events system
+	eventPollerSvc := eventpoller.NewService(workerSvc, eventSvc)
+	ctx, cancelPoller := context.WithCancel(context.Background())
+	defer cancelPoller()
+	eventPollerSvc.Start(ctx)
 
 	// Integration service - consumes events in real-time
 	integrationSvc := integration.NewService(eventChan, db)
@@ -174,13 +152,13 @@ func Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err = setRoutes(db, agentSvc, statsSvc, metaSvc, integrationSvc); err != nil {
+	if err = setRoutes(db, workerSvc, metaSvc, integrationSvc); err != nil {
 		return err
 	}
 
-	// Initialize agent service if in standalone mode
-	if isStandalone {
-		bootstrapStandaloneAgent(cmd, args)
+	// Register Prometheus metrics endpoint (optional, requires METRICS_USERNAME + METRICS_PASSWORD)
+	if metricsModule := metricsRoutes.NewModule(router, workerSvc); metricsModule != nil {
+		metricsModule.Register()
 	}
 
 	srv := &http.Server{
@@ -424,7 +402,7 @@ func spaFallbackHandler(c *gin.Context) {
 	}
 }
 
-func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statistics.Service, metaSvc *metadata.Service, integrationSvc *integration.Service) error {
+func setRoutes(db *database.Database, a *workermanager.Service, metaSvc *metadata.Service, integrationSvc *integration.Service) error {
 	// Get current working directory
 	wd, _ := os.Getwd()
 	webPath := filepath.Join(wd, "web")
@@ -446,12 +424,12 @@ func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statist
 	v1 := router.Group("/v1")
 	health.NewModule(v1, db).Register()
 	auth.NewModule(v1, db).Register()
-	agents.NewModule(v1, a).Register()
+	workers.NewModule(v1, a).Register()
 	category.NewModule(v1, db).Register()
 	users.NewModule(v1, db).Register()
 	profile.NewModule(v1, db).Register()
 	signup.NewModule(v1, db).Register()
-	setup.NewModule(v1, db, statsSvc).Register()
+	setup.NewModule(v1, db).Register()
 	settings.NewModule(v1, db, metaSvc).Register()
 	version.NewModule(v1, db).Register()
 	eventsModule, err := eventsRoutes.NewModule(v1, db)
@@ -459,7 +437,6 @@ func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statist
 		return fmt.Errorf("failed to initialize events module: %w", err)
 	}
 	eventsModule.Register()
-	statsroutes.NewModule(v1, db, statsSvc).Register()
 	task_metadata.NewModule(v1, db, metaSvc).Register()
 	integrations.NewModule(v1, db, integrationSvc).Register()
 
@@ -467,93 +444,4 @@ func setRoutes(db *database.Database, a *agentmanager.Service, statsSvc *statist
 	router.NoRoute(spaFallbackHandler)
 
 	return nil
-}
-
-// bootstrapStandaloneAgent launches the embedded agent goroutine and probes
-// its health endpoint until the agent reports a healthy connection.  The probe
-// is tied to a cancellable context so it aborts immediately on SIGINT/SIGTERM.
-// If the agent does not become healthy within the timeout the process exits.
-func bootstrapStandaloneAgent(cmd *cobra.Command, args []string) {
-	log.Println("🤖 Initializing agent service...")
-
-	// Start agent service in a goroutine
-	go func() {
-		if err := agent.Run(cmd, args); err != nil {
-			log.Printf("Error running agent service: %v", err)
-		}
-	}()
-
-	agentPort := env.Get(constants.AgentPortEnv).Default("3100").Value()
-	agentHealthURL := fmt.Sprintf("http://127.0.0.1:%s/v1/health/liveness", agentPort)
-	probeClient := &http.Client{Timeout: 1 * time.Second}
-
-	// Create a context that is cancelled on SIGINT/SIGTERM or after 15s,
-	// so the probe loop can be aborted immediately on shutdown.
-	sigCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-	probeCtx, probeCancel := context.WithTimeout(sigCtx, 15*time.Second)
-	defer probeCancel()
-
-	ready, lastResult := probeAgentHealth(probeCtx, probeClient, agentHealthURL)
-
-	if ready {
-		log.Printf("✅ Agent service started successfully on port %s", agentPort)
-		return
-	}
-
-	if lastResult != nil {
-		log.Fatalf("❌ Agent service failed health check on port %s (error_code=%q, message=%q, permanent=%v)",
-			agentPort, lastResult.ErrorCode, lastResult.Message, lastResult.Permanent)
-	} else {
-		log.Fatalf("❌ Agent service failed health check on port %s (no successful probe response)", agentPort)
-	}
-}
-
-// probeAgentHealth polls the agent liveness endpoint until a healthy response
-// is received or the context expires.  It returns whether the agent became
-// ready and the last validation result (nil when no parseable response arrived).
-func probeAgentHealth(ctx context.Context, client *http.Client, url string) (bool, *agentcheck.Result) {
-	var lastResult *agentcheck.Result
-	for {
-		result := doAgentProbe(ctx, client, url)
-		if result != nil {
-			lastResult = result
-			if result.Healthy {
-				return true, lastResult
-			}
-		}
-
-		select {
-		case <-ctx.Done():
-			return false, lastResult
-		case <-time.After(500 * time.Millisecond):
-		}
-	}
-}
-
-// doAgentProbe performs a single HTTP probe against the agent health endpoint
-// and returns the validated result, or nil if the attempt failed at the
-// network/parse level.
-func doAgentProbe(ctx context.Context, client *http.Client, url string) *agentcheck.Result {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil
-	}
-	body, readErr := io.ReadAll(resp.Body)
-	resp.Body.Close()
-
-	if readErr != nil || resp.StatusCode != http.StatusOK {
-		return nil
-	}
-
-	var health models.AgentLivenessResponse
-	if json.Unmarshal(body, &health) != nil {
-		return nil
-	}
-	return agentcheck.ValidateLiveness(&health)
 }
