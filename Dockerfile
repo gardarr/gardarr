@@ -33,7 +33,7 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
 COPY frontend/dist ./web
 
 # Stage 2: Minimal runtime image with wget for healthcheck
-FROM alpine:3.23.2
+FROM alpine:3.23.4
 
 # Install ca-certificates and wget for healthcheck
 RUN apk add --no-cache ca-certificates wget && \

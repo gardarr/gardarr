@@ -66,25 +66,25 @@ COPY backend/ ./
 # Build the Go binary for the current architecture with CGO enabled
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then \
-        CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
-            -ldflags="-X github.com/jfxdev/gardarr/pkg/version.Version=${VERSION} \
-                      -X github.com/jfxdev/gardarr/pkg/version.Commit=${COMMIT} \
-                      -X github.com/jfxdev/gardarr/pkg/version.Date=${DATE} \
-                      -w -s -extldflags \"-static\"" \
-            -o /app/main .; \
+    CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-X github.com/jfxdev/gardarr/pkg/version.Version=${VERSION} \
+    -X github.com/jfxdev/gardarr/pkg/version.Commit=${COMMIT} \
+    -X github.com/jfxdev/gardarr/pkg/version.Date=${DATE} \
+    -w -s -extldflags \"-static\"" \
+    -o /app/main .; \
     elif [ "$ARCH" = "aarch64" ]; then \
-        CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build \
-            -ldflags="-X github.com/jfxdev/gardarr/pkg/version.Version=${VERSION} \
-                      -X github.com/jfxdev/gardarr/pkg/version.Commit=${COMMIT} \
-                      -X github.com/jfxdev/gardarr/pkg/version.Date=${DATE} \
-                      -w -s -extldflags \"-static\"" \
-            -o /app/main .; \
+    CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build \
+    -ldflags="-X github.com/jfxdev/gardarr/pkg/version.Version=${VERSION} \
+    -X github.com/jfxdev/gardarr/pkg/version.Commit=${COMMIT} \
+    -X github.com/jfxdev/gardarr/pkg/version.Date=${DATE} \
+    -w -s -extldflags \"-static\"" \
+    -o /app/main .; \
     else \
-        echo "Unsupported architecture: $ARCH" && exit 1; \
+    echo "Unsupported architecture: $ARCH" && exit 1; \
     fi
 
 # Stage 3: Prepare runtime dependencies
-FROM alpine:3.20 AS runtime-prep
+FROM alpine:3.23.4 AS runtime-prep
 
 # Install ca-certificates and SQLite runtime library
 # SQLite runtime library is needed for the CGO-linked binary to work
@@ -96,8 +96,8 @@ RUN mkdir -p /tmp-root/etc /tmp-root/tmp /tmp-root/data /tmp-root/media /tmp-roo
     echo "nobody:x:65534:" > /tmp-root/etc/group && \
     chmod 1777 /tmp-root/tmp && \
     if ! ls /usr/lib/libsqlite3.so.* 1> /dev/null 2>&1; then \
-        echo "ERROR: SQLite shared library not found in /usr/lib/libsqlite3.so.*" >&2; \
-        exit 1; \
+    echo "ERROR: SQLite shared library not found in /usr/lib/libsqlite3.so.*" >&2; \
+    exit 1; \
     fi && \
     cp /usr/lib/libsqlite3.so.* /tmp-root/usr/lib/
 
