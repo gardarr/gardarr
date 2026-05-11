@@ -18,6 +18,7 @@ interface TorrentListCompactProps {
   onForceDownload: (id: string) => void;
   onForceReannounce: (id: string) => void;
   onForceRecheck: (id: string) => void;
+  onSearchMetadata?: (taskId: string) => void;
   onMetrics?: (taskId: string, workerId?: string) => void;
   onLimits?: (taskId: string, workerId?: string) => void;
   onMetadataUpdate?: () => void;
@@ -37,7 +38,7 @@ export function TorrentListCompact({
   onForceDownload,
   onForceReannounce,
   onForceRecheck,
- 
+  onSearchMetadata,
   onLimits,
   compact,
   selectionMode,
@@ -85,7 +86,7 @@ export function TorrentListCompact({
             onForceDownload={onForceDownload}
             onForceReannounce={onForceReannounce}
             onForceRecheck={onForceRecheck}
-
+            onSearchMetadata={onSearchMetadata}
             onLimits={onLimits}
             onShowDetails={onShowDetails}
           >
@@ -147,7 +148,7 @@ export function TorrentListCompact({
                   {/* Torrent Name - flexible width */}
                   <div className="flex-1 min-w-0">
                     <div className="truncate text-sm font-medium">
-                      {torrent.name}
+                      {torrent.metadata?.name || torrent.name}
                     </div>
                   </div>
 

@@ -119,6 +119,11 @@ func Run(cmd *cobra.Command, args []string) error {
 		panic(fmt.Sprintf("erro ao inicializar configurações: %v", err))
 	}
 
+	providerConfigSvc := integration.NewProviderConfigService(db, cryptoSvc)
+	if err := providerConfigSvc.BootstrapTGDBFromEnv(context.Background()); err != nil {
+		panic(fmt.Sprintf("erro ao inicializar integração TGDB: %v", err))
+	}
+
 	// Get base URL for building image URLs
 	baseURL := getBaseURL()
 	mediaDirectory := getMediaDirectory()
@@ -147,12 +152,19 @@ func Run(cmd *cobra.Command, args []string) error {
 	integrationSvc := integration.NewService(eventChan, db)
 	integrationSvc.Start(ctx)
 
-	metaSvc, err := metadata.NewService(db, baseURL, mediaDirectory)
+	metaSvc, err := metadata.NewService(
+		db,
+		baseURL,
+		mediaDirectory,
+		metadata.NewMetadataProviderRegistry(
+			metadata.NewTGDBMetadataProvider(providerConfigSvc),
+		),
+	)
 	if err != nil {
 		return err
 	}
 
-	if err = setRoutes(db, workerSvc, metaSvc, integrationSvc); err != nil {
+	if err = setRoutes(db, workerSvc, metaSvc, integrationSvc, providerConfigSvc); err != nil {
 		return err
 	}
 
@@ -345,11 +357,11 @@ func buildSafeMediaPath(requestedFile string) (string, error) {
 		// Using filepath.Base breaks the SonarQube taint trace (S2083)
 		safeComponents = append(safeComponents, filepath.Base(comp))
 	}
-	
+
 	if len(safeComponents) == 0 {
 		return "", errors.New("invalid file path")
 	}
-	
+
 	return filepath.Join(safeComponents...), nil
 }
 
@@ -387,11 +399,10 @@ func createMediaHandler(absMediaPath string) gin.HandlerFunc {
 		c.Header("Cache-Control", "no-cache, no-store, must-revalidate, private")
 		c.Header("Pragma", "no-cache")
 		c.Header("Expires", "0")
-		
+
 		http.ServeContent(c.Writer, c.Request, info.Name(), info.ModTime(), file)
 	}
 }
-
 
 // spaFallbackHandler serves the SPA index.html for non-API routes
 func spaFallbackHandler(c *gin.Context) {
@@ -408,7 +419,13 @@ func spaFallbackHandler(c *gin.Context) {
 	}
 }
 
-func setRoutes(db *database.Database, a *workermanager.Service, metaSvc *metadata.Service, integrationSvc *integration.Service) error {
+func setRoutes(
+	db *database.Database,
+	a *workermanager.Service,
+	metaSvc *metadata.Service,
+	integrationSvc *integration.Service,
+	providerConfigSvc *integration.ProviderConfigService,
+) error {
 	// Get current working directory
 	wd, _ := os.Getwd()
 	webPath := filepath.Join(wd, "web")
@@ -444,7 +461,7 @@ func setRoutes(db *database.Database, a *workermanager.Service, metaSvc *metadat
 	}
 	eventsModule.Register()
 	task_metadata.NewModule(v1, db, metaSvc).Register()
-	integrations.NewModule(v1, db, integrationSvc).Register()
+	integrations.NewModule(v1, db, integrationSvc, providerConfigSvc).Register()
 
 	// Serve the main index.html for all non-API routes (SPA fallback)
 	router.NoRoute(spaFallbackHandler)

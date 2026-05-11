@@ -4,13 +4,23 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Webhook, Bell, Plug, Monitor, BookOpen, Joystick, Activity } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Webhook, Bell, Plug, Monitor, BookOpen, Joystick, Activity, Gamepad2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { EventList, type Event, type FilterType } from '@/components/EventList';
+import { toast } from 'sonner';
 
 interface EventsResponse {
   events: Event[];
   total: number;
+}
+
+interface TGDBIntegrationResponse {
+  provider: string;
+  enabled: boolean;
+  api_key_configured: boolean;
+  updated_at?: string;
 }
 
 export default function IntegrationsPage() {
@@ -24,6 +34,12 @@ export default function IntegrationsPage() {
   const [limit] = useState(10);
   const [filterType, setFilterType] = useState<FilterType>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [showTGDBConfig, setShowTGDBConfig] = useState(false);
+  const [isLoadingTGDB, setIsLoadingTGDB] = useState(false);
+  const [isSavingTGDB, setIsSavingTGDB] = useState(false);
+  const [tgdbEnabled, setTGDBEnabled] = useState(false);
+  const [tgdbConfigured, setTGDBConfigured] = useState(false);
+  const [tgdbApiKey, setTGDBApiKey] = useState("");
 
   const loadEvents = useCallback(async () => {
     setIsLoading(true);
@@ -57,6 +73,47 @@ export default function IntegrationsPage() {
       loadEvents();
     }
   }, [showEvents, loadEvents]);
+
+  const loadTGDBConfig = useCallback(async () => {
+    setIsLoadingTGDB(true);
+    try {
+      const response = await api.get<TGDBIntegrationResponse>("/integrations/tgdb");
+      if (response.data) {
+        setTGDBEnabled(response.data.enabled);
+        setTGDBConfigured(response.data.api_key_configured);
+      }
+    } catch {
+      toast.error(t("integrations.tgdb.errors.loadFailed"));
+    } finally {
+      setIsLoadingTGDB(false);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    loadTGDBConfig();
+  }, [loadTGDBConfig]);
+
+  const handleSaveTGDB = async () => {
+    setIsSavingTGDB(true);
+    try {
+      const response = await api.put<TGDBIntegrationResponse>("/integrations/tgdb", {
+        enabled: tgdbEnabled,
+        api_key: tgdbApiKey,
+      });
+
+      if (response.data) {
+        setTGDBConfigured(response.data.api_key_configured);
+      }
+
+      setTGDBApiKey("");
+      toast.success(t("integrations.tgdb.success.saved"));
+      setShowTGDBConfig(false);
+    } catch {
+      toast.error(t("integrations.tgdb.errors.saveFailed"));
+    } finally {
+      setIsSavingTGDB(false);
+    }
+  };
 
   const integrations = [
     {
@@ -98,6 +155,15 @@ export default function IntegrationsPage() {
       icon: Joystick,
       category: 'synchronizations',
       status: 'available'
+    },
+    {
+      id: 'tgdb',
+      name: t('integrations.tgdb.name'),
+      subtitle: t('integrations.tgdb.subtitle'),
+      description: t('integrations.tgdb.description'),
+      icon: Gamepad2,
+      category: 'others',
+      status: 'available'
     }
   ];
 
@@ -109,6 +175,10 @@ export default function IntegrationsPage() {
     synchronizations: {
       title: t('integrations.categories.synchronizations'),
       description: t('integrations.categories.synchronizationsDescription')
+    },
+    others: {
+      title: t('integrations.categories.others'),
+      description: t('integrations.categories.othersDescription')
     }
   };
 
@@ -159,6 +229,9 @@ export default function IntegrationsPage() {
                     </div>
                     <div>
                       <CardTitle className="text-lg">{integration.name}</CardTitle>
+                      {"subtitle" in integration && integration.subtitle ? (
+                        <p className="text-sm text-muted-foreground">{integration.subtitle}</p>
+                      ) : null}
                     </div>
                   </div>
                 </CardHeader>
@@ -180,6 +253,57 @@ export default function IntegrationsPage() {
                       ? t('integrations.configure') 
                       : t('integrations.comingSoon')
                     }
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight">{categories.others.title}</h2>
+          <p className="text-muted-foreground">
+            {categories.others.description}
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {getIntegrationsByCategory('others').map((integration) => {
+            const IconComponent = integration.icon;
+            return (
+              <Card key={integration.id} className="hover:shadow-md transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <IconComponent className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">{integration.name}</CardTitle>
+                      {"subtitle" in integration && integration.subtitle ? (
+                        <p className="text-sm text-muted-foreground">{integration.subtitle}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="mb-2">
+                    {integration.description}
+                  </CardDescription>
+                  <p className="mb-4 text-sm text-muted-foreground">
+                    {isLoadingTGDB
+                      ? t('common.loading')
+                      : tgdbConfigured
+                        ? (tgdbEnabled ? t('integrations.tgdb.status.enabled') : t('integrations.tgdb.status.disabled'))
+                        : t('integrations.tgdb.status.notConfigured')}
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setShowTGDBConfig(true)}
+                  >
+                    {t('integrations.configure')}
                   </Button>
                 </CardContent>
               </Card>
@@ -261,6 +385,51 @@ export default function IntegrationsPage() {
               onRefresh={loadEvents}
               onSearchChange={setSearchQuery}
             />
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={showTGDBConfig} onOpenChange={setShowTGDBConfig}>
+        <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
+          <SheetHeader className="space-y-1">
+            <SheetTitle>{t("integrations.tgdb.sheetTitle")}</SheetTitle>
+            <p className="text-sm text-muted-foreground">{t("integrations.tgdb.subtitle")}</p>
+            <SheetDescription>{t("integrations.tgdb.sheetDescription")}</SheetDescription>
+          </SheetHeader>
+
+          <div className="space-y-6 py-6">
+            <div className="space-y-2">
+              <Label htmlFor="tgdb-enabled">{t("integrations.tgdb.enabledLabel")}</Label>
+              <Button
+                id="tgdb-enabled"
+                type="button"
+                variant={tgdbEnabled ? "default" : "outline"}
+                className="w-full"
+                onClick={() => setTGDBEnabled((value) => !value)}
+              >
+                {tgdbEnabled ? t("integrations.tgdb.enabled") : t("integrations.tgdb.disabled")}
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tgdb-api-key">{t("integrations.tgdb.apiKeyLabel")}</Label>
+              <Input
+                id="tgdb-api-key"
+                type="password"
+                value={tgdbApiKey}
+                onChange={(event) => setTGDBApiKey(event.target.value)}
+                placeholder={t("integrations.tgdb.apiKeyPlaceholder")}
+              />
+              <p className="text-xs text-muted-foreground">
+                {tgdbConfigured
+                  ? t("integrations.tgdb.apiKeyConfigured")
+                  : t("integrations.tgdb.apiKeyNotConfigured")}
+              </p>
+            </div>
+
+            <Button className="w-full" onClick={handleSaveTGDB} disabled={isSavingTGDB}>
+              {isSavingTGDB ? t("common.loading") : t("common.save")}
+            </Button>
+          </div>
         </SheetContent>
       </Sheet>
     </div>

@@ -12,6 +12,7 @@ export default function TorrentListMobile({
   onForceDownload,
   onForceReannounce,
   onForceRecheck,
+  onSearchMetadata,
   onLimits,
   onMetadataUpdate,
   compact,
@@ -28,6 +29,7 @@ export default function TorrentListMobile({
   onForceDownload: (id: string) => void;
   onForceReannounce: (id: string) => void;
   onForceRecheck: (id: string) => void;
+  onSearchMetadata?: (taskId: string) => void;
   onLimits?: (taskId: string, workerId?: string) => void;
   onMetadataUpdate?: () => void;
   compact?: boolean;
@@ -49,6 +51,7 @@ export default function TorrentListMobile({
           onForceDownload={onForceDownload}
           onForceReannounce={onForceReannounce}
           onForceRecheck={onForceRecheck}
+          onSearchMetadata={onSearchMetadata}
           onLimits={onLimits}
           onMetadataUpdate={onMetadataUpdate}
           compact={compact}

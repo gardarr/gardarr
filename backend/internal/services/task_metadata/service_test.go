@@ -22,7 +22,7 @@ func setupTestService(t *testing.T) (*Service, string) {
 
 	uploadDir := t.TempDir()
 
-	svc, err := NewService(db, "http://localhost:3200", uploadDir)
+	svc, err := NewService(db, "http://localhost:3200", uploadDir, nil)
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
 	}

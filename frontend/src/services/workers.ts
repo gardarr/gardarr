@@ -12,9 +12,8 @@ import type {
   LogEntry
 } from '../types/worker';
 
-/**
- * Service for communication with the worker-oriented HTTP API routes on the backend
- */
+// Worker routes remain the public contract, but each worker now represents a
+// direct qBittorrent connection managed by the central Gardarr server.
 export class WorkerService {
   private readonly baseEndpoint = '/workers/'; 
 
@@ -75,7 +74,7 @@ export class WorkerService {
   }
 
   /**
-   * Gets the version information for a specific worker
+   * Gets the qBittorrent version information for a specific worker connection.
    */
   async getWorkerVersion(workerId: string): Promise<ApiResponse<Version>> {
     return api.get<Version>(`/worker/${workerId}/version/`);

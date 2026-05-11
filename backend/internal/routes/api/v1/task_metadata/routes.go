@@ -54,6 +54,7 @@ func (m *Module) Register() {
 
 	// Metadata management - write operations
 	protected.PUT("/:task_hash/description", m.updateTaskDescription)
+	protected.PUT("/:task_hash/name", m.updateTaskName)
 	protected.PUT("/:task_hash/position", m.updateImagePosition)
 	protected.PUT("/:task_hash/opacity", m.updateImageOpacity)
 
@@ -64,6 +65,11 @@ func (m *Module) Register() {
 	// Image serving - read operations (also protected)
 	protected.GET("/:task_hash/image", m.getTaskImage)
 	protected.GET("/:task_hash/thumbnail", m.getTaskThumbnail)
+
+	// External metadata providers
+	protected.GET("/providers/:provider/status", m.providerStatus)
+	protected.GET("/:task_hash/providers/:provider/search", m.searchProvider)
+	protected.POST("/:task_hash/providers/:provider", m.applyProvider)
 }
 
 // uploadTaskImage handles image upload for a task
@@ -165,6 +171,39 @@ func (m *Module) updateTaskDescription(c *gin.Context) {
 
 	// Update description
 	metadata, err := m.service.UpdateDescription(c.Request.Context(), taskHash, body.Description)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, mappers.ToTaskMetadataResponse(metadata))
+}
+
+// updateTaskName updates the name of task metadata
+func (m *Module) updateTaskName(c *gin.Context) {
+	taskHash := c.Param("task_hash")
+	if taskHash == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "task_hash is required",
+		})
+		return
+	}
+
+	// Parse request body
+	var body struct {
+		Name string `json:"name"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid request body",
+		})
+		return
+	}
+
+	// Update name
+	metadata, err := m.service.UpdateName(c.Request.Context(), taskHash, body.Name)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -337,4 +376,78 @@ func (m *Module) getTaskThumbnail(c *gin.Context) {
 	}
 
 	c.File(imagePath)
+}
+
+// providerStatus returns the status of an external metadata provider
+func (m *Module) providerStatus(c *gin.Context) {
+	provider := c.Param("provider")
+	if provider == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "provider is required"})
+		return
+	}
+
+	status, err := m.service.GetProviderStatus(c.Request.Context(), provider)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, status)
+}
+
+// searchProvider searches an external metadata provider
+func (m *Module) searchProvider(c *gin.Context) {
+	provider := c.Param("provider")
+	if provider == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "provider is required"})
+		return
+	}
+
+	query := c.Query("q")
+	if query == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "query parameter 'q' is required"})
+		return
+	}
+
+	results, err := m.service.SearchProvider(c.Request.Context(), provider, query)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, results)
+}
+
+// applyProvider applies provider metadata to a task
+func (m *Module) applyProvider(c *gin.Context) {
+	provider := c.Param("provider")
+	if provider == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "provider is required"})
+		return
+	}
+
+	taskHash := c.Param("task_hash")
+	if taskHash == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "task_hash is required"})
+		return
+	}
+
+	var body struct {
+		Name        string `json:"name"`
+		ReleaseDate string `json:"release_date"`
+		Description string `json:"description"`
+		ImageURL    string `json:"image_url"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	metadata, err := m.service.ApplyExternalMetadata(c.Request.Context(), provider, taskHash, body.Name, body.ReleaseDate, body.Description, body.ImageURL)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, mappers.ToTaskMetadataResponse(metadata))
 }

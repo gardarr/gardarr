@@ -57,6 +57,7 @@ interface TorrentsTableProps {
   onForceDownload: (id: string) => void;
   onForceReannounce: (id: string) => void;
   onForceRecheck: (id: string) => void;
+  onSearchMetadata?: (taskId: string) => void;
   onMetrics?: (taskId: string, workerId?: string) => void;
   onLimits?: (taskId: string, workerId?: string) => void;
   onMetadataUpdate?: () => void;
@@ -87,7 +88,7 @@ const SpeedCell = ({ rate, total, isUpload, compact }: { rate: number, total: nu
   </div>
 );
 
-function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onLimits, selectionMode, selected, onToggleSelect, selectedIds, onRequestDelete, compact }: {
+function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onSearchMetadata, onLimits, selectionMode, selected, onToggleSelect, selectedIds, onRequestDelete, compact }: {
   torrent: Torrent;
   onShowDetails: (id: string) => void;
   onStart: (id: string) => void;
@@ -96,6 +97,7 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
   onForceDownload: (id: string) => void;
   onForceReannounce: (id: string) => void;
   onForceRecheck: (id: string) => void;
+  onSearchMetadata?: (taskId: string) => void;
   onMetrics?: (taskId: string, workerId?: string) => void;
   onLimits?: (taskId: string, workerId?: string) => void;
   onMetadataUpdate?: () => void;
@@ -133,7 +135,7 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
       onForceDownload={onForceDownload}
       onForceReannounce={onForceReannounce}
       onForceRecheck={onForceRecheck}
-
+      onSearchMetadata={onSearchMetadata}
       onLimits={onLimits}
       onShowDetails={onShowDetails}
     >
@@ -159,9 +161,9 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
             />
             <span
               className="text-sm font-medium truncate"
-              title={isTextTruncated(torrent.name) ? `${torrent.name} (truncado)` : torrent.name}
+              title={isTextTruncated(torrent.metadata?.name || torrent.name) ? `${torrent.metadata?.name || torrent.name} (truncado)` : (torrent.metadata?.name || torrent.name)}
             >
-              {truncateText(torrent.name)}
+              {truncateText(torrent.metadata?.name || torrent.name)}
             </span>
           </div>
         </td>
@@ -305,7 +307,7 @@ export default function TorrentsTable({
   onForceDownload,
   onForceReannounce,
   onForceRecheck,
- 
+  onSearchMetadata,
   onLimits,
   onMetadataUpdate,
   compact,
@@ -393,7 +395,7 @@ export default function TorrentsTable({
                   onForceDownload={onForceDownload}
                   onForceReannounce={onForceReannounce}
                   onForceRecheck={onForceRecheck}
-
+                  onSearchMetadata={onSearchMetadata}
                   onLimits={onLimits}
                   onMetadataUpdate={onMetadataUpdate}
                   selectionMode={selectionMode}

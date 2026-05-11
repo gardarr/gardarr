@@ -28,7 +28,7 @@ func NewService(db *database.Database, c *crypto.CryptoService, baseURL, uploadD
 		return nil, err
 	}
 
-	meta, err := metadata.NewService(db, baseURL, uploadDir)
+	meta, err := metadata.NewService(db, baseURL, uploadDir, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -52,11 +52,14 @@ func extractWorkerError(err error) (entities.WorkerErrorCode, bool) {
 
 func (s *Service) CreateWorker(ctx context.Context, schema *schemas.WorkerCreateSchema) (*entities.Worker, error) {
 	input := entities.Worker{
-		Name:    schema.Name,
-		Address: schema.Address,
-		Token:   schema.Token,
-		Icon:    schema.Icon,
-		Color:   schema.Color,
+		Name:                schema.Name,
+		Type:                schema.Type,
+		Address:             schema.URL,
+		QBittorrentURL:      schema.URL,
+		QBittorrentUsername: schema.Username,
+		QBittorrentPassword: schema.Password,
+		Icon:                schema.Icon,
+		Color:               schema.Color,
 	}
 
 	// Validate instance connectivity BEFORE persisting to database
@@ -306,11 +309,14 @@ func (s *Service) UpdateWorker(ctx context.Context, id string, schema *schemas.W
 	if schema.Name != "" {
 		updates["name"] = schema.Name
 	}
-	if schema.Address != "" {
-		updates["address"] = schema.Address
+	if schema.URL != "" {
+		updates["url"] = schema.URL
 	}
-	if schema.Token != "" {
-		updates["token"] = schema.Token
+	if schema.Username != "" {
+		updates["username"] = schema.Username
+	}
+	if schema.Password != "" {
+		updates["password"] = schema.Password
 	}
 	if schema.Icon != "" {
 		updates["icon"] = schema.Icon
@@ -324,11 +330,15 @@ func (s *Service) UpdateWorker(ctx context.Context, id string, schema *schemas.W
 	if schema.Name != "" {
 		testWorker.Name = schema.Name
 	}
-	if schema.Address != "" {
-		testWorker.Address = schema.Address
+	if schema.URL != "" {
+		testWorker.Address = schema.URL
+		testWorker.QBittorrentURL = schema.URL
 	}
-	if schema.Token != "" {
-		testWorker.Token = schema.Token
+	if schema.Username != "" {
+		testWorker.QBittorrentUsername = schema.Username
+	}
+	if schema.Password != "" {
+		testWorker.QBittorrentPassword = schema.Password
 	}
 	if schema.Icon != "" {
 		testWorker.Icon = schema.Icon
@@ -339,13 +349,12 @@ func (s *Service) UpdateWorker(ctx context.Context, id string, schema *schemas.W
 
 	var instance *entities.Instance
 	// Validate instance connectivity BEFORE updating the database
-	if testWorker.Token != currentWorker.Token {
+	if schema.URL != "" || schema.Username != "" || schema.Password != "" {
 		instance, err = s.repository.GetInstanceWithoutDecrypt(&testWorker)
 		if err != nil {
 			return nil, fmt.Errorf("não foi possível conectar com a instância: %s", err.Error())
 		}
 	} else {
-		testWorker.Token = currentWorker.Token
 		instance, err = s.repository.GetInstance(&testWorker)
 		if err != nil {
 			return nil, fmt.Errorf("não foi possível conectar com a instância: %s", err.Error())

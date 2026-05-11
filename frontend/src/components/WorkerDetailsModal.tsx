@@ -21,7 +21,6 @@ import type { Worker, Version, TaskStats } from "../types/worker";
 import { WorkerIcon } from "./ui/WorkerIcon";
 import { QBittorrentIcon } from "./ui/QBittorrentIcon";
 import { workerService } from "../services/workers";
-import { versionService } from "../services/version";
 import { WorkerLimits } from "./WorkerLimits";
 import { WorkerErrorDisplay } from "./WorkerErrorDisplay";
 import { WorkerLogsTab } from "./WorkerLogsTab";
@@ -50,7 +49,6 @@ export function WorkerDetailsModal({
   const [loading, setLoading] = useState(false);
   const [workerVersions, setWorkerVersions] = useState<Record<string, Version>>({});
   const [workerTaskStats, setWorkerTaskStats] = useState<Record<string, TaskStats>>({});
-  const [systemVersion, setSystemVersion] = useState<Version | null>(null);
 
   // Load worker details
   const loadWorkerDetails = useCallback(async (id: string, workerToPreserve?: Worker | null) => {
@@ -168,20 +166,6 @@ export function WorkerDetailsModal({
     }
   }, []);
 
-  // Load backend system version
-  const loadSystemVersion = useCallback(async () => {
-    try {
-      const response = await versionService.getVersion();
-      if (response.error) {
-        console.warn("Failed to load system version:", response.error);
-      } else if (response.data) {
-        setSystemVersion(response.data);
-      }
-    } catch (err) {
-      console.warn("Failed to load system version:", err);
-    }
-  }, []);
-
   // Load data when modal opens and workerId or initial worker snapshot changes
   useEffect(() => {
     if (isOpen) {
@@ -190,7 +174,6 @@ export function WorkerDetailsModal({
         setWorker(initialWorker);
         const id = initialWorker.uuid;
         loadWorkerVersion(id);
-        loadSystemVersion();
         // Refresh worker details in background to get latest status
         // Pass the initial worker to preserve its data if there's an error
         if (id) {
@@ -200,10 +183,9 @@ export function WorkerDetailsModal({
         // Fallback to loading by ID if no initial worker provided
         loadWorkerDetails(workerId);
         loadWorkerVersion(workerId);
-        loadSystemVersion();
       }
     }
-  }, [isOpen, workerId, initialWorker, loadWorkerDetails, loadWorkerVersion, loadSystemVersion]);
+  }, [isOpen, workerId, initialWorker, loadWorkerDetails, loadWorkerVersion]);
 
   // Reset state when modal closes
   useEffect(() => {
@@ -211,23 +193,8 @@ export function WorkerDetailsModal({
       setWorker(null);
       setWorkerVersions({});
       setWorkerTaskStats({});
-      setSystemVersion(null);
     }
   }, [isOpen]);
-
-  const compareVersions = (a: string, b: string) => {
-    const norm = (v: string) => v.replace(/^v/i, '').split('.').map(s => Number.parseInt(s, 10) || 0);
-    const pa = norm(a);
-    const pb = norm(b);
-    const len = Math.max(pa.length, pb.length);
-    for (let i = 0; i < len; i++) {
-      const da = pa[i] ?? 0;
-      const db = pb[i] ?? 0;
-      if (da < db) return -1;
-      if (da > db) return 1;
-    }
-    return 0;
-  };
 
 
 
@@ -302,15 +269,6 @@ export function WorkerDetailsModal({
 
                           </div>
                           <p className="text-xs text-muted-foreground">{worker?.address}</p>
-                          {worker && systemVersion && workerVersions[worker.uuid] && compareVersions(workerVersions[worker.uuid].version, systemVersion.version) < 0 && (
-                            <div className="mt-1 flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
-                              <AlertTriangle className="h-4 w-4" />
-                              <span>
-                                {t('workers.versionMismatch', 'Worker version differs from system. Please update the worker to match system version')} {" "}
-                                <span className="font-mono">{systemVersion.version}</span>.
-                              </span>
-                            </div>
-                          )}
                         </div>
 
                         {/* Edit Button */}
@@ -346,24 +304,16 @@ export function WorkerDetailsModal({
                       if (!worker || !currentVersion) return null;
                       return (
                         <div className="space-y-3">
-                          <h4 className="font-semibold text-sm">{t('workers.workerInformation', 'Worker information')}</h4>
+                          <h4 className="font-semibold text-sm">{t('workers.workerInformation', 'Worker connection information')}</h4>
                           <div className="space-y-2 p-3 container-content-background/50 rounded-lg">
                             <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                              <Server className="h-3 w-3" />
-                              <span>{t('workers.details', 'Details')}</span>
+                              <QBittorrentIcon className="h-3 w-3" size="sm" />
+                              <span>{t('workers.qbittorrent', 'qBittorrent')}</span>
                             </div>
                             <div className="space-y-2 text-sm">
                               <div className="flex justify-between items-center">
                                 <span className="text-muted-foreground">{t('workers.version')}:</span>
                                 <span className="font-mono">{currentVersion.version}</span>
-                              </div>
-                              <div className="flex justify-between items-center">
-                                <span className="text-muted-foreground">{t('workers.commit')}:</span>
-                                <span className="font-mono text-xs">{currentVersion.commit}</span>
-                              </div>
-                              <div className="flex justify-between items-center">
-                                <span className="text-muted-foreground">{t('workers.date')}:</span>
-                                <span className="font-mono text-xs">{currentVersion.date}</span>
                               </div>
                               {currentVersion.qbittorrent_url && (
                                 <div className="flex justify-between items-center mt-2 pt-2 border-t border-border/50">

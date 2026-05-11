@@ -13,7 +13,8 @@ import { workerService } from "./services/workers";
 import { categoryService } from "./services/categories";
 import { preferencesService } from "@/services/preferences";
 import { useTorrentFilters } from "@/components/TorrentFilters";
-import type { Task, CreateTaskRequest, TaskMetadata } from "./types/torrent";
+import type { CreateTorrentSubmission } from "./services/torrents";
+import type { Task, TaskMetadata } from "./types/torrent";
 import type { Worker, WorkerStatus } from "./types/worker";
 import type { Category } from "./types/category";
 import WorkerFilter from "@/components/ui/WorkerFilter";
@@ -26,6 +27,7 @@ import { TorrentDetailsModal } from "@/components/TorrentDetailsModal";
 import { TorrentDeleteModal } from "@/components/TorrentDeleteModal";
 import { AddTorrentModal } from "@/components/AddTorrentModal";
 import { TorrentLimitModal } from "@/components/TorrentLimitModal";
+import { TaskMetadataSearchSheet } from "@/components/TaskMetadataSearchSheet";
 import TorrentListMobile from "@/components/TorrentListMobile";
 import TorrentsTable from "@/components/TorrentsTable";
 import TorrentListCompact from "@/components/TorrentListCompact";
@@ -159,6 +161,8 @@ export default function TorrentsPage() {
   const [deleteSingleName, setDeleteSingleName] = useState<string>("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [metadataSearchTask, setMetadataSearchTask] = useState<Task | null>(null);
+  const [isMetadataSearchOpen, setIsMetadataSearchOpen] = useState(false);
 
   // Lazy loading states for card view
   const [displayedItemsCount, setDisplayedItemsCount] = useState(30); // Initial load: 30 items (3x10 rows)
@@ -472,6 +476,21 @@ export default function TorrentsPage() {
     setSelectedTorrent(null);
   };
 
+  const handleOpenMetadataSearch = (taskId: string) => {
+    const task = originalTasks.find((item) => item.id === taskId);
+    if (!task) {
+      return;
+    }
+
+    setMetadataSearchTask(task);
+    setIsMetadataSearchOpen(true);
+  };
+
+  const handleCloseMetadataSearch = () => {
+    setIsMetadataSearchOpen(false);
+    setMetadataSearchTask(null);
+  };
+
   const handleShowLimits = (taskId: string, workerId?: string) => {
     const task = originalTasks.find(t => t.id === taskId);
 
@@ -586,35 +605,6 @@ export default function TorrentsPage() {
     );
 
 
-  const handleRenameTorrent = async (torrentId: string, newName: string) => {
-    try {
-      const task = originalTasks.find(t => t.id === torrentId);
-      if (!task || !task.worker?.uuid) {
-        toast.error(t('torrents.notifications.workerIdNotFound'));
-        return;
-      }
-
-      const response = await torrentService.renameTask(task.worker.uuid, torrentId, newName);
-      if (response.error) {
-        toast.error(response.error);
-        return;
-      }
-
-      toast.success(t('torrents.notifications.renameSuccess'));
-
-      // Recarregar dados de todos os workers sem fechar o modal
-      const updatedTasks = await refreshTorrentsSilently();
-
-      // Atualizar o torrent selecionado para refletir mudanças
-      const updatedTask = updatedTasks.find(t => t.id === torrentId);
-      if (updatedTask) {
-        setSelectedTorrent(updatedTask);
-      }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('torrents.notifications.renameError'));
-    }
-  };
-
   const handleSetLocationTorrent = async (torrentId: string, location: string) => {
     try {
       const task = originalTasks.find(t => t.id === torrentId);
@@ -672,27 +662,39 @@ export default function TorrentsPage() {
   };
 
   // Criar novo torrent
-  const handleCreateTorrent = async (workerId: string, taskData: CreateTaskRequest) => {
+  const handleCreateTorrent = async ({ workerId, taskData }: CreateTorrentSubmission): Promise<Task> => {
     try {
       const response = await torrentService.createTask(workerId, taskData);
 
       if (response.error) {
-        // Fechar o modal e exibir toast com erro
-        setIsAddModalOpen(false);
-        toast.error(t('torrents.notifications.addError', { error: response.error }));
-        return;
+        throw new Error(response.error);
       }
 
-      // Recarregar a lista após criação
-      await loadTorrents();
+      const createdTask = response.data;
+      const taskHash = createdTask?.hash;
 
-      // Exibir mensagem de sucesso
+      if (!taskHash) {
+        throw new Error(t('torrents.addModal.errors.taskHashMissing'));
+      }
+
+      return createdTask;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : t('torrents.error');
+      toast.error(t('torrents.notifications.addError', { error: errorMessage }));
+      throw err instanceof Error ? err : new Error(errorMessage);
+    }
+  };
+
+  const handleFinalizeTorrent = async (task: Task) => {
+    void task;
+    try {
+      await loadTorrents();
+      setIsAddModalOpen(false);
       toast.success(t('torrents.notifications.addSuccess'));
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : t('torrents.error');
-      // Fechar o modal e exibir toast com erro
-      setIsAddModalOpen(false);
       toast.error(t('torrents.notifications.addError', { error: errorMessage }));
+      throw err instanceof Error ? err : new Error(errorMessage);
     }
   };
 
@@ -1177,6 +1179,7 @@ export default function TorrentsPage() {
                 onForceDownload={handleForceDownloadTorrent}
                 onForceReannounce={handleForceReannounceTorrent}
                 onForceRecheck={handleForceRecheckTorrent}
+                onSearchMetadata={handleOpenMetadataSearch}
                 onLimits={handleShowLimits}
                 onMetadataUpdate={handleMetadataUpdate}
                 compact={compact}
@@ -1204,6 +1207,7 @@ export default function TorrentsPage() {
                   onForceDownload={handleForceDownloadTorrent}
                   onForceReannounce={handleForceReannounceTorrent}
                   onForceRecheck={handleForceRecheckTorrent}
+                  onSearchMetadata={handleOpenMetadataSearch}
                   onLimits={handleShowLimits}
                   compact={compact}
                   selectionMode={selectionMode}
@@ -1237,6 +1241,7 @@ export default function TorrentsPage() {
                   onForceDownload={handleForceDownloadTorrent}
                   onForceReannounce={handleForceReannounceTorrent}
                   onForceRecheck={handleForceRecheckTorrent}
+                  onSearchMetadata={handleOpenMetadataSearch}
                   onLimits={handleShowLimits}
                   onMetadataUpdate={handleMetadataUpdate}
                   compact={compact}
@@ -1304,7 +1309,6 @@ export default function TorrentsPage() {
           onForceDownload={handleForceDownloadTorrent}
           onForceReannounce={handleForceReannounceTorrent}
           onForceRecheck={handleForceRecheckTorrent}
-          onRename={handleRenameTorrent}
           onSetLocation={handleSetLocationTorrent}
           onUpdate={handleMetadataUpdate}
         />
@@ -1315,10 +1319,19 @@ export default function TorrentsPage() {
         <AddTorrentModal
           isOpen={isAddModalOpen}
           onClose={() => setIsAddModalOpen(false)}
-          onSubmit={handleCreateTorrent}
+          onCreateTorrent={handleCreateTorrent}
+          onFinalizeTorrent={handleFinalizeTorrent}
           workers={workers}
         />
       )}
+
+      <TaskMetadataSearchSheet
+        isOpen={isMetadataSearchOpen}
+        onClose={handleCloseMetadataSearch}
+        task={metadataSearchTask}
+        category={categories.find((category) => category.name === metadataSearchTask?.category) ?? null}
+        onApplied={handleMetadataUpdate}
+      />
 
       {/* Modal de limites do torrent - só renderiza quando aberto */}
       {isLimitsModalOpen && limitsWorkerId && limitsTaskIds.length > 0 && (
@@ -1567,5 +1580,3 @@ export default function TorrentsPage() {
     </div>
   );
 }
-
-

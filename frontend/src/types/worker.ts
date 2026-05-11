@@ -33,7 +33,7 @@ export type WorkerErrorCode =
   | 'VERSION_INCOMPATIBLE' // Incompatible qBittorrent version
   | 'CONNECTION_REFUSED'  // Server actively refused connection
   | 'NETWORK_UNREACHABLE' // Network routing issues
-  | 'WORKER_UNREACHABLE'   // Gardarr worker is unreachable
+  | 'WORKER_UNREACHABLE'   // Registered qBittorrent worker endpoint is unreachable
   | 'BAD_GATEWAY'         // Proxy/gateway error (502)
   | 'SERVICE_UNAVAILABLE' // Service temporarily unavailable (503)
   | 'UNKNOWN';            // Unclassified error
@@ -64,16 +64,18 @@ export interface InstanceTransfer {
 export interface CreateWorkerRequest {
   name: string;
   type: string;
-  address: string;
-  token: string;
+  url: string;
+  username: string;
+  password: string;
   icon?: string;
   color?: string;
 }
 
 export interface UpdateWorkerRequest {
   name?: string;
-  address?: string;
-  token?: string;
+  url?: string;
+  username?: string;
+  password?: string;
   icon?: string;
   color?: string;
 }

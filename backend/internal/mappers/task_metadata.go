@@ -16,6 +16,8 @@ func ToTaskMetadataResponse(e *entities.TaskMetadata) *models.TaskMetadataRespon
 		TaskHash:       e.TaskHash,
 		ImageURL:       e.ImageURL,
 		ThumbnailURL:   e.ThumbnailURL,
+		Name:           e.Name,
+		ReleaseDate:    e.ReleaseDate,
 		Description:    e.Description,
 		ImagePositionY: e.ImagePositionY,
 		ImageOpacity:   e.ImageOpacity,

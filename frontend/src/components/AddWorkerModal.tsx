@@ -8,13 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Eye,
-  EyeOff,
+  Server,
   Check,
   Plus,
-  Server,
-  Shuffle,
-  Copy
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -23,7 +19,7 @@ import type { CreateWorkerRequest, Worker } from "../types/worker";
 import { toast } from "sonner";
 import { WorkerIcon } from "./ui/WorkerIcon";
 import { availableIcons, availableColors } from "../utils/workerUtils";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
+import { PasswordInput } from "./auth/PasswordInput";
 
 interface AddWorkerModalProps {
   open: boolean;
@@ -31,22 +27,15 @@ interface AddWorkerModalProps {
   onSuccess: (worker: Worker) => void;
 }
 
-function generateToken(length = 40): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  const randomValues = new Uint32Array(length);
-  window.crypto.getRandomValues(randomValues);
-  return Array.from(randomValues).map(val => chars[val % chars.length]).join("");
-}
-
 export function AddWorkerModal({ open, onOpenChange, onSuccess }: AddWorkerModalProps) {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
-  const [showToken, setShowToken] = useState(false);
   const [form, setForm] = useState<CreateWorkerRequest>({
     name: "",
     type: "qbittorrent",
-    address: "",
-    token: "",
+    url: "",
+    username: "",
+    password: "",
     icon: "QBittorrent",
     color: "#3b82f6"
   });
@@ -56,42 +45,26 @@ export function AddWorkerModal({ open, onOpenChange, onSuccess }: AddWorkerModal
       setForm({
         name: "",
         type: "qbittorrent",
-        address: "",
-        token: "",
+        url: "",
+        username: "",
+        password: "",
         icon: "QBittorrent",
         color: "#3b82f6"
       });
-      setShowToken(false);
     }
   }, [open]);
-
-  const handleGenerateToken = () => {
-    const token = generateToken();
-    setForm({ ...form, token });
-    setShowToken(true);
-  };
-
-  const handleCopyToken = async () => {
-    if (!form.token) return;
-    try {
-      await navigator.clipboard.writeText(form.token);
-      toast.success(t('workers.tokenCopied'));
-    } catch {
-      toast.error(t('workers.tokenCopyFailed'));
-    }
-  };
 
   const handleCreateWorker = async () => {
     if (!form.name) {
       toast.error(t('workers.errors.nameRequired'));
       return;
     }
-    if (!form.address) {
+    if (!form.url) {
       toast.error(t('workers.errors.addressRequired'));
       return;
     }
-    if (!form.token) {
-      toast.error(t('workers.errors.tokenRequired'));
+    if (!form.username || !form.password) {
+      toast.error(t('workers.errors.connectionFailed'));
       return;
     }
 
@@ -139,73 +112,38 @@ export function AddWorkerModal({ open, onOpenChange, onSuccess }: AddWorkerModal
             />
           </div>
 
-          {/* Address */}
+          {/* URL */}
           <div className="space-y-1.5">
             <Label htmlFor="address" className="text-sm">{t('workers.address')} *</Label>
             <Input
               id="address"
-              placeholder="https://worker.domain"
-              value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              placeholder="http://localhost:8080"
+              value={form.url}
+              onChange={(e) => setForm({ ...form, url: e.target.value })}
               className="h-9"
             />
           </div>
 
-          {/* Token */}
           <div className="space-y-1.5">
-            <Label htmlFor="token" className="text-sm">{t('workers.token')} *</Label>
-            <div className="relative flex items-center gap-2">
-              <div className="relative flex-1">
-                <Input
-                  id="token"
-                  type={showToken ? "text" : "password"}
-                  placeholder={t('workers.authenticationToken')}
-                  value={form.token}
-                  onChange={(e) => setForm({ ...form, token: e.target.value })}
-                  className="h-9 pr-10 font-mono text-xs"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowToken(!showToken)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={handleGenerateToken}
-                      className="h-9 w-9 flex-shrink-0 flex items-center justify-center rounded-md border border-primary bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                    >
-                      <Shuffle className="h-4 w-4" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{t('workers.generateToken')}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={handleCopyToken}
-                      disabled={!form.token}
-                      className="h-9 w-9 flex-shrink-0 flex items-center justify-center rounded-md border border-input bg-background text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{t('workers.copyToken')}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
+            <Label htmlFor="username" className="text-sm">{t('workers.username', 'Username')} *</Label>
+            <Input
+              id="username"
+              placeholder={t('workers.usernamePlaceholder', 'qBittorrent username')}
+              value={form.username}
+              onChange={(e) => setForm({ ...form, username: e.target.value })}
+              className="h-9"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <PasswordInput
+              id="password"
+              label={t('workers.password', 'Password') + ' *'}
+              placeholder={t('workers.passwordPlaceholder', 'qBittorrent password')}
+              value={form.password}
+              onChange={(value) => setForm({ ...form, password: value })}
+              disabled={loading}
+            />
           </div>
 
           {/* Color */}
@@ -267,7 +205,7 @@ export function AddWorkerModal({ open, onOpenChange, onSuccess }: AddWorkerModal
                   {form.name || t('workers.workerName')}
                 </div>
                 <div className="text-xs text-muted-foreground truncate">
-                  {form.address || "https://worker.domain"}
+                  {form.url || "http://localhost:8080"}
                 </div>
               </div>
             </div>

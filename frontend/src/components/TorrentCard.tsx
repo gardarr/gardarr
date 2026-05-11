@@ -42,8 +42,25 @@ export type MobileTorrent = {
   metadata?: TaskMetadata | null;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onLimits, onMetadataUpdate: _onMetadataUpdate, compact, selectionMode, selected, onToggleSelect, selectedIds, onRequestDelete }: Readonly<{
+export function TorrentCard({
+  torrent,
+  onShowDetails,
+  onStart,
+  onStop,
+  onRemove,
+  onForceDownload,
+  onForceReannounce,
+  onForceRecheck,
+  onSearchMetadata,
+  onLimits,
+  onMetadataUpdate,
+  compact,
+  selectionMode,
+  selected,
+  onToggleSelect,
+  selectedIds,
+  onRequestDelete,
+}: Readonly<{
   torrent: MobileTorrent;
   onShowDetails: (id: string) => void;
   onStart: (id: string) => void;
@@ -52,6 +69,7 @@ export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove,
   onForceDownload: (id: string) => void;
   onForceReannounce: (id: string) => void;
   onForceRecheck: (id: string) => void;
+  onSearchMetadata?: (taskId: string) => void;
   onLimits?: (taskId: string, workerId?: string) => void;
   onMetadataUpdate?: () => void;
   compact?: boolean;
@@ -61,6 +79,7 @@ export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove,
   selectedIds?: Set<string>;
   onRequestDelete?: (ids: string[]) => void;
 }>) {
+  void onMetadataUpdate;
   const [blurIntensity, setBlurIntensity] = useState(50);
 
   useEffect(() => {
@@ -97,7 +116,7 @@ export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove,
       onForceDownload={onForceDownload}
       onForceReannounce={onForceReannounce}
       onForceRecheck={onForceRecheck}
-
+      onSearchMetadata={onSearchMetadata}
       onLimits={onLimits}
       onShowDetails={onShowDetails}
     >
@@ -139,8 +158,8 @@ export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove,
                   />
                 )}
                 <StatusBadge status={torrent.status} size="sm" showTooltip={false} />
-                <CardTitle className="text-[11px] font-medium text-muted-foreground dark:text-gray-400 truncate" title={isTextTruncated(torrent.name) ? `${torrent.name} (truncado)` : torrent.name}>
-                  {truncateText(torrent.name)}
+                <CardTitle className="text-[11px] font-medium text-muted-foreground dark:text-gray-400 truncate" title={isTextTruncated(torrent.metadata?.name || torrent.name) ? `${torrent.metadata?.name || torrent.name} (truncado)` : (torrent.metadata?.name || torrent.name)}>
+                  {truncateText(torrent.metadata?.name || torrent.name)}
                 </CardTitle>
               </div>
               {torrent.workerName && (
@@ -215,9 +234,9 @@ export function TorrentCard({ torrent, onShowDetails, onStart, onStop, onRemove,
                 </div>
                 <CardTitle
                   className="text-sm font-medium text-muted-foreground dark:text-gray-400 truncate"
-                  title={isTextTruncated(torrent.name) ? `${torrent.name} (truncado)` : torrent.name}
+                  title={isTextTruncated(torrent.metadata?.name || torrent.name) ? `${torrent.metadata?.name || torrent.name} (truncado)` : (torrent.metadata?.name || torrent.name)}
                 >
-                  {truncateText(torrent.name)}
+                  {truncateText(torrent.metadata?.name || torrent.name)}
                 </CardTitle>
               </div>
               {torrent.workerName && (

@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -122,14 +123,16 @@ func TestRepositoryTimeoutWithZeroEnvironmentVariable(t *testing.T) {
 
 func TestRepositoryTimeoutBehavior(t *testing.T) {
 	// Create a test server that responds after 10 seconds
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server, err := newSandboxTolerantServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(10 * time.Second)
 		w.WriteHeader(http.StatusOK)
 		if _, err := w.Write([]byte("{}")); err != nil {
-			// best effort in test handler
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	}))
+	if err != nil {
+		t.Skipf("sandbox does not allow opening a local listener: %v", err)
+	}
 	defer server.Close()
 
 	// Create repository with 2 second timeout
@@ -162,4 +165,30 @@ func TestRepositoryTimeoutBehavior(t *testing.T) {
 	if duration < 1*time.Second || duration > 5*time.Second {
 		t.Errorf("Expected timeout around 2 seconds, but took %v", duration)
 	}
+}
+
+func newSandboxTolerantServer(handler http.Handler) (*httptest.Server, error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			panic(recovered)
+		}
+	}()
+
+	var server *httptest.Server
+	var panicErr error
+
+	func() {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				panicErr = errors.New("listener not available in sandbox")
+			}
+		}()
+		server = httptest.NewServer(handler)
+	}()
+
+	if panicErr != nil {
+		return nil, panicErr
+	}
+
+	return server, nil
 }

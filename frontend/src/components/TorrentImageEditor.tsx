@@ -7,12 +7,15 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useTranslation } from "react-i18next";
 import type { TaskMetadata } from "@/types/torrent";
+import type { Category, CategoryMetadataSource } from "@/types/category";
 import { ImageSourceSelector } from "@/components/ImageSourceSelector";
 import { TorrentCardPreview } from "@/components/TorrentCardPreview";
+import { TGDBSearch } from "@/components/TGDBSearch";
 
 interface TorrentImageEditorProps {
   readonly taskHash: string;
   readonly taskName: string;
+  readonly category?: Category | null;
   readonly metadata?: TaskMetadata | null;
   readonly onUpdate?: () => void;
 }
@@ -20,6 +23,7 @@ interface TorrentImageEditorProps {
 export function TorrentImageEditor({
   taskHash,
   taskName,
+  category,
   metadata,
   onUpdate,
 }: TorrentImageEditorProps) {
@@ -41,8 +45,38 @@ export function TorrentImageEditor({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartY, setDragStartY] = useState(0);
   const [imageSource, setImageSource] = useState<"Upload" | "TMDB" | "TGDB">("Upload");
+  const [isTGDBActive, setIsTGDBActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
+  const categoryMetadataSource = (category?.metadata_source || "none") as CategoryMetadataSource;
+
+  useEffect(() => {
+    const fetchTGDBStatus = async () => {
+      try {
+        const response = await api.get<{ active: boolean }>('/tasks/metadata/providers/tgdb/status');
+        if (response.data) {
+          setIsTGDBActive(response.data.active);
+        }
+      } catch (error) {
+        console.error("Failed to fetch TGDB status", error);
+      }
+    };
+    fetchTGDBStatus();
+  }, []);
+
+  useEffect(() => {
+    if (categoryMetadataSource === "tgdb" && isTGDBActive) {
+      setImageSource("TGDB");
+      return;
+    }
+
+    if (categoryMetadataSource === "tmdb") {
+      setImageSource("TMDB");
+      return;
+    }
+
+    setImageSource("Upload");
+  }, [categoryMetadataSource, isTGDBActive]);
 
   // Sincronizar estados quando metadata muda
   useEffect(() => {
@@ -223,9 +257,31 @@ export function TorrentImageEditor({
         <ImageSourceSelector
           value={imageSource}
           onValueChange={setImageSource}
+          categoryMetadataSource={categoryMetadataSource}
+          isTGDBActive={isTGDBActive}
         />
 
-        {imagePreview ? (
+        {categoryMetadataSource !== "none" && (
+          <p className="text-xs text-muted-foreground">
+            {t(`torrentImageEditor.sources.restricted.${categoryMetadataSource}`)}
+          </p>
+        )}
+
+        {imageSource === "TGDB" ? (
+          <TGDBSearch
+            taskHash={taskHash}
+            initialQuery={taskName}
+            onSelect={() => {
+              setImageSource("Upload");
+              onUpdate?.();
+            }}
+            onCancel={() => setImageSource("Upload")}
+          />
+        ) : imageSource === "TMDB" ? (
+          <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+            {t("torrentImageEditor.sources.tmdbUnavailable")}
+          </div>
+        ) : imagePreview ? (
           <>
             <Label className="text-sm font-medium">
               {t('torrentImageEditor.imageAdjustments.label')}
@@ -327,7 +383,7 @@ export function TorrentImageEditor({
             </div>
           </div>
           </>
-        ) : (
+        ) : imageSource === "Upload" && (
           <div
             role="button"
             tabIndex={0}
@@ -463,4 +519,3 @@ export function TorrentImageEditor({
     </div>
   );
 }
-

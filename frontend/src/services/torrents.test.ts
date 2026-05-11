@@ -8,6 +8,7 @@ vi.mock('../lib/api', () => ({
   api: {
     get: vi.fn(),
     post: vi.fn(),
+    put: vi.fn(),
     delete: vi.fn(),
   },
 }));
@@ -82,7 +83,7 @@ describe('TorrentService', () => {
         category: 'movies',
         tags: ['test'],
       };
-      vi.mocked(api.post).mockResolvedValue({ data: null, error: undefined });
+      vi.mocked(api.post).mockResolvedValue({ data: {} as Task, error: undefined });
 
       await torrentService.createTask(workerId, taskData);
 
@@ -96,11 +97,44 @@ describe('TorrentService', () => {
         category: 'movies',
         tags: [],
       };
-      vi.mocked(api.post).mockResolvedValue({ data: null, error: undefined });
+      const createdTask = {
+        id: 'abc123',
+        name: 'Test Torrent',
+        hash: 'abc123',
+        created_at: new Date().toISOString(),
+        state: 'DOWNLOADING',
+        category: 'movies',
+        path: '/downloads/test',
+        priority: 0,
+        ratio: 0,
+        size: 1000,
+        progress: 0,
+        magnet_uri: taskData.magnet_uri,
+        magnet_link: {
+          hash: 'abc123',
+          display_name: 'Test Torrent',
+          trackers: [],
+          exact_length: '1000',
+          exact_source: ''
+        },
+        popularity: 0,
+        pairs: {
+          seeders: 0,
+          leechers: 0,
+          swarm_seeders: 0,
+          swarm_leechers: 0,
+        },
+        network: {
+          download: { speed: 0, amount: 0 },
+          upload: { speed: 0, amount: 0 },
+        },
+        tags: []
+      } as Task;
+      vi.mocked(api.post).mockResolvedValue({ data: createdTask, error: undefined });
 
       const result = await torrentService.createTask(workerId, taskData);
 
-      expect(result.data).toBeNull();
+      expect(result.data).toEqual(createdTask);
       expect(result.error).toBeUndefined();
     });
   });
@@ -226,11 +260,11 @@ describe('TorrentService', () => {
         category: 'movies',
         tags: [],
       };
-      vi.mocked(api.post).mockResolvedValue({ data: null, error: errorMessage });
+      vi.mocked(api.post).mockResolvedValue({ data: undefined, error: errorMessage });
 
       const result = await torrentService.createTask(workerId, taskData);
 
-      expect(result.data).toBeNull();
+      expect(result.data).toBeUndefined();
       expect(result.error).toBe(errorMessage);
     });
 
@@ -283,4 +317,3 @@ describe('TorrentService', () => {
     });
   });
 });
-

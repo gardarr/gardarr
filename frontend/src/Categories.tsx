@@ -243,12 +243,18 @@ function Categories() {
                         </div>
                       )}
 
-                      {category.directory && (
+                      {category.default_directory && (
                         <div className="flex gap-1 flex-wrap items-center justify-center">
                           <Folder className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                           <span className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono truncate max-w-[200px]">
-                            {category.directory}
+                            {category.default_directory}
                           </span>
+                        </div>
+                      )}
+
+                      {category.metadata_source && category.metadata_source !== "none" && (
+                        <div className="text-xs text-muted-foreground">
+                          {t(`categories.metadataSource.options.${category.metadata_source}`)}
                         </div>
                       )}
                     </div>
@@ -332,4 +338,3 @@ function Categories() {
 }
 
 export default Categories;
-

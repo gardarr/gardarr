@@ -62,6 +62,19 @@ export interface CreateTaskRequest {
   tags: string[];
 }
 
+export interface MetadataProviderSearchResult {
+  id: string;
+  title: string;
+  release_date?: string;
+  description?: string;
+  image_url?: string;
+}
+
+export interface CreatedTorrentState {
+  task: Task;
+  taskHash: string;
+}
+
 export interface DeleteTaskRequest {
   id: string;
   purge?: boolean;
@@ -73,7 +86,7 @@ export interface TaskListResponse {
 }
 
 export interface TaskCreateResponse {
-  data: null;
+  data: Task;
 }
 
 export interface TaskDeleteResponse {
@@ -104,6 +117,8 @@ export interface TaskMetadata {
   task_hash: string;
   image_url?: string;
   thumbnail_url?: string;
+  name?: string;
+  release_date?: string;
   description?: string;
   image_position_y?: number; // Vertical position offset in percentage (0-100)
   image_opacity?: number; // Image opacity in percentage (0-100)

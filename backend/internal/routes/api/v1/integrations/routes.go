@@ -26,16 +26,23 @@ type Module struct {
 	webhookHistoryRepo *webhook_history.Repository
 	db                 *database.Database
 	integrationService *integration.Service
+	providerConfigSvc  *integration.ProviderConfigService
 }
 
 // NewModule creates a new integrations module
-func NewModule(router *gin.RouterGroup, db *database.Database, integrationSvc *integration.Service) *Module {
+func NewModule(
+	router *gin.RouterGroup,
+	db *database.Database,
+	integrationSvc *integration.Service,
+	providerConfigSvc *integration.ProviderConfigService,
+) *Module {
 	return &Module{
 		group:              router.Group("/integrations"),
 		webhookRepo:        webhook.NewRepository(db),
 		webhookHistoryRepo: webhook_history.NewRepository(db),
 		db:                 db,
 		integrationService: integrationSvc,
+		providerConfigSvc:  providerConfigSvc,
 	}
 }
 
@@ -124,6 +131,52 @@ func (m *Module) Register() {
 		history.GET("", m.listWebhookHistory)
 		history.GET("/:id", m.getWebhookHistoryByID)
 	}
+
+	m.group.GET("/tgdb", m.getTGDBConfig)
+	m.group.PUT("/tgdb", m.updateTGDBConfig)
+}
+
+func (m *Module) getTGDBConfig(c *gin.Context) {
+	summary, err := m.providerConfigSvc.GetSummary(c.Request.Context(), integration.MetadataSourceTGDB)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve TGDB configuration"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"provider":           summary.Provider,
+		"enabled":            summary.Enabled,
+		"api_key_configured": summary.APIKeyConfigured,
+		"updated_at":         summary.UpdatedAt,
+	})
+}
+
+func (m *Module) updateTGDBConfig(c *gin.Context) {
+	var body struct {
+		Enabled bool   `json:"enabled"`
+		APIKey  string `json:"api_key"`
+	}
+
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Validation failed",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	summary, err := m.providerConfigSvc.UpdateProvider(c.Request.Context(), integration.MetadataSourceTGDB, body.Enabled, body.APIKey)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update TGDB configuration"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"provider":           summary.Provider,
+		"enabled":            summary.Enabled,
+		"api_key_configured": summary.APIKeyConfigured,
+		"updated_at":         summary.UpdatedAt,
+	})
 }
 
 // createWebhook creates a new webhook

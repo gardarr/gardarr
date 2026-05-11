@@ -355,5 +355,155 @@ func Register(m *migration.Migrator) {
 				return nil
 			},
 		},
+		{
+			Version:     "025_add_tgdb_metadata_to_task_metadata",
+			Description: "Adiciona as colunas name e release_date na tabela task_metadata",
+			Up: func(db *gorm.DB) error {
+				if !db.Migrator().HasColumn(&models.TaskMetadata{}, "Name") {
+					if err := db.Migrator().AddColumn(&models.TaskMetadata{}, "Name"); err != nil {
+						return err
+					}
+				}
+				if !db.Migrator().HasColumn(&models.TaskMetadata{}, "ReleaseDate") {
+					if err := db.Migrator().AddColumn(&models.TaskMetadata{}, "ReleaseDate"); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			Down: func(db *gorm.DB) error {
+				if err := db.Migrator().DropColumn(&models.TaskMetadata{}, "name"); err != nil {
+					return err
+				}
+				if err := db.Migrator().DropColumn(&models.TaskMetadata{}, "release_date"); err != nil {
+					return err
+				}
+				return nil
+			},
+		},
+		{
+			Version:     "026_seed_default_categories",
+			Description: "Popula categorias padrão do sistema sem sobrescrever categorias existentes",
+			Up: func(db *gorm.DB) error {
+				defaultCategories := []map[string]interface{}{
+					{"name": "Movies", "color": "#ef4444", "icon": "Film"},
+					{"name": "Shows", "color": "#3b82f6", "icon": "Tv"},
+					{"name": "Games", "color": "#10b981", "icon": "Gamepad2"},
+					{"name": "Other", "color": "#6b7280", "icon": "Folder"},
+					{"name": "Books", "color": "#f59e0b", "icon": "BookOpen"},
+					{"name": "Anime", "color": "#ec4899", "icon": "Star"},
+					{"name": "Music", "color": "#14b8a6", "icon": "Music"},
+				}
+
+				for _, category := range defaultCategories {
+					var existingCount int64
+					if err := db.Table("categories").Where("name = ?", category["name"]).Count(&existingCount).Error; err != nil {
+						return err
+					}
+
+					if existingCount > 0 {
+						continue
+					}
+
+					if err := db.Table("categories").Create(category).Error; err != nil {
+						return err
+					}
+				}
+
+				return nil
+			},
+			Down: func(db *gorm.DB) error {
+				// No-op: rollback não deve remover categorias que podem já estar em uso.
+				return nil
+			},
+		},
+		{
+			Version:     "027_rename_category_directory_and_add_metadata_source",
+			Description: "Renomeia directory para default_directory e adiciona metadata_source em categories",
+			Up: func(db *gorm.DB) error {
+				if db.Migrator().HasColumn(&models.Category{}, "directory") && !db.Migrator().HasColumn(&models.Category{}, "default_directory") {
+					if err := db.Migrator().RenameColumn(&models.Category{}, "directory", "default_directory"); err != nil {
+						return err
+					}
+				}
+
+				if !db.Migrator().HasColumn(&models.Category{}, "MetadataSource") {
+					if err := db.Migrator().AddColumn(&models.Category{}, "MetadataSource"); err != nil {
+						return err
+					}
+				}
+
+				return db.Table("categories").
+					Where("metadata_source = '' OR metadata_source IS NULL").
+					Update("metadata_source", "none").Error
+			},
+			Down: func(db *gorm.DB) error {
+				if db.Migrator().HasColumn(&models.Category{}, "default_directory") && !db.Migrator().HasColumn(&models.Category{}, "directory") {
+					if err := db.Migrator().RenameColumn(&models.Category{}, "default_directory", "directory"); err != nil {
+						return err
+					}
+				}
+
+				if db.Migrator().HasColumn(&models.Category{}, "metadata_source") {
+					if err := db.Migrator().DropColumn(&models.Category{}, "metadata_source"); err != nil {
+						return err
+					}
+				}
+
+				return nil
+			},
+		},
+		{
+			Version:     "028_create_integration_provider_configs_table",
+			Description: "Cria tabela de configuração de providers de integração",
+			Up: func(db *gorm.DB) error {
+				return db.AutoMigrate(&models.IntegrationProviderConfig{})
+			},
+			Down: func(db *gorm.DB) error {
+				return db.Migrator().DropTable(&models.IntegrationProviderConfig{})
+			},
+		},
+		{
+			Version:     "029_add_direct_qbittorrent_credentials_to_workers",
+			Description: "Adiciona credenciais diretas do qBittorrent aos workers",
+			Up: func(db *gorm.DB) error {
+				if !db.Migrator().HasColumn(&models.Worker{}, "EncryptedQBittorrentURL") {
+					if err := db.Migrator().AddColumn(&models.Worker{}, "EncryptedQBittorrentURL"); err != nil {
+						return err
+					}
+				}
+				if !db.Migrator().HasColumn(&models.Worker{}, "EncryptedQBittorrentUsername") {
+					if err := db.Migrator().AddColumn(&models.Worker{}, "EncryptedQBittorrentUsername"); err != nil {
+						return err
+					}
+				}
+				if !db.Migrator().HasColumn(&models.Worker{}, "EncryptedQBittorrentPassword") {
+					if err := db.Migrator().AddColumn(&models.Worker{}, "EncryptedQBittorrentPassword"); err != nil {
+						return err
+					}
+				}
+
+				return nil
+			},
+			Down: func(db *gorm.DB) error {
+				if db.Migrator().HasColumn(&models.Worker{}, "encrypted_q_bittorrent_password") {
+					if err := db.Migrator().DropColumn(&models.Worker{}, "EncryptedQBittorrentPassword"); err != nil {
+						return err
+					}
+				}
+				if db.Migrator().HasColumn(&models.Worker{}, "encrypted_q_bittorrent_username") {
+					if err := db.Migrator().DropColumn(&models.Worker{}, "EncryptedQBittorrentUsername"); err != nil {
+						return err
+					}
+				}
+				if db.Migrator().HasColumn(&models.Worker{}, "encrypted_q_bittorrent_url") {
+					if err := db.Migrator().DropColumn(&models.Worker{}, "EncryptedQBittorrentURL"); err != nil {
+						return err
+					}
+				}
+
+				return nil
+			},
+		},
 	})
 }

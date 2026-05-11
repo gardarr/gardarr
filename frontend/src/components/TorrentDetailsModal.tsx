@@ -40,7 +40,9 @@ import { SelectCategory } from "@/components/SelectCategory";
 import { SelectTags } from "@/components/SelectTags";
 import { useTranslation } from "react-i18next";
 import { torrentService } from "@/services/torrents";
+import { categoryService } from "@/services/categories";
 import { toast } from "sonner";
+import { api } from "@/lib/api";
 import { getCategoryIcon, getCategoryColor } from "@/utils/categoryUtils";
 import type { Task } from "@/types/torrent";
 import type { Category } from "@/types/category";
@@ -62,11 +64,8 @@ interface TorrentDetailsModalProps {
   onForceDownload?: (torrentId: string) => void;
   onForceReannounce?: (torrentId: string) => void;
   onForceRecheck?: (torrentId: string) => void;
-  onRename?: (torrentId: string, newName: string) => void;
   onSetLocation?: (torrentId: string, location: string) => void;
-  onUpdateCategory?: (torrentId: string, category: string) => void;
-  onUpdateTags?: (torrentId: string, tags: string[]) => void;
-  onUpdate?: () => void;
+  onUpdate?: () => Promise<void> | void;
 }
 
 
@@ -100,7 +99,7 @@ function sanitizeBlurIntensity(value: unknown): number {
   return Math.max(0, Math.min(100, numValue));
 }
 
-export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause, onDelete, onForceDownload, onForceReannounce, onForceRecheck, onRename, onSetLocation, onUpdateCategory, onUpdateTags, onUpdate }: TorrentDetailsModalProps) {
+export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause, onDelete, onForceDownload, onForceReannounce, onForceRecheck, onSetLocation, onUpdate }: TorrentDetailsModalProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -110,6 +109,7 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
   const [editedName, setEditedName] = useState("");
   const [editedPath, setEditedPath] = useState("");
   const [editedCategoryId, setEditedCategoryId] = useState("");
+  const [editedCategoryName, setEditedCategoryName] = useState("");
   const [editedTags, setEditedTags] = useState<string[]>([]);
   const [currentCategory, setCurrentCategory] = useState("");
   const [currentCategoryData, setCurrentCategoryData] = useState<Category | null>(null);
@@ -130,26 +130,29 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
     if (torrent) {
       setCurrentCategory(torrent.category || '');
       setCurrentTags([...(torrent.tags || [])]);
-      
-      // Initialize category data if available
-      if (torrent.category) {
-        // For now, we'll create a basic category object
-        // In a real scenario, you might want to fetch the full category data
-        setCurrentCategoryData({
-          id: torrent.category,
-          name: torrent.category,
-          icon: 'Folder',
-          color: 'Blue',
-          directory: '',
-          default_tags: [],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
-      } else {
-        setCurrentCategoryData(null);
-      }
+    } else {
+      setCurrentCategoryData(null);
     }
   }, [torrent]);
+
+  useEffect(() => {
+    const loadCategoryData = async () => {
+      if (!torrent?.category) {
+        setCurrentCategoryData(null);
+        return;
+      }
+
+      try {
+        const response = await categoryService.listCategories();
+        const matchedCategory = response.data?.find((item) => item.name === torrent.category) ?? null;
+        setCurrentCategoryData(matchedCategory);
+      } catch (error) {
+        setCurrentCategoryData(null);
+      }
+    };
+
+    loadCategoryData();
+  }, [torrent?.category]);
 
   const copyToClipboard = async (text: string, field: string) => {
     try {
@@ -158,6 +161,12 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
       setTimeout(() => setCopiedField(null), 2000);
     } catch (err) {
       console.error('Failed to copy text: ', err);
+    }
+  };
+
+  const refreshAfterMutation = async () => {
+    if (onUpdate) {
+      await onUpdate();
     }
   };
 
@@ -173,22 +182,30 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
     setIsDeleteModalOpen(false);
   };
 
-  const handleEditName = () => {
+  const handleEditName = async () => {
     if (isEditingName) {
       // Salvar
-      if (onRename && torrent && editedName.trim() !== '') {
-        onRename(torrent.id, editedName);
+      if (torrent && editedName.trim() !== '') {
+        try {
+          await api.put(`/tasks/metadata/${torrent.hash}/name`, {
+            name: editedName.trim()
+          });
+          await refreshAfterMutation();
+          toast.success(t('torrentDetails.toasts.nameUpdateSuccess', { defaultValue: 'Nome atualizado com sucesso' }));
+          setIsEditingName(false);
+        } catch (error) {
+          toast.error(t('torrentDetails.toasts.nameUpdateError', { defaultValue: 'Erro ao atualizar nome' }));
+        }
       }
-      setIsEditingName(false);
     } else {
       // Entrar em modo de edição
-      setEditedName(torrent?.name || '');
+      setEditedName(torrent?.metadata?.name || torrent?.name || '');
       setIsEditingName(true);
     }
   };
 
   const handleCancelEditName = () => {
-    setEditedName(torrent?.name || '');
+    setEditedName(torrent?.metadata?.name || torrent?.name || '');
     setIsEditingName(false);
   };
 
@@ -230,20 +247,16 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
   const handleEditCategory = async () => {
     if (isEditingCategory) {
       // Salvar
-      if (torrent && editedCategoryId.trim() !== '' && torrent.worker?.uuid) {
+      if (torrent && torrent.worker?.uuid) {
         try {
-          await torrentService.updateTaskCategory(torrent.worker.uuid, torrent.id, editedCategoryId);
-          
-          // Update local state
-          setCurrentCategory(editedCategoryId);
-          
-          // Callback opcional para atualizar o estado local
-          if (onUpdateCategory) {
-            onUpdateCategory(torrent.id, editedCategoryId);
+          const response = await torrentService.updateTaskCategory(torrent.worker.uuid, torrent.id, editedCategoryName.trim());
+          if (response.error) {
+            toast.error(response.error);
+            return;
           }
-          
+
+          await refreshAfterMutation();
           toast.success(t('torrentDetails.toasts.categoryUpdateSuccess', { defaultValue: 'Categoria atualizada com sucesso' }));
-          
           setIsEditingCategory(false);
         } catch (error) {
           console.error('Failed to update category:', error);
@@ -252,19 +265,22 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
       }
     } else {
       // Entrar em modo de edição
-      setEditedCategoryId(currentCategory);
+      setEditedCategoryId(currentCategoryData?.id || "");
+      setEditedCategoryName(currentCategory);
       setIsEditingCategory(true);
     }
   };
 
   const handleCancelEditCategory = () => {
-    setEditedCategoryId(currentCategory);
+    setEditedCategoryId(currentCategoryData?.id || "");
+    setEditedCategoryName(currentCategory);
     setIsEditingCategory(false);
   };
 
   const handleCategoryChange = (categoryId: string, category?: Category) => {
     setEditedCategoryId(categoryId);
     if (category) {
+      setEditedCategoryName(category.name);
       setCurrentCategoryData(category);
     }
   };
@@ -275,17 +291,8 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
       if (torrent && torrent.worker?.uuid) {
         try {
           await torrentService.updateTaskTags(torrent.worker.uuid, torrent.id, editedTags);
-          
-          // Update local state
-          setCurrentTags([...editedTags]);
-          
-          // Callback opcional para atualizar o estado local
-          if (onUpdateTags) {
-            onUpdateTags(torrent.id, editedTags);
-          }
-          
+          await refreshAfterMutation();
           toast.success(t('torrentDetails.toasts.tagsUpdateSuccess', { defaultValue: 'Tags atualizadas com sucesso' }));
-          
           setIsEditingTags(false);
         } catch (error) {
           console.error('Failed to update tags:', error);
@@ -583,15 +590,27 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                     autoFocus
                   />
                 ) : (
-                  <span className="text-xs sm:text-sm font-medium break-words flex-1 leading-relaxed">
-                    {truncateText(torrent.name, isMobile ? 40 : 100)}
-                  </span>
+                  <div className="flex-1">
+                    <span className="text-xs sm:text-sm font-medium break-words leading-relaxed">
+                      {truncateText(torrent.metadata?.name || torrent.name, isMobile ? 40 : 100)}
+                      {torrent.metadata?.release_date && (
+                        <span className="text-muted-foreground ml-2">
+                          ({torrent.metadata.release_date})
+                        </span>
+                      )}
+                    </span>
+                    {torrent.metadata?.name && (
+                      <div className="text-[10px] text-muted-foreground mt-1 truncate" title={torrent.name}>
+                        Arquivo: {torrent.name}
+                      </div>
+                    )}
+                  </div>
                 )}
                 {!isEditingName && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => copyToClipboard(torrent.name, 'name')}
+                    onClick={() => copyToClipboard(torrent.metadata?.name || torrent.name, 'name')}
                     className="h-8 w-8 p-0 flex-shrink-0"
                   >
                     {copiedField === 'name' ? (
@@ -609,6 +628,9 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                     size="sm"
                     onClick={handleEditName}
                     className="h-8 w-8 p-0 flex-shrink-0 mt-2 sm:mt-3"
+                    aria-label={isEditingName
+                      ? t('torrentDetails.name.save', { defaultValue: 'Salvar nome' })
+                      : t('torrentDetails.name.edit', { defaultValue: 'Editar nome' })}
                   >
                     {isEditingName ? (
                       <Save className="h-4 w-4" />
@@ -626,6 +648,15 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
             </div>
           </div>
 
+          {/* Descrição */}
+          {torrent.metadata?.description && (
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground">{t('torrentDetails.description.label', { defaultValue: 'Descrição' })}</h3>
+              <div className="p-3 container-content-background/50 rounded-lg border text-sm text-muted-foreground leading-relaxed">
+                {torrent.metadata.description}
+              </div>
+            </div>
+          )}
 
           {/* Informações Gerais */}
           <div className="space-y-4">
@@ -817,6 +848,7 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                             size="sm"
                             onClick={handleEditCategory}
                             className="h-8 px-3"
+                            aria-label={t('torrentDetails.category.save', { defaultValue: 'Salvar' })}
                           >
                             {t('torrentDetails.category.save', { defaultValue: 'Salvar' })}
                           </Button>
@@ -900,6 +932,7 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
                             size="sm"
                             onClick={handleEditTags}
                             className="h-8 px-3"
+                            aria-label={t('torrentDetails.tags.save', { defaultValue: 'Salvar' })}
                           >
                             {t('torrentDetails.tags.save', { defaultValue: 'Salvar' })}
                           </Button>
@@ -1088,6 +1121,7 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
               <TorrentImageEditor
                 taskHash={torrent.hash}
                 taskName={torrent.name}
+                category={currentCategoryData}
                 metadata={torrent.metadata}
                 onUpdate={onUpdate}
               />

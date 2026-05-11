@@ -93,7 +93,6 @@ Gardarr is a **modern, lightweight management and analytics platform for qBittor
 - [📋 Requirements](#-requirements)
 - [🚀 Getting Started](#-getting-started)
   - [Standalone Mode](#-standalone-mode)
-  - [Distributed Worker Mode](#-distributed-worker-mode)
 - [🏗️ Architecture](#-architecture)
 - [🏆 Ratio Grading System](#-ratio-grading-system)
 - [🔌 Integrations & Events](#-integrations--events)
@@ -111,7 +110,7 @@ Gardarr is a **modern, lightweight management and analytics platform for qBittor
 
 ## ✨ Key Features
 
-- **🔌 Multi-Worker Management**: Centralized dashboard to manage multiple qBittorrent instances across different servers.
+- **🔌 Multi-Worker Management**: Centralized dashboard to manage multiple qBittorrent instances across different servers. Each worker represents one direct qBittorrent connection registered in Gardarr.
 - **⚡ Torrent Control**: Full control to add, pause, resume, delete, and prioritize torrents.
 - **📊 Advanced Analytics**:
   - Real-time download/upload speed monitoring.
@@ -160,52 +159,27 @@ docker-compose up -d
 ```
 Access the dashboard at `http://localhost:3200`.
 
-### 🔌 Distributed Worker Mode
-For managing multiple instances.
+### 🔌 Multiple qBittorrent Instances
+For managing multiple instances, deploy a single Gardarr service and register each qBittorrent server directly in the UI using its URL, username, and password.
 
-1. **Generate a worker secret**:
-   
-   The `WORKER_SECRET` secures communication between the main service and remote workers. Generate a secure random key using one of these methods:
-
-   **Option 1: Using OpenSSL**
-   ```bash
-   openssl rand -hex 32
-   ```
-
-   **Option 2: Using Docker**
-   ```bash
-   docker run --rm ghcr.io/jfxdev/gardarr:latest generate key
-   ```
-
-   Copy the generated key and add it to your `.env` file:
-   ```bash
-   WORKER_SECRET=your_generated_secret_here
-   ```
-
-2. **Deploy the main service**:
+1. **Deploy the main service**:
    ```bash
    cp examples/default/docker-compose.yml docker-compose.yml
    docker-compose up -d
    ```
 
-3. **Register workers**:
+2. **Register qBittorrent instances**:
    - Go to the UI → Settings → Workers.
-   - Generate a new worker key.
-   - Deploy a Gardarr worker container on your remote server using the generated key.
+   - Add each qBittorrent server with its direct Web UI URL and credentials.
 
 ## 🏗️ Architecture
 
-Gardarr is designed with flexibility in mind, offering two primary operational modes:
+Gardarr now runs as a single central service that connects directly to one or more qBittorrent Web UI endpoints.
 
-### 1. Standalone Mode (Single Server)
-Ideal for home users with a single media server. The application runs as a single process containing both the **management service** and an **embedded worker**.
-- **Simplicity**: One container to deploy.
-- **Efficiency**: Direct communication with local qBittorrent.
-
-### 2. Distributed Mode (Multi-Server)
-Designed for power users with multiple seedboxes or servers.
-- **Central Service**: The main web application and database.
-- **Remote workers**: Lightweight binaries deployed alongside each qBittorrent instance that communicate securely with the central service.
+### Single Process Architecture
+- **Simplicity**: One deployment, one API process.
+- **Direct connectivity**: Gardarr talks to each registered qBittorrent worker directly, without an intermediate worker process.
+- **Multi-instance support**: Add multiple qBittorrent servers directly from the UI.
 
 ## 🏆 Ratio Grading System
 
@@ -312,7 +286,7 @@ Gardarr is configured via environment variables. Create a `.env` file in the roo
 |----------|-------------|---------|
 | `APP_PORT` | Port for the web interface | `3200` |
 | `APP_URL` | Public URL (CORS, cookies). Origin-only, no trailing slash | `http://localhost:3200` |
-| `APP_MODE` | Set to `standalone` to enable the embedded worker | - |
+| `APP_MODE` | Legacy compatibility flag. Single-process mode is now the default architecture | - |
 | `GIN_MODE` | `debug` or `release` (enables HSTS) | `release` |
 | `LOG_LEVEL` | Log level: `DEBUG`, `INFO`, `WARN`, `ERROR` | `INFO` |
 
@@ -336,18 +310,16 @@ Gardarr is configured via environment variables. Create a `.env` file in the roo
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `ENCRYPTION_KEY` | Key for encrypting sensitive data (worker tokens) | - |
+| `ENCRYPTION_KEY` | Key for encrypting sensitive data (qBittorrent credentials) | - |
 | `CUSTOM_CSP` | Custom Content Security Policy override | Built-in CSP |
 
-### Worker (embedded / remote authentication)
+### Worker Connectivity
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `WORKER_PORT` | Port for the embedded worker service (standalone mode) | `3100` |
-| `WORKER_SECRET` | Shared secret for worker authentication | Auto-generated |
-| `WORKER_TIMEOUT_SECONDS` | HTTP timeout (seconds) when calling workers | `10` |
+| `WORKER_TIMEOUT_SECONDS` | Timeout used when validating and communicating with direct qBittorrent worker connections | `10` |
 
-### qBittorrent (Standalone Mode)
+### qBittorrent
 
 | Variable | Description | Default |
 |----------|-------------|---------|

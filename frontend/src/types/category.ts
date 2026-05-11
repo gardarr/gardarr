@@ -1,10 +1,13 @@
 // Types for communication with the API v1/categories
 
+export type CategoryMetadataSource = "none" | "tgdb" | "tmdb";
+
 export interface Category {
   id: string;
   name: string;
   default_tags: string[];
-  directory: string;
+  default_directory: string;
+  metadata_source: CategoryMetadataSource;
   color?: string;
   icon?: string;
   created_at: string;
@@ -14,14 +17,16 @@ export interface Category {
 export interface CreateCategoryRequest {
   name: string;
   default_tags?: string[];
-  directory: string;
+  default_directory: string;
+  metadata_source?: CategoryMetadataSource;
   color?: string;
   icon?: string;
 }
 
 export interface UpdateCategoryRequest {
   default_tags?: string[];
-  directory?: string;
+  default_directory?: string;
+  metadata_source?: CategoryMetadataSource;
   color?: string;
   icon?: string;
 }
@@ -37,4 +42,3 @@ export interface CategoryResponse {
 export interface CategoryDeleteResponse {
   data: null;
 }
-

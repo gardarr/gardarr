@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"mime/multipart"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -36,24 +37,30 @@ func validateTaskHash(taskHash string) error {
 
 // Service handles task metadata operations
 type Service struct {
-	repo      *task_metadata_repo.Repository
-	db        *database.Database
-	uploadDir string
-	baseURL   string
+	repo             *task_metadata_repo.Repository
+	db               *database.Database
+	uploadDir        string
+	baseURL          string
+	providerRegistry *MetadataProviderRegistry
 }
 
 // NewService creates a new task metadata service
-func NewService(db *database.Database, baseURL, uploadDir string) (*Service, error) {
+func NewService(db *database.Database, baseURL, uploadDir string, providerRegistry *MetadataProviderRegistry) (*Service, error) {
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
 		// Log error but continue
 		return nil, fmt.Errorf("failed to create upload directory: %w", err)
 	}
 
+	if providerRegistry == nil {
+		providerRegistry = NewMetadataProviderRegistry()
+	}
+
 	return &Service{
-		repo:      task_metadata_repo.NewRepository(db),
-		db:        db,
-		uploadDir: uploadDir,
-		baseURL:   baseURL,
+		repo:             task_metadata_repo.NewRepository(db),
+		db:               db,
+		uploadDir:        uploadDir,
+		baseURL:          baseURL,
+		providerRegistry: providerRegistry,
 	}, nil
 }
 
@@ -208,6 +215,39 @@ func (s *Service) UpdateDescription(ctx context.Context, taskHash string, descri
 		Description: description,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
+	}
+
+	if err := s.repo.Create(ctx, metadata); err != nil {
+		return nil, err
+	}
+
+	return s.modelToEntity(metadata), nil
+}
+
+// UpdateName updates the friendly name of task metadata
+func (s *Service) UpdateName(ctx context.Context, taskHash string, name string) (*entities.TaskMetadata, error) {
+	existing, err := s.repo.GetByTaskHash(ctx, taskHash)
+	if err != nil {
+		return nil, err
+	}
+
+	if existing != nil {
+		// Update existing metadata
+		existing.Name = name
+		existing.UpdatedAt = time.Now()
+		if err := s.repo.Update(ctx, existing); err != nil {
+			return nil, err
+		}
+		return s.modelToEntity(existing), nil
+	}
+
+	// Create new metadata with name only
+	metadata := &models.TaskMetadata{
+		UUID:      uuid.New(),
+		TaskHash:  taskHash,
+		Name:      name,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 
 	if err := s.repo.Create(ctx, metadata); err != nil {
@@ -702,6 +742,8 @@ func (s *Service) modelToEntity(model *models.TaskMetadata) *entities.TaskMetada
 		UUID:           model.UUID,
 		TaskHash:       model.TaskHash,
 		ImagePath:      model.ImagePath,
+		Name:           model.Name,
+		ReleaseDate:    model.ReleaseDate,
 		Description:    model.Description,
 		ImagePositionY: model.ImagePositionY,
 		ImageOpacity:   model.ImageOpacity,
@@ -717,4 +759,132 @@ func (s *Service) modelToEntity(model *models.TaskMetadata) *entities.TaskMetada
 	}
 
 	return entity
+}
+
+func (s *Service) GetProviderStatus(ctx context.Context, providerName string) (*MetadataProviderStatus, error) {
+	provider, ok := s.providerRegistry.Get(providerName)
+	if !ok {
+		return nil, fmt.Errorf("provider not found")
+	}
+
+	return provider.Status(ctx)
+}
+
+func (s *Service) SearchProvider(ctx context.Context, providerName string, query string) ([]MetadataProviderSearchResult, error) {
+	provider, ok := s.providerRegistry.Get(providerName)
+	if !ok {
+		return nil, fmt.Errorf("provider not found")
+	}
+
+	return provider.Search(ctx, query)
+}
+
+// ApplyExternalMetadata applies metadata and downloads an image from a URL.
+func (s *Service) ApplyExternalMetadata(ctx context.Context, providerName string, taskHash string, name string, releaseDate string, description string, imageURL string) (*entities.TaskMetadata, error) {
+	if _, ok := s.providerRegistry.Get(providerName); !ok {
+		return nil, fmt.Errorf("provider not found")
+	}
+
+	if err := validateTaskHash(taskHash); err != nil {
+		return nil, fmt.Errorf("invalid task_hash: %w", err)
+	}
+
+	var filePath string
+	if imageURL != "" {
+		// Download image
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, imageURL, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create image request: %w", err)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("failed to download image: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("failed to download image, status code: %d", resp.StatusCode)
+		}
+
+		// Use the last part of the URL as extension or default to .jpg
+		parts := strings.Split(imageURL, "/")
+		lastPart := parts[len(parts)-1]
+		ext := filepath.Ext(lastPart)
+		if ext == "" {
+			ext = ".jpg"
+		}
+
+		filename := fmt.Sprintf("%s_tgdb_%s%s", taskHash, time.Now().Format("20060102150405"), ext)
+		filePath = filepath.Join(s.uploadDir, filename)
+
+		absFilePath, err := filepath.Abs(filePath)
+		if err != nil {
+			return nil, err
+		}
+
+		dst, err := os.Create(absFilePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create image file: %w", err)
+		}
+		defer dst.Close()
+
+		if _, err := io.Copy(dst, resp.Body); err != nil {
+			os.Remove(absFilePath)
+			return nil, fmt.Errorf("failed to save image: %w", err)
+		}
+	}
+
+	existing, err := s.repo.GetByTaskHash(ctx, taskHash)
+	if err != nil {
+		if filePath != "" {
+			os.Remove(filePath)
+		}
+		return nil, err
+	}
+
+	if existing != nil {
+		existing.Name = name
+		existing.ReleaseDate = releaseDate
+		if description != "" {
+			existing.Description = description
+		}
+		if filePath != "" {
+			// Delete old image if exists
+			if existing.ImagePath != "" {
+				if err := s.validateImagePath(existing.ImagePath); err == nil {
+					os.Remove(existing.ImagePath)
+				}
+			}
+			existing.ImagePath = filePath
+		}
+		existing.UpdatedAt = time.Now()
+
+		if err := s.repo.Update(ctx, existing); err != nil {
+			if filePath != "" {
+				os.Remove(filePath)
+			}
+			return nil, err
+		}
+		return s.modelToEntity(existing), nil
+	}
+
+	metadata := &models.TaskMetadata{
+		UUID:        uuid.New(),
+		TaskHash:    taskHash,
+		Name:        name,
+		ReleaseDate: releaseDate,
+		Description: description,
+		ImagePath:   filePath,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+
+	if err := s.repo.Create(ctx, metadata); err != nil {
+		if filePath != "" {
+			os.Remove(filePath)
+		}
+		return nil, err
+	}
+
+	return s.modelToEntity(metadata), nil
 }

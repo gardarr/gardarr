@@ -15,9 +15,10 @@ func TestRepositoryCreateCategory(t *testing.T) {
 	ctx := context.Background()
 
 	category := entities.Category{
-		Name:        "Movies",
-		DefaultTags: []string{"hd", "english"},
-		Directory:   "/movies",
+		Name:             "Movies",
+		DefaultTags:      []string{"hd", "english"},
+		DefaultDirectory: "/movies",
+		MetadataSource:   "none",
 	}
 
 	created, err := repo.CreateCategory(ctx, category)
@@ -42,8 +43,8 @@ func TestRepositoryCreateCategory(t *testing.T) {
 		t.Errorf("Expected %d tags, got %d", len(category.DefaultTags), len(created.DefaultTags))
 	}
 
-	if created.Directory != category.Directory {
-		t.Errorf("Expected directory %s, got %s", category.Directory, created.Directory)
+	if created.DefaultDirectory != category.DefaultDirectory {
+		t.Errorf("Expected default directory %s, got %s", category.DefaultDirectory, created.DefaultDirectory)
 	}
 }
 
@@ -53,9 +54,10 @@ func TestRepositoryCreateCategoryDuplicate(t *testing.T) {
 	ctx := context.Background()
 
 	category := entities.Category{
-		Name:        "Series",
-		DefaultTags: []string{"hd"},
-		Directory:   "/series",
+		Name:             "Series",
+		DefaultTags:      []string{"hd"},
+		DefaultDirectory: "/series",
+		MetadataSource:   "none",
 	}
 
 	// Create first category
@@ -88,9 +90,9 @@ func TestRepositoryListCategories(t *testing.T) {
 
 	// Create test categories
 	testCategories := []entities.Category{
-		{Name: "Movies", DefaultTags: []string{"hd"}, Directory: "/movies"},
-		{Name: "Series", DefaultTags: []string{"hd"}, Directory: "/series"},
-		{Name: "Music", DefaultTags: []string{"flac"}, Directory: "/music"},
+		{Name: "Movies", DefaultTags: []string{"hd"}, DefaultDirectory: "/movies", MetadataSource: "none"},
+		{Name: "Series", DefaultTags: []string{"hd"}, DefaultDirectory: "/series", MetadataSource: "none"},
+		{Name: "Music", DefaultTags: []string{"flac"}, DefaultDirectory: "/music", MetadataSource: "none"},
 	}
 
 	for _, cat := range testCategories {
@@ -118,9 +120,10 @@ func TestRepositoryGetCategoryByID(t *testing.T) {
 
 	// Create a category
 	category := entities.Category{
-		Name:        "Books",
-		DefaultTags: []string{"epub", "pdf"},
-		Directory:   "/books",
+		Name:             "Books",
+		DefaultTags:      []string{"epub", "pdf"},
+		DefaultDirectory: "/books",
+		MetadataSource:   "none",
 	}
 
 	created, err := repo.CreateCategory(ctx, category)
@@ -156,9 +159,10 @@ func TestRepositoryGetCategoryByName(t *testing.T) {
 
 	// Create a category
 	category := entities.Category{
-		Name:        "Games",
-		DefaultTags: []string{"pc", "console"},
-		Directory:   "/games",
+		Name:             "Games",
+		DefaultTags:      []string{"pc", "console"},
+		DefaultDirectory: "/games",
+		MetadataSource:   "none",
 	}
 
 	created, err := repo.CreateCategory(ctx, category)
@@ -194,11 +198,12 @@ func TestRepositoryUpdateCategory(t *testing.T) {
 
 	// Create a category
 	category := entities.Category{
-		Name:        "Software",
-		DefaultTags: []string{"linux"},
-		Directory:   "/software",
-		Color:       "#FF0000",
-		Icon:        "code",
+		Name:             "Software",
+		DefaultTags:      []string{"linux"},
+		DefaultDirectory: "/software",
+		MetadataSource:   "none",
+		Color:            "#FF0000",
+		Icon:             "code",
 	}
 
 	created, err := repo.CreateCategory(ctx, category)
@@ -208,7 +213,7 @@ func TestRepositoryUpdateCategory(t *testing.T) {
 
 	// Update the category (only mutable fields)
 	created.DefaultTags = []string{"linux", "windows"}
-	created.Directory = "/apps"
+	created.DefaultDirectory = "/apps"
 	created.Color = "#00FF00"
 	created.Icon = "terminal"
 
@@ -227,8 +232,8 @@ func TestRepositoryUpdateCategory(t *testing.T) {
 		t.Errorf("Expected 2 tags, got %d", len(updated.DefaultTags))
 	}
 
-	if updated.Directory != "/apps" {
-		t.Errorf("Expected directory '/apps', got %s", updated.Directory)
+	if updated.DefaultDirectory != "/apps" {
+		t.Errorf("Expected default directory '/apps', got %s", updated.DefaultDirectory)
 	}
 
 	if updated.Color != "#00FF00" {
@@ -257,9 +262,10 @@ func TestRepositoryDeleteCategory(t *testing.T) {
 
 	// Create a category
 	category := entities.Category{
-		Name:        "Documents",
-		DefaultTags: []string{"pdf"},
-		Directory:   "/docs",
+		Name:             "Documents",
+		DefaultTags:      []string{"pdf"},
+		DefaultDirectory: "/docs",
+		MetadataSource:   "none",
 	}
 
 	created, err := repo.CreateCategory(ctx, category)
@@ -288,10 +294,11 @@ func TestRepositoryDeleteCategory(t *testing.T) {
 
 func TestRepositoryToCategoryConversion(t *testing.T) {
 	model := models.Category{
-		ID:          "test-id",
-		Name:        "Test Category",
-		DefaultTags: models.StringArray{"tag1", "tag2"},
-		Directory:   "/test/path",
+		ID:               "test-id",
+		Name:             "Test Category",
+		DefaultTags:      models.StringArray{"tag1", "tag2"},
+		DefaultDirectory: "/test/path",
+		MetadataSource:   "none",
 	}
 
 	entity := toCategory(model)
@@ -308,7 +315,7 @@ func TestRepositoryToCategoryConversion(t *testing.T) {
 		t.Errorf("Expected %d tags, got %d", len(model.DefaultTags), len(entity.DefaultTags))
 	}
 
-	if entity.Directory != model.Directory {
-		t.Errorf("Expected directory %s, got %s", model.Directory, entity.Directory)
+	if entity.DefaultDirectory != model.DefaultDirectory {
+		t.Errorf("Expected default directory %s, got %s", model.DefaultDirectory, entity.DefaultDirectory)
 	}
 }
