@@ -61,10 +61,14 @@ export function TGDBSearch({ taskHash, initialQuery, onSelect, onCancel }: TGDBS
     setApplyingGameId(game.id);
     try {
       const response = await api.post<TGDBAppliedMetadata>(`/tasks/metadata/${taskHash}/providers/tgdb`, {
-        id: game.id
+        id: game.id,
+        title: game.title,
+        release_date: game.release_date,
+        description: game.description,
+        image_url: game.image_url,
       });
-      if (!response.data) {
-        toast.error(t("tgdb.errors.applyFailed"));
+      if (response.error || !response.data) {
+        toast.error(response.error || t("tgdb.errors.applyFailed"));
         return;
       }
 

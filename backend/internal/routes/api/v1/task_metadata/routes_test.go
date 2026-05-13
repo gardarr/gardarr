@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -149,5 +150,35 @@ func TestApplyProviderRouteReturnsNotFoundForUnknownSelection(t *testing.T) {
 
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("expected status %d, got %d", http.StatusNotFound, w.Code)
+	}
+}
+
+func TestApplyProviderRouteFallsBackToProvidedSelectionOnResolveError(t *testing.T) {
+	router := setupTaskMetadataApplyRouter(t, routeMockProvider{
+		resolveErr: fmt.Errorf("unexpected status code: 404"),
+	})
+
+	w := sendTaskMetadataJSONRequest(t, router, http.MethodPost, "/api/v1/tasks/metadata/task-123/providers/tgdb", map[string]string{
+		"id":           "123",
+		"title":        "Fallback Game",
+		"release_date": "2024-01-01",
+		"description":  "Overview",
+		"image_url":    "",
+	})
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var response models.TaskMetadataResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+		t.Fatalf("failed to unmarshal response: %v", err)
+	}
+
+	if response.TaskHash != "task-123" || response.Name != "Fallback Game" {
+		t.Fatalf("unexpected response: %#v", response)
+	}
+	if response.Warning == "" || response.WarningReason == "" {
+		t.Fatalf("expected warning fields to be set, got %#v", response)
 	}
 }

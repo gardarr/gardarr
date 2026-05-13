@@ -56,7 +56,7 @@ describe("TGDBSearch", () => {
     expect(screen.getByRole("button", { name: "Execute search" })).toBeInTheDocument();
   });
 
-  it("posts only the selected TGDB id when applying metadata", async () => {
+  it("posts the selected TGDB id with fallback metadata when applying", async () => {
     vi.mocked(api.get).mockResolvedValueOnce({
       data: [
         {
@@ -98,16 +98,10 @@ describe("TGDBSearch", () => {
     await waitFor(() =>
       expect(api.post).toHaveBeenCalledWith("/tasks/metadata/task-1/providers/tgdb", {
         id: "123",
-      })
-    );
-    expect(api.post).toHaveBeenCalledWith("/tasks/metadata/task-1/providers/tgdb", { id: "123" });
-    expect(api.post).not.toHaveBeenCalledWith(
-      "/tasks/metadata/task-1/providers/tgdb",
-      expect.objectContaining({
-        image_url: expect.anything(),
-        name: expect.anything(),
-        release_date: expect.anything(),
-        description: expect.anything(),
+        title: "Test Game",
+        release_date: "2024-01-01",
+        description: "Overview",
+        image_url: "https://cdn.thegamesdb.net/images/large/front.jpg",
       })
     );
   });

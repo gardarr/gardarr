@@ -9,6 +9,7 @@ import { useTorrentOpenHandler } from "./hooks";
 import {
   TorrentContextMenuWrapper,
   TorrentDisplayName,
+  TorrentMetadataHoverCard,
   TorrentProgressBar,
   TorrentSelectionCheckbox,
   TorrentSpeedStat,
@@ -49,59 +50,61 @@ function TorrentRow({ torrent, actions, selection, selected, compact }: {
 
   return (
     <TorrentContextMenuWrapper torrent={torrent} actions={actions} selection={selection}>
-      <tr
-        className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
-        onClick={handleRowClick}
-      >
-        {selection.selectionMode && (
-          <td className={`px-3 ${pyClass}`}>
-            <TorrentSelectionCheckbox
-              torrentId={torrent.id}
-              selected={selected}
-              compact={compact}
-              onToggleSelect={selection.onToggleSelect}
+      <TorrentMetadataHoverCard torrent={torrent}>
+        <tr
+          className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
+          onClick={handleRowClick}
+        >
+          {selection.selectionMode && (
+            <td className={`px-3 ${pyClass}`}>
+              <TorrentSelectionCheckbox
+                torrentId={torrent.id}
+                selected={selected}
+                compact={compact}
+                onToggleSelect={selection.onToggleSelect}
+              />
+            </td>
+          )}
+          <td className={`px-4 ${pyClass}`}>
+            <div className="flex items-center gap-2">
+              <StatusBadge
+                status={torrent.status}
+                size={compact ? "sm" : "md"}
+              />
+              <TorrentDisplayName torrent={torrent} />
+            </div>
+          </td>
+          <td className={`px-4 ${pyClass} text-xs text-muted-foreground`}>
+            {formatBytes(torrent.totalSizeBytes)}
+          </td>
+          <td className={cellClass}>
+            <TorrentProgressBar progress={torrent.progress} compact={compact} />
+          </td>
+          <td className={cellClass}>
+            <TorrentSpeedStat rate={torrent.downloadRateBps} total={torrent.downloadedBytes} direction="download" compact={compact} />
+          </td>
+          <td className={cellClass}>
+            <TorrentSpeedStat rate={torrent.uploadRateBps} total={torrent.uploadedBytes} direction="upload" compact={compact} />
+          </td>
+          <td className={cellClass}>
+            <RatioBadge ratio={torrent.ratio} showIcon={false} />
+          </td>
+          <td className={`px-2 ${pyClass} ${textSizeClass} w-20`}>
+            <SeedersAndPeersBadge
+              seeders={torrent.numSeeds}
+              leechers={torrent.numLeechs}
             />
           </td>
-        )}
-        <td className={`px-4 ${pyClass}`}>
-          <div className="flex items-center gap-2">
-            <StatusBadge
-              status={torrent.status}
+          <td className={cellClass}>
+            <TorrentWorkerBadge
+              torrent={torrent}
               size={compact ? "sm" : "md"}
+              className="flex items-center justify-center"
+              empty={<span className={`${compact ? 'text-xs' : ''} text-muted-foreground`}>-</span>}
             />
-            <TorrentDisplayName torrent={torrent} />
-          </div>
-        </td>
-        <td className={`px-4 ${pyClass} text-xs text-muted-foreground`}>
-          {formatBytes(torrent.totalSizeBytes)}
-        </td>
-        <td className={cellClass}>
-          <TorrentProgressBar progress={torrent.progress} compact={compact} />
-        </td>
-        <td className={cellClass}>
-          <TorrentSpeedStat rate={torrent.downloadRateBps} total={torrent.downloadedBytes} direction="download" compact={compact} />
-        </td>
-        <td className={cellClass}>
-          <TorrentSpeedStat rate={torrent.uploadRateBps} total={torrent.uploadedBytes} direction="upload" compact={compact} />
-        </td>
-        <td className={cellClass}>
-          <RatioBadge ratio={torrent.ratio} showIcon={false} />
-        </td>
-        <td className={`px-2 ${pyClass} ${textSizeClass} w-20`}>
-          <SeedersAndPeersBadge
-            seeders={torrent.numSeeds}
-            leechers={torrent.numLeechs}
-          />
-        </td>
-        <td className={cellClass}>
-          <TorrentWorkerBadge
-            torrent={torrent}
-            size={compact ? "sm" : "md"}
-            className="flex items-center justify-center"
-            empty={<span className={`${compact ? 'text-xs' : ''} text-muted-foreground`}>-</span>}
-          />
-        </td>
-      </tr>
+          </td>
+        </tr>
+      </TorrentMetadataHoverCard>
     </TorrentContextMenuWrapper>
   );
 }

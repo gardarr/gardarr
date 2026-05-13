@@ -33,6 +33,7 @@ export type TorrentListItem = {
   workerIcon?: string;
   workerColor?: string;
   category: string;
+  canSearchMetadata: boolean;
   tags: string[];
   metadata?: TaskMetadata | null;
 };

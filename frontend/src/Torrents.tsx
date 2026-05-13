@@ -64,8 +64,17 @@ const getSortTypeKey = (type: string): string => {
 
 type Torrent = TorrentListItem;
 
+const canCategorySearchMetadata = (categoryName: string, categories: Category[]): boolean => {
+  if (!categoryName) {
+    return false;
+  }
+
+  const category = categories.find((item) => item.name === categoryName);
+  return Boolean(category && category.metadata_source !== "none");
+};
+
 // Função para mapear Task (backend) para Torrent (frontend)
-function mapTaskToTorrent(task: Task): Torrent {
+function mapTaskToTorrent(task: Task, categories: Category[]): Torrent {
   // Mapear status do backend (já convertido para uppercase pelo mapeamento TaskStatuses)
   const mapStatus = (state: string): TorrentStatus => {
     // O backend já converte os status do qBittorrent para uppercase através do mapeamento TaskStatuses
@@ -94,6 +103,7 @@ function mapTaskToTorrent(task: Task): Torrent {
     workerIcon: task.worker?.icon,
     workerColor: task.worker?.color,
     category: task.category || "",
+    canSearchMetadata: canCategorySearchMetadata(task.category || "", categories),
     tags: task.tags || [],
     metadata: task.metadata,
   };
@@ -239,6 +249,9 @@ export default function TorrentsPage() {
   const categoryControls = useFilterControls(selectedCategories, setSelectedCategories, availableCategories);
   const tagControls = useFilterControls(selectedTags, setSelectedTags, availableTags);
   const gradeControls = useFilterControls(selectedGrades, setSelectedGrades, availableGrades);
+  const mapTasksToTorrents = useCallback((tasks: Task[]) => {
+    return tasks.map((task) => mapTaskToTorrent(task, categories));
+  }, [categories]);
 
   // Carregar torrents da API
   const loadTorrents = useCallback(async () => {
@@ -293,14 +306,14 @@ export default function TorrentsPage() {
       }
 
       setOriginalTasks(allTasks);
-      const mappedTorrents = allTasks.map(mapTaskToTorrent);
+      const mappedTorrents = mapTasksToTorrents(allTasks);
       setTorrents(mappedTorrents);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('torrents.error'));
     } finally {
       setInitialLoadComplete(true);
     }
-  }, [t, workers]);
+  }, [mapTasksToTorrents, t, workers]);
 
   // Atualização silenciosa para não afetar UI (sem spinner)
   const refreshTorrentsSilently = useCallback(async (): Promise<Task[]> => {
@@ -335,14 +348,14 @@ export default function TorrentsPage() {
       );
 
       setOriginalTasks(allTasks);
-      const mappedTorrents = allTasks.map(mapTaskToTorrent);
+      const mappedTorrents = mapTasksToTorrents(allTasks);
       setTorrents(mappedTorrents);
       return allTasks;
     } catch {
       // silencioso
       return [];
     }
-  }, [workers]);
+  }, [mapTasksToTorrents, workers]);
 
   // Carregar workers da API
   const loadWorkers = useCallback(async () => {
@@ -700,6 +713,10 @@ export default function TorrentsPage() {
       setLastNonEmptyTorrents(torrents);
     }
   }, [torrents]);
+
+  useEffect(() => {
+    setTorrents(mapTasksToTorrents(originalTasks));
+  }, [mapTasksToTorrents, originalTasks]);
 
   // Carregar torrents quando workers mudarem (para detectar mudanças de status)
   useEffect(() => {

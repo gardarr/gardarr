@@ -20,6 +20,7 @@ type TorrentContextMenuProps = {
   onForceReannounce?: (taskId: string) => void;
   onForceRecheck?: (taskId: string) => void;
   onSearchMetadata?: (taskId: string) => void;
+  canSearchMetadata?: boolean;
   onLimits?: (taskId: string, workerId?: string) => void;
   onShowDetails?: (taskId: string) => void;
   selectionMode?: boolean;
@@ -29,7 +30,7 @@ type TorrentContextMenuProps = {
 
 export default function TorrentContextMenu(props: TorrentContextMenuProps) {
   const { t } = useTranslation();
-  const { taskId, workerId, children, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onSearchMetadata, onLimits, onShowDetails, selectionMode, selectedIds, onRequestDelete } = props;
+  const { taskId, workerId, children, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onSearchMetadata, canSearchMetadata, onLimits, onShowDetails, selectionMode, selectedIds, onRequestDelete } = props;
 
   const [isMenuReady, setIsMenuReady] = React.useState(false);
 
@@ -110,10 +111,10 @@ export default function TorrentContextMenu(props: TorrentContextMenuProps) {
     if (!isMenuReady) { e.preventDefault(); e.stopPropagation(); return; }
     e.preventDefault();
     e.stopPropagation();
-    if (onSearchMetadata) {
+    if (onSearchMetadata && canSearchMetadata) {
       onSearchMetadata(taskId);
     }
-  }, [isMenuReady, onSearchMetadata, taskId]);
+  }, [canSearchMetadata, isMenuReady, onSearchMetadata, taskId]);
 
   const handleShowDetails = React.useCallback((e: React.MouseEvent) => {
     if (!isMenuReady) { e.preventDefault(); e.stopPropagation(); return; }
@@ -166,7 +167,7 @@ export default function TorrentContextMenu(props: TorrentContextMenuProps) {
           <CheckCircle />
           {t("torrents.forceRecheck")}
         </ContextMenuItem>
-        <ContextMenuItem onClick={handleSearchMetadata} disabled={!onSearchMetadata}>
+        <ContextMenuItem onClick={handleSearchMetadata} disabled={!onSearchMetadata || !canSearchMetadata}>
           <Search />
           {t("torrents.addModal.metadata.searchButton")}
         </ContextMenuItem>
@@ -182,4 +183,3 @@ export default function TorrentContextMenu(props: TorrentContextMenuProps) {
     </ContextMenu>
   );
 }
-

@@ -626,17 +626,17 @@ func TestApplyProviderSelectionAcceptsTrustedProviderImage(t *testing.T) {
 	if err != nil {
 		t.Fatalf(unexpectedErrFmt, err)
 	}
-	if result == nil || result.ImagePath == "" {
+	if result == nil || result.Metadata == nil || result.Metadata.ImagePath == "" {
 		t.Fatal("expected image path to be set")
 	}
-	if _, err := os.Stat(result.ImagePath); err != nil {
+	if _, err := os.Stat(result.Metadata.ImagePath); err != nil {
 		t.Fatalf("expected downloaded image to exist: %v", err)
 	}
-	if !strings.HasPrefix(result.ImagePath, uploadDir) {
-		t.Fatalf("expected image path under upload dir, got %s", result.ImagePath)
+	if !strings.HasPrefix(result.Metadata.ImagePath, uploadDir) {
+		t.Fatalf("expected image path under upload dir, got %s", result.Metadata.ImagePath)
 	}
-	if filepath.Ext(result.ImagePath) != ".png" {
-		t.Fatalf("expected detected .png extension to be used, got %s", result.ImagePath)
+	if filepath.Ext(result.Metadata.ImagePath) != ".png" {
+		t.Fatalf("expected detected .png extension to be used, got %s", result.Metadata.ImagePath)
 	}
 }
 
@@ -661,13 +661,13 @@ func TestApplyProviderSelectionDeletesOldImageAfterSuccessfulUpdate(t *testing.T
 	if err != nil {
 		t.Fatalf(unexpectedErrFmt, err)
 	}
-	if result == nil || result.ImagePath == "" {
+	if result == nil || result.Metadata == nil || result.Metadata.ImagePath == "" {
 		t.Fatal("expected updated metadata with image path")
 	}
-	if result.ImagePath == oldImagePath {
+	if result.Metadata.ImagePath == oldImagePath {
 		t.Fatal("expected a newly downloaded image path")
 	}
-	if _, err := os.Stat(result.ImagePath); err != nil {
+	if _, err := os.Stat(result.Metadata.ImagePath); err != nil {
 		t.Fatalf("expected new image to exist: %v", err)
 	}
 	if _, err := os.Stat(oldImagePath); !os.IsNotExist(err) {
@@ -678,7 +678,7 @@ func TestApplyProviderSelectionDeletesOldImageAfterSuccessfulUpdate(t *testing.T
 	if err != nil {
 		t.Fatalf(unexpectedErrFmt, err)
 	}
-	if stored == nil || stored.ImagePath != result.ImagePath {
+	if stored == nil || stored.ImagePath != result.Metadata.ImagePath {
 		t.Fatal("expected database to reference the new image path")
 	}
 }
@@ -740,18 +740,24 @@ func TestApplyProviderSelectionRemovesNewImageWhenUpdateFails(t *testing.T) {
 	}
 }
 
-func TestApplyProviderSelectionRejectsOversizedImage(t *testing.T) {
+func TestApplyProviderSelectionSkipsOversizedImage(t *testing.T) {
 	oversizedBody := append(testPNGBytes(), bytes.Repeat([]byte("a"), MaxFileSize)...)
 	svc, uploadDir := setupMockedProviderService(t, "https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg", oversizedBody, "image/png")
 
-	_, err := svc.ApplyProviderSelection(
+	result, err := svc.ApplyProviderSelection(
 		context.Background(),
 		"tgdb",
 		"task123",
 		"123",
 	)
-	if err == nil || !strings.Contains(err.Error(), "image size exceeds maximum allowed size") {
-		t.Fatalf("expected oversized image rejection, got %v", err)
+	if err != nil {
+		t.Fatalf(unexpectedErrFmt, err)
+	}
+	if result == nil || result.Metadata == nil || result.Metadata.ImagePath != "" {
+		t.Fatalf("expected metadata without image when oversized image is skipped, got %#v", result)
+	}
+	if result.WarningReason == "" {
+		t.Fatalf("expected warning reason for oversized image, got %#v", result)
 	}
 
 	entries, readErr := os.ReadDir(uploadDir)
@@ -763,17 +769,23 @@ func TestApplyProviderSelectionRejectsOversizedImage(t *testing.T) {
 	}
 }
 
-func TestApplyProviderSelectionRejectsNonImageContent(t *testing.T) {
+func TestApplyProviderSelectionSkipsNonImageContent(t *testing.T) {
 	svc, uploadDir := setupMockedProviderService(t, "https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg", []byte("not-an-image"), "text/plain")
 
-	_, err := svc.ApplyProviderSelection(
+	result, err := svc.ApplyProviderSelection(
 		context.Background(),
 		"tgdb",
 		"task123",
 		"123",
 	)
-	if err == nil || !strings.Contains(err.Error(), "invalid image content type") {
-		t.Fatalf("expected non-image rejection, got %v", err)
+	if err != nil {
+		t.Fatalf(unexpectedErrFmt, err)
+	}
+	if result == nil || result.Metadata == nil || result.Metadata.ImagePath != "" {
+		t.Fatalf("expected metadata without image when invalid image content is skipped, got %#v", result)
+	}
+	if result.WarningReason == "" {
+		t.Fatalf("expected warning reason for invalid image content, got %#v", result)
 	}
 
 	entries, readErr := os.ReadDir(uploadDir)
@@ -782,6 +794,63 @@ func TestApplyProviderSelectionRejectsNonImageContent(t *testing.T) {
 	}
 	if len(entries) != 0 {
 		t.Fatalf("expected no files to be written for invalid image, found %d", len(entries))
+	}
+}
+
+func TestApplyProviderSelectionSkipsImageWhenDownloadReturns404(t *testing.T) {
+	svc, uploadDir := setupTestService(t)
+	svc.providerRegistry = NewMetadataProviderRegistry(mockMetadataProvider{
+		name:              "tgdb",
+		allowedImageHosts: []string{"cdn.thegamesdb.net"},
+		selection: &MetadataProviderSelection{
+			ID:          "123",
+			Title:       "My Game",
+			ReleaseDate: "2024-01-01",
+			Description: "description",
+			ImageURL:    "https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg",
+		},
+	})
+	svc.lookupIPAddr = func(context.Context, string) ([]net.IPAddr, error) {
+		return []net.IPAddr{{IP: net.ParseIP("203.0.113.10")}}, nil
+	}
+	svc.httpClient = &http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusNotFound,
+				Body:       io.NopCloser(bytes.NewReader(nil)),
+				Header:     http.Header{"Content-Type": []string{"text/plain"}},
+			}, nil
+		}),
+	}
+
+	result, err := svc.ApplyProviderSelection(
+		context.Background(),
+		"tgdb",
+		"task123",
+		"123",
+	)
+	if err != nil {
+		t.Fatalf(unexpectedErrFmt, err)
+	}
+	if result == nil || result.Metadata == nil {
+		t.Fatal("expected metadata result")
+	}
+	if result.Metadata.Name != "My Game" {
+		t.Fatalf("expected metadata name to be saved, got %q", result.Metadata.Name)
+	}
+	if result.Metadata.ImagePath != "" {
+		t.Fatalf("expected image path to be empty when download fails, got %q", result.Metadata.ImagePath)
+	}
+	if result.WarningReason == "" {
+		t.Fatalf("expected warning reason when image download fails, got %#v", result)
+	}
+
+	entries, readErr := os.ReadDir(uploadDir)
+	if readErr != nil {
+		t.Fatalf("failed to read upload dir: %v", readErr)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("expected no image files to be created, found %d", len(entries))
 	}
 }
 
@@ -797,8 +866,8 @@ func TestApplyProviderSelectionUsesDetectedExtensionWhenURLHasNoValidImageExt(t 
 	if err != nil {
 		t.Fatalf(unexpectedErrFmt, err)
 	}
-	if filepath.Ext(result.ImagePath) != ".png" {
-		t.Fatalf("expected detected .png extension, got %s", result.ImagePath)
+	if filepath.Ext(result.Metadata.ImagePath) != ".png" {
+		t.Fatalf("expected detected .png extension, got %s", result.Metadata.ImagePath)
 	}
 }
 
