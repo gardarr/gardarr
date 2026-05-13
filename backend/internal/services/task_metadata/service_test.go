@@ -48,14 +48,24 @@ func createTestFile(t *testing.T, dir, name, content string) string {
 // seedWorker inserts a worker into the DB and returns its UUID string.
 func seedWorker(t *testing.T, svc *Service, name string) string {
 	t.Helper()
-	workerUUID := uuid.New().String()
-	if err := svc.db.DB.Exec(
-		"INSERT INTO workers (uuid, name, type, address, encrypeted_token, icon, color, created_at, updated_at) VALUES (?, ?, 'qbt', 'http://test', 'tok', '', '', ?, ?)",
-		workerUUID, name, time.Now(), time.Now(),
-	).Error; err != nil {
+	workerUUID := uuid.New()
+	worker := &models.Worker{
+		UUID:                         workerUUID,
+		Name:                         name,
+		Type:                         "qbt",
+		Address:                      "http://test",
+		EncryptedQBittorrentURL:      "tok",
+		EncryptedQBittorrentUsername: "",
+		EncryptedQBittorrentPassword: "",
+		Icon:                         "",
+		Color:                        "",
+		CreatedAt:                    time.Now(),
+		UpdatedAt:                    time.Now(),
+	}
+	if err := svc.db.DB.Create(worker).Error; err != nil {
 		t.Fatalf("seed worker failed: %v", err)
 	}
-	return workerUUID
+	return workerUUID.String()
 }
 
 // seedTaskState inserts a task_state row linking a hash to a worker.

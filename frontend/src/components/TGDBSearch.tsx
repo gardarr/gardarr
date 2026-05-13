@@ -15,7 +15,7 @@ interface TGDBGameResult {
   image_url?: string;
 }
 
-interface TGDBAppliedMetadata extends TaskMetadata {}
+type TGDBAppliedMetadata = TaskMetadata;
 
 interface TGDBSearchProps {
   taskHash: string;

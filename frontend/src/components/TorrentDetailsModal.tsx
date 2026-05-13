@@ -210,7 +210,7 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
           await refreshAfterMutation();
           toast.success(t('torrentDetails.toasts.nameUpdateSuccess', { defaultValue: 'Nome atualizado com sucesso' }));
           setIsEditingName(false);
-        } catch (error) {
+        } catch {
           toast.error(t('torrentDetails.toasts.nameUpdateError', { defaultValue: 'Erro ao atualizar nome' }));
         }
       }

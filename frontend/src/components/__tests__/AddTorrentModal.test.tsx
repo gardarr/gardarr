@@ -8,7 +8,6 @@ import type {
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AddTorrentModal } from "@/components/AddTorrentModal";
-import type { Task } from "@/types/torrent";
 import type { Worker } from "@/types/worker";
 
 vi.mock("react-i18next", () => ({
@@ -153,7 +152,7 @@ describe("AddTorrentModal", () => {
     const onCreateTorrent = vi.fn(async () => {
       throw new Error("should not submit");
     });
-    const onFinalizeTorrent = vi.fn(async (_task: Task) => {});
+    const onFinalizeTorrent = vi.fn(async () => {});
 
     const { rerender } = render(
       <AddTorrentModal
