@@ -1,8 +1,0 @@
-./category.go
-./instance.go
-./register.go
-./settings.go
-./source.go
-./task.go
-./user.go
-./webhook.go
