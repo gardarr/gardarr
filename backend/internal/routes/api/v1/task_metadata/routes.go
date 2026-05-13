@@ -206,8 +206,9 @@ func (m *Module) updateTaskName(c *gin.Context) {
 	// Update name
 	metadata, err := m.service.UpdateName(c.Request.Context(), taskHash, body.Name)
 	if err != nil {
+		slog.Error("failed to update task name", "error", err, "task_hash", taskHash)
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
+			"error": "unable to update task name",
 		})
 		return
 	}
@@ -389,7 +390,11 @@ func (m *Module) providerStatus(c *gin.Context) {
 
 	status, err := m.service.GetProviderStatus(c.Request.Context(), provider)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		if errors.Is(err, task_metadata_service.ErrProviderNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
 		return
 	}
 

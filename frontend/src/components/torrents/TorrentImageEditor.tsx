@@ -65,17 +65,19 @@ export function TorrentImageEditor({
   }, []);
 
   useEffect(() => {
+    if (categoryMetadataSource === "none") return;
+
     if (categoryMetadataSource === "tgdb" && isTGDBActive) {
-      setImageSource("TGDB");
+      setImageSource((prev) => (prev === "TGDB" ? prev : "TGDB"));
       return;
     }
 
     if (categoryMetadataSource === "tmdb") {
-      setImageSource("TMDB");
+      setImageSource((prev) => (prev === "TMDB" ? prev : "TMDB"));
       return;
     }
 
-    setImageSource("Upload");
+    setImageSource((prev) => (prev ? prev : "Upload"));
   }, [categoryMetadataSource, isTGDBActive]);
 
   // Sincronizar estados quando metadata muda

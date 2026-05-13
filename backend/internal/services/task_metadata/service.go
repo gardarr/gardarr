@@ -913,7 +913,7 @@ func (s *Service) ApplyProviderSelection(ctx context.Context, providerName strin
 
 		lastPart := filepath.Base(parsedURL.Path)
 		ext := s.selectImageExtension(filepath.Ext(lastPart), contentType)
-		filename := fmt.Sprintf("%s_tgdb_%s%s", taskHash, time.Now().Format("20060102150405"), ext)
+		filename := fmt.Sprintf("%s_%s_%s%s", taskHash, provider.Name(), time.Now().Format("20060102150405"), ext)
 		var absFilePath string
 		filePath, absFilePath, err = s.buildUploadPath(filename)
 		if err != nil {

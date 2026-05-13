@@ -120,7 +120,7 @@ export function TorrentProgressBar({
         />
       </div>
       {showLabel && (
-        <span className={labelClassName}>{progress.toFixed(0)}%</span>
+        <span className={labelClassName}>{normalizedProgress.toFixed(0)}%</span>
       )}
     </div>
   );

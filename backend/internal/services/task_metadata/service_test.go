@@ -698,7 +698,7 @@ func TestApplyProviderSelectionRemovesNewImageWhenUpdateFails(t *testing.T) {
 	callbackName := "test:fail_task_metadata_update"
 	if err := svc.db.DB.Callback().Update().Before("gorm:update").Register(callbackName, func(tx *gorm.DB) {
 		if tx.Statement.Schema != nil && tx.Statement.Schema.Table == "task_metadata" {
-			tx.AddError(errors.New("forced update failure"))
+			_ = tx.AddError(errors.New("forced update failure"))
 		}
 	}); err != nil {
 		t.Fatalf("failed to register update callback: %v", err)
