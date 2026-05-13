@@ -1,6 +1,7 @@
 package task
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -82,6 +83,10 @@ func (s *Repository) Add(schema schemas.TaskCreateSchema) (*entities.Task, error
 			}
 			break
 		}
+	}
+
+	if task == nil {
+		return nil, fmt.Errorf("failed to retrieve created task")
 	}
 
 	return toTask(task), nil

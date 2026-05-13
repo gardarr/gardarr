@@ -1,12 +1,16 @@
 package task_metadata
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"log/slog"
+	"mime"
 	"mime/multipart"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -42,6 +46,8 @@ type Service struct {
 	uploadDir        string
 	baseURL          string
 	providerRegistry *MetadataProviderRegistry
+	httpClient       *http.Client
+	lookupIPAddr     func(context.Context, string) ([]net.IPAddr, error)
 }
 
 // NewService creates a new task metadata service
@@ -61,6 +67,8 @@ func NewService(db *database.Database, baseURL, uploadDir string, providerRegist
 		uploadDir:        uploadDir,
 		baseURL:          baseURL,
 		providerRegistry: providerRegistry,
+		httpClient:       http.DefaultClient,
+		lookupIPAddr:     net.DefaultResolver.LookupIPAddr,
 	}, nil
 }
 
@@ -113,25 +121,9 @@ func (s *Service) UploadImage(ctx context.Context, taskHash string, file multipa
 	// Generate unique filename
 	ext := filepath.Ext(header.Filename)
 	filename := fmt.Sprintf("%s_%s%s", taskHash, time.Now().String(), ext)
-
-	// Ensure filename contains no path separators (belt-and-suspenders)
-	if strings.Contains(filename, "/") || strings.Contains(filename, "\\") || strings.Contains(filename, "..") {
-		return nil, fmt.Errorf("invalid generated filename")
-	}
-
-	filePath := filepath.Join(s.uploadDir, filename)
-
-	// Ensure filePath is within s.uploadDir
-	absFilePath, err := filepath.Abs(filePath)
+	filePath, absFilePath, err := s.buildUploadPath(filename)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve file path: %w", err)
-	}
-	absUploadDir, err := filepath.Abs(s.uploadDir)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve upload directory: %w", err)
-	}
-	if !strings.HasPrefix(absFilePath, absUploadDir+string(os.PathSeparator)) && absFilePath != absUploadDir {
-		return nil, fmt.Errorf("file path escapes upload directory")
+		return nil, err
 	}
 
 	// Create file
@@ -369,6 +361,24 @@ func (s *Service) GetImagePath(ctx context.Context, taskHash string) (string, er
 	return metadata.ImagePath, nil
 }
 
+func (s *Service) buildUploadPath(filename string) (string, string, error) {
+	if strings.Contains(filename, "/") || strings.Contains(filename, "\\") || strings.Contains(filename, "..") {
+		return "", "", fmt.Errorf("invalid generated filename")
+	}
+
+	filePath := filepath.Join(s.uploadDir, filename)
+	if err := s.validateImagePath(filePath); err != nil {
+		return "", "", fmt.Errorf("invalid image path: %w", err)
+	}
+
+	absFilePath, err := filepath.Abs(filePath)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to resolve file path: %w", err)
+	}
+
+	return filePath, absFilePath, nil
+}
+
 // validateImagePath ensures the path is within the upload directory to prevent path traversal attacks
 func (s *Service) validateImagePath(imagePath string) error {
 	// Clean and resolve the absolute path
@@ -422,6 +432,33 @@ func (s *Service) scanUploadDir() (map[string]uploadFileInfo, error) {
 		filesByPath[fullPath] = uploadFileInfo{path: fullPath, size: info.Size()}
 	}
 	return filesByPath, nil
+}
+
+func (s *Service) readAndValidateRemoteImage(resp *http.Response) ([]byte, string, error) {
+	limitedBody, err := io.ReadAll(io.LimitReader(resp.Body, MaxFileSize+1))
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to read image response: %w", err)
+	}
+	if len(limitedBody) == 0 {
+		return nil, "", fmt.Errorf("invalid image response: empty body")
+	}
+	if len(limitedBody) > MaxFileSize {
+		return nil, "", fmt.Errorf("image size exceeds maximum allowed size of %d bytes", MaxFileSize)
+	}
+
+	detectedContentType := normalizeContentType(http.DetectContentType(limitedBody))
+	responseContentType := normalizeContentType(resp.Header.Get("Content-Type"))
+	if responseContentType != "" && !strings.HasPrefix(responseContentType, "image/") {
+		return nil, "", fmt.Errorf("invalid image content type: %s", responseContentType)
+	}
+	if !strings.HasPrefix(detectedContentType, "image/") || !s.isAllowedMimeType(detectedContentType) {
+		return nil, "", fmt.Errorf("invalid image content type: %s", detectedContentType)
+	}
+	if responseContentType != "" && responseContentType != detectedContentType {
+		return nil, "", fmt.Errorf("image content type mismatch: %s", responseContentType)
+	}
+
+	return limitedBody, detectedContentType, nil
 }
 
 // queryHashToWorkerID maps task hashes to their worker IDs via the task_states table.
@@ -728,6 +765,7 @@ func (s *Service) DeleteOrphanImages(ctx context.Context) (int, error) {
 // Helper functions
 
 func (s *Service) isAllowedMimeType(contentType string) bool {
+	contentType = normalizeContentType(contentType)
 	allowedTypes := strings.Split(AllowedMimeTypes, ",")
 	for _, allowed := range allowedTypes {
 		if strings.TrimSpace(allowed) == contentType {
@@ -735,6 +773,46 @@ func (s *Service) isAllowedMimeType(contentType string) bool {
 		}
 	}
 	return false
+}
+
+func normalizeContentType(contentType string) string {
+	if contentType == "" {
+		return ""
+	}
+
+	mediaType, _, err := mime.ParseMediaType(contentType)
+	if err == nil {
+		return strings.ToLower(mediaType)
+	}
+
+	return strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
+}
+
+func (s *Service) selectImageExtension(rawExt string, contentType string) string {
+	validExts := map[string]string{
+		".jpg":  "image/jpeg",
+		".jpeg": "image/jpeg",
+		".png":  "image/png",
+		".gif":  "image/gif",
+		".webp": "image/webp",
+	}
+	detectedExts := map[string]string{
+		"image/jpeg": ".jpg",
+		"image/png":  ".png",
+		"image/gif":  ".gif",
+		"image/webp": ".webp",
+	}
+
+	normalizedExt := strings.ToLower(rawExt)
+	if mimeType, ok := validExts[normalizedExt]; ok && mimeType == contentType {
+		return normalizedExt
+	}
+
+	if detectedExt, ok := detectedExts[contentType]; ok {
+		return detectedExt
+	}
+
+	return ".jpg"
 }
 
 func (s *Service) modelToEntity(model *models.TaskMetadata) *entities.TaskMetadata {
@@ -781,7 +859,8 @@ func (s *Service) SearchProvider(ctx context.Context, providerName string, query
 
 // ApplyExternalMetadata applies metadata and downloads an image from a URL.
 func (s *Service) ApplyExternalMetadata(ctx context.Context, providerName string, taskHash string, name string, releaseDate string, description string, imageURL string) (*entities.TaskMetadata, error) {
-	if _, ok := s.providerRegistry.Get(providerName); !ok {
+	provider, ok := s.providerRegistry.Get(providerName)
+	if !ok {
 		return nil, fmt.Errorf("provider not found")
 	}
 
@@ -791,12 +870,17 @@ func (s *Service) ApplyExternalMetadata(ctx context.Context, providerName string
 
 	var filePath string
 	if imageURL != "" {
+		parsedURL, err := s.validateExternalImageURL(ctx, provider, imageURL)
+		if err != nil {
+			return nil, err
+		}
+
 		// Download image
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, imageURL, nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, parsedURL.String(), nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create image request: %w", err)
 		}
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := s.httpClient.Do(req)
 		if err != nil {
 			return nil, fmt.Errorf("failed to download image: %w", err)
 		}
@@ -806,18 +890,16 @@ func (s *Service) ApplyExternalMetadata(ctx context.Context, providerName string
 			return nil, fmt.Errorf("failed to download image, status code: %d", resp.StatusCode)
 		}
 
-		// Use the last part of the URL as extension or default to .jpg
-		parts := strings.Split(imageURL, "/")
-		lastPart := parts[len(parts)-1]
-		ext := filepath.Ext(lastPart)
-		if ext == "" {
-			ext = ".jpg"
+		body, contentType, err := s.readAndValidateRemoteImage(resp)
+		if err != nil {
+			return nil, err
 		}
 
+		lastPart := filepath.Base(parsedURL.Path)
+		ext := s.selectImageExtension(filepath.Ext(lastPart), contentType)
 		filename := fmt.Sprintf("%s_tgdb_%s%s", taskHash, time.Now().Format("20060102150405"), ext)
-		filePath = filepath.Join(s.uploadDir, filename)
-
-		absFilePath, err := filepath.Abs(filePath)
+		var absFilePath string
+		filePath, absFilePath, err = s.buildUploadPath(filename)
 		if err != nil {
 			return nil, err
 		}
@@ -826,11 +908,14 @@ func (s *Service) ApplyExternalMetadata(ctx context.Context, providerName string
 		if err != nil {
 			return nil, fmt.Errorf("failed to create image file: %w", err)
 		}
-		defer dst.Close()
-
-		if _, err := io.Copy(dst, resp.Body); err != nil {
+		if _, err := io.Copy(dst, bytes.NewReader(body)); err != nil {
+			dst.Close()
 			os.Remove(absFilePath)
 			return nil, fmt.Errorf("failed to save image: %w", err)
+		}
+		if err := dst.Close(); err != nil {
+			os.Remove(absFilePath)
+			return nil, fmt.Errorf("failed to finalize image file: %w", err)
 		}
 	}
 
@@ -887,4 +972,62 @@ func (s *Service) ApplyExternalMetadata(ctx context.Context, providerName string
 	}
 
 	return s.modelToEntity(metadata), nil
+}
+
+func (s *Service) validateExternalImageURL(ctx context.Context, provider MetadataProvider, rawURL string) (*url.URL, error) {
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid image URL: %w", err)
+	}
+
+	if parsedURL.Scheme != "https" {
+		return nil, fmt.Errorf("invalid image URL: only https URLs are allowed")
+	}
+
+	host := parsedURL.Hostname()
+	if host == "" {
+		return nil, fmt.Errorf("invalid image URL: missing hostname")
+	}
+
+	allowedHosts := make(map[string]struct{}, len(provider.AllowedImageHosts()))
+	for _, allowedHost := range provider.AllowedImageHosts() {
+		allowedHosts[strings.ToLower(allowedHost)] = struct{}{}
+	}
+
+	if _, ok := allowedHosts[strings.ToLower(host)]; !ok {
+		return nil, fmt.Errorf("invalid image URL: untrusted host")
+	}
+
+	ips, err := s.lookupIPAddr(ctx, host)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve image host: %w", err)
+	}
+
+	if len(ips) == 0 {
+		return nil, fmt.Errorf("failed to resolve image host: no IP addresses found")
+	}
+
+	for _, ipAddr := range ips {
+		if isDisallowedRemoteIP(ipAddr.IP) {
+			return nil, fmt.Errorf("invalid image URL: resolved to a disallowed IP address")
+		}
+	}
+
+	return parsedURL, nil
+}
+
+func isDisallowedRemoteIP(ip net.IP) bool {
+	if ip == nil {
+		return true
+	}
+
+	if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
+		return true
+	}
+
+	if ip.Equal(net.ParseIP("169.254.169.254")) {
+		return true
+	}
+
+	return false
 }

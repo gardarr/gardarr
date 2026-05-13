@@ -110,6 +110,7 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
   const [editedPath, setEditedPath] = useState("");
   const [editedCategoryId, setEditedCategoryId] = useState("");
   const [editedCategoryName, setEditedCategoryName] = useState("");
+  const [draftCategoryData, setDraftCategoryData] = useState<Category | null>(null);
   const [editedTags, setEditedTags] = useState<string[]>([]);
   const [currentCategory, setCurrentCategory] = useState("");
   const [currentCategoryData, setCurrentCategoryData] = useState<Category | null>(null);
@@ -136,22 +137,38 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
   }, [torrent]);
 
   useEffect(() => {
+    let isCurrentRequest = true;
+
     const loadCategoryData = async () => {
       if (!torrent?.category) {
         setCurrentCategoryData(null);
         return;
       }
 
+      const requestCategory = torrent.category;
+
       try {
         const response = await categoryService.listCategories();
-        const matchedCategory = response.data?.find((item) => item.name === torrent.category) ?? null;
+        if (!isCurrentRequest) {
+          return;
+        }
+
+        const matchedCategory = response.data?.find((item) => item.name === requestCategory) ?? null;
         setCurrentCategoryData(matchedCategory);
-      } catch (error) {
+      } catch {
+        if (!isCurrentRequest) {
+          return;
+        }
+
         setCurrentCategoryData(null);
       }
     };
 
-    loadCategoryData();
+    void loadCategoryData();
+
+    return () => {
+      isCurrentRequest = false;
+    };
   }, [torrent?.category]);
 
   const copyToClipboard = async (text: string, field: string) => {
@@ -256,6 +273,8 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
           }
 
           await refreshAfterMutation();
+          setCurrentCategory(editedCategoryName.trim());
+          setCurrentCategoryData(draftCategoryData);
           toast.success(t('torrentDetails.toasts.categoryUpdateSuccess', { defaultValue: 'Categoria atualizada com sucesso' }));
           setIsEditingCategory(false);
         } catch (error) {
@@ -267,6 +286,7 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
       // Entrar em modo de edição
       setEditedCategoryId(currentCategoryData?.id || "");
       setEditedCategoryName(currentCategory);
+      setDraftCategoryData(currentCategoryData);
       setIsEditingCategory(true);
     }
   };
@@ -274,15 +294,14 @@ export function TorrentDetailsModal({ torrent, isOpen, onClose, onPlay, onPause,
   const handleCancelEditCategory = () => {
     setEditedCategoryId(currentCategoryData?.id || "");
     setEditedCategoryName(currentCategory);
+    setDraftCategoryData(currentCategoryData);
     setIsEditingCategory(false);
   };
 
   const handleCategoryChange = (categoryId: string, category?: Category) => {
     setEditedCategoryId(categoryId);
-    if (category) {
-      setEditedCategoryName(category.name);
-      setCurrentCategoryData(category);
-    }
+    setEditedCategoryName(category?.name || "");
+    setDraftCategoryData(category ?? null);
   };
 
   const handleEditTags = async () => {

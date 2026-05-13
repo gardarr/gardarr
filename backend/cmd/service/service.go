@@ -39,6 +39,7 @@ import (
 	"github.com/jfxdev/gardarr/internal/services/eventpoller"
 	eventsService "github.com/jfxdev/gardarr/internal/services/events"
 	"github.com/jfxdev/gardarr/internal/services/integration"
+	tgdbintegration "github.com/jfxdev/gardarr/internal/services/integrations/tgdb"
 	settingsService "github.com/jfxdev/gardarr/internal/services/settings"
 	metadata "github.com/jfxdev/gardarr/internal/services/task_metadata"
 	"github.com/jfxdev/gardarr/internal/services/workermanager"
@@ -157,7 +158,7 @@ func Run(cmd *cobra.Command, args []string) error {
 		baseURL,
 		mediaDirectory,
 		metadata.NewMetadataProviderRegistry(
-			metadata.NewTGDBMetadataProvider(providerConfigSvc),
+			tgdbintegration.NewMetadataProvider(providerConfigSvc),
 		),
 	)
 	if err != nil {

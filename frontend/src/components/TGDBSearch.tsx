@@ -5,11 +5,22 @@ import { Search, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useTranslation } from "react-i18next";
+import type { TaskMetadata } from "@/types/torrent";
+
+interface TGDBGameResult {
+  id: string;
+  title: string;
+  release_date?: string;
+  description?: string;
+  image_url?: string;
+}
+
+interface TGDBAppliedMetadata extends TaskMetadata {}
 
 interface TGDBSearchProps {
   taskHash: string;
   initialQuery: string;
-  onSelect: (metadata: any) => void;
+  onSelect: (metadata: TGDBAppliedMetadata) => void;
   onCancel: () => void;
 }
 
@@ -17,17 +28,18 @@ export function TGDBSearch({ taskHash, initialQuery, onSelect, onCancel }: TGDBS
   const { t } = useTranslation();
   const [query, setQuery] = useState(initialQuery);
   const [isSearching, setIsSearching] = useState(false);
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<TGDBGameResult[]>([]);
   const [isApplying, setIsApplying] = useState(false);
+  const [applyingGameId, setApplyingGameId] = useState<string | null>(null);
 
   const handleSearch = useCallback(async (searchQuery: string) => {
     if (!searchQuery.trim()) return;
 
     setIsSearching(true);
     try {
-      const response = await api.get<any>(`/tasks/metadata/${taskHash}/providers/tgdb/search?q=${encodeURIComponent(searchQuery)}`);
+      const response = await api.get<TGDBGameResult[]>(`/tasks/metadata/${taskHash}/providers/tgdb/search?q=${encodeURIComponent(searchQuery)}`);
       setResults(response.data || []);
-    } catch (error) {
+    } catch {
       toast.error(t("tgdb.errors.searchFailed"));
     } finally {
       setIsSearching(false);
@@ -40,10 +52,15 @@ export function TGDBSearch({ taskHash, initialQuery, onSelect, onCancel }: TGDBS
     }
   }, [initialQuery, handleSearch]);
 
-  const handleApply = async (game: any) => {
+  const handleApply = async (game: TGDBGameResult) => {
+    if (isApplying) {
+      return;
+    }
+
     setIsApplying(true);
+    setApplyingGameId(game.id);
     try {
-      const response = await api.post(`/tasks/metadata/${taskHash}/providers/tgdb`, {
+      const response = await api.post<TGDBAppliedMetadata>(`/tasks/metadata/${taskHash}/providers/tgdb`, {
         name: game.title,
         release_date: game.release_date,
         description: game.description,
@@ -51,10 +68,11 @@ export function TGDBSearch({ taskHash, initialQuery, onSelect, onCancel }: TGDBS
       });
       toast.success(t("tgdb.success.applied"));
       onSelect(response.data);
-    } catch (error) {
+    } catch {
       toast.error(t("tgdb.errors.applyFailed"));
     } finally {
       setIsApplying(false);
+      setApplyingGameId(null);
     }
   };
 
@@ -74,10 +92,13 @@ export function TGDBSearch({ taskHash, initialQuery, onSelect, onCancel }: TGDBS
       
       <div className="grid grid-cols-2 gap-4 max-h-96 overflow-y-auto p-2">
         {results.map((game) => (
-          <div 
+          <button
+            type="button"
             key={game.id} 
-            className="border rounded-lg overflow-hidden flex flex-col hover:border-primary cursor-pointer transition-colors"
+            className="border rounded-lg overflow-hidden flex flex-col hover:border-primary cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border text-left"
             onClick={() => handleApply(game)}
+            disabled={isApplying}
+            aria-busy={applyingGameId === game.id}
           >
             {game.image_url ? (
               <img src={game.image_url} alt={game.title} className="w-full h-48 object-cover" />
@@ -87,10 +108,15 @@ export function TGDBSearch({ taskHash, initialQuery, onSelect, onCancel }: TGDBS
               </div>
             )}
             <div className="p-2 bg-card">
-              <h4 className="font-medium text-sm truncate" title={game.title}>{game.title}</h4>
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="font-medium text-sm truncate" title={game.title}>{game.title}</h4>
+                {applyingGameId === game.id && (
+                  <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                )}
+              </div>
               <p className="text-xs text-muted-foreground">{game.release_date || t("tgdb.search.unknownDate")}</p>
             </div>
-          </div>
+          </button>
         ))}
         {results.length === 0 && !isSearching && (
           <div className="col-span-2 text-center py-8 text-muted-foreground">

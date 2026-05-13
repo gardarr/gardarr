@@ -242,6 +242,10 @@ func assertSeededCategories(t *testing.T, db *gorm.DB) {
 			t.Errorf("Expected color %s for %s, got %s", expected.Color, category.Name, category.Color)
 		}
 
+		if category.ID == "" {
+			t.Errorf("Expected seeded category %s to have a generated ID", category.Name)
+		}
+
 		if category.DefaultDirectory != "" {
 			t.Errorf("Expected empty default directory for %s, got %s", category.Name, category.DefaultDirectory)
 		}

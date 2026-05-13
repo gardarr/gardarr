@@ -1,6 +1,7 @@
 package tgdb
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -85,7 +86,7 @@ func (c *Client) IsActive() bool {
 }
 
 // SearchGames searches for games by name and includes their overviews and boxarts
-func (c *Client) SearchGames(query string) (*GamesResponse, error) {
+func (c *Client) SearchGames(ctx context.Context, query string) (*GamesResponse, error) {
 	if !c.IsActive() {
 		return nil, fmt.Errorf("TGDB integration is not active")
 	}
@@ -102,7 +103,7 @@ func (c *Client) SearchGames(query string) (*GamesResponse, error) {
 	q.Add("include", "boxart")
 	reqURL.RawQuery = q.Encode()
 
-	req, err := http.NewRequest(http.MethodGet, reqURL.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}

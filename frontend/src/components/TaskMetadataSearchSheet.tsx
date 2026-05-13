@@ -115,6 +115,14 @@ export function TaskMetadataSearchSheet({
       if (nextResults.length === 0) {
         setSearchError(t("torrents.addModal.metadata.noResults"));
       }
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : t("tgdb.errors.searchFailed");
+      setResults([]);
+      setSelectedResultId(null);
+      setSearchError(message);
+      return;
     } finally {
       setIsSearching(false);
     }
@@ -187,6 +195,11 @@ export function TaskMetadataSearchSheet({
       toast.success(t("tgdb.success.applied"));
       await onApplied();
       onClose();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t("tgdb.errors.applyFailed");
+      setSearchError(message);
+      toast.error(t("tgdb.errors.applyFailed"));
+      return;
     } finally {
       setIsApplying(false);
     }

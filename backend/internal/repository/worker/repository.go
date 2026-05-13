@@ -405,7 +405,7 @@ func (r *Repository) StartWorkerTask(worker *entities.Worker, taskID string) err
 }
 
 func (r *Repository) ForceDownloadWorkerTask(worker *entities.Worker, taskID string) error {
-	return r.ForceReannounceWorkerTask(worker, taskID)
+	return r.ForceResumeWorkerTask(worker, taskID)
 }
 
 func (r *Repository) GetWorkerTask(worker *entities.Worker, taskID string) (*entities.Task, error) {

@@ -1,9 +1,15 @@
 package task_metadata
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"io"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -401,4 +407,264 @@ func TestDeleteOrphanImagesEmptyDir(t *testing.T) {
 	if deleted != 0 {
 		t.Errorf("expected 0 deleted for empty dir, got %d", deleted)
 	}
+}
+
+func TestValidateExternalImageURLRejectsMalformedURL(t *testing.T) {
+	svc, _ := setupTestService(t)
+	provider := mockMetadataProvider{name: "tgdb", allowedImageHosts: []string{"cdn.thegamesdb.net"}}
+
+	_, err := svc.validateExternalImageURL(context.Background(), provider, "://bad-url")
+	if err == nil {
+		t.Fatal("expected malformed URL to be rejected")
+	}
+}
+
+func TestValidateExternalImageURLRejectsNonHTTPS(t *testing.T) {
+	svc, _ := setupTestService(t)
+	provider := mockMetadataProvider{name: "tgdb", allowedImageHosts: []string{"cdn.thegamesdb.net"}}
+
+	_, err := svc.validateExternalImageURL(context.Background(), provider, "http://cdn.thegamesdb.net/images/test.jpg")
+	if err == nil || !strings.Contains(err.Error(), "only https URLs are allowed") {
+		t.Fatalf("expected non-https URL rejection, got %v", err)
+	}
+}
+
+func TestValidateExternalImageURLRejectsUntrustedHost(t *testing.T) {
+	svc, _ := setupTestService(t)
+	provider := mockMetadataProvider{name: "tgdb", allowedImageHosts: []string{"cdn.thegamesdb.net"}}
+
+	_, err := svc.validateExternalImageURL(context.Background(), provider, "https://example.com/image.jpg")
+	if err == nil || !strings.Contains(err.Error(), "untrusted host") {
+		t.Fatalf("expected untrusted host rejection, got %v", err)
+	}
+}
+
+func TestValidateExternalImageURLRejectsPrivateIP(t *testing.T) {
+	svc, _ := setupTestService(t)
+	provider := mockMetadataProvider{name: "tgdb", allowedImageHosts: []string{"cdn.thegamesdb.net"}}
+	svc.lookupIPAddr = func(context.Context, string) ([]net.IPAddr, error) {
+		return []net.IPAddr{{IP: net.ParseIP("127.0.0.1")}}, nil
+	}
+
+	_, err := svc.validateExternalImageURL(context.Background(), provider, "https://cdn.thegamesdb.net/images/test.jpg")
+	if err == nil || !strings.Contains(err.Error(), "disallowed IP address") {
+		t.Fatalf("expected private IP rejection, got %v", err)
+	}
+}
+
+func TestApplyExternalMetadataAcceptsTrustedProviderImage(t *testing.T) {
+	svc, uploadDir := setupTestService(t)
+	svc.providerRegistry = NewMetadataProviderRegistry(mockMetadataProvider{
+		name:              "tgdb",
+		allowedImageHosts: []string{"cdn.thegamesdb.net"},
+	})
+	svc.lookupIPAddr = func(context.Context, string) ([]net.IPAddr, error) {
+		return []net.IPAddr{{IP: net.ParseIP("203.0.113.10")}}, nil
+	}
+	svc.httpClient = &http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			if req.URL.Hostname() != "cdn.thegamesdb.net" {
+				return nil, fmt.Errorf("unexpected host: %s", req.URL.Hostname())
+			}
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader(testPNGBytes())),
+				Header: http.Header{
+					"Content-Type": []string{"image/png"},
+				},
+			}, nil
+		}),
+	}
+
+	result, err := svc.ApplyExternalMetadata(
+		context.Background(),
+		"tgdb",
+		"task123",
+		"My Game",
+		"2024-01-01",
+		"description",
+		"https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg",
+	)
+	if err != nil {
+		t.Fatalf(unexpectedErrFmt, err)
+	}
+	if result == nil || result.ImagePath == "" {
+		t.Fatal("expected image path to be set")
+	}
+	if _, err := os.Stat(result.ImagePath); err != nil {
+		t.Fatalf("expected downloaded image to exist: %v", err)
+	}
+	if !strings.HasPrefix(result.ImagePath, uploadDir) {
+		t.Fatalf("expected image path under upload dir, got %s", result.ImagePath)
+	}
+	if filepath.Ext(result.ImagePath) != ".png" {
+		t.Fatalf("expected detected .png extension to be used, got %s", result.ImagePath)
+	}
+}
+
+func TestApplyExternalMetadataRejectsOversizedImage(t *testing.T) {
+	svc, uploadDir := setupTestService(t)
+	svc.providerRegistry = NewMetadataProviderRegistry(mockMetadataProvider{
+		name:              "tgdb",
+		allowedImageHosts: []string{"cdn.thegamesdb.net"},
+	})
+	svc.lookupIPAddr = func(context.Context, string) ([]net.IPAddr, error) {
+		return []net.IPAddr{{IP: net.ParseIP("203.0.113.10")}}, nil
+	}
+
+	oversizedBody := append(testPNGBytes(), bytes.Repeat([]byte("a"), MaxFileSize)...)
+	svc.httpClient = &http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader(oversizedBody)),
+				Header: http.Header{
+					"Content-Type": []string{"image/png"},
+				},
+			}, nil
+		}),
+	}
+
+	_, err := svc.ApplyExternalMetadata(
+		context.Background(),
+		"tgdb",
+		"task123",
+		"My Game",
+		"2024-01-01",
+		"description",
+		"https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg",
+	)
+	if err == nil || !strings.Contains(err.Error(), "image size exceeds maximum allowed size") {
+		t.Fatalf("expected oversized image rejection, got %v", err)
+	}
+
+	entries, readErr := os.ReadDir(uploadDir)
+	if readErr != nil {
+		t.Fatalf("failed to read upload dir: %v", readErr)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("expected no files to be written for oversized image, found %d", len(entries))
+	}
+}
+
+func TestApplyExternalMetadataRejectsNonImageContent(t *testing.T) {
+	svc, uploadDir := setupTestService(t)
+	svc.providerRegistry = NewMetadataProviderRegistry(mockMetadataProvider{
+		name:              "tgdb",
+		allowedImageHosts: []string{"cdn.thegamesdb.net"},
+	})
+	svc.lookupIPAddr = func(context.Context, string) ([]net.IPAddr, error) {
+		return []net.IPAddr{{IP: net.ParseIP("203.0.113.10")}}, nil
+	}
+	svc.httpClient = &http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(strings.NewReader("not-an-image")),
+				Header: http.Header{
+					"Content-Type": []string{"text/plain"},
+				},
+			}, nil
+		}),
+	}
+
+	_, err := svc.ApplyExternalMetadata(
+		context.Background(),
+		"tgdb",
+		"task123",
+		"My Game",
+		"2024-01-01",
+		"description",
+		"https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg",
+	)
+	if err == nil || !strings.Contains(err.Error(), "invalid image content type") {
+		t.Fatalf("expected non-image rejection, got %v", err)
+	}
+
+	entries, readErr := os.ReadDir(uploadDir)
+	if readErr != nil {
+		t.Fatalf("failed to read upload dir: %v", readErr)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("expected no files to be written for invalid image, found %d", len(entries))
+	}
+}
+
+func TestApplyExternalMetadataUsesDetectedExtensionWhenURLHasNoValidImageExt(t *testing.T) {
+	svc, _ := setupTestService(t)
+	svc.providerRegistry = NewMetadataProviderRegistry(mockMetadataProvider{
+		name:              "tgdb",
+		allowedImageHosts: []string{"cdn.thegamesdb.net"},
+	})
+	svc.lookupIPAddr = func(context.Context, string) ([]net.IPAddr, error) {
+		return []net.IPAddr{{IP: net.ParseIP("203.0.113.10")}}, nil
+	}
+	svc.httpClient = &http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader(testPNGBytes())),
+				Header: http.Header{
+					"Content-Type": []string{"image/png"},
+				},
+			}, nil
+		}),
+	}
+
+	result, err := svc.ApplyExternalMetadata(
+		context.Background(),
+		"tgdb",
+		"task123",
+		"My Game",
+		"2024-01-01",
+		"description",
+		"https://cdn.thegamesdb.net/images/large/boxart/front/123.txt",
+	)
+	if err != nil {
+		t.Fatalf(unexpectedErrFmt, err)
+	}
+	if filepath.Ext(result.ImagePath) != ".png" {
+		t.Fatalf("expected detected .png extension, got %s", result.ImagePath)
+	}
+}
+
+func testPNGBytes() []byte {
+	return []byte{
+		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+		0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
+		0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41,
+		0x54, 0x78, 0x9C, 0x63, 0x60, 0x00, 0x00, 0x00,
+		0x02, 0x00, 0x01, 0xE5, 0x27, 0xD4, 0xA2, 0x00,
+		0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
+		0x42, 0x60, 0x82,
+	}
+}
+
+type mockMetadataProvider struct {
+	name              string
+	allowedImageHosts []string
+}
+
+func (m mockMetadataProvider) Name() string {
+	return m.name
+}
+
+func (m mockMetadataProvider) Status(context.Context) (*MetadataProviderStatus, error) {
+	return &MetadataProviderStatus{Provider: m.name, Active: true}, nil
+}
+
+func (m mockMetadataProvider) Search(context.Context, string) ([]MetadataProviderSearchResult, error) {
+	return nil, nil
+}
+
+func (m mockMetadataProvider) AllowedImageHosts() []string {
+	return m.allowedImageHosts
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
 }

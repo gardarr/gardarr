@@ -98,7 +98,7 @@ export function AddTorrentModal({
     }
 
     setStep(0);
-    setSelectedWorkerId(activeWorkers.length > 0 ? activeWorkers[0].uuid : "");
+    setSelectedWorkerId("");
     setSelectedCategoryId("");
     setMagnetUri("");
     setCategory("");
@@ -108,7 +108,15 @@ export function AddTorrentModal({
     setParsedMagnetLink(null);
     setIsCreating(false);
     setWorkerDropdownOpen(false);
-  }, [isOpen, activeWorkers]);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || selectedWorkerId !== "") {
+      return;
+    }
+
+    setSelectedWorkerId(activeWorkers.length > 0 ? activeWorkers[0].uuid : "");
+  }, [isOpen, activeWorkers, selectedWorkerId]);
 
   useEffect(() => {
     if (magnetUri.trim() && magnetUri.startsWith("magnet:")) {

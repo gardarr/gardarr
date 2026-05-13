@@ -2,10 +2,6 @@ package task_metadata
 
 import (
 	"context"
-	"fmt"
-
-	integrationService "github.com/jfxdev/gardarr/internal/services/integration"
-	"github.com/jfxdev/gardarr/internal/services/tgdb"
 )
 
 type MetadataProviderSearchResult struct {
@@ -25,6 +21,7 @@ type MetadataProvider interface {
 	Name() string
 	Status(ctx context.Context) (*MetadataProviderStatus, error)
 	Search(ctx context.Context, query string) ([]MetadataProviderSearchResult, error)
+	AllowedImageHosts() []string
 }
 
 type MetadataProviderRegistry struct {
@@ -46,68 +43,4 @@ func NewMetadataProviderRegistry(providers ...MetadataProvider) *MetadataProvide
 func (r *MetadataProviderRegistry) Get(provider string) (MetadataProvider, bool) {
 	result, ok := r.providers[provider]
 	return result, ok
-}
-
-type TGDBMetadataProvider struct {
-	configService *integrationService.ProviderConfigService
-}
-
-func NewTGDBMetadataProvider(configService *integrationService.ProviderConfigService) *TGDBMetadataProvider {
-	return &TGDBMetadataProvider{configService: configService}
-}
-
-func (p *TGDBMetadataProvider) Name() string {
-	return integrationService.MetadataSourceTGDB
-}
-
-func (p *TGDBMetadataProvider) Status(ctx context.Context) (*MetadataProviderStatus, error) {
-	key, err := p.configService.GetDecryptedAPIKey(ctx, p.Name())
-	if err != nil {
-		return nil, err
-	}
-
-	return &MetadataProviderStatus{
-		Provider: p.Name(),
-		Active:   key != "",
-	}, nil
-}
-
-func (p *TGDBMetadataProvider) Search(ctx context.Context, query string) ([]MetadataProviderSearchResult, error) {
-	key, err := p.configService.GetDecryptedAPIKey(ctx, p.Name())
-	if err != nil {
-		return nil, err
-	}
-	if key == "" {
-		return nil, fmt.Errorf("provider is not active")
-	}
-
-	client := tgdb.NewClient(key)
-	results, err := client.SearchGames(query)
-	if err != nil {
-		return nil, err
-	}
-
-	items := make([]MetadataProviderSearchResult, 0, len(results.Data.Games))
-	for _, game := range results.Data.Games {
-		imageURL := ""
-		if boxarts, ok := results.Include.Boxart.Data[fmt.Sprintf("%d", game.ID)]; ok && len(boxarts) > 0 {
-			imageURL = fmt.Sprintf("%s%s", results.Include.Boxart.BaseURL.Large, boxarts[0].Filename)
-			for _, boxart := range boxarts {
-				if boxart.Side == "front" {
-					imageURL = fmt.Sprintf("%s%s", results.Include.Boxart.BaseURL.Large, boxart.Filename)
-					break
-				}
-			}
-		}
-
-		items = append(items, MetadataProviderSearchResult{
-			ID:          fmt.Sprintf("%d", game.ID),
-			Title:       game.GameTitle,
-			ReleaseDate: game.ReleaseDate,
-			Description: game.Overview,
-			ImageURL:    imageURL,
-		})
-	}
-
-	return items, nil
 }

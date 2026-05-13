@@ -385,19 +385,19 @@ func Register(m *migration.Migrator) {
 			Version:     "026_seed_default_categories",
 			Description: "Popula categorias padrão do sistema sem sobrescrever categorias existentes",
 			Up: func(db *gorm.DB) error {
-				defaultCategories := []map[string]interface{}{
-					{"name": "Movies", "color": "#ef4444", "icon": "Film"},
-					{"name": "Shows", "color": "#3b82f6", "icon": "Tv"},
-					{"name": "Games", "color": "#10b981", "icon": "Gamepad2"},
-					{"name": "Other", "color": "#6b7280", "icon": "Folder"},
-					{"name": "Books", "color": "#f59e0b", "icon": "BookOpen"},
-					{"name": "Anime", "color": "#ec4899", "icon": "Star"},
-					{"name": "Music", "color": "#14b8a6", "icon": "Music"},
+				defaultCategories := []models.Category{
+					{Name: "Movies", Color: "#ef4444", Icon: "Film"},
+					{Name: "Shows", Color: "#3b82f6", Icon: "Tv"},
+					{Name: "Games", Color: "#10b981", Icon: "Gamepad2"},
+					{Name: "Other", Color: "#6b7280", Icon: "Folder"},
+					{Name: "Books", Color: "#f59e0b", Icon: "BookOpen"},
+					{Name: "Anime", Color: "#ec4899", Icon: "Star"},
+					{Name: "Music", Color: "#14b8a6", Icon: "Music"},
 				}
 
 				for _, category := range defaultCategories {
 					var existingCount int64
-					if err := db.Table("categories").Where("name = ?", category["name"]).Count(&existingCount).Error; err != nil {
+					if err := db.Table("categories").Where("name = ?", category.Name).Count(&existingCount).Error; err != nil {
 						return err
 					}
 
@@ -405,7 +405,7 @@ func Register(m *migration.Migrator) {
 						continue
 					}
 
-					if err := db.Table("categories").Create(category).Error; err != nil {
+					if err := db.Create(&category).Error; err != nil {
 						return err
 					}
 				}
