@@ -1,6 +1,7 @@
 package task_metadata
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -433,19 +434,25 @@ func (m *Module) applyProvider(c *gin.Context) {
 	}
 
 	var body struct {
-		Name        string `json:"name"`
-		ReleaseDate string `json:"release_date"`
-		Description string `json:"description"`
-		ImageURL    string `json:"image_url"`
+		ID string `json:"id"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
+	if strings.TrimSpace(body.ID) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id is required"})
+		return
+	}
 
-	metadata, err := m.service.ApplyExternalMetadata(c.Request.Context(), provider, taskHash, body.Name, body.ReleaseDate, body.Description, body.ImageURL)
+	metadata, err := m.service.ApplyProviderSelection(c.Request.Context(), provider, taskHash, body.ID)
 	if err != nil {
+		switch {
+		case errors.Is(err, task_metadata_service.ErrProviderNotFound), errors.Is(err, task_metadata_service.ErrProviderSelectionNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		default:
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
 		return
 	}
 

@@ -1,155 +1,65 @@
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ChevronLeft, ChevronRight, SortAsc, SortDesc, ArrowUp, ArrowDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, SortAsc, SortDesc } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { RatioBadge } from "@/components/RatioBadge";
-import { WorkerIcon } from "@/components/ui/WorkerIcon";
-import { type TorrentStatus } from "@/components/TorrentStatusIcon";
 import { StatusBadge } from "@/components/StatusBadge";
-import TorrentContextMenu from "@/components/TorrentContextMenu";
 import SeedersAndPeersBadge from "@/components/SeedersAndPeersBadge";
-import { formatBytes, formatBytesPerSecond } from "@/utils/bytes";
-import { truncateText, isTextTruncated } from "@/utils/textUtils";
-import type { TaskMetadata } from "@/types/torrent";
+import { formatBytes } from "@/utils/bytes";
+import { useTorrentOpenHandler } from "./hooks";
+import {
+  TorrentContextMenuWrapper,
+  TorrentDisplayName,
+  TorrentProgressBar,
+  TorrentSelectionCheckbox,
+  TorrentSpeedStat,
+  TorrentWorkerBadge,
+} from "./shared";
+import type {
+  SortType,
+  TorrentActionHandlers,
+  TorrentListDisplayProps,
+  TorrentListItem,
+  TorrentPaginationProps,
+  TorrentSelectionProps,
+} from "./types";
 
-type SortType = "priority" | "alphabetical" | "size" | "progress" | "download_speed" | "upload_speed" | "downloaded" | "uploaded";
-
-type Torrent = {
-  id: string;
-  hash: string;
-  name: string;
-  totalSizeBytes: number;
-  downloadRateBps: number;
-  uploadRateBps: number;
-  downloadedBytes: number;
-  uploadedBytes: number;
-  status: TorrentStatus;
-  createdAt: string;
-  progress: number;
-  ratio: number;
-  numSeeds: number;
-  numLeechs: number;
-  workerName?: string;
-  workerStatus?: string;
-  workerUUID?: string;
-  workerIcon?: string;
-  workerColor?: string;
-  category: string;
-  tags: string[];
-  metadata?: TaskMetadata | null;
-};
-
-interface TorrentsTableProps {
-  torrents: Torrent[];
+interface TorrentsTableProps extends TorrentListDisplayProps, TorrentActionHandlers, TorrentSelectionProps, TorrentPaginationProps {
   sortType: SortType;
   sortDirection: "asc" | "desc";
   onSortChange: (type: SortType) => void;
-  onShowDetails: (id: string) => void;
-  currentPage: number;
-  totalPages: number;
-  filteredTorrentsLength: number;
-  onPreviousPage: () => void;
-  onNextPage: () => void;
-  onStart: (id: string) => void;
-  onStop: (id: string) => void;
-  onRemove: (id: string) => void;
-  onForceDownload: (id: string) => void;
-  onForceReannounce: (id: string) => void;
-  onForceRecheck: (id: string) => void;
-  onSearchMetadata?: (taskId: string) => void;
-  onMetrics?: (taskId: string, workerId?: string) => void;
-  onLimits?: (taskId: string, workerId?: string) => void;
-  onMetadataUpdate?: () => void;
-  compact?: boolean;
-  selectionMode?: boolean;
-  selectedIds?: Set<string>;
-  onToggleSelect?: (id: string) => void;
-  onRequestDelete?: (ids: string[]) => void;
 }
 
-
-const SpeedCell = ({ rate, total, isUpload, compact }: { rate: number, total: number, isUpload?: boolean, compact?: boolean }) => (
-  <div className="flex items-center gap-1.5 whitespace-nowrap flex-nowrap">
-    {rate > 0 && (
-      isUpload ? (
-        <ArrowUp className={`${compact ? 'h-3 w-3' : 'h-3.5 w-3.5'} text-purple-600 dark:text-purple-400 flex-shrink-0`} />
-      ) : (
-        <ArrowDown className={`${compact ? 'h-3 w-3' : 'h-3.5 w-3.5'} text-green-600 dark:text-green-400 flex-shrink-0`} />
-      )
-    )}
-    <span className={`${compact ? 'text-xs' : ''} ${rate > 0 ? (isUpload ? 'text-purple-600 dark:text-purple-400' : 'text-green-600 dark:text-green-400') : ''}`}>
-      {formatBytesPerSecond(rate)}
-    </span>
-    <span className="text-xs text-muted-foreground">•</span>
-    <span className="text-xs text-muted-foreground">
-      {formatBytes(total)}
-    </span>
-  </div>
-);
-
-function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onSearchMetadata, onLimits, selectionMode, selected, onToggleSelect, selectedIds, onRequestDelete, compact }: {
-  torrent: Torrent;
-  onShowDetails: (id: string) => void;
-  onStart: (id: string) => void;
-  onStop: (id: string) => void;
-  onRemove: (id: string) => void;
-  onForceDownload: (id: string) => void;
-  onForceReannounce: (id: string) => void;
-  onForceRecheck: (id: string) => void;
-  onSearchMetadata?: (taskId: string) => void;
-  onMetrics?: (taskId: string, workerId?: string) => void;
-  onLimits?: (taskId: string, workerId?: string) => void;
-  onMetadataUpdate?: () => void;
-  selectionMode?: boolean;
+function TorrentRow({ torrent, actions, selection, selected, compact }: {
+  torrent: TorrentListItem;
+  actions: TorrentActionHandlers;
+  selection: TorrentSelectionProps;
   selected?: boolean;
-  onToggleSelect?: (id: string) => void;
-  selectedIds?: Set<string>;
-  onRequestDelete?: (ids: string[]) => void;
   compact?: boolean;
 }) {
-  const handleRowClick = () => {
-    if (selectionMode && onToggleSelect) {
-      onToggleSelect(torrent.id);
-    } else {
-      onShowDetails(torrent.id);
-    }
-  };
+  const handleRowClick = useTorrentOpenHandler({
+    torrentId: torrent.id,
+    selectionMode: selection.selectionMode,
+    onToggleSelect: selection.onToggleSelect,
+    onShowDetails: actions.onShowDetails,
+  });
 
   const pyClass = compact ? 'py-1' : 'py-3';
   const textSizeClass = compact ? 'text-xs' : 'text-sm';
   const cellClass = `px-4 ${pyClass} ${textSizeClass}`;
 
-
-
   return (
-    <TorrentContextMenu
-      taskId={torrent.id}
-      workerId={torrent.workerUUID}
-      selectionMode={selectionMode}
-      selectedIds={selectedIds}
-      onRequestDelete={onRequestDelete}
-      onStart={onStart}
-      onStop={onStop}
-      onRemove={onRemove}
-      onForceDownload={onForceDownload}
-      onForceReannounce={onForceReannounce}
-      onForceRecheck={onForceRecheck}
-      onSearchMetadata={onSearchMetadata}
-      onLimits={onLimits}
-      onShowDetails={onShowDetails}
-    >
+    <TorrentContextMenuWrapper torrent={torrent} actions={actions} selection={selection}>
       <tr
         className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
         onClick={handleRowClick}
       >
-        {selectionMode && (
+        {selection.selectionMode && (
           <td className={`px-3 ${pyClass}`}>
-            <Checkbox
-              checked={!!selected}
-              onCheckedChange={() => onToggleSelect && onToggleSelect(torrent.id)}
-              onClick={(e) => e.stopPropagation()}
-              className={compact ? 'h-3.5 w-3.5' : ''}
+            <TorrentSelectionCheckbox
+              torrentId={torrent.id}
+              selected={selected}
+              compact={compact}
+              onToggleSelect={selection.onToggleSelect}
             />
           </td>
         )}
@@ -159,33 +69,20 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
               status={torrent.status}
               size={compact ? "sm" : "md"}
             />
-            <span
-              className="text-sm font-medium truncate"
-              title={isTextTruncated(torrent.metadata?.name || torrent.name) ? `${torrent.metadata?.name || torrent.name} (truncado)` : (torrent.metadata?.name || torrent.name)}
-            >
-              {truncateText(torrent.metadata?.name || torrent.name)}
-            </span>
+            <TorrentDisplayName torrent={torrent} />
           </div>
         </td>
         <td className={`px-4 ${pyClass} text-xs text-muted-foreground`}>
           {formatBytes(torrent.totalSizeBytes)}
         </td>
         <td className={cellClass}>
-          <div className="flex items-center gap-2">
-            <div className={`w-16 bg-secondary rounded-full ${compact ? 'h-1' : 'h-1.5'}`}>
-              <div
-                className={`bg-primary ${compact ? 'h-1' : 'h-1.5'} rounded-full transition-all duration-300`}
-                style={{ width: `${torrent.progress}%` }}
-              ></div>
-            </div>
-            <span className="text-xs text-muted-foreground">{torrent.progress.toFixed(0)}%</span>
-          </div>
+          <TorrentProgressBar progress={torrent.progress} compact={compact} />
         </td>
         <td className={cellClass}>
-          <SpeedCell rate={torrent.downloadRateBps} total={torrent.downloadedBytes} compact={compact} />
+          <TorrentSpeedStat rate={torrent.downloadRateBps} total={torrent.downloadedBytes} direction="download" compact={compact} />
         </td>
         <td className={cellClass}>
-          <SpeedCell rate={torrent.uploadRateBps} total={torrent.uploadedBytes} isUpload compact={compact} />
+          <TorrentSpeedStat rate={torrent.uploadRateBps} total={torrent.uploadedBytes} direction="upload" compact={compact} />
         </td>
         <td className={cellClass}>
           <RatioBadge ratio={torrent.ratio} showIcon={false} />
@@ -197,27 +94,15 @@ function TorrentRow({ torrent, onShowDetails, onStart, onStop, onRemove, onForce
           />
         </td>
         <td className={cellClass}>
-          {torrent.workerName ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center justify-center">
-                  <WorkerIcon
-                    iconName={torrent.workerIcon}
-                    color={torrent.workerColor}
-                    size={compact ? "sm" : "md"}
-                  />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{torrent.workerName}</p>
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            <span className={`${compact ? 'text-xs' : ''} text-muted-foreground`}>—</span>
-          )}
+          <TorrentWorkerBadge
+            torrent={torrent}
+            size={compact ? "sm" : "md"}
+            className="flex items-center justify-center"
+            empty={<span className={`${compact ? 'text-xs' : ''} text-muted-foreground`}>-</span>}
+          />
         </td>
       </tr>
-    </TorrentContextMenu>
+    </TorrentContextMenuWrapper>
   );
 }
 
@@ -317,6 +202,19 @@ export default function TorrentsTable({
   onRequestDelete
 }: TorrentsTableProps) {
   const { t } = useTranslation();
+  const actions = {
+    onShowDetails,
+    onStart,
+    onStop,
+    onRemove,
+    onForceDownload,
+    onForceReannounce,
+    onForceRecheck,
+    onSearchMetadata,
+    onLimits,
+    onMetadataUpdate,
+  };
+  const selection = { selectionMode, selectedIds, onToggleSelect, onRequestDelete };
 
   return (
     <div className="hidden md:block">
@@ -388,21 +286,9 @@ export default function TorrentsTable({
                 <TorrentRow
                   key={t.id}
                   torrent={t}
-                  onShowDetails={onShowDetails}
-                  onStart={onStart}
-                  onStop={onStop}
-                  onRemove={onRemove}
-                  onForceDownload={onForceDownload}
-                  onForceReannounce={onForceReannounce}
-                  onForceRecheck={onForceRecheck}
-                  onSearchMetadata={onSearchMetadata}
-                  onLimits={onLimits}
-                  onMetadataUpdate={onMetadataUpdate}
-                  selectionMode={selectionMode}
+                  actions={actions}
+                  selection={selection}
                   selected={!!selectedIds?.has(t.id)}
-                  onToggleSelect={onToggleSelect}
-                  selectedIds={selectedIds}
-                  onRequestDelete={onRequestDelete}
                   compact={compact}
                 />
               ))}

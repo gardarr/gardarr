@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 import type { TaskMetadata } from "@/types/torrent";
 import type { Category, CategoryMetadataSource } from "@/types/category";
 import { ImageSourceSelector } from "@/components/ImageSourceSelector";
-import { TorrentCardPreview } from "@/components/TorrentCardPreview";
+import { TorrentCardPreview } from "./TorrentCardPreview";
 import { TGDBSearch } from "@/components/TGDBSearch";
 
 interface TorrentImageEditorProps {

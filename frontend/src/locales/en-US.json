@@ -750,6 +750,7 @@
         "magnetInvalidPrefix": "Magnet URI must start with 'magnet:'",
         "categoryRequired": "Select a category",
         "tagsRequired": "Add at least one tag",
+        "createOrFinalizeFailed": "Failed to finish adding the torrent. You can try again.",
         "taskHashMissing": "The task was created, but the returned hash is missing."
       }
     },

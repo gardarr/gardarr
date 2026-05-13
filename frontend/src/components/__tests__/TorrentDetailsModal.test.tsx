@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import { TorrentDetailsModal } from "@/components/TorrentDetailsModal";
+import { TorrentDetailsModal } from "@/components/torrents/TorrentDetailsModal";
 import type { Task } from "@/types/torrent";
 
 const mockToastSuccess = vi.fn();
@@ -84,7 +84,7 @@ vi.mock("@/components/DeleteTorrentModal", () => ({
   DeleteTorrentModal: () => null,
 }));
 
-vi.mock("@/components/TorrentFilesList", () => ({
+vi.mock("@/components/torrents/TorrentFilesList", () => ({
   TorrentFilesList: () => null,
 }));
 
@@ -96,7 +96,7 @@ vi.mock("@/components/widgets/TorrentLifetimeWidget", () => ({
   TorrentLifetimeWidget: () => null,
 }));
 
-vi.mock("@/components/TorrentImageEditor", () => ({
+vi.mock("@/components/torrents/TorrentImageEditor", () => ({
   TorrentImageEditor: () => null,
 }));
 

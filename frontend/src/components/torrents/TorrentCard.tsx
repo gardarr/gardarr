@@ -1,45 +1,29 @@
-import { useState, useEffect } from "react";
+import type { ElementType } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import TorrentContextMenu from "@/components/TorrentContextMenu";
 import { RatioBadge } from "@/components/RatioBadge";
-import { WorkerIcon } from "@/components/ui/WorkerIcon";
-import { getStatusBackgroundColor, type TorrentStatus } from "@/components/TorrentStatusIcon";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatBytes, formatBytesPerSecond } from "@/utils/bytes";
-import { truncateText, isTextTruncated } from "@/utils/textUtils";
 import taskDefaultBg from "@/assets/img/common/task-default-background.png";
-import { Download, Upload, Image as ImageIcon, Check, Hourglass } from "lucide-react";
+import { Download, Upload, Check, Hourglass } from "lucide-react";
 import SeedersAndPeersBadge from "@/components/SeedersAndPeersBadge";
-import type { TaskMetadata } from "@/types/torrent";
-import { preferencesService } from "@/services/preferences";
+import { getBlurPixels, useTorrentBlurIntensity, useTorrentOpenHandler } from "./hooks";
+import {
+  TorrentContextMenuWrapper,
+  TorrentDisplayName,
+  TorrentSelectionCheckbox,
+  TorrentThumbnail,
+  TorrentWorkerBadge,
+} from "./shared";
+import { getTorrentImageUrl } from "./helpers";
+import { getStatusBackgroundColor } from "./TorrentStatusIcon";
+import type { MobileTorrent, TorrentActionHandlers, TorrentSelectionProps } from "./types";
 
-// Local minimal type to match TorrentsPage expectations
-// Keep in sync with the shape used in Torrents.tsx
-export type MobileTorrent = {
-  id: string;
-  hash: string;
-  name: string;
-  totalSizeBytes: number;
-  downloadRateBps: number;
-  uploadRateBps: number;
-  downloadedBytes: number;
-  uploadedBytes: number;
-  status: TorrentStatus;
-  createdAt: string;
-  progress: number;
-  ratio: number;
-  numSeeds: number;
-  numLeechs: number;
-  workerName?: string;
-  workerStatus?: string;
-  workerUUID?: string;
-  workerIcon?: string;
-  workerColor?: string;
-  category: string;
-  tags: string[];
-  metadata?: TaskMetadata | null;
+export type { MobileTorrent };
+
+type TorrentCardProps = TorrentActionHandlers & TorrentSelectionProps & {
+  torrent: MobileTorrent;
+  compact?: boolean;
+  selected?: boolean;
 };
 
 export function TorrentCard({
@@ -60,66 +44,35 @@ export function TorrentCard({
   onToggleSelect,
   selectedIds,
   onRequestDelete,
-}: Readonly<{
-  torrent: MobileTorrent;
-  onShowDetails: (id: string) => void;
-  onStart: (id: string) => void;
-  onStop: (id: string) => void;
-  onRemove: (id: string) => void;
-  onForceDownload: (id: string) => void;
-  onForceReannounce: (id: string) => void;
-  onForceRecheck: (id: string) => void;
-  onSearchMetadata?: (taskId: string) => void;
-  onLimits?: (taskId: string, workerId?: string) => void;
-  onMetadataUpdate?: () => void;
-  compact?: boolean;
-  selectionMode?: boolean;
-  selected?: boolean;
-  onToggleSelect?: (id: string) => void;
-  selectedIds?: Set<string>;
-  onRequestDelete?: (ids: string[]) => void;
-}>) {
+}: Readonly<TorrentCardProps>) {
   void onMetadataUpdate;
-  const [blurIntensity, setBlurIntensity] = useState(50);
+  const blurIntensity = useTorrentBlurIntensity();
+  const handleCardClick = useTorrentOpenHandler({
+    torrentId: torrent.id,
+    selectionMode,
+    onToggleSelect,
+    onShowDetails,
+  });
 
-  useEffect(() => {
-    const prefs = preferencesService.load();
-    if (typeof prefs?.background_image_blur_intensity === 'number') {
-      setBlurIntensity(prefs.background_image_blur_intensity);
-    }
-  }, []);
-
-  const handleCardClick = () => {
-    if (selectionMode && onToggleSelect) {
-      onToggleSelect(torrent.id);
-    } else {
-      onShowDetails(torrent.id);
-    }
-  };
-
-  // Convert blur intensity (0-100) to pixels for CSS filter
-  // Scale: 0 = 0px, 50 = 12px, 100 = 24px
-  const blurPx = Math.round((blurIntensity / 100) * 24);
+  const blurPx = getBlurPixels(blurIntensity);
   const hasImage = !!torrent.metadata?.image_url;
-  const encodedImageUrl = hasImage && torrent.metadata?.image_url ? encodeURI(torrent.metadata.image_url) : null;
+  const encodedImageUrl = getTorrentImageUrl(torrent);
+  const actions = {
+    onShowDetails,
+    onStart,
+    onStop,
+    onRemove,
+    onForceDownload,
+    onForceReannounce,
+    onForceRecheck,
+    onSearchMetadata,
+    onLimits,
+    onMetadataUpdate,
+  };
+  const selection = { selectionMode, selectedIds, onToggleSelect, onRequestDelete };
 
   return (
-    <TorrentContextMenu
-      taskId={torrent.id}
-      workerId={torrent.workerUUID}
-      selectionMode={selectionMode}
-      selectedIds={selectedIds}
-      onRequestDelete={onRequestDelete}
-      onStart={onStart}
-      onStop={onStop}
-      onRemove={onRemove}
-      onForceDownload={onForceDownload}
-      onForceReannounce={onForceReannounce}
-      onForceRecheck={onForceRecheck}
-      onSearchMetadata={onSearchMetadata}
-      onLimits={onLimits}
-      onShowDetails={onShowDetails}
-    >
+    <TorrentContextMenuWrapper torrent={torrent} actions={actions} selection={selection}>
       <Card
         className="hover:shadow-lg transition-shadow overflow-hidden p-0 gap-2 cursor-pointer relative"
         onClick={handleCardClick}
@@ -150,16 +103,16 @@ export function TorrentCard({
               <BlurOverlay hasImage={hasImage} blurPx={blurPx} opacityClass="bg-white/30" />
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
                 {selectionMode && (
-                  <Checkbox
-                    className="h-3.5 w-3.5"
-                    checked={!!selected}
-                    onCheckedChange={() => onToggleSelect && onToggleSelect(torrent.id)}
-                    onClick={(e) => e.stopPropagation()}
+                  <TorrentSelectionCheckbox
+                    torrentId={torrent.id}
+                    selected={selected}
+                    compact
+                    onToggleSelect={onToggleSelect}
                   />
                 )}
                 <StatusBadge status={torrent.status} size="sm" showTooltip={false} />
-                <CardTitle className="text-[11px] font-medium text-muted-foreground dark:text-gray-400 truncate" title={isTextTruncated(torrent.metadata?.name || torrent.name) ? `${torrent.metadata?.name || torrent.name} (truncado)` : (torrent.metadata?.name || torrent.name)}>
-                  {truncateText(torrent.metadata?.name || torrent.name)}
+                <CardTitle className="text-[11px] font-medium text-muted-foreground dark:text-gray-400 truncate">
+                  <TorrentDisplayName torrent={torrent} className="truncate" />
                 </CardTitle>
               </div>
               {torrent.workerName && (
@@ -179,19 +132,13 @@ export function TorrentCard({
             </CardHeader>
             <CardContent className="px-3 pt-0 pb-3 relative z-10">
               <div className="flex gap-2 items-center">
-                <div className="flex-shrink-0">
-                  {hasImage ? (
-                    <img
-                      src={encodedImageUrl!}
-                      alt={torrent.name}
-                      className="w-16 h-16 object-cover rounded-md"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 rounded-md bg-muted flex items-center justify-center">
-                      <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
+                <TorrentThumbnail
+                  torrent={torrent}
+                  alt={torrent.name}
+                  sizeClassName="w-16 h-16"
+                  roundedClassName="rounded-md"
+                  iconClassName="h-8 w-8 text-muted-foreground"
+                />
                 <div className="flex-1 flex flex-col gap-1.5 text-[11px] text-muted-foreground">
                   <StatBadge
                     icon={Upload}
@@ -223,10 +170,10 @@ export function TorrentCard({
               <BlurOverlay hasImage={hasImage} blurPx={blurPx} opacityClass="bg-white/60" />
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                 {selectionMode && (
-                  <Checkbox
-                    checked={!!selected}
-                    onCheckedChange={() => onToggleSelect && onToggleSelect(torrent.id)}
-                    onClick={(e) => e.stopPropagation()}
+                  <TorrentSelectionCheckbox
+                    torrentId={torrent.id}
+                    selected={selected}
+                    onToggleSelect={onToggleSelect}
                   />
                 )}
                 <div className="flex-shrink-0">
@@ -234,28 +181,14 @@ export function TorrentCard({
                 </div>
                 <CardTitle
                   className="text-sm font-medium text-muted-foreground dark:text-gray-400 truncate"
-                  title={isTextTruncated(torrent.metadata?.name || torrent.name) ? `${torrent.metadata?.name || torrent.name} (truncado)` : (torrent.metadata?.name || torrent.name)}
                 >
-                  {truncateText(torrent.metadata?.name || torrent.name)}
+                  <TorrentDisplayName torrent={torrent} className="truncate" />
                 </CardTitle>
               </div>
               {torrent.workerName && (
                 <div className="flex-shrink-0 ml-2 flex items-center gap-2">
                   <RatioBadge ratio={torrent.ratio} showValue={false} showIcon={true} />
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="inline-flex items-center justify-center rounded-full border p-1">
-                        <WorkerIcon
-                          iconName={torrent.workerIcon}
-                          color={torrent.workerColor}
-                          size="sm"
-                        />
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{torrent.workerName}</p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <TorrentWorkerBadge torrent={torrent} />
                 </div>
               )}
               {/* Progress bar at bottom of header - hidden when complete */}
@@ -270,19 +203,13 @@ export function TorrentCard({
             </CardHeader>
             <CardContent className="px-4 pt-1 pb-6 relative z-10">
               <div className="flex gap-3 items-center">
-                <div className="flex-shrink-0">
-                  {hasImage ? (
-                    <img
-                      src={encodedImageUrl!}
-                      alt={torrent.name}
-                      className="w-24 h-24 object-cover rounded-md"
-                    />
-                  ) : (
-                    <div className="w-24 h-24 rounded-md bg-muted flex items-center justify-center">
-                      <ImageIcon className="h-12 w-12 text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
+                <TorrentThumbnail
+                  torrent={torrent}
+                  alt={torrent.name}
+                  sizeClassName="w-24 h-24"
+                  roundedClassName="rounded-md"
+                  iconClassName="h-12 w-12 text-muted-foreground"
+                />
                 <div className="flex-1 flex flex-col gap-2 text-xs text-muted-foreground">
                   <StatBadge
                     icon={Upload}
@@ -310,7 +237,7 @@ export function TorrentCard({
           </>
         )}
       </Card>
-    </TorrentContextMenu>
+    </TorrentContextMenuWrapper>
   );
 }
 
@@ -327,7 +254,7 @@ function BlurOverlay({ hasImage, blurPx, rounded = false, opacityClass = "bg-whi
 }
 
 function StatBadge({ icon: Icon, rate, total, colorClass, hasImage, blurPx, compact = false }: {
-  icon: React.ElementType,
+  icon: ElementType,
   rate: number,
   total?: number,
   colorClass: string,

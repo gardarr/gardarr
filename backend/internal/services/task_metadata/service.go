@@ -28,6 +28,7 @@ import (
 const (
 	MaxFileSize      = 10 << 20 // 10 MB
 	AllowedMimeTypes = "image/jpeg,image/png,image/gif,image/webp"
+	httpTimeout      = 10 * time.Second
 )
 
 var validExternalImagePath = regexp.MustCompile(`^/[A-Za-z0-9._~/%+-]+$`)
@@ -70,7 +71,7 @@ func NewService(db *database.Database, baseURL, uploadDir string, providerRegist
 		uploadDir:        uploadDir,
 		baseURL:          baseURL,
 		providerRegistry: providerRegistry,
-		httpClient:       http.DefaultClient,
+		httpClient:       &http.Client{Timeout: httpTimeout},
 		lookupIPAddr:     net.DefaultResolver.LookupIPAddr,
 	}, nil
 }
@@ -316,8 +317,7 @@ func (s *Service) DeleteImage(ctx context.Context, taskHash string) error {
 		}
 	}
 
-	// If no description, delete entire metadata, otherwise just clear image path
-	if metadata.Description == "" {
+	if metadata.Name == "" && metadata.Description == "" && metadata.ReleaseDate == "" {
 		return s.repo.DeleteByTaskHash(ctx, taskHash)
 	}
 
@@ -845,7 +845,7 @@ func (s *Service) modelToEntity(model *models.TaskMetadata) *entities.TaskMetada
 func (s *Service) GetProviderStatus(ctx context.Context, providerName string) (*MetadataProviderStatus, error) {
 	provider, ok := s.providerRegistry.Get(providerName)
 	if !ok {
-		return nil, fmt.Errorf("provider not found")
+		return nil, ErrProviderNotFound
 	}
 
 	return provider.Status(ctx)
@@ -854,22 +854,35 @@ func (s *Service) GetProviderStatus(ctx context.Context, providerName string) (*
 func (s *Service) SearchProvider(ctx context.Context, providerName string, query string) ([]MetadataProviderSearchResult, error) {
 	provider, ok := s.providerRegistry.Get(providerName)
 	if !ok {
-		return nil, fmt.Errorf("provider not found")
+		return nil, ErrProviderNotFound
 	}
 
 	return provider.Search(ctx, query)
 }
 
-// ApplyExternalMetadata applies metadata and downloads an image from a URL.
-func (s *Service) ApplyExternalMetadata(ctx context.Context, providerName string, taskHash string, name string, releaseDate string, description string, imageURL string) (*entities.TaskMetadata, error) {
+// ApplyProviderSelection resolves provider-owned metadata and applies it to a task.
+func (s *Service) ApplyProviderSelection(ctx context.Context, providerName string, taskHash string, selectionID string) (*entities.TaskMetadata, error) {
 	provider, ok := s.providerRegistry.Get(providerName)
 	if !ok {
-		return nil, fmt.Errorf("provider not found")
+		return nil, ErrProviderNotFound
 	}
 
 	if err := validateTaskHash(taskHash); err != nil {
 		return nil, fmt.Errorf("invalid task_hash: %w", err)
 	}
+
+	selection, err := provider.Resolve(ctx, selectionID)
+	if err != nil {
+		return nil, err
+	}
+	if selection == nil {
+		return nil, ErrProviderSelectionNotFound
+	}
+
+	name := selection.Title
+	releaseDate := selection.ReleaseDate
+	description := selection.Description
+	imageURL := selection.ImageURL
 
 	var filePath string
 	if imageURL != "" {
@@ -937,20 +950,26 @@ func (s *Service) ApplyExternalMetadata(ctx context.Context, providerName string
 			existing.Description = description
 		}
 		if filePath != "" {
-			// Delete old image if exists
-			if existing.ImagePath != "" {
-				if err := s.validateImagePath(existing.ImagePath); err == nil {
-					os.Remove(existing.ImagePath)
+			oldImagePath := existing.ImagePath
+			existing.ImagePath = filePath
+			existing.UpdatedAt = time.Now()
+
+			if err := s.repo.Update(ctx, existing); err != nil {
+				os.Remove(filePath)
+				return nil, err
+			}
+
+			if oldImagePath != "" {
+				if err := s.validateImagePath(oldImagePath); err == nil {
+					os.Remove(oldImagePath)
 				}
 			}
-			existing.ImagePath = filePath
+
+			return s.modelToEntity(existing), nil
 		}
 		existing.UpdatedAt = time.Now()
 
 		if err := s.repo.Update(ctx, existing); err != nil {
-			if filePath != "" {
-				os.Remove(filePath)
-			}
 			return nil, err
 		}
 		return s.modelToEntity(existing), nil

@@ -66,6 +66,8 @@ export function AddTorrentModal({
   const isPortraitMobileOrTablet = useIsPortraitMobileOrTablet();
   const [step, setStep] = useState(0);
   const [isCreating, setIsCreating] = useState(false);
+  const [pendingTask, setPendingTask] = useState<Task | null>(null);
+  const [createError, setCreateError] = useState("");
   const [selectedWorkerId, setSelectedWorkerId] = useState<string>("");
   const [magnetUri, setMagnetUri] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
@@ -106,6 +108,8 @@ export function AddTorrentModal({
     setTags([]);
     setErrors({});
     setParsedMagnetLink(null);
+    setPendingTask(null);
+    setCreateError("");
     setIsCreating(false);
     setWorkerDropdownOpen(false);
   }, [isOpen]);
@@ -221,11 +225,24 @@ export function AddTorrentModal({
       return;
     }
 
+    const submission = buildCreateSubmission();
     setIsCreating(true);
+    setCreateError("");
 
     try {
-      const task = await onCreateTorrent(buildCreateSubmission());
+      const task = pendingTask ?? await onCreateTorrent(submission);
+
+      if (!pendingTask) {
+        setPendingTask(task);
+      }
+
       await onFinalizeTorrent(task);
+    } catch (error) {
+      setCreateError(
+        error instanceof Error && error.message
+          ? error.message
+          : t("torrents.addModal.errors.createOrFinalizeFailed")
+      );
     } finally {
       setIsCreating(false);
     }
@@ -379,6 +396,15 @@ export function AddTorrentModal({
 
             <StepperContent value={2}>
               <div className="space-y-6">
+                {createError && (
+                  <p
+                    role="alert"
+                    className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                  >
+                    {createError}
+                  </p>
+                )}
+
                 <div className="space-y-2">
                   <Label htmlFor="worker" className="flex items-center gap-2">
                     <Server className="h-4 w-4" />

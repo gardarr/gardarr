@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { getRatioGrade } from "@/utils/ratioUtils";
-import type { TorrentStatus } from "@/components/TorrentStatusIcon";
+import type { TorrentStatus } from "./TorrentStatusIcon";
+import type { SortType, TorrentListItem } from "./types";
 
 // Função para determinar prioridade de ordenação dos status
 function getStatusPriority(status: TorrentStatus): number {
@@ -57,30 +58,7 @@ function getStatusPriority(status: TorrentStatus): number {
   }
 }
 
-type SortType = "priority" | "alphabetical" | "size" | "progress" | "download_speed" | "upload_speed" | "downloaded" | "uploaded";
-
-interface Torrent {
-  id: string;
-  hash: string;
-  name: string;
-  totalSizeBytes: number;
-  downloadRateBps: number;
-  uploadRateBps: number;
-  downloadedBytes: number;
-  uploadedBytes: number;
-  status: TorrentStatus;
-  createdAt: string;
-  progress: number;
-  ratio: number;
-  numSeeds: number;
-  numLeechs: number;
-  workerName?: string;
-  workerUUID?: string;
-  workerIcon?: string;
-  workerColor?: string;
-  category: string;
-  tags: string[];
-}
+type Torrent = TorrentListItem;
 
 interface Worker {
   uuid: string;

@@ -2,6 +2,12 @@ package task_metadata
 
 import (
 	"context"
+	"errors"
+)
+
+var (
+	ErrProviderNotFound          = errors.New("provider not found")
+	ErrProviderSelectionNotFound = errors.New("provider selection not found")
 )
 
 type MetadataProviderSearchResult struct {
@@ -10,6 +16,14 @@ type MetadataProviderSearchResult struct {
 	ReleaseDate string `json:"release_date,omitempty"`
 	Description string `json:"description,omitempty"`
 	ImageURL    string `json:"image_url,omitempty"`
+}
+
+type MetadataProviderSelection struct {
+	ID          string
+	Title       string
+	ReleaseDate string
+	Description string
+	ImageURL    string
 }
 
 type MetadataProviderStatus struct {
@@ -21,6 +35,7 @@ type MetadataProvider interface {
 	Name() string
 	Status(ctx context.Context) (*MetadataProviderStatus, error)
 	Search(ctx context.Context, query string) ([]MetadataProviderSearchResult, error)
+	Resolve(ctx context.Context, id string) (*MetadataProviderSelection, error)
 	AllowedImageHosts() []string
 }
 

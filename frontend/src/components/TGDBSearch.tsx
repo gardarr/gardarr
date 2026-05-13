@@ -61,10 +61,7 @@ export function TGDBSearch({ taskHash, initialQuery, onSelect, onCancel }: TGDBS
     setApplyingGameId(game.id);
     try {
       const response = await api.post<TGDBAppliedMetadata>(`/tasks/metadata/${taskHash}/providers/tgdb`, {
-        name: game.title,
-        release_date: game.release_date,
-        description: game.description,
-        image_url: game.image_url
+        id: game.id
       });
       if (!response.data) {
         toast.error(t("tgdb.errors.applyFailed"));
@@ -88,9 +85,10 @@ export function TGDBSearch({ taskHash, initialQuery, onSelect, onCancel }: TGDBS
           value={query} 
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t("tgdb.search.placeholder")}
+          aria-label="Search TGDB"
           onKeyDown={(e) => e.key === "Enter" && handleSearch(query)}
         />
-        <Button onClick={() => handleSearch(query)} disabled={isSearching || isApplying}>
+        <Button aria-label="Execute search" onClick={() => handleSearch(query)} disabled={isSearching || isApplying}>
           {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
         </Button>
       </div>

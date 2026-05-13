@@ -87,18 +87,39 @@ func (c *Client) IsActive() bool {
 
 // SearchGames searches for games by name and includes their overviews and boxarts
 func (c *Client) SearchGames(ctx context.Context, query string) (*GamesResponse, error) {
-	if !c.IsActive() {
-		return nil, fmt.Errorf("TGDB integration is not active")
-	}
-
 	reqURL, err := url.Parse(fmt.Sprintf("%s/Games/ByGameName", baseURL))
 	if err != nil {
 		return nil, err
 	}
 
 	q := reqURL.Query()
-	q.Add("apikey", c.apiKey)
 	q.Add("name", query)
+	reqURL.RawQuery = q.Encode()
+
+	return c.gamesRequest(ctx, reqURL)
+}
+
+// GetGameByID fetches a single TGDB game by its identifier and includes boxart.
+func (c *Client) GetGameByID(ctx context.Context, id string) (*GamesResponse, error) {
+	reqURL, err := url.Parse(fmt.Sprintf("%s/Games/ByGameID", baseURL))
+	if err != nil {
+		return nil, err
+	}
+
+	q := reqURL.Query()
+	q.Add("id", id)
+	reqURL.RawQuery = q.Encode()
+
+	return c.gamesRequest(ctx, reqURL)
+}
+
+func (c *Client) gamesRequest(ctx context.Context, reqURL *url.URL) (*GamesResponse, error) {
+	if !c.IsActive() {
+		return nil, fmt.Errorf("TGDB integration is not active")
+	}
+
+	q := reqURL.Query()
+	q.Add("apikey", c.apiKey)
 	q.Add("fields", "overview")
 	q.Add("include", "boxart")
 	reqURL.RawQuery = q.Encode()

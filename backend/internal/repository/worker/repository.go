@@ -115,6 +115,8 @@ func mapQbtErrorCode(code qbt.ErrorCode) entities.WorkerErrorCode {
 }
 
 func (r *Repository) CreateWorker(ctx context.Context, worker entities.Worker) (*entities.Worker, error) {
+	db := r.db.DB.WithContext(ctx)
+
 	encURL, err := r.crypto.Encrypt(worker.QBittorrentURL)
 	if err != nil {
 		return nil, err
@@ -141,7 +143,7 @@ func (r *Repository) CreateWorker(ctx context.Context, worker entities.Worker) (
 		Color:                        worker.Color,
 	}
 
-	if err := r.db.DB.Create(handler).Error; err != nil {
+	if err := db.Create(handler).Error; err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) || strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return nil, fmt.Errorf("worker already exists")
 		}
@@ -292,8 +294,10 @@ func (r *Repository) GetWorkerPreferences(worker *entities.Worker) (*entities.In
 }
 
 func (r *Repository) UpdateWorker(ctx context.Context, uid uuid.UUID, updates map[string]interface{}) (*entities.Worker, error) {
+	db := r.db.DB.WithContext(ctx)
+
 	var worker models.Worker
-	if err := r.db.DB.Where("uuid = ?", uid).First(&worker).Error; err != nil {
+	if err := db.Where("uuid = ?", uid).First(&worker).Error; err != nil {
 		return nil, err
 	}
 
@@ -336,11 +340,11 @@ func (r *Repository) UpdateWorker(ctx context.Context, uid uuid.UUID, updates ma
 		}
 	}
 
-	if err := r.db.DB.Model(&worker).Updates(mapped).Error; err != nil {
+	if err := db.Model(&worker).Updates(mapped).Error; err != nil {
 		return nil, err
 	}
 
-	if err := r.db.DB.Where("uuid = ?", uid).First(&worker).Error; err != nil {
+	if err := db.Where("uuid = ?", uid).First(&worker).Error; err != nil {
 		return nil, err
 	}
 

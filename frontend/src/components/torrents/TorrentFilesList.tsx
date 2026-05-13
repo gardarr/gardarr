@@ -5,7 +5,7 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TaskFile } from "@/types/torrent";
 import { torrentService } from "@/services/torrents";
-import { getStatusColor } from "@/components/TorrentStatusIcon";
+import { getStatusColor } from "./TorrentStatusIcon";
 import { useTranslation } from "react-i18next";
 
 interface TorrentFilesListProps {

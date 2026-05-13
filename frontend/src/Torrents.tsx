@@ -12,10 +12,25 @@ import { torrentService } from "./services/torrents";
 import { workerService } from "./services/workers";
 import { categoryService } from "./services/categories";
 import { preferencesService } from "@/services/preferences";
-import { useTorrentFilters } from "@/components/TorrentFilters";
+import {
+  getStatusColor,
+  getStatusIcon,
+  TorrentControls,
+  TorrentDeleteModal,
+  TorrentDetailsModal,
+  TorrentLimitModal,
+  TorrentListCompact,
+  TorrentListMobile,
+  TorrentSortingHeader,
+  TorrentsTable,
+  useTorrentFilters,
+  type SortType,
+  type TorrentListItem,
+  type TorrentStatus,
+} from "@/components/torrents";
 import type { CreateTorrentSubmission } from "./services/torrents";
-import type { Task, TaskMetadata } from "./types/torrent";
-import type { Worker, WorkerStatus } from "./types/worker";
+import type { Task } from "./types/torrent";
+import type { Worker } from "./types/worker";
 import type { Category } from "./types/category";
 import WorkerFilter from "@/components/ui/WorkerFilter";
 import StatusFilter from "@/components/ui/StatusFilter";
@@ -23,25 +38,14 @@ import CategoryFilter from "@/components/ui/CategoryFilter";
 import { ListFilter } from "@/components/ui/ListFilter";
 import { FilterSidebar } from "@/components/ui/FilterSidebar";
 import { useFilterControls } from "@/hooks/useFilterControls";
-import { TorrentDetailsModal } from "@/components/TorrentDetailsModal";
-import { TorrentDeleteModal } from "@/components/TorrentDeleteModal";
 import { AddTorrentModal } from "@/components/AddTorrentModal";
-import { TorrentLimitModal } from "@/components/TorrentLimitModal";
 import { TaskMetadataSearchSheet } from "@/components/TaskMetadataSearchSheet";
-import TorrentListMobile from "@/components/TorrentListMobile";
-import TorrentsTable from "@/components/TorrentsTable";
-import TorrentListCompact from "@/components/TorrentListCompact";
 import { RatioBadge } from "@/components/RatioBadge";
-import { TorrentControls } from "@/components/TorrentControls";
-import { TorrentSortingHeader } from "@/components/TorrentSortingHeader";
 import { LazyLoadingSentinel } from "@/components/LazyLoadingSentinel";
 import { toast } from "sonner";
-import { getStatusIcon, getStatusColor, type TorrentStatus } from "@/components/TorrentStatusIcon";
 import { normalizeTaskStatus } from "@/utils/statusUtils";
 import { getRatioGrade } from "@/utils/ratioUtils";
 
-
-type SortType = "priority" | "alphabetical" | "size" | "progress" | "download_speed" | "upload_speed" | "downloaded" | "uploaded";
 
 // Helper function to convert sort type to translation key
 const getSortTypeKey = (type: string): string => {
@@ -58,30 +62,7 @@ const getSortTypeKey = (type: string): string => {
   }
 };
 
-type Torrent = {
-  id: string;
-  hash: string;
-  name: string;
-  totalSizeBytes: number;
-  downloadRateBps: number;
-  uploadRateBps: number;
-  downloadedBytes: number;
-  uploadedBytes: number;
-  status: TorrentStatus;
-  createdAt: string; // ISO date string
-  progress: number;
-  ratio: number;
-  numSeeds: number;
-  numLeechs: number;
-  workerName?: string;
-  workerStatus?: WorkerStatus;
-  workerUUID?: string;
-  workerIcon?: string;
-  workerColor?: string;
-  category: string;
-  tags: string[];
-  metadata?: TaskMetadata | null;
-};
+type Torrent = TorrentListItem;
 
 // Função para mapear Task (backend) para Torrent (frontend)
 function mapTaskToTorrent(task: Task): Torrent {

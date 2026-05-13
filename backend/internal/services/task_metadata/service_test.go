@@ -3,6 +3,7 @@ package task_metadata
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -16,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/models"
+	"gorm.io/gorm"
 )
 
 const unexpectedErrFmt = "unexpected error: %v"
@@ -33,6 +35,24 @@ func setupTestService(t *testing.T) (*Service, string) {
 		t.Fatalf("NewService failed: %v", err)
 	}
 	return svc, uploadDir
+}
+
+func createTestMetadata(t *testing.T, svc *Service, metadata *models.TaskMetadata) {
+	t.Helper()
+
+	if metadata.UUID == uuid.Nil {
+		metadata.UUID = uuid.New()
+	}
+	if metadata.CreatedAt.IsZero() {
+		metadata.CreatedAt = time.Now()
+	}
+	if metadata.UpdatedAt.IsZero() {
+		metadata.UpdatedAt = time.Now()
+	}
+
+	if err := svc.repo.Create(context.Background(), metadata); err != nil {
+		t.Fatalf("create task_metadata failed: %v", err)
+	}
 }
 
 // createTestFile creates a file with the given content in dir and returns its full path.
@@ -312,6 +332,83 @@ func TestDeleteImagesByWorkerNoTasks(t *testing.T) {
 	}
 }
 
+func TestNewServiceUsesDedicatedHTTPClientTimeout(t *testing.T) {
+	svc, _ := setupTestService(t)
+
+	if svc.httpClient == nil {
+		t.Fatal("expected http client to be initialized")
+	}
+	if svc.httpClient == http.DefaultClient {
+		t.Fatal("expected a dedicated http client instance")
+	}
+	if svc.httpClient.Timeout != httpTimeout {
+		t.Fatalf("expected timeout %v, got %v", httpTimeout, svc.httpClient.Timeout)
+	}
+}
+
+func TestDeleteImagePreservesMetadataWhenOtherFieldsRemain(t *testing.T) {
+	svc, uploadDir := setupTestService(t)
+	ctx := context.Background()
+
+	imagePath := createTestFile(t, uploadDir, "keep-metadata.jpg", "image")
+	createTestMetadata(t, svc, &models.TaskMetadata{
+		TaskHash:    "keep-meta",
+		ImagePath:   imagePath,
+		Name:        "Existing Name",
+		ReleaseDate: "2024-02-03",
+	})
+
+	if err := svc.DeleteImage(ctx, "keep-meta"); err != nil {
+		t.Fatalf(unexpectedErrFmt, err)
+	}
+
+	metadata, err := svc.repo.GetByTaskHash(ctx, "keep-meta")
+	if err != nil {
+		t.Fatalf(unexpectedErrFmt, err)
+	}
+	if metadata == nil {
+		t.Fatal("expected metadata row to be preserved")
+	}
+	if metadata.ImagePath != "" {
+		t.Fatalf("expected image path to be cleared, got %q", metadata.ImagePath)
+	}
+	if metadata.Name != "Existing Name" {
+		t.Fatalf("expected name to be preserved, got %q", metadata.Name)
+	}
+	if metadata.ReleaseDate != "2024-02-03" {
+		t.Fatalf("expected release date to be preserved, got %q", metadata.ReleaseDate)
+	}
+	if _, err := os.Stat(imagePath); !os.IsNotExist(err) {
+		t.Fatal("expected deleted image file to be removed")
+	}
+}
+
+func TestDeleteImageDeletesMetadataWhenNoFieldsRemain(t *testing.T) {
+	svc, uploadDir := setupTestService(t)
+	ctx := context.Background()
+
+	imagePath := createTestFile(t, uploadDir, "delete-empty.jpg", "image")
+	createTestMetadata(t, svc, &models.TaskMetadata{
+		TaskHash:  "delete-empty",
+		ImagePath: imagePath,
+	})
+
+	if err := svc.DeleteImage(ctx, "delete-empty"); err != nil {
+		t.Fatalf(unexpectedErrFmt, err)
+	}
+
+	metadata, err := svc.repo.GetByTaskHash(ctx, "delete-empty")
+	if err != nil {
+		t.Fatalf(unexpectedErrFmt, err)
+	}
+	if metadata != nil {
+		t.Fatal("expected metadata row to be deleted")
+	}
+	if _, err := os.Stat(imagePath); !os.IsNotExist(err) {
+		t.Fatal("expected deleted image file to be removed")
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Tests for DeleteOrphanImages
 // ---------------------------------------------------------------------------
@@ -482,11 +579,18 @@ func TestValidateExternalImageURLRejectsExplicitPort(t *testing.T) {
 	}
 }
 
-func TestApplyExternalMetadataAcceptsTrustedProviderImage(t *testing.T) {
+func TestApplyProviderSelectionAcceptsTrustedProviderImage(t *testing.T) {
 	svc, uploadDir := setupTestService(t)
 	svc.providerRegistry = NewMetadataProviderRegistry(mockMetadataProvider{
 		name:              "tgdb",
 		allowedImageHosts: []string{"cdn.thegamesdb.net"},
+		selection: &MetadataProviderSelection{
+			ID:          "123",
+			Title:       "My Game",
+			ReleaseDate: "2024-01-01",
+			Description: "description",
+			ImageURL:    "https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg",
+		},
 	})
 	svc.lookupIPAddr = func(context.Context, string) ([]net.IPAddr, error) {
 		return []net.IPAddr{{IP: net.ParseIP("203.0.113.10")}}, nil
@@ -506,14 +610,11 @@ func TestApplyExternalMetadataAcceptsTrustedProviderImage(t *testing.T) {
 		}),
 	}
 
-	result, err := svc.ApplyExternalMetadata(
+	result, err := svc.ApplyProviderSelection(
 		context.Background(),
 		"tgdb",
 		"task123",
-		"My Game",
-		"2024-01-01",
-		"description",
-		"https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg",
+		"123",
 	)
 	if err != nil {
 		t.Fatalf(unexpectedErrFmt, err)
@@ -532,11 +633,168 @@ func TestApplyExternalMetadataAcceptsTrustedProviderImage(t *testing.T) {
 	}
 }
 
-func TestApplyExternalMetadataRejectsOversizedImage(t *testing.T) {
+func TestApplyProviderSelectionDeletesOldImageAfterSuccessfulUpdate(t *testing.T) {
+	svc, uploadDir := setupTestService(t)
+	ctx := context.Background()
+	svc.providerRegistry = NewMetadataProviderRegistry(mockMetadataProvider{
+		name:              "tgdb",
+		allowedImageHosts: []string{"cdn.thegamesdb.net"},
+		selection: &MetadataProviderSelection{
+			ID:          "123",
+			Title:       "New Name",
+			ReleaseDate: "2024-05-01",
+			Description: "New description",
+			ImageURL:    "https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg",
+		},
+	})
+	svc.lookupIPAddr = func(context.Context, string) ([]net.IPAddr, error) {
+		return []net.IPAddr{{IP: net.ParseIP("203.0.113.10")}}, nil
+	}
+	svc.httpClient = &http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader(testPNGBytes())),
+				Header: http.Header{
+					"Content-Type": []string{"image/png"},
+				},
+			}, nil
+		}),
+	}
+
+	oldImagePath := createTestFile(t, uploadDir, "old-image.jpg", "old")
+	createTestMetadata(t, svc, &models.TaskMetadata{
+		TaskHash:    "task-update-success",
+		Name:        "Old Name",
+		Description: "Old description",
+		ImagePath:   oldImagePath,
+	})
+
+	result, err := svc.ApplyProviderSelection(
+		ctx,
+		"tgdb",
+		"task-update-success",
+		"123",
+	)
+	if err != nil {
+		t.Fatalf(unexpectedErrFmt, err)
+	}
+	if result == nil || result.ImagePath == "" {
+		t.Fatal("expected updated metadata with image path")
+	}
+	if result.ImagePath == oldImagePath {
+		t.Fatal("expected a newly downloaded image path")
+	}
+	if _, err := os.Stat(result.ImagePath); err != nil {
+		t.Fatalf("expected new image to exist: %v", err)
+	}
+	if _, err := os.Stat(oldImagePath); !os.IsNotExist(err) {
+		t.Fatal("expected old image to be removed after successful update")
+	}
+
+	stored, err := svc.repo.GetByTaskHash(ctx, "task-update-success")
+	if err != nil {
+		t.Fatalf(unexpectedErrFmt, err)
+	}
+	if stored == nil || stored.ImagePath != result.ImagePath {
+		t.Fatal("expected database to reference the new image path")
+	}
+}
+
+func TestApplyProviderSelectionRemovesNewImageWhenUpdateFails(t *testing.T) {
+	svc, uploadDir := setupTestService(t)
+	ctx := context.Background()
+	svc.providerRegistry = NewMetadataProviderRegistry(mockMetadataProvider{
+		name:              "tgdb",
+		allowedImageHosts: []string{"cdn.thegamesdb.net"},
+		selection: &MetadataProviderSelection{
+			ID:          "123",
+			Title:       "New Name",
+			ReleaseDate: "2024-05-01",
+			Description: "New description",
+			ImageURL:    "https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg",
+		},
+	})
+	svc.lookupIPAddr = func(context.Context, string) ([]net.IPAddr, error) {
+		return []net.IPAddr{{IP: net.ParseIP("203.0.113.10")}}, nil
+	}
+	svc.httpClient = &http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader(testPNGBytes())),
+				Header: http.Header{
+					"Content-Type": []string{"image/png"},
+				},
+			}, nil
+		}),
+	}
+
+	oldImagePath := createTestFile(t, uploadDir, "old-image-failure.jpg", "old")
+	createTestMetadata(t, svc, &models.TaskMetadata{
+		TaskHash:    "task-update-failure",
+		Name:        "Old Name",
+		Description: "Old description",
+		ImagePath:   oldImagePath,
+	})
+
+	callbackName := "test:fail_task_metadata_update"
+	if err := svc.db.DB.Callback().Update().Before("gorm:update").Register(callbackName, func(tx *gorm.DB) {
+		if tx.Statement.Schema != nil && tx.Statement.Schema.Table == "task_metadata" {
+			tx.AddError(errors.New("forced update failure"))
+		}
+	}); err != nil {
+		t.Fatalf("failed to register update callback: %v", err)
+	}
+	defer func() {
+		_ = svc.db.DB.Callback().Update().Remove(callbackName)
+	}()
+
+	result, err := svc.ApplyProviderSelection(
+		ctx,
+		"tgdb",
+		"task-update-failure",
+		"123",
+	)
+	if err == nil || !strings.Contains(err.Error(), "forced update failure") {
+		t.Fatalf("expected forced update failure, got result=%v err=%v", result, err)
+	}
+
+	stored, repoErr := svc.repo.GetByTaskHash(ctx, "task-update-failure")
+	if repoErr != nil {
+		t.Fatalf(unexpectedErrFmt, repoErr)
+	}
+	if stored == nil {
+		t.Fatal("expected original metadata row to remain")
+	}
+	if stored.ImagePath != oldImagePath {
+		t.Fatalf("expected database to keep old image path, got %q", stored.ImagePath)
+	}
+	if _, err := os.Stat(oldImagePath); err != nil {
+		t.Fatalf("expected old image to remain after failed update: %v", err)
+	}
+
+	entries, readErr := os.ReadDir(uploadDir)
+	if readErr != nil {
+		t.Fatalf("failed to read upload dir: %v", readErr)
+	}
+	if len(entries) != 1 || entries[0].Name() != filepath.Base(oldImagePath) {
+		t.Fatalf("expected only the original image to remain, found %v", entries)
+	}
+}
+
+func TestApplyProviderSelectionRejectsOversizedImage(t *testing.T) {
 	svc, uploadDir := setupTestService(t)
 	svc.providerRegistry = NewMetadataProviderRegistry(mockMetadataProvider{
 		name:              "tgdb",
 		allowedImageHosts: []string{"cdn.thegamesdb.net"},
+		selection: &MetadataProviderSelection{
+			ID:          "123",
+			Title:       "My Game",
+			ReleaseDate: "2024-01-01",
+			Description: "description",
+			ImageURL:    "https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg",
+		},
 	})
 	svc.lookupIPAddr = func(context.Context, string) ([]net.IPAddr, error) {
 		return []net.IPAddr{{IP: net.ParseIP("203.0.113.10")}}, nil
@@ -555,14 +813,11 @@ func TestApplyExternalMetadataRejectsOversizedImage(t *testing.T) {
 		}),
 	}
 
-	_, err := svc.ApplyExternalMetadata(
+	_, err := svc.ApplyProviderSelection(
 		context.Background(),
 		"tgdb",
 		"task123",
-		"My Game",
-		"2024-01-01",
-		"description",
-		"https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg",
+		"123",
 	)
 	if err == nil || !strings.Contains(err.Error(), "image size exceeds maximum allowed size") {
 		t.Fatalf("expected oversized image rejection, got %v", err)
@@ -577,11 +832,18 @@ func TestApplyExternalMetadataRejectsOversizedImage(t *testing.T) {
 	}
 }
 
-func TestApplyExternalMetadataRejectsNonImageContent(t *testing.T) {
+func TestApplyProviderSelectionRejectsNonImageContent(t *testing.T) {
 	svc, uploadDir := setupTestService(t)
 	svc.providerRegistry = NewMetadataProviderRegistry(mockMetadataProvider{
 		name:              "tgdb",
 		allowedImageHosts: []string{"cdn.thegamesdb.net"},
+		selection: &MetadataProviderSelection{
+			ID:          "123",
+			Title:       "My Game",
+			ReleaseDate: "2024-01-01",
+			Description: "description",
+			ImageURL:    "https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg",
+		},
 	})
 	svc.lookupIPAddr = func(context.Context, string) ([]net.IPAddr, error) {
 		return []net.IPAddr{{IP: net.ParseIP("203.0.113.10")}}, nil
@@ -598,14 +860,11 @@ func TestApplyExternalMetadataRejectsNonImageContent(t *testing.T) {
 		}),
 	}
 
-	_, err := svc.ApplyExternalMetadata(
+	_, err := svc.ApplyProviderSelection(
 		context.Background(),
 		"tgdb",
 		"task123",
-		"My Game",
-		"2024-01-01",
-		"description",
-		"https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg",
+		"123",
 	)
 	if err == nil || !strings.Contains(err.Error(), "invalid image content type") {
 		t.Fatalf("expected non-image rejection, got %v", err)
@@ -620,11 +879,18 @@ func TestApplyExternalMetadataRejectsNonImageContent(t *testing.T) {
 	}
 }
 
-func TestApplyExternalMetadataUsesDetectedExtensionWhenURLHasNoValidImageExt(t *testing.T) {
+func TestApplyProviderSelectionUsesDetectedExtensionWhenURLHasNoValidImageExt(t *testing.T) {
 	svc, _ := setupTestService(t)
 	svc.providerRegistry = NewMetadataProviderRegistry(mockMetadataProvider{
 		name:              "tgdb",
 		allowedImageHosts: []string{"cdn.thegamesdb.net"},
+		selection: &MetadataProviderSelection{
+			ID:          "123",
+			Title:       "My Game",
+			ReleaseDate: "2024-01-01",
+			Description: "description",
+			ImageURL:    "https://cdn.thegamesdb.net/images/large/boxart/front/123.txt",
+		},
 	})
 	svc.lookupIPAddr = func(context.Context, string) ([]net.IPAddr, error) {
 		return []net.IPAddr{{IP: net.ParseIP("203.0.113.10")}}, nil
@@ -641,14 +907,11 @@ func TestApplyExternalMetadataUsesDetectedExtensionWhenURLHasNoValidImageExt(t *
 		}),
 	}
 
-	result, err := svc.ApplyExternalMetadata(
+	result, err := svc.ApplyProviderSelection(
 		context.Background(),
 		"tgdb",
 		"task123",
-		"My Game",
-		"2024-01-01",
-		"description",
-		"https://cdn.thegamesdb.net/images/large/boxart/front/123.txt",
+		"123",
 	)
 	if err != nil {
 		t.Fatalf(unexpectedErrFmt, err)
@@ -675,6 +938,8 @@ func testPNGBytes() []byte {
 type mockMetadataProvider struct {
 	name              string
 	allowedImageHosts []string
+	selection         *MetadataProviderSelection
+	resolveErr        error
 }
 
 func (m mockMetadataProvider) Name() string {
@@ -687,6 +952,16 @@ func (m mockMetadataProvider) Status(context.Context) (*MetadataProviderStatus, 
 
 func (m mockMetadataProvider) Search(context.Context, string) ([]MetadataProviderSearchResult, error) {
 	return nil, nil
+}
+
+func (m mockMetadataProvider) Resolve(context.Context, string) (*MetadataProviderSelection, error) {
+	if m.resolveErr != nil {
+		return nil, m.resolveErr
+	}
+	if m.selection == nil {
+		return nil, ErrProviderSelectionNotFound
+	}
+	return m.selection, nil
 }
 
 func (m mockMetadataProvider) AllowedImageHosts() []string {

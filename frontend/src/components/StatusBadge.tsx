@@ -1,5 +1,5 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { getStatusIcon, getStatusColor, type TorrentStatus } from "@/components/TorrentStatusIcon";
+import { getStatusIcon, getStatusColor, type TorrentStatus } from "@/components/torrents/TorrentStatusIcon";
 import { getStatusTranslationKey } from "@/utils/statusUtils";
 import { useTranslation } from "react-i18next";
 

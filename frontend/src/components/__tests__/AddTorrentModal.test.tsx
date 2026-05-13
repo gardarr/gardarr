@@ -5,9 +5,10 @@ import type {
   ReactNode,
   TextareaHTMLAttributes,
 } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AddTorrentModal } from "@/components/AddTorrentModal";
+import type { Task } from "@/types/torrent";
 import type { Worker } from "@/types/worker";
 
 vi.mock("react-i18next", () => ({
@@ -147,6 +148,40 @@ const baseWorker: Worker = {
   },
 };
 
+const baseTask: Task = {
+  id: "task-1",
+  name: "Task 1",
+  hash: "hash-1",
+  created_at: "2024-01-01T00:00:00Z",
+  state: "queued",
+  category: "Games",
+  path: "/downloads/task-1",
+  priority: 0,
+  ratio: 0,
+  size: 0,
+  progress: 0,
+  magnet_uri: "magnet:?xt=urn:btih:test-hash",
+  magnet_link: {
+    hash: "hash-1",
+    display_name: "Task 1",
+    trackers: [],
+    exact_length: "",
+    exact_source: "",
+  },
+  popularity: 0,
+  pairs: {
+    swarm_seeders: 0,
+    swarm_leechers: 0,
+    seeders: 0,
+    leechers: 0,
+  },
+  network: {
+    download: { speed: 0, amount: 0 },
+    upload: { speed: 0, amount: 0 },
+  },
+  tags: ["auto-tag"],
+};
+
 describe("AddTorrentModal", () => {
   it("preserves form state across worker refreshes and still defaults the worker on open", () => {
     const onCreateTorrent = vi.fn(async () => {
@@ -189,5 +224,60 @@ describe("AddTorrentModal", () => {
     expect(screen.getByDisplayValue("magnet:?xt=urn:btih:test-hash")).toBeInTheDocument();
     expect(screen.getAllByText("Worker 1")[0]).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "torrents.previous" })).toBeInTheDocument();
+  });
+
+  it("reuses the created task when finalize fails and clears the recoverable error on reopen", async () => {
+    const onCreateTorrent = vi.fn(async () => baseTask);
+    const onFinalizeTorrent = vi
+      .fn(async () => {})
+      .mockRejectedValueOnce(new Error("Finalize failed"))
+      .mockResolvedValueOnce();
+
+    const { rerender } = render(
+      <AddTorrentModal
+        isOpen={true}
+        onClose={() => {}}
+        onCreateTorrent={onCreateTorrent}
+        onFinalizeTorrent={onFinalizeTorrent}
+        workers={[baseWorker]}
+      />
+    );
+
+    fireEvent.change(screen.getByPlaceholderText("torrents.addModal.magnetUri.placeholder"), {
+      target: { value: "magnet:?xt=urn:btih:test-hash" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Select category" }));
+    fireEvent.click(screen.getByRole("button", { name: "torrents.next" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() => expect(onCreateTorrent).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(onFinalizeTorrent).toHaveBeenCalledTimes(1));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Finalize failed");
+
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() => expect(onCreateTorrent).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(onFinalizeTorrent).toHaveBeenCalledTimes(2));
+
+    rerender(
+      <AddTorrentModal
+        isOpen={false}
+        onClose={() => {}}
+        onCreateTorrent={onCreateTorrent}
+        onFinalizeTorrent={onFinalizeTorrent}
+        workers={[baseWorker]}
+      />
+    );
+    rerender(
+      <AddTorrentModal
+        isOpen={true}
+        onClose={() => {}}
+        onCreateTorrent={onCreateTorrent}
+        onFinalizeTorrent={onFinalizeTorrent}
+        workers={[baseWorker]}
+      />
+    );
+
+    await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
   });
 });

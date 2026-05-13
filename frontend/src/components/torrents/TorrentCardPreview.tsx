@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
 import { RatioBadge } from "@/components/RatioBadge";
-import { getStatusBackgroundColor } from "@/components/TorrentStatusIcon";
+import { getStatusBackgroundColor } from "./TorrentStatusIcon";
 import { formatBytesPerSecond } from "@/utils/bytes";
 import { truncateText } from "@/utils/textUtils";
 import taskDefaultBg from "@/assets/img/common/task-default-background.png";
@@ -205,4 +205,3 @@ function ProgressBadge({ progress, hasImage, blurPx, size }: { progress: number,
     </span>
   );
 }
-
