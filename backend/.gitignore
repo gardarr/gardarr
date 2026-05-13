@@ -44,3 +44,6 @@ gardarr.exe
 
 # Media
 uploads/
+
+# Cache
+.cache/
