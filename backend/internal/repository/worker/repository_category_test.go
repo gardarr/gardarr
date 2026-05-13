@@ -33,7 +33,7 @@ func TestResolveWorkerCredentialDecryptsEncryptedValues(t *testing.T) {
 	}
 }
 
-func TestResolveWorkerCredentialFallsBackToPlainText(t *testing.T) {
+func TestResolveWorkerCredentialReturnsErrorForPlainText(t *testing.T) {
 	t.Setenv("ENCRYPTION_KEY", testEncryptionKey)
 
 	cryptoService, err := crypto.NewCryptoService()
@@ -43,12 +43,7 @@ func TestResolveWorkerCredentialFallsBackToPlainText(t *testing.T) {
 
 	repo := &Repository{crypto: cryptoService}
 
-	got, err := repo.resolveWorkerCredential("http://localhost:8080")
-	if err != nil {
-		t.Fatalf("expected fallback to plain text, got error: %v", err)
-	}
-
-	if got != "http://localhost:8080" {
-		t.Fatalf("expected plain text fallback, got %q", got)
+	if _, err := repo.resolveWorkerCredential("http://localhost:8080"); err == nil {
+		t.Fatal("expected plain text credential resolution to fail")
 	}
 }

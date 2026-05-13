@@ -609,7 +609,12 @@ export function AddTorrentModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleRequestClose} />
+      <button
+        type="button"
+        aria-label={t("common.cancel")}
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={handleRequestClose}
+      />
       <div className="relative mx-2 grid h-[calc(100dvh-1rem)] w-full max-w-4xl grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-lg border bg-card shadow-lg sm:mx-4 sm:h-[92dvh]">
         {content}
       </div>

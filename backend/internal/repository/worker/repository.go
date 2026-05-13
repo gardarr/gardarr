@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -141,7 +142,7 @@ func (r *Repository) CreateWorker(ctx context.Context, worker entities.Worker) (
 	}
 
 	if err := r.db.DB.Create(handler).Error; err != nil {
-		if gorm.ErrDuplicatedKey == err || strings.Contains(err.Error(), "UNIQUE constraint failed") {
+		if errors.Is(err, gorm.ErrDuplicatedKey) || strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return nil, fmt.Errorf("worker already exists")
 		}
 		return nil, err
@@ -604,12 +605,11 @@ func (r *Repository) resolveWorkerCredential(value string) (string, error) {
 	}
 
 	decrypted, err := r.crypto.Decrypt(value)
-	if err == nil {
-		return decrypted, nil
+	if err != nil {
+		return "", err
 	}
 
-	// Legacy/fallback path for pre-migration plain values passed only in-memory.
-	return value, nil
+	return decrypted, nil
 }
 
 func toWorker(item models.Worker) *entities.Worker {

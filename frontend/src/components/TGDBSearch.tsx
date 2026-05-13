@@ -66,6 +66,11 @@ export function TGDBSearch({ taskHash, initialQuery, onSelect, onCancel }: TGDBS
         description: game.description,
         image_url: game.image_url
       });
+      if (!response.data) {
+        toast.error(t("tgdb.errors.applyFailed"));
+        return;
+      }
+
       toast.success(t("tgdb.success.applied"));
       onSelect(response.data);
     } catch {

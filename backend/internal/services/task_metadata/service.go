@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -28,6 +29,8 @@ const (
 	MaxFileSize      = 10 << 20 // 10 MB
 	AllowedMimeTypes = "image/jpeg,image/png,image/gif,image/webp"
 )
+
+var validExternalImagePath = regexp.MustCompile(`^/[A-Za-z0-9._~/%+-]+$`)
 
 // validateTaskHash ensures the provided taskHash contains only safe characters (no slashes, no traversal)
 func validateTaskHash(taskHash string) error {
@@ -870,13 +873,13 @@ func (s *Service) ApplyExternalMetadata(ctx context.Context, providerName string
 
 	var filePath string
 	if imageURL != "" {
-		parsedURL, err := s.validateExternalImageURL(ctx, provider, imageURL)
+		sanitizedImageURL, parsedURL, err := s.validateExternalImageURL(ctx, provider, imageURL)
 		if err != nil {
 			return nil, err
 		}
 
 		// Download image
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, parsedURL.String(), nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, sanitizedImageURL, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create image request: %w", err)
 		}
@@ -974,19 +977,31 @@ func (s *Service) ApplyExternalMetadata(ctx context.Context, providerName string
 	return s.modelToEntity(metadata), nil
 }
 
-func (s *Service) validateExternalImageURL(ctx context.Context, provider MetadataProvider, rawURL string) (*url.URL, error) {
-	parsedURL, err := url.Parse(rawURL)
+func (s *Service) validateExternalImageURL(ctx context.Context, provider MetadataProvider, rawURL string) (string, *url.URL, error) {
+	parsedURL, err := url.ParseRequestURI(rawURL)
 	if err != nil {
-		return nil, fmt.Errorf("invalid image URL: %w", err)
+		return "", nil, fmt.Errorf("invalid image URL: %w", err)
 	}
 
 	if parsedURL.Scheme != "https" {
-		return nil, fmt.Errorf("invalid image URL: only https URLs are allowed")
+		return "", nil, fmt.Errorf("invalid image URL: only https URLs are allowed")
 	}
 
 	host := parsedURL.Hostname()
 	if host == "" {
-		return nil, fmt.Errorf("invalid image URL: missing hostname")
+		return "", nil, fmt.Errorf("invalid image URL: missing hostname")
+	}
+
+	if parsedURL.Port() != "" {
+		return "", nil, fmt.Errorf("invalid image URL: explicit ports are not allowed")
+	}
+
+	if parsedURL.User != nil {
+		return "", nil, fmt.Errorf("invalid image URL: userinfo is not allowed")
+	}
+
+	if parsedURL.RawQuery != "" || parsedURL.Fragment != "" {
+		return "", nil, fmt.Errorf("invalid image URL: query strings and fragments are not allowed")
 	}
 
 	allowedHosts := make(map[string]struct{}, len(provider.AllowedImageHosts()))
@@ -995,25 +1010,39 @@ func (s *Service) validateExternalImageURL(ctx context.Context, provider Metadat
 	}
 
 	if _, ok := allowedHosts[strings.ToLower(host)]; !ok {
-		return nil, fmt.Errorf("invalid image URL: untrusted host")
+		return "", nil, fmt.Errorf("invalid image URL: untrusted host")
+	}
+
+	cleanPath := path.Clean(parsedURL.EscapedPath())
+	if cleanPath == "." {
+		cleanPath = "/"
+	}
+	if !strings.HasPrefix(cleanPath, "/") || !validExternalImagePath.MatchString(cleanPath) {
+		return "", nil, fmt.Errorf("invalid image URL: unsupported path")
 	}
 
 	ips, err := s.lookupIPAddr(ctx, host)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve image host: %w", err)
+		return "", nil, fmt.Errorf("failed to resolve image host: %w", err)
 	}
 
 	if len(ips) == 0 {
-		return nil, fmt.Errorf("failed to resolve image host: no IP addresses found")
+		return "", nil, fmt.Errorf("failed to resolve image host: no IP addresses found")
 	}
 
 	for _, ipAddr := range ips {
 		if isDisallowedRemoteIP(ipAddr.IP) {
-			return nil, fmt.Errorf("invalid image URL: resolved to a disallowed IP address")
+			return "", nil, fmt.Errorf("invalid image URL: resolved to a disallowed IP address")
 		}
 	}
 
-	return parsedURL, nil
+	sanitizedURL := (&url.URL{
+		Scheme: "https",
+		Host:   strings.ToLower(host),
+		Path:   cleanPath,
+	}).String()
+
+	return sanitizedURL, parsedURL, nil
 }
 
 func isDisallowedRemoteIP(ip net.IP) bool {

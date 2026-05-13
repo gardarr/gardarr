@@ -423,7 +423,7 @@ func TestValidateExternalImageURLRejectsMalformedURL(t *testing.T) {
 	svc, _ := setupTestService(t)
 	provider := mockMetadataProvider{name: "tgdb", allowedImageHosts: []string{"cdn.thegamesdb.net"}}
 
-	_, err := svc.validateExternalImageURL(context.Background(), provider, "://bad-url")
+	_, _, err := svc.validateExternalImageURL(context.Background(), provider, "://bad-url")
 	if err == nil {
 		t.Fatal("expected malformed URL to be rejected")
 	}
@@ -433,7 +433,7 @@ func TestValidateExternalImageURLRejectsNonHTTPS(t *testing.T) {
 	svc, _ := setupTestService(t)
 	provider := mockMetadataProvider{name: "tgdb", allowedImageHosts: []string{"cdn.thegamesdb.net"}}
 
-	_, err := svc.validateExternalImageURL(context.Background(), provider, "http://cdn.thegamesdb.net/images/test.jpg")
+	_, _, err := svc.validateExternalImageURL(context.Background(), provider, "http://cdn.thegamesdb.net/images/test.jpg")
 	if err == nil || !strings.Contains(err.Error(), "only https URLs are allowed") {
 		t.Fatalf("expected non-https URL rejection, got %v", err)
 	}
@@ -443,7 +443,7 @@ func TestValidateExternalImageURLRejectsUntrustedHost(t *testing.T) {
 	svc, _ := setupTestService(t)
 	provider := mockMetadataProvider{name: "tgdb", allowedImageHosts: []string{"cdn.thegamesdb.net"}}
 
-	_, err := svc.validateExternalImageURL(context.Background(), provider, "https://example.com/image.jpg")
+	_, _, err := svc.validateExternalImageURL(context.Background(), provider, "https://example.com/image.jpg")
 	if err == nil || !strings.Contains(err.Error(), "untrusted host") {
 		t.Fatalf("expected untrusted host rejection, got %v", err)
 	}
@@ -456,9 +456,29 @@ func TestValidateExternalImageURLRejectsPrivateIP(t *testing.T) {
 		return []net.IPAddr{{IP: net.ParseIP("127.0.0.1")}}, nil
 	}
 
-	_, err := svc.validateExternalImageURL(context.Background(), provider, "https://cdn.thegamesdb.net/images/test.jpg")
+	_, _, err := svc.validateExternalImageURL(context.Background(), provider, "https://cdn.thegamesdb.net/images/test.jpg")
 	if err == nil || !strings.Contains(err.Error(), "disallowed IP address") {
 		t.Fatalf("expected private IP rejection, got %v", err)
+	}
+}
+
+func TestValidateExternalImageURLRejectsQueryString(t *testing.T) {
+	svc, _ := setupTestService(t)
+	provider := mockMetadataProvider{name: "tgdb", allowedImageHosts: []string{"cdn.thegamesdb.net"}}
+
+	_, _, err := svc.validateExternalImageURL(context.Background(), provider, "https://cdn.thegamesdb.net/images/test.jpg?token=123")
+	if err == nil || !strings.Contains(err.Error(), "query strings and fragments are not allowed") {
+		t.Fatalf("expected query string rejection, got %v", err)
+	}
+}
+
+func TestValidateExternalImageURLRejectsExplicitPort(t *testing.T) {
+	svc, _ := setupTestService(t)
+	provider := mockMetadataProvider{name: "tgdb", allowedImageHosts: []string{"cdn.thegamesdb.net"}}
+
+	_, _, err := svc.validateExternalImageURL(context.Background(), provider, "https://cdn.thegamesdb.net:443/images/test.jpg")
+	if err == nil || !strings.Contains(err.Error(), "explicit ports are not allowed") {
+		t.Fatalf("expected explicit port rejection, got %v", err)
 	}
 }
 
