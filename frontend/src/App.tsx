@@ -1,4 +1,3 @@
-
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { SetupProvider } from './contexts/SetupContext'
@@ -23,7 +22,6 @@ import InitialSetupPage from './InitialSetup'
 import ResetPasswordPage from './ResetPassword'
 import ForgotPasswordPage from './ForgotPassword'
 import { Toaster } from './components/ui/sonner'
-import { InstallPrompt } from './components/InstallPrompt'
 
 function App() {
   return (
@@ -32,7 +30,6 @@ function App() {
         <SetupProvider>
           <AuthProvider>
             <Toaster richColors />
-            <InstallPrompt />
             <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/setup" element={<InitialSetupPage />} />
