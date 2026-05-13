@@ -516,70 +516,72 @@ func TestDeleteOrphanImagesEmptyDir(t *testing.T) {
 	}
 }
 
-func TestValidateExternalImageURLRejectsMalformedURL(t *testing.T) {
+func TestValidateExternalImageURLRejections(t *testing.T) {
 	svc, _ := setupTestService(t)
 	provider := mockMetadataProvider{name: "tgdb", allowedImageHosts: []string{"cdn.thegamesdb.net"}}
 
-	_, _, err := svc.validateExternalImageURL(context.Background(), provider, "://bad-url")
-	if err == nil {
-		t.Fatal("expected malformed URL to be rejected")
+	tests := []struct {
+		name        string
+		url         string
+		errContains string
+		setup       func(*Service)
+	}{
+		{
+			name:        "malformed URL",
+			url:         "://bad-url",
+			errContains: "", // any error
+		},
+		{
+			name:        "non-HTTPS",
+			url:         "http://cdn.thegamesdb.net/images/test.jpg",
+			errContains: "only https URLs are allowed",
+		},
+		{
+			name:        "untrusted host",
+			url:         "https://example.com/image.jpg",
+			errContains: "untrusted host",
+		},
+		{
+			name:        "private IP",
+			url:         "https://cdn.thegamesdb.net/images/test.jpg",
+			errContains: "disallowed IP address",
+			setup: func(s *Service) {
+				s.lookupIPAddr = func(context.Context, string) ([]net.IPAddr, error) {
+					return []net.IPAddr{{IP: net.ParseIP("127.0.0.1")}}, nil
+				}
+			},
+		},
+		{
+			name:        "query string",
+			url:         "https://cdn.thegamesdb.net/images/test.jpg?token=123",
+			errContains: "query strings and fragments are not allowed",
+		},
+		{
+			name:        "explicit port",
+			url:         "https://cdn.thegamesdb.net:443/images/test.jpg",
+			errContains: "explicit ports are not allowed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.setup != nil {
+				tt.setup(svc)
+			} else {
+				svc.lookupIPAddr = net.DefaultResolver.LookupIPAddr
+			}
+			_, _, err := svc.validateExternalImageURL(context.Background(), provider, tt.url)
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+			if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
+				t.Fatalf("expected error containing %q, got %v", tt.errContains, err)
+			}
+		})
 	}
 }
 
-func TestValidateExternalImageURLRejectsNonHTTPS(t *testing.T) {
-	svc, _ := setupTestService(t)
-	provider := mockMetadataProvider{name: "tgdb", allowedImageHosts: []string{"cdn.thegamesdb.net"}}
-
-	_, _, err := svc.validateExternalImageURL(context.Background(), provider, "http://cdn.thegamesdb.net/images/test.jpg")
-	if err == nil || !strings.Contains(err.Error(), "only https URLs are allowed") {
-		t.Fatalf("expected non-https URL rejection, got %v", err)
-	}
-}
-
-func TestValidateExternalImageURLRejectsUntrustedHost(t *testing.T) {
-	svc, _ := setupTestService(t)
-	provider := mockMetadataProvider{name: "tgdb", allowedImageHosts: []string{"cdn.thegamesdb.net"}}
-
-	_, _, err := svc.validateExternalImageURL(context.Background(), provider, "https://example.com/image.jpg")
-	if err == nil || !strings.Contains(err.Error(), "untrusted host") {
-		t.Fatalf("expected untrusted host rejection, got %v", err)
-	}
-}
-
-func TestValidateExternalImageURLRejectsPrivateIP(t *testing.T) {
-	svc, _ := setupTestService(t)
-	provider := mockMetadataProvider{name: "tgdb", allowedImageHosts: []string{"cdn.thegamesdb.net"}}
-	svc.lookupIPAddr = func(context.Context, string) ([]net.IPAddr, error) {
-		return []net.IPAddr{{IP: net.ParseIP("127.0.0.1")}}, nil
-	}
-
-	_, _, err := svc.validateExternalImageURL(context.Background(), provider, "https://cdn.thegamesdb.net/images/test.jpg")
-	if err == nil || !strings.Contains(err.Error(), "disallowed IP address") {
-		t.Fatalf("expected private IP rejection, got %v", err)
-	}
-}
-
-func TestValidateExternalImageURLRejectsQueryString(t *testing.T) {
-	svc, _ := setupTestService(t)
-	provider := mockMetadataProvider{name: "tgdb", allowedImageHosts: []string{"cdn.thegamesdb.net"}}
-
-	_, _, err := svc.validateExternalImageURL(context.Background(), provider, "https://cdn.thegamesdb.net/images/test.jpg?token=123")
-	if err == nil || !strings.Contains(err.Error(), "query strings and fragments are not allowed") {
-		t.Fatalf("expected query string rejection, got %v", err)
-	}
-}
-
-func TestValidateExternalImageURLRejectsExplicitPort(t *testing.T) {
-	svc, _ := setupTestService(t)
-	provider := mockMetadataProvider{name: "tgdb", allowedImageHosts: []string{"cdn.thegamesdb.net"}}
-
-	_, _, err := svc.validateExternalImageURL(context.Background(), provider, "https://cdn.thegamesdb.net:443/images/test.jpg")
-	if err == nil || !strings.Contains(err.Error(), "explicit ports are not allowed") {
-		t.Fatalf("expected explicit port rejection, got %v", err)
-	}
-}
-
-func TestApplyProviderSelectionAcceptsTrustedProviderImage(t *testing.T) {
+func setupMockedProviderService(t *testing.T, selectionImageURL string, bodyBytes []byte, contentType string) (*Service, string) {
 	svc, uploadDir := setupTestService(t)
 	svc.providerRegistry = NewMetadataProviderRegistry(mockMetadataProvider{
 		name:              "tgdb",
@@ -589,7 +591,7 @@ func TestApplyProviderSelectionAcceptsTrustedProviderImage(t *testing.T) {
 			Title:       "My Game",
 			ReleaseDate: "2024-01-01",
 			Description: "description",
-			ImageURL:    "https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg",
+			ImageURL:    selectionImageURL,
 		},
 	})
 	svc.lookupIPAddr = func(context.Context, string) ([]net.IPAddr, error) {
@@ -602,13 +604,18 @@ func TestApplyProviderSelectionAcceptsTrustedProviderImage(t *testing.T) {
 			}
 			return &http.Response{
 				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(bytes.NewReader(testPNGBytes())),
+				Body:       io.NopCloser(bytes.NewReader(bodyBytes)),
 				Header: http.Header{
-					"Content-Type": []string{"image/png"},
+					"Content-Type": []string{contentType},
 				},
 			}, nil
 		}),
 	}
+	return svc, uploadDir
+}
+
+func TestApplyProviderSelectionAcceptsTrustedProviderImage(t *testing.T) {
+	svc, uploadDir := setupMockedProviderService(t, "https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg", testPNGBytes(), "image/png")
 
 	result, err := svc.ApplyProviderSelection(
 		context.Background(),
@@ -634,33 +641,8 @@ func TestApplyProviderSelectionAcceptsTrustedProviderImage(t *testing.T) {
 }
 
 func TestApplyProviderSelectionDeletesOldImageAfterSuccessfulUpdate(t *testing.T) {
-	svc, uploadDir := setupTestService(t)
+	svc, uploadDir := setupMockedProviderService(t, "https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg", testPNGBytes(), "image/png")
 	ctx := context.Background()
-	svc.providerRegistry = NewMetadataProviderRegistry(mockMetadataProvider{
-		name:              "tgdb",
-		allowedImageHosts: []string{"cdn.thegamesdb.net"},
-		selection: &MetadataProviderSelection{
-			ID:          "123",
-			Title:       "New Name",
-			ReleaseDate: "2024-05-01",
-			Description: "New description",
-			ImageURL:    "https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg",
-		},
-	})
-	svc.lookupIPAddr = func(context.Context, string) ([]net.IPAddr, error) {
-		return []net.IPAddr{{IP: net.ParseIP("203.0.113.10")}}, nil
-	}
-	svc.httpClient = &http.Client{
-		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(bytes.NewReader(testPNGBytes())),
-				Header: http.Header{
-					"Content-Type": []string{"image/png"},
-				},
-			}, nil
-		}),
-	}
 
 	oldImagePath := createTestFile(t, uploadDir, "old-image.jpg", "old")
 	createTestMetadata(t, svc, &models.TaskMetadata{
@@ -702,33 +684,8 @@ func TestApplyProviderSelectionDeletesOldImageAfterSuccessfulUpdate(t *testing.T
 }
 
 func TestApplyProviderSelectionRemovesNewImageWhenUpdateFails(t *testing.T) {
-	svc, uploadDir := setupTestService(t)
+	svc, uploadDir := setupMockedProviderService(t, "https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg", testPNGBytes(), "image/png")
 	ctx := context.Background()
-	svc.providerRegistry = NewMetadataProviderRegistry(mockMetadataProvider{
-		name:              "tgdb",
-		allowedImageHosts: []string{"cdn.thegamesdb.net"},
-		selection: &MetadataProviderSelection{
-			ID:          "123",
-			Title:       "New Name",
-			ReleaseDate: "2024-05-01",
-			Description: "New description",
-			ImageURL:    "https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg",
-		},
-	})
-	svc.lookupIPAddr = func(context.Context, string) ([]net.IPAddr, error) {
-		return []net.IPAddr{{IP: net.ParseIP("203.0.113.10")}}, nil
-	}
-	svc.httpClient = &http.Client{
-		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(bytes.NewReader(testPNGBytes())),
-				Header: http.Header{
-					"Content-Type": []string{"image/png"},
-				},
-			}, nil
-		}),
-	}
 
 	oldImagePath := createTestFile(t, uploadDir, "old-image-failure.jpg", "old")
 	createTestMetadata(t, svc, &models.TaskMetadata{
@@ -784,34 +741,8 @@ func TestApplyProviderSelectionRemovesNewImageWhenUpdateFails(t *testing.T) {
 }
 
 func TestApplyProviderSelectionRejectsOversizedImage(t *testing.T) {
-	svc, uploadDir := setupTestService(t)
-	svc.providerRegistry = NewMetadataProviderRegistry(mockMetadataProvider{
-		name:              "tgdb",
-		allowedImageHosts: []string{"cdn.thegamesdb.net"},
-		selection: &MetadataProviderSelection{
-			ID:          "123",
-			Title:       "My Game",
-			ReleaseDate: "2024-01-01",
-			Description: "description",
-			ImageURL:    "https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg",
-		},
-	})
-	svc.lookupIPAddr = func(context.Context, string) ([]net.IPAddr, error) {
-		return []net.IPAddr{{IP: net.ParseIP("203.0.113.10")}}, nil
-	}
-
 	oversizedBody := append(testPNGBytes(), bytes.Repeat([]byte("a"), MaxFileSize)...)
-	svc.httpClient = &http.Client{
-		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(bytes.NewReader(oversizedBody)),
-				Header: http.Header{
-					"Content-Type": []string{"image/png"},
-				},
-			}, nil
-		}),
-	}
+	svc, uploadDir := setupMockedProviderService(t, "https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg", oversizedBody, "image/png")
 
 	_, err := svc.ApplyProviderSelection(
 		context.Background(),
@@ -833,32 +764,7 @@ func TestApplyProviderSelectionRejectsOversizedImage(t *testing.T) {
 }
 
 func TestApplyProviderSelectionRejectsNonImageContent(t *testing.T) {
-	svc, uploadDir := setupTestService(t)
-	svc.providerRegistry = NewMetadataProviderRegistry(mockMetadataProvider{
-		name:              "tgdb",
-		allowedImageHosts: []string{"cdn.thegamesdb.net"},
-		selection: &MetadataProviderSelection{
-			ID:          "123",
-			Title:       "My Game",
-			ReleaseDate: "2024-01-01",
-			Description: "description",
-			ImageURL:    "https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg",
-		},
-	})
-	svc.lookupIPAddr = func(context.Context, string) ([]net.IPAddr, error) {
-		return []net.IPAddr{{IP: net.ParseIP("203.0.113.10")}}, nil
-	}
-	svc.httpClient = &http.Client{
-		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(strings.NewReader("not-an-image")),
-				Header: http.Header{
-					"Content-Type": []string{"text/plain"},
-				},
-			}, nil
-		}),
-	}
+	svc, uploadDir := setupMockedProviderService(t, "https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg", []byte("not-an-image"), "text/plain")
 
 	_, err := svc.ApplyProviderSelection(
 		context.Background(),
@@ -880,32 +786,7 @@ func TestApplyProviderSelectionRejectsNonImageContent(t *testing.T) {
 }
 
 func TestApplyProviderSelectionUsesDetectedExtensionWhenURLHasNoValidImageExt(t *testing.T) {
-	svc, _ := setupTestService(t)
-	svc.providerRegistry = NewMetadataProviderRegistry(mockMetadataProvider{
-		name:              "tgdb",
-		allowedImageHosts: []string{"cdn.thegamesdb.net"},
-		selection: &MetadataProviderSelection{
-			ID:          "123",
-			Title:       "My Game",
-			ReleaseDate: "2024-01-01",
-			Description: "description",
-			ImageURL:    "https://cdn.thegamesdb.net/images/large/boxart/front/123.txt",
-		},
-	})
-	svc.lookupIPAddr = func(context.Context, string) ([]net.IPAddr, error) {
-		return []net.IPAddr{{IP: net.ParseIP("203.0.113.10")}}, nil
-	}
-	svc.httpClient = &http.Client{
-		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(bytes.NewReader(testPNGBytes())),
-				Header: http.Header{
-					"Content-Type": []string{"image/png"},
-				},
-			}, nil
-		}),
-	}
+	svc, _ := setupMockedProviderService(t, "https://cdn.thegamesdb.net/images/large/boxart/front/123.txt", testPNGBytes(), "image/png")
 
 	result, err := svc.ApplyProviderSelection(
 		context.Background(),
