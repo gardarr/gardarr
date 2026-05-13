@@ -32,8 +32,8 @@ export class TorrentService {
   /**
    * Cria uma nova task/torrent para um worker específico
    */
-  async createTask(workerId: string, taskData: CreateTaskRequest): Promise<ApiResponse<null>> {
-    return api.post<null>(`/worker/${workerId}/task`, taskData);
+  async createTask(workerId: string, taskData: CreateTaskRequest): Promise<ApiResponse<Task>> {
+    return api.post<Task>(`/worker/${workerId}/task`, taskData);
   }
 
   /**
@@ -162,6 +162,11 @@ export class TorrentService {
 
 // Instância padrão do serviço
 export const torrentService = new TorrentService();
+
+export interface CreateTorrentSubmission {
+  workerId: string;
+  taskData: CreateTaskRequest;
+}
 
 /**
  * Converte um magnet URI para TaskMagnetLink

@@ -1,9 +1,6 @@
 package constants
 
-
 const (
-	WorkerPortEnv               = "WORKER_PORT"
-	WorkerSecretEnv             = "WORKER_SECRET"
 	WorkerTimeoutSecondsEnv     = "WORKER_TIMEOUT_SECONDS"
 	DefaultWorkerTimeoutSeconds = 10
 
@@ -12,7 +9,6 @@ const (
 	QBittorrentRetryBackoffEnv          = "QBITTORRENT_RETRY_BACKOFF"
 	QBittorrentLoginMaxRetriesEnv       = "QBITTORRENT_LOGIN_MAX_RETRIES"
 	QBittorrentBaseURLEnv               = "QBITTORRENT_URL"
-	QBittorrentBaseURLOldEnv            = "QBITTORRENT_BASEURL" // Deprecated: use QBITTORRENT_URL
 	QBittorrentUsernameEnv              = "QBITTORRENT_USERNAME"
 	QBittorrentPasswordEnv              = "QBITTORRENT_PASSWORD"
 )

@@ -1,6 +1,7 @@
 package task_metadata
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -54,6 +55,7 @@ func (m *Module) Register() {
 
 	// Metadata management - write operations
 	protected.PUT("/:task_hash/description", m.updateTaskDescription)
+	protected.PUT("/:task_hash/name", m.updateTaskName)
 	protected.PUT("/:task_hash/position", m.updateImagePosition)
 	protected.PUT("/:task_hash/opacity", m.updateImageOpacity)
 
@@ -64,6 +66,11 @@ func (m *Module) Register() {
 	// Image serving - read operations (also protected)
 	protected.GET("/:task_hash/image", m.getTaskImage)
 	protected.GET("/:task_hash/thumbnail", m.getTaskThumbnail)
+
+	// External metadata providers
+	protected.GET("/providers/:provider/status", m.providerStatus)
+	protected.GET("/:task_hash/providers/:provider/search", m.searchProvider)
+	protected.POST("/:task_hash/providers/:provider", m.applyProvider)
 }
 
 // uploadTaskImage handles image upload for a task
@@ -168,6 +175,40 @@ func (m *Module) updateTaskDescription(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, mappers.ToTaskMetadataResponse(metadata))
+}
+
+// updateTaskName updates the name of task metadata
+func (m *Module) updateTaskName(c *gin.Context) {
+	taskHash := c.Param("task_hash")
+	if taskHash == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "task_hash is required",
+		})
+		return
+	}
+
+	// Parse request body
+	var body struct {
+		Name string `json:"name"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid request body",
+		})
+		return
+	}
+
+	// Update name
+	metadata, err := m.service.UpdateName(c.Request.Context(), taskHash, body.Name)
+	if err != nil {
+		slog.Error("failed to update task name", "error", err, "task_hash", taskHash)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "unable to update task name",
 		})
 		return
 	}
@@ -337,4 +378,88 @@ func (m *Module) getTaskThumbnail(c *gin.Context) {
 	}
 
 	c.File(imagePath)
+}
+
+// providerStatus returns the status of an external metadata provider
+func (m *Module) providerStatus(c *gin.Context) {
+	provider := c.Param("provider")
+	if provider == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "provider is required"})
+		return
+	}
+
+	status, err := m.service.GetProviderStatus(c.Request.Context(), provider)
+	if err != nil {
+		if errors.Is(err, task_metadata_service.ErrProviderNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, status)
+}
+
+// searchProvider searches an external metadata provider
+func (m *Module) searchProvider(c *gin.Context) {
+	provider := c.Param("provider")
+	if provider == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "provider is required"})
+		return
+	}
+
+	query := c.Query("q")
+	if query == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "query parameter 'q' is required"})
+		return
+	}
+
+	results, err := m.service.SearchProvider(c.Request.Context(), provider, query)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, results)
+}
+
+// applyProvider applies provider metadata to a task
+func (m *Module) applyProvider(c *gin.Context) {
+	provider := c.Param("provider")
+	if provider == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "provider is required"})
+		return
+	}
+
+	taskHash := c.Param("task_hash")
+	if taskHash == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "task_hash is required"})
+		return
+	}
+
+	var body struct {
+		ID string `json:"id"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	if strings.TrimSpace(body.ID) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id is required"})
+		return
+	}
+
+	metadata, err := m.service.ApplyProviderSelection(c.Request.Context(), provider, taskHash, body.ID)
+	if err != nil {
+		switch {
+		case errors.Is(err, task_metadata_service.ErrProviderNotFound), errors.Is(err, task_metadata_service.ErrProviderSelectionNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		default:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, mappers.ToTaskMetadataResponse(metadata))
 }

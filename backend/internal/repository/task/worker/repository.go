@@ -1,6 +1,7 @@
 package task
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -84,6 +85,10 @@ func (s *Repository) Add(schema schemas.TaskCreateSchema) (*entities.Task, error
 		}
 	}
 
+	if task == nil {
+		return nil, fmt.Errorf("failed to retrieve created task")
+	}
+
 	return toTask(task), nil
 }
 
@@ -127,9 +132,20 @@ func (s *Repository) SetTags(hash string, tags []string) error {
 
 	for _, item := range items {
 		if item.Hash == hash {
-			if err := s.client.AddTorrentTags(hash, tags); err != nil {
-				return errors.Wrap(err, "failed to set torrent tags")
+			tagsToAdd, tagsToRemove := diffTaskTags(item.Tags, tags)
+
+			if len(tagsToRemove) > 0 {
+				if err := s.client.DeleteTorrentTags(hash, tagsToRemove); err != nil {
+					return errors.Wrap(err, "failed to remove torrent tags")
+				}
 			}
+
+			if len(tagsToAdd) > 0 {
+				if err := s.client.AddTorrentTags(hash, tagsToAdd); err != nil {
+					return errors.Wrap(err, "failed to add torrent tags")
+				}
+			}
+
 			return nil
 		}
 	}
@@ -137,11 +153,98 @@ func (s *Repository) SetTags(hash string, tags []string) error {
 	return errors.ErrTaskNotFound
 }
 
+func diffTaskTags(current string, desired []string) ([]string, []string) {
+	currentList := splitTaskTags(current)
+	desiredList := normalizeDesiredTags(desired)
+
+	currentSet := make(map[string]struct{}, len(currentList))
+	for _, tag := range currentList {
+		currentSet[tag] = struct{}{}
+	}
+
+	desiredSet := make(map[string]struct{}, len(desiredList))
+	for _, tag := range desiredList {
+		desiredSet[tag] = struct{}{}
+	}
+
+	tagsToAdd := make([]string, 0)
+	for _, tag := range desiredList {
+		if _, exists := currentSet[tag]; !exists {
+			tagsToAdd = append(tagsToAdd, tag)
+		}
+	}
+
+	tagsToRemove := make([]string, 0)
+	for _, tag := range currentList {
+		if _, exists := desiredSet[tag]; !exists {
+			tagsToRemove = append(tagsToRemove, tag)
+		}
+	}
+
+	return tagsToAdd, tagsToRemove
+}
+
+func splitTaskTags(tags string) []string {
+	if strings.TrimSpace(tags) == "" {
+		return []string{}
+	}
+
+	result := make([]string, 0)
+	seen := make(map[string]struct{})
+
+	for _, tag := range strings.Split(tags, ",") {
+		normalized := strings.TrimSpace(tag)
+		if normalized == "" {
+			continue
+		}
+		if _, exists := seen[normalized]; exists {
+			continue
+		}
+		seen[normalized] = struct{}{}
+		result = append(result, normalized)
+	}
+
+	return result
+}
+
+func normalizeDesiredTags(tags []string) []string {
+	result := make([]string, 0, len(tags))
+	seen := make(map[string]struct{}, len(tags))
+
+	for _, tag := range tags {
+		normalized := strings.TrimSpace(tag)
+		if normalized == "" {
+			continue
+		}
+		if _, exists := seen[normalized]; exists {
+			continue
+		}
+		seen[normalized] = struct{}{}
+		result = append(result, normalized)
+	}
+
+	return result
+}
+
 func (s *Repository) SetCategory(hash string, category string) error {
-	if err := s.client.SetCategory(hash, category); err != nil {
+	normalizedCategory, shouldRemove := normalizeTaskCategory(category)
+
+	if shouldRemove {
+		if err := s.client.RemoveCategory(hash); err != nil {
+			return errors.Wrap(err, "failed to remove torrent category")
+		}
+		return nil
+	}
+
+	if err := s.client.SetCategory(hash, normalizedCategory); err != nil {
 		return errors.Wrap(err, "failed to set torrent category")
 	}
 	return nil
+}
+
+func normalizeTaskCategory(category string) (string, bool) {
+	normalizedCategory := strings.TrimSpace(category)
+	return normalizedCategory, normalizedCategory == ""
 }
 
 func (s *Repository) SetShareLimit(hash string, limits entities.TaskShareLimit) error {

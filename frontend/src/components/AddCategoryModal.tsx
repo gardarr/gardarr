@@ -1,13 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TagBadge } from "@/components/ui/TagBadge";
 import { 
   X,
   Check
 } from "lucide-react";
 import { useState, useEffect } from "react";
-import type { CreateCategoryRequest, UpdateCategoryRequest, Category } from "../types/category";
+import type { Category, CategoryMetadataSource, CreateCategoryRequest, UpdateCategoryRequest } from "../types/category";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { availableIcons, availableColors, getCategoryIcon } from "../utils/categoryUtils";
@@ -25,7 +26,8 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
   const [createForm, setCreateForm] = useState<CreateCategoryRequest>({
     name: "",
     default_tags: [],
-    directory: "",
+    default_directory: "",
+    metadata_source: "none",
     color: "#3b82f6",
     icon: "Folder"
   });
@@ -40,7 +42,8 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
         setCreateForm({
           name: editingCategory.name,
           default_tags: [...(editingCategory.default_tags || [])],
-          directory: editingCategory.directory || "",
+          default_directory: editingCategory.default_directory || "",
+          metadata_source: editingCategory.metadata_source || "none",
           color: editingCategory.color || "#3b82f6",
           icon: editingCategory.icon || "Folder"
         });
@@ -49,7 +52,8 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
         setCreateForm({
           name: "",
           default_tags: [],
-          directory: "",
+          default_directory: "",
+          metadata_source: "none",
           color: "#3b82f6",
           icon: "Folder"
         });
@@ -69,7 +73,8 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
         // Update existing category
         const updateData: UpdateCategoryRequest = {
           default_tags: createForm.default_tags,
-          directory: createForm.directory,
+          default_directory: createForm.default_directory,
+          metadata_source: createForm.metadata_source,
           color: createForm.color,
           icon: createForm.icon
         };
@@ -83,7 +88,8 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
       setCreateForm({
         name: "",
         default_tags: [],
-        directory: "",
+        default_directory: "",
+        metadata_source: "none",
         color: "#3b82f6",
         icon: "Folder"
       });
@@ -124,7 +130,14 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
   const handleDirectoryChange = (value: string) => {
     setCreateForm({
       ...createForm,
-      directory: value
+      default_directory: value
+    });
+  };
+
+  const handleMetadataSourceChange = (value: CategoryMetadataSource) => {
+    setCreateForm({
+      ...createForm,
+      metadata_source: value,
     });
   };
 
@@ -133,7 +146,8 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
     setCreateForm({
       name: "",
       default_tags: [],
-      directory: "",
+      default_directory: "",
+      metadata_source: "none",
       color: "#3b82f6",
       icon: "Folder"
     });
@@ -239,14 +253,32 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="directory" className="text-sm">{t('categories.fields.directory')}</Label>
+            <Label htmlFor="directory" className="text-sm">{t('categories.fields.defaultDirectory')}</Label>
             <Input
               id="directory"
-              placeholder={t('categories.placeholders.directory')}
-              value={createForm.directory}
+              placeholder={t('categories.placeholders.defaultDirectory')}
+              value={createForm.default_directory}
               onChange={(e) => handleDirectoryChange(e.target.value)}
               className="h-9"
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="metadata-source" className="text-sm">{t('categories.fields.metadataSource')}</Label>
+            <Select
+              value={createForm.metadata_source || "none"}
+              onValueChange={(value) => handleMetadataSourceChange(value as CategoryMetadataSource)}
+            >
+              <SelectTrigger id="metadata-source" className="h-9">
+                <SelectValue placeholder={t('categories.metadataSource.placeholder')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">{t('categories.metadataSource.options.none')}</SelectItem>
+                <SelectItem value="tgdb">{t('categories.metadataSource.options.tgdb')}</SelectItem>
+                <SelectItem value="tmdb">{t('categories.metadataSource.options.tmdb')}</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">{t('categories.metadataSource.help')}</p>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">

@@ -1,28 +1,73 @@
-import { useState, useEffect, useMemo, useRef } from "react";
-import { X, Server, Check, ChevronsUpDown, HardDrive, Download, Link, FileText, Globe, Database, Folder } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ArrowLeft,
+  Check,
+  ChevronsUpDown,
+  Database,
+  Download,
+  FileText,
+  Folder,
+  Globe,
+  HardDrive,
+  Link,
+  Loader2,
+  Server,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Textarea } from "@/components/ui/textarea";
 import { WorkerIcon } from "@/components/ui/WorkerIcon";
 import { SelectCategory } from "@/components/SelectCategory";
 import { SelectTags } from "@/components/SelectTags";
-import { convertMagnetUriToTaskMagnetLink } from "@/services/torrents";
+import {
+  Stepper,
+  StepperContent,
+  StepperIndicator,
+  StepperItem,
+  StepperNav,
+  StepperPanel,
+  StepperSeparator,
+  StepperTitle,
+  StepperTrigger,
+} from "@/components/reui/stepper";
+import { convertMagnetUriToTaskMagnetLink, type CreateTorrentSubmission } from "@/services/torrents";
+import { useIsPortraitMobileOrTablet } from "@/hooks/use-portrait-mobile-tablet";
 import { formatBytes } from "@/utils/bytes";
 import { useTranslation } from "react-i18next";
-import type { Worker } from "@/types/worker";
-import type { CreateTaskRequest, TaskMagnetLink } from "@/types/torrent";
+import type { CreateTaskRequest, Task, TaskMagnetLink } from "@/types/torrent";
 import type { Category } from "@/types/category";
+import type { Worker } from "@/types/worker";
 
 interface AddTorrentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (workerId: string, taskData: CreateTaskRequest) => Promise<void>;
+  onCreateTorrent: (submission: CreateTorrentSubmission) => Promise<Task>;
+  onFinalizeTorrent: (task: Task) => Promise<void>;
   workers: Worker[];
 }
 
-export function AddTorrentModal({ isOpen, onClose, onSubmit, workers }: AddTorrentModalProps) {
+const TOTAL_STEPS = 2;
+const finalizeButtonClassName =
+  "bg-primary text-primary-foreground shadow-[0_0_30px_rgba(59,130,246,0.5),0_0_60px_rgba(59,130,246,0.22)] transition-shadow hover:shadow-[0_0_38px_rgba(59,130,246,0.65),0_0_72px_rgba(59,130,246,0.3)]";
+
+export function AddTorrentModal({
+  isOpen,
+  onClose,
+  onCreateTorrent,
+  onFinalizeTorrent,
+  workers,
+}: AddTorrentModalProps) {
   const { t } = useTranslation();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isPortraitMobileOrTablet = useIsPortraitMobileOrTablet();
+  const [step, setStep] = useState(0);
+  const [isCreating, setIsCreating] = useState(false);
+  const [pendingTask, setPendingTask] = useState<Task | null>(null);
+  const [createError, setCreateError] = useState("");
   const [selectedWorkerId, setSelectedWorkerId] = useState<string>("");
   const [magnetUri, setMagnetUri] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
@@ -34,82 +79,58 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, workers }: AddTorre
   const [parsedMagnetLink, setParsedMagnetLink] = useState<TaskMagnetLink | null>(null);
   const workerDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Filter only active workers
-  const activeWorkers = useMemo(() => {
-    return workers.filter(worker => worker.status === 'ACTIVE');
-  }, [workers]);
+  const activeWorkers = useMemo(() => workers.filter((worker) => worker.status === "ACTIVE"), [workers]);
+  const selectedWorker = useMemo(
+    () => activeWorkers.find((worker) => worker.uuid === selectedWorkerId),
+    [activeWorkers, selectedWorkerId]
+  );
+  const freeSpace = useMemo(() => selectedWorker?.instance?.server?.free_space_on_disk || 0, [selectedWorker]);
 
-  // Get selected worker info
-  const selectedWorker = useMemo(() => {
-    return activeWorkers.find(worker => worker.uuid === selectedWorkerId);
-  }, [activeWorkers, selectedWorkerId]);
+  const stepLabels = useMemo(
+    () => [
+      t("torrents.addModal.steps.magnet"),
+      t("torrents.addModal.steps.create"),
+    ],
+    [t]
+  );
 
-  // Get free space of selected worker
-  const freeSpace = useMemo(() => {
-    return selectedWorker?.instance?.server?.free_space_on_disk || 0;
-  }, [selectedWorker]);
-
-  // Reset form when modal opens
   useEffect(() => {
-    if (isOpen) {
-      setSelectedWorkerId(activeWorkers.length > 0 ? activeWorkers[0].uuid : "");
-      setSelectedCategoryId("");
-      setMagnetUri("");
-      setCategory("");
-      setDirectory("");
-      setTags([]);
-      setErrors({});
-      setParsedMagnetLink(null);
-      setIsSubmitting(false);
+    if (!isOpen) {
+      return;
     }
-  }, [isOpen, activeWorkers]);
 
-  // Parse magnet URI when it changes
+    setStep(0);
+    setSelectedWorkerId("");
+    setSelectedCategoryId("");
+    setMagnetUri("");
+    setCategory("");
+    setDirectory("");
+    setTags([]);
+    setErrors({});
+    setParsedMagnetLink(null);
+    setPendingTask(null);
+    setCreateError("");
+    setIsCreating(false);
+    setWorkerDropdownOpen(false);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || selectedWorkerId !== "") {
+      return;
+    }
+
+    setSelectedWorkerId(activeWorkers.length > 0 ? activeWorkers[0].uuid : "");
+  }, [isOpen, activeWorkers, selectedWorkerId]);
+
   useEffect(() => {
     if (magnetUri.trim() && magnetUri.startsWith("magnet:")) {
-      const parsed = convertMagnetUriToTaskMagnetLink(magnetUri.trim());
-      setParsedMagnetLink(parsed);
-    } else {
-      setParsedMagnetLink(null);
+      setParsedMagnetLink(convertMagnetUriToTaskMagnetLink(magnetUri.trim()));
+      return;
     }
+
+    setParsedMagnetLink(null);
   }, [magnetUri]);
 
-  const handleCategoryChange = (categoryId: string, category?: Category) => {
-    setSelectedCategoryId(categoryId);
-    setErrors({ ...errors, category: "" });
-    
-    if (categoryId && category) {
-      setCategory(category.name);
-      setTags([...(category.default_tags || [])]);
-      setDirectory(category.directory || "");
-    } else {
-      setCategory("");
-      setTags([]);
-      setDirectory("");
-    }
-  };
-
-  const handleWorkerChange = (workerId: string) => {
-    setSelectedWorkerId(workerId);
-    setErrors({ ...errors, worker: "" });
-    setWorkerDropdownOpen(false);
-  };
-
-  // Close modal on Escape key
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) {
-        onClose();
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener("keydown", handleEscape);
-      return () => document.removeEventListener("keydown", handleEscape);
-    }
-  }, [isOpen, onClose]);
-
-  // Close worker dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (workerDropdownRef.current && !workerDropdownRef.current.contains(event.target as Node)) {
@@ -117,301 +138,512 @@ export function AddTorrentModal({ isOpen, onClose, onSubmit, workers }: AddTorre
       }
     };
 
-    if (workerDropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [workerDropdownOpen]);
-
-
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    if (!selectedWorkerId) {
-      newErrors.worker = t("torrents.addModal.errors.workerRequired");
-    }
-
-    if (!magnetUri.trim()) {
-      newErrors.magnetUri = t("torrents.addModal.errors.magnetRequired");
-    } else if (!magnetUri.startsWith("magnet:")) {
-      newErrors.magnetUri = t("torrents.addModal.errors.magnetInvalidPrefix");
-    }
-
-    if (!selectedCategoryId) {
-      newErrors.category = t("torrents.addModal.errors.categoryRequired");
-    }
-
-    if (tags.length === 0) {
-      newErrors.tags = t("torrents.addModal.errors.tagsRequired");
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!validateForm()) {
+    if (!workerDropdownOpen) {
       return;
     }
 
-    setIsSubmitting(true);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [workerDropdownOpen]);
+
+  const isBusy = isCreating;
+
+  const validateStep = (targetStep: number): boolean => {
+    const nextErrors: Record<string, string> = {};
+
+    if (targetStep === 0) {
+      if (!magnetUri.trim()) {
+        nextErrors.magnetUri = t("torrents.addModal.errors.magnetRequired");
+      } else if (!magnetUri.startsWith("magnet:")) {
+        nextErrors.magnetUri = t("torrents.addModal.errors.magnetInvalidPrefix");
+      }
+
+      if (!selectedCategoryId) {
+        nextErrors.category = t("torrents.addModal.errors.categoryRequired");
+      }
+    }
+
+    if (targetStep === 1) {
+      if (!selectedWorkerId) {
+        nextErrors.worker = t("torrents.addModal.errors.workerRequired");
+      }
+
+      if (tags.length === 0) {
+        nextErrors.tags = t("torrents.addModal.errors.tagsRequired");
+      }
+    }
+
+    setErrors((current) => ({
+      ...current,
+      magnetUri: nextErrors.magnetUri || "",
+      category: nextErrors.category || "",
+      worker: nextErrors.worker || "",
+      tags: nextErrors.tags || "",
+    }));
+
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const handleCategoryChange = (categoryId: string, nextCategory?: Category) => {
+    setSelectedCategoryId(categoryId);
+    setErrors((current) => ({ ...current, category: "" }));
+
+    if (categoryId && nextCategory) {
+      setCategory(nextCategory.name);
+      setTags([...(nextCategory.default_tags || [])]);
+      setDirectory(nextCategory.default_directory || "");
+      return;
+    }
+
+    setCategory("");
+    setTags([]);
+    setDirectory("");
+  };
+
+  const handleWorkerChange = (workerId: string) => {
+    setSelectedWorkerId(workerId);
+    setErrors((current) => ({ ...current, worker: "" }));
+    setWorkerDropdownOpen(false);
+  };
+
+  const buildCreateSubmission = (): CreateTorrentSubmission => {
+    const taskData: CreateTaskRequest = {
+      magnet_uri: magnetUri.trim(),
+      category: category.trim(),
+      tags,
+      ...(directory.trim() && { directory: directory.trim() }),
+    };
+
+    return {
+      workerId: selectedWorkerId,
+      taskData,
+    };
+  };
+
+  const handleCreateTorrent = async () => {
+    if (!validateStep(1)) {
+      return;
+    }
+
+    const submission = buildCreateSubmission();
+    setIsCreating(true);
+    setCreateError("");
 
     try {
-      const taskData: CreateTaskRequest = {
-        magnet_uri: magnetUri.trim(),
-        category: category.trim(),
-        tags: tags,
-        ...(directory.trim() && { directory: directory.trim() }),
-      };
+      const task = pendingTask ?? await onCreateTorrent(submission);
 
-      await onSubmit(selectedWorkerId, taskData);
-      // Fechar modal apenas se sucesso (onSubmit irá fechar em caso de erro)
-      onClose();
+      if (!pendingTask) {
+        setPendingTask(task);
+      }
+
+      await onFinalizeTorrent(task);
+    } catch (error) {
+      setCreateError(
+        error instanceof Error && error.message
+          ? error.message
+          : t("torrents.addModal.errors.createOrFinalizeFailed")
+      );
     } finally {
-      setIsSubmitting(false);
+      setIsCreating(false);
     }
   };
 
-  if (!isOpen) return null;
+  const handleRequestClose = () => {
+    if (!isBusy) {
+      onClose();
+    }
+  };
+
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && isOpen && !isBusy) {
+        onClose();
+      }
+    };
+
+    if (!isOpen) {
+      return;
+    }
+
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [isOpen, isBusy, onClose]);
+
+  if (!isOpen) {
+    return null;
+  }
+
+  const content = (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden">
+      <div className="z-20 flex items-center justify-between border-b bg-card p-4 sm:p-6">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+            <Download className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold">{t("torrents.addTorrent")}</h2>
+            <p className="text-sm text-muted-foreground">
+              {t("torrents.addModal.stepCounter", { current: step + 1, total: TOTAL_STEPS })}
+            </p>
+          </div>
+        </div>
+        <Button variant="ghost" size="icon" onClick={handleRequestClose} className="h-8 w-8">
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <ScrollArea className="h-full min-h-0 min-w-0">
+        <Stepper value={step + 1} className="min-h-full p-4 pt-5 sm:p-6">
+          <StepperNav className="mb-5 sm:mb-6">
+            {stepLabels.map((label, index) => (
+              <StepperItem key={label} step={index + 1} completed={index < step} disabled={index > step}>
+                <StepperTrigger className="cursor-default">
+                  <StepperIndicator>
+                    {index < step ? <Check className="h-3.5 w-3.5" /> : index + 1}
+                  </StepperIndicator>
+                  <StepperTitle className="sr-only">{label}</StepperTitle>
+                </StepperTrigger>
+                {index < stepLabels.length - 1 && <StepperSeparator />}
+              </StepperItem>
+            ))}
+          </StepperNav>
+
+          <StepperPanel className="space-y-6">
+            <StepperContent value={1}>
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="magnetUri" className="flex items-center gap-2">
+                    <Link className="h-4 w-4" />
+                    {t("torrents.addModal.magnetUri.label")} <span className="text-destructive">*</span>
+                  </Label>
+                  <Textarea
+                    id="magnetUri"
+                    placeholder={t("torrents.addModal.magnetUri.placeholder")}
+                    value={magnetUri}
+                    onChange={(event) => {
+                      setMagnetUri(event.target.value);
+                      setErrors((current) => ({ ...current, magnetUri: "" }));
+                    }}
+                    className={`min-h-32 resize-y whitespace-pre-wrap break-all font-mono text-sm ${errors.magnetUri ? "border-destructive" : ""}`}
+                    disabled={isBusy}
+                  />
+                  {errors.magnetUri && <p className="text-sm text-destructive">{errors.magnetUri}</p>}
+
+                  {parsedMagnetLink && (
+                    <div className="mt-3 min-w-0 space-y-3 overflow-hidden rounded-lg border bg-muted/50 p-4">
+                      <div className="mb-2 flex items-center gap-2">
+                        <Database className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium text-foreground">{t("torrents.addModal.magnetInfo.title")}</span>
+                      </div>
+
+                      {parsedMagnetLink.display_name && (
+                        <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-2 text-xs">
+                          <FileText className="h-3 w-3 text-muted-foreground" />
+                          <div className="min-w-0">
+                            <span className="block text-muted-foreground">{t("torrents.addModal.magnetInfo.name")}:</span>
+                            <span className="block break-words font-medium text-foreground">{parsedMagnetLink.display_name}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {parsedMagnetLink.hash && !isPortraitMobileOrTablet && (
+                        <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-2 text-xs">
+                          <Sparkles className="h-3 w-3 text-muted-foreground" />
+                          <div className="min-w-0">
+                            <span className="block text-muted-foreground">{t("torrents.addModal.magnetInfo.hash")}:</span>
+                            <span className="block break-all font-mono text-foreground">{parsedMagnetLink.hash}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {parsedMagnetLink.trackers.length > 0 && (
+                        <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-2 text-xs">
+                          <Globe className="h-3 w-3 text-muted-foreground" />
+                          <div className="min-w-0">
+                            <span className="block text-muted-foreground">{t("torrents.addModal.magnetInfo.trackers")}:</span>
+                            <span className="block break-words font-medium text-foreground">
+                              {t("torrents.addModal.magnetInfo.trackersCount", { count: parsedMagnetLink.trackers.length })}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {parsedMagnetLink.exact_length && (
+                        <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-2 text-xs">
+                          <HardDrive className="h-3 w-3 text-muted-foreground" />
+                          <div className="min-w-0">
+                            <span className="block text-muted-foreground">{t("torrents.addModal.magnetInfo.size")}:</span>
+                            <span className="block break-words font-medium text-foreground">
+                              {formatBytes(Number.parseInt(parsedMagnetLink.exact_length, 10))}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <SelectCategory
+                  selectedCategoryId={selectedCategoryId}
+                  onCategoryChange={handleCategoryChange}
+                  label={t("torrents.addModal.category.label")}
+                  required={true}
+                  error={errors.category}
+                  showAddButton={true}
+                />
+              </div>
+            </StepperContent>
+
+            <StepperContent value={2}>
+              <div className="space-y-6">
+                {createError && (
+                  <p
+                    role="alert"
+                    className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                  >
+                    {createError}
+                  </p>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="worker" className="flex items-center gap-2">
+                    <Server className="h-4 w-4" />
+                    {t("torrents.addModal.worker.label")} <span className="text-destructive">*</span>
+                  </Label>
+                  <div className="relative" ref={workerDropdownRef}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setWorkerDropdownOpen(!workerDropdownOpen)}
+                      disabled={activeWorkers.length === 0 || isBusy}
+                      className={`w-full justify-between ${errors.worker ? "border-destructive" : ""}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {selectedWorker ? (
+                          <WorkerIcon iconName={selectedWorker.icon} color={selectedWorker.color} size="sm" />
+                        ) : (
+                          <Server className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <span className="truncate">
+                          {selectedWorker?.name ||
+                            (activeWorkers.length === 0
+                              ? t("torrents.addModal.worker.noneAvailable")
+                              : t("torrents.addModal.worker.select"))}
+                        </span>
+                      </div>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+
+                    {workerDropdownOpen && activeWorkers.length > 0 && (
+                      <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-border bg-background shadow-lg">
+                        {activeWorkers.map((worker) => (
+                          <button
+                            key={worker.uuid}
+                            type="button"
+                            onClick={() => handleWorkerChange(worker.uuid)}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                          >
+                            <WorkerIcon iconName={worker.icon} color={worker.color} size="md" />
+                            <span className="flex-1 truncate">{worker.name}</span>
+                            {selectedWorkerId === worker.uuid && <Check className="h-4 w-4 text-primary" />}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {errors.worker && <p className="text-sm text-destructive">{errors.worker}</p>}
+
+                  {selectedWorkerId && freeSpace > 0 && (
+                    <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                      <HardDrive className="h-3 w-3" />
+                      <span>{t("torrents.addModal.worker.freeSpace")} {formatBytes(freeSpace)}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="directory" className="flex items-center gap-2">
+                    <Folder className="h-4 w-4" />
+                    {t("torrents.addModal.directory.label")}
+                    <span className="text-xs text-muted-foreground">({t("torrents.addModal.directory.optional")})</span>
+                    {selectedCategoryId && (
+                      <span className="ml-2 text-xs text-blue-600">({t("torrents.addModal.directory.autoFilled")})</span>
+                    )}
+                  </Label>
+                  <Input
+                    id="directory"
+                    type="text"
+                    placeholder={t("torrents.addModal.directory.placeholder")}
+                    value={directory}
+                    onChange={(event) => setDirectory(event.target.value)}
+                    disabled={isBusy}
+                  />
+                </div>
+
+                <SelectTags
+                  tags={tags}
+                  onTagsChange={(nextTags) => {
+                    setTags(nextTags);
+                    if (nextTags.length > 0) {
+                      setErrors((current) => ({ ...current, tags: "" }));
+                    }
+                  }}
+                  label={t("torrents.addModal.tags.label")}
+                  required={true}
+                  error={errors.tags}
+                  placeholder={t("torrents.addModal.tags.placeholder")}
+                  showHelp={!!(selectedCategoryId && tags.length > 0)}
+                  helpText={`(${t("torrents.addModal.tags.autoFilled")})`}
+                  disabled={isBusy}
+                />
+              </div>
+            </StepperContent>
+          </StepperPanel>
+        </Stepper>
+      </ScrollArea>
+
+      <div className="z-20 border-t bg-card px-4 py-4 sm:px-6">
+        {isPortraitMobileOrTablet ? (
+          <div className="flex items-center justify-between gap-3">
+            {step === 0 ? (
+              <>
+                <div />
+                <Button
+                  type="button"
+                  onClick={() => {
+                    if (validateStep(0)) {
+                      setStep(1);
+                    }
+                  }}
+                  disabled={isBusy}
+                  className="min-w-28"
+                >
+                  {t("torrents.next")}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setStep((current) => Math.max(current - 1, 0))}
+                  disabled={isBusy}
+                  className="min-w-28"
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  {t("torrents.previous")}
+                </Button>
+
+                <Button
+                  type="button"
+                  onClick={handleCreateTorrent}
+                  disabled={isBusy || activeWorkers.length === 0}
+                  className={`min-w-28 ${finalizeButtonClassName}`}
+                >
+                  {isCreating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {t("torrents.addModal.actions.creating")}
+                    </>
+                  ) : (
+                    "Add"
+                  )}
+                </Button>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+            <Button type="button" variant="outline" onClick={handleRequestClose} disabled={isBusy}>
+              {t("common.cancel")}
+            </Button>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              {step > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setStep((current) => Math.max(current - 1, 0))}
+                  disabled={isBusy}
+                  className="w-full sm:w-auto"
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  {t("torrents.previous")}
+                </Button>
+              )}
+
+              {step === 0 && (
+                <Button
+                  type="button"
+                  onClick={() => {
+                    if (validateStep(0)) {
+                      setStep(1);
+                    }
+                  }}
+                  disabled={isBusy}
+                  className="w-full sm:w-auto"
+                >
+                  {t("torrents.next")}
+                </Button>
+              )}
+
+              {step === 1 && (
+                <Button
+                  type="button"
+                  onClick={handleCreateTorrent}
+                  disabled={isBusy || activeWorkers.length === 0}
+                  className={`w-full sm:w-auto ${finalizeButtonClassName}`}
+                >
+                  {isCreating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {t("torrents.addModal.actions.creating")}
+                    </>
+                  ) : (
+                    "Add"
+                  )}
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  if (isPortraitMobileOrTablet) {
+    return (
+      <Sheet
+        open={isOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            handleRequestClose();
+          }
+        }}
+      >
+        <SheetContent
+          side="bottom"
+          hideClose
+          className="flex h-[calc(100dvh-0.5rem)] w-full max-w-none flex-col gap-0 overflow-x-hidden rounded-t-2xl border-x border-t p-0"
+        >
+          {content}
+        </SheetContent>
+      </Sheet>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div 
+      <button
+        type="button"
+        aria-label={t("common.cancel")}
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
+        onClick={handleRequestClose}
       />
-      
-      {/* Modal */}
-      <div className="relative bg-card border rounded-lg shadow-lg w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Download className="h-4 w-4 text-primary" />
-            </div>
-            <h2 className="text-2xl font-bold">{t("torrents.addTorrent")}</h2>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="h-8 w-8"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Magnet URI */}
-          <div className="space-y-2">
-            <Label htmlFor="magnetUri" className="flex items-center gap-2">
-              <Link className="h-4 w-4" />
-              {t("torrents.addModal.magnetUri.label")} <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="magnetUri"
-              type="text"
-              placeholder={t("torrents.addModal.magnetUri.placeholder")}
-              value={magnetUri}
-              onChange={(e) => {
-                setMagnetUri(e.target.value);
-                setErrors({ ...errors, magnetUri: "" });
-              }}
-              className={errors.magnetUri ? "border-destructive" : ""}
-            />
-            {errors.magnetUri && (
-              <p className="text-sm text-destructive">{errors.magnetUri}</p>
-            )}
-            
-            {/* Parsed Magnet Information */}
-            {parsedMagnetLink && (
-              <div className="mt-3 p-4 bg-muted/50 rounded-lg border">
-                <div className="flex items-center gap-2 mb-3">
-                  <Database className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium text-foreground">{t("torrents.addModal.magnetInfo.title")}</span>
-                </div>
-                
-                <div className="space-y-2">
-                  {/* Display Name */}
-                  {parsedMagnetLink.display_name && (
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">{t("torrents.addModal.magnetInfo.name")}:</span>
-                      <span className="text-xs font-medium text-foreground truncate">
-                        {parsedMagnetLink.display_name}
-                      </span>
-                    </div>
-                  )}
-                  
-                  {/* Trackers Count */}
-                  {parsedMagnetLink.trackers.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <Globe className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">{t("torrents.addModal.magnetInfo.trackers")}:</span>
-                      <span className="text-xs font-medium text-foreground">
-                        {t("torrents.addModal.magnetInfo.trackersCount", { count: parsedMagnetLink.trackers.length })}
-                      </span>
-                    </div>
-                  )}
-                  
-                  {/* Exact Length */}
-                  {parsedMagnetLink.exact_length && (
-                    <div className="flex items-center gap-2">
-                      <HardDrive className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">{t("torrents.addModal.magnetInfo.size")}:</span>
-                      <span className="text-xs font-medium text-foreground">
-                        {formatBytes(Number.parseInt(parsedMagnetLink.exact_length, 10))}
-                      </span>
-                    </div>
-                  )}
-                  
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Category Selection */}
-          <SelectCategory
-            selectedCategoryId={selectedCategoryId}
-            onCategoryChange={handleCategoryChange}
-            label={t("torrents.addModal.category.label")}
-            required={true}
-            error={errors.category}
-            showAddButton={true}
-          />
-
-          {/* Directory (Optional) */}
-          <div className="space-y-2">
-            <Label htmlFor="directory" className="flex items-center gap-2">
-              <Folder className="h-4 w-4" />
-              {t("torrents.addModal.directory.label")} <span className="text-muted-foreground text-xs">({t("torrents.addModal.directory.optional")})</span>
-              {selectedCategoryId && (
-                <span className="text-xs text-blue-600 ml-2">({t("torrents.addModal.directory.autoFilled")})</span>
-              )}
-            </Label>
-            <Input
-              id="directory"
-              type="text"
-              placeholder={t("torrents.addModal.directory.placeholder")}
-              value={directory}
-              onChange={(e) => setDirectory(e.target.value)}
-            />
-          </div>
-
-          {/* Tags */}
-          <SelectTags
-            tags={tags}
-            onTagsChange={setTags}
-            label={t("torrents.addModal.tags.label")}
-            required={true}
-            error={errors.tags}
-            placeholder={t("torrents.addModal.tags.placeholder")}
-            showHelp={!!(selectedCategoryId && tags.length > 0)}
-            helpText={`(${t("torrents.addModal.tags.autoFilled")})`}
-          />
-
-          {/* Worker Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="worker" className="flex items-center gap-2">
-              <Server className="h-4 w-4" />
-              {t("torrents.addModal.worker.label")} <span className="text-destructive">*</span>
-            </Label>
-            <div className="relative" ref={workerDropdownRef}>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setWorkerDropdownOpen(!workerDropdownOpen)}
-                disabled={activeWorkers.length === 0}
-                className={`w-full justify-between ${errors.worker ? "border-destructive" : ""}`}
-              >
-                <div className="flex items-center gap-2">
-                  {selectedWorkerId ? (
-                    (() => {
-                      const selectedWorker = activeWorkers.find(worker => worker.uuid === selectedWorkerId);
-                      return selectedWorker ? (
-                        <WorkerIcon 
-                          iconName={selectedWorker.icon}
-                          color={selectedWorker.color}
-                          size="sm"
-                        />
-                      ) : (
-                        <Server className="h-4 w-4 text-muted-foreground" />
-                      );
-                    })()
-                  ) : (
-                    <Server className="h-4 w-4 text-muted-foreground" />
-                  )}
-                  <span className="truncate">
-                    {selectedWorkerId 
-                      ? activeWorkers.find(worker => worker.uuid === selectedWorkerId)?.name 
-                      : activeWorkers.length === 0 
-                        ? t("torrents.addModal.worker.noneAvailable")
-                        : t("torrents.addModal.worker.select")
-                    }
-                  </span>
-                </div>
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-              </Button>
-              
-              {workerDropdownOpen && activeWorkers.length > 0 && (
-                <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-auto">
-                  {activeWorkers.map((worker) => (
-                    <button
-                      key={worker.uuid}
-                      type="button"
-                      onClick={() => handleWorkerChange(worker.uuid)}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground text-left"
-                    >
-                      <WorkerIcon 
-                        iconName={worker.icon}
-                        color={worker.color}
-                        size="md"
-                      />
-                      <span className="flex-1 truncate">{worker.name}</span>
-                      {selectedWorkerId === worker.uuid && (
-                        <Check className="h-4 w-4 text-primary" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            {errors.worker && (
-              <p className="text-sm text-destructive">{errors.worker}</p>
-            )}
-            {selectedWorkerId && freeSpace > 0 && (
-              <div className="mt-1 text-xs text-muted-foreground flex items-center gap-1">
-                <HardDrive className="h-3 w-3" />
-                <span>{t("torrents.addModal.worker.freeSpace")} {formatBytes(freeSpace)}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Footer */}
-          <div className="flex gap-3 justify-end pt-4 border-t">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={isSubmitting}
-            >
-              {t("common.cancel")}
-            </Button>
-            <Button
-              type="submit"
-              disabled={isSubmitting || activeWorkers.length === 0}
-            >
-              {isSubmitting ? t("torrents.addModal.submitting") : t("torrents.addModal.submit")}
-            </Button>
-          </div>
-        </form>
+      <div className="relative mx-2 grid h-[calc(100dvh-1rem)] w-full max-w-4xl grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-lg border bg-card shadow-lg sm:mx-4 sm:h-[92dvh]">
+        {content}
       </div>
-
     </div>
   );
 }
-

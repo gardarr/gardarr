@@ -24,12 +24,13 @@ func NewRepository(db *database.Database) *Repository {
 // CreateCategory inserts a new category into the database
 func (r *Repository) CreateCategory(ctx context.Context, category entities.Category) (*entities.Category, error) {
 	model := &models.Category{
-		ID:          category.ID,
-		Name:        category.Name,
-		DefaultTags: models.StringArray(category.DefaultTags),
-		Directory:   category.Directory,
-		Color:       category.Color,
-		Icon:        category.Icon,
+		ID:               category.ID,
+		Name:             category.Name,
+		DefaultTags:      models.StringArray(category.DefaultTags),
+		DefaultDirectory: category.DefaultDirectory,
+		MetadataSource:   category.MetadataSource,
+		Color:            category.Color,
+		Icon:             category.Icon,
 	}
 
 	if err := r.db.DB.WithContext(ctx).Create(model).Error; err != nil {
@@ -89,10 +90,11 @@ func (r *Repository) GetCategoryByName(ctx context.Context, name string) (*entit
 func (r *Repository) UpdateCategory(ctx context.Context, category entities.Category) (*entities.Category, error) {
 	// Only update mutable fields
 	updates := map[string]interface{}{
-		"default_tags": models.StringArray(category.DefaultTags),
-		"directory":    category.Directory,
-		"color":        category.Color,
-		"icon":         category.Icon,
+		"default_tags":      models.StringArray(category.DefaultTags),
+		"default_directory": category.DefaultDirectory,
+		"metadata_source":   category.MetadataSource,
+		"color":             category.Color,
+		"icon":              category.Icon,
 	}
 
 	if err := r.db.DB.WithContext(ctx).Model(&models.Category{}).Where("id = ?", category.ID).Updates(updates).Error; err != nil {
@@ -122,13 +124,14 @@ func (r *Repository) DeleteCategory(ctx context.Context, id string) error {
 // toCategory converts a models.Category to entities.Category
 func toCategory(model models.Category) *entities.Category {
 	return &entities.Category{
-		ID:          model.ID,
-		Name:        model.Name,
-		DefaultTags: []string(model.DefaultTags),
-		Directory:   model.Directory,
-		Color:       model.Color,
-		Icon:        model.Icon,
-		CreatedAt:   model.CreatedAt,
-		UpdatedAt:   model.UpdatedAt,
+		ID:               model.ID,
+		Name:             model.Name,
+		DefaultTags:      []string(model.DefaultTags),
+		DefaultDirectory: model.DefaultDirectory,
+		MetadataSource:   model.MetadataSource,
+		Color:            model.Color,
+		Icon:             model.Icon,
+		CreatedAt:        model.CreatedAt,
+		UpdatedAt:        model.UpdatedAt,
 	}
 }

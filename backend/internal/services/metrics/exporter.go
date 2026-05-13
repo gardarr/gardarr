@@ -167,7 +167,11 @@ func (e *Exporter) collectTaskMetrics(ctx context.Context, ch chan<- prometheus.
 	}
 
 	for _, t := range result.Tasks {
-		labels := []string{workerID, t.Hash, t.Name}
+		name := t.Name
+		if t.Metadata != nil && t.Metadata.Name != "" {
+			name = t.Metadata.Name
+		}
+		labels := []string{workerID, t.Hash, name}
 
 		ch <- prometheus.MustNewConstMetric(e.taskDownloadSpeed, prometheus.GaugeValue, float64(t.Network.Download.Speed), labels...)
 		ch <- prometheus.MustNewConstMetric(e.taskUploadSpeed, prometheus.GaugeValue, float64(t.Network.Upload.Speed), labels...)

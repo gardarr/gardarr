@@ -1,14 +1,12 @@
 services:
-  gardarr-worker:
+  gardarr:
     image: ghcr.io/jfxdev/gardarr:latest
-    container_name: gardarr-worker
-    command: ["./main", "worker"]
+    container_name: gardarr
     ports:
-      - "${WORKER_PORT:-3100}:3100"
+      - "${APP_PORT:-3200}:3200"
     environment:
-      WORKER_PORT: ${WORKER_PORT:-3100}
-      # Generate a random secret for the worker
-      WORKER_SECRET: ${WORKER_SECRET}
+      APP_PORT: ${APP_PORT:-3200}
+      APP_URL: ${APP_URL:-http://gardarr.mydomain.com}
       # Replace the following placeholder values with your actual qBittorrent credentials
       QBITTORRENT_URL: "${QBITTORRENT_URL}"
       QBITTORRENT_USERNAME: "${QBITTORRENT_USERNAME}"
@@ -17,7 +15,7 @@ services:
     networks:
       - gardarr-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3100/v1/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3200/v1/health"]
       interval: 10s
       timeout: 10s
       retries: 3

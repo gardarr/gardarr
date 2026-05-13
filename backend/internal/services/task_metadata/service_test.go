@@ -1,15 +1,23 @@
 package task_metadata
 
 import (
+	"bytes"
 	"context"
+	"errors"
+	"fmt"
+	"io"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/models"
+	"gorm.io/gorm"
 )
 
 const unexpectedErrFmt = "unexpected error: %v"
@@ -22,11 +30,29 @@ func setupTestService(t *testing.T) (*Service, string) {
 
 	uploadDir := t.TempDir()
 
-	svc, err := NewService(db, "http://localhost:3200", uploadDir)
+	svc, err := NewService(db, "http://localhost:3200", uploadDir, nil)
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
 	}
 	return svc, uploadDir
+}
+
+func createTestMetadata(t *testing.T, svc *Service, metadata *models.TaskMetadata) {
+	t.Helper()
+
+	if metadata.UUID == uuid.Nil {
+		metadata.UUID = uuid.New()
+	}
+	if metadata.CreatedAt.IsZero() {
+		metadata.CreatedAt = time.Now()
+	}
+	if metadata.UpdatedAt.IsZero() {
+		metadata.UpdatedAt = time.Now()
+	}
+
+	if err := svc.repo.Create(context.Background(), metadata); err != nil {
+		t.Fatalf("create task_metadata failed: %v", err)
+	}
 }
 
 // createTestFile creates a file with the given content in dir and returns its full path.
@@ -42,14 +68,24 @@ func createTestFile(t *testing.T, dir, name, content string) string {
 // seedWorker inserts a worker into the DB and returns its UUID string.
 func seedWorker(t *testing.T, svc *Service, name string) string {
 	t.Helper()
-	workerUUID := uuid.New().String()
-	if err := svc.db.DB.Exec(
-		"INSERT INTO workers (uuid, name, type, address, encrypeted_token, icon, color, created_at, updated_at) VALUES (?, ?, 'qbt', 'http://test', 'tok', '', '', ?, ?)",
-		workerUUID, name, time.Now(), time.Now(),
-	).Error; err != nil {
+	workerUUID := uuid.New()
+	worker := &models.Worker{
+		UUID:                         workerUUID,
+		Name:                         name,
+		Type:                         "qbt",
+		Address:                      "http://test",
+		EncryptedQBittorrentURL:      "tok",
+		EncryptedQBittorrentUsername: "",
+		EncryptedQBittorrentPassword: "",
+		Icon:                         "",
+		Color:                        "",
+		CreatedAt:                    time.Now(),
+		UpdatedAt:                    time.Now(),
+	}
+	if err := svc.db.DB.Create(worker).Error; err != nil {
 		t.Fatalf("seed worker failed: %v", err)
 	}
-	return workerUUID
+	return workerUUID.String()
 }
 
 // seedTaskState inserts a task_state row linking a hash to a worker.
@@ -296,6 +332,83 @@ func TestDeleteImagesByWorkerNoTasks(t *testing.T) {
 	}
 }
 
+func TestNewServiceUsesDedicatedHTTPClientTimeout(t *testing.T) {
+	svc, _ := setupTestService(t)
+
+	if svc.httpClient == nil {
+		t.Fatal("expected http client to be initialized")
+	}
+	if svc.httpClient == http.DefaultClient {
+		t.Fatal("expected a dedicated http client instance")
+	}
+	if svc.httpClient.Timeout != httpTimeout {
+		t.Fatalf("expected timeout %v, got %v", httpTimeout, svc.httpClient.Timeout)
+	}
+}
+
+func TestDeleteImagePreservesMetadataWhenOtherFieldsRemain(t *testing.T) {
+	svc, uploadDir := setupTestService(t)
+	ctx := context.Background()
+
+	imagePath := createTestFile(t, uploadDir, "keep-metadata.jpg", "image")
+	createTestMetadata(t, svc, &models.TaskMetadata{
+		TaskHash:    "keep-meta",
+		ImagePath:   imagePath,
+		Name:        "Existing Name",
+		ReleaseDate: "2024-02-03",
+	})
+
+	if err := svc.DeleteImage(ctx, "keep-meta"); err != nil {
+		t.Fatalf(unexpectedErrFmt, err)
+	}
+
+	metadata, err := svc.repo.GetByTaskHash(ctx, "keep-meta")
+	if err != nil {
+		t.Fatalf(unexpectedErrFmt, err)
+	}
+	if metadata == nil {
+		t.Fatal("expected metadata row to be preserved")
+	}
+	if metadata.ImagePath != "" {
+		t.Fatalf("expected image path to be cleared, got %q", metadata.ImagePath)
+	}
+	if metadata.Name != "Existing Name" {
+		t.Fatalf("expected name to be preserved, got %q", metadata.Name)
+	}
+	if metadata.ReleaseDate != "2024-02-03" {
+		t.Fatalf("expected release date to be preserved, got %q", metadata.ReleaseDate)
+	}
+	if _, err := os.Stat(imagePath); !os.IsNotExist(err) {
+		t.Fatal("expected deleted image file to be removed")
+	}
+}
+
+func TestDeleteImageDeletesMetadataWhenNoFieldsRemain(t *testing.T) {
+	svc, uploadDir := setupTestService(t)
+	ctx := context.Background()
+
+	imagePath := createTestFile(t, uploadDir, "delete-empty.jpg", "image")
+	createTestMetadata(t, svc, &models.TaskMetadata{
+		TaskHash:  "delete-empty",
+		ImagePath: imagePath,
+	})
+
+	if err := svc.DeleteImage(ctx, "delete-empty"); err != nil {
+		t.Fatalf(unexpectedErrFmt, err)
+	}
+
+	metadata, err := svc.repo.GetByTaskHash(ctx, "delete-empty")
+	if err != nil {
+		t.Fatalf(unexpectedErrFmt, err)
+	}
+	if metadata != nil {
+		t.Fatal("expected metadata row to be deleted")
+	}
+	if _, err := os.Stat(imagePath); !os.IsNotExist(err) {
+		t.Fatal("expected deleted image file to be removed")
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Tests for DeleteOrphanImages
 // ---------------------------------------------------------------------------
@@ -401,4 +514,343 @@ func TestDeleteOrphanImagesEmptyDir(t *testing.T) {
 	if deleted != 0 {
 		t.Errorf("expected 0 deleted for empty dir, got %d", deleted)
 	}
+}
+
+func TestValidateExternalImageURLRejections(t *testing.T) {
+	svc, _ := setupTestService(t)
+	provider := mockMetadataProvider{name: "tgdb", allowedImageHosts: []string{"cdn.thegamesdb.net"}}
+
+	tests := []struct {
+		name        string
+		url         string
+		errContains string
+		setup       func(*Service)
+	}{
+		{
+			name:        "malformed URL",
+			url:         "://bad-url",
+			errContains: "", // any error
+		},
+		{
+			name:        "non-HTTPS",
+			url:         "http://cdn.thegamesdb.net/images/test.jpg",
+			errContains: "only https URLs are allowed",
+		},
+		{
+			name:        "untrusted host",
+			url:         "https://example.com/image.jpg",
+			errContains: "untrusted host",
+		},
+		{
+			name:        "private IP",
+			url:         "https://cdn.thegamesdb.net/images/test.jpg",
+			errContains: "disallowed IP address",
+			setup: func(s *Service) {
+				s.lookupIPAddr = func(context.Context, string) ([]net.IPAddr, error) {
+					return []net.IPAddr{{IP: net.ParseIP("127.0.0.1")}}, nil
+				}
+			},
+		},
+		{
+			name:        "query string",
+			url:         "https://cdn.thegamesdb.net/images/test.jpg?token=123",
+			errContains: "query strings and fragments are not allowed",
+		},
+		{
+			name:        "explicit port",
+			url:         "https://cdn.thegamesdb.net:443/images/test.jpg",
+			errContains: "explicit ports are not allowed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.setup != nil {
+				tt.setup(svc)
+			} else {
+				svc.lookupIPAddr = net.DefaultResolver.LookupIPAddr
+			}
+			_, _, err := svc.validateExternalImageURL(context.Background(), provider, tt.url)
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+			if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
+				t.Fatalf("expected error containing %q, got %v", tt.errContains, err)
+			}
+		})
+	}
+}
+
+func setupMockedProviderService(t *testing.T, selectionImageURL string, bodyBytes []byte, contentType string) (*Service, string) {
+	svc, uploadDir := setupTestService(t)
+	svc.providerRegistry = NewMetadataProviderRegistry(mockMetadataProvider{
+		name:              "tgdb",
+		allowedImageHosts: []string{"cdn.thegamesdb.net"},
+		selection: &MetadataProviderSelection{
+			ID:          "123",
+			Title:       "My Game",
+			ReleaseDate: "2024-01-01",
+			Description: "description",
+			ImageURL:    selectionImageURL,
+		},
+	})
+	svc.lookupIPAddr = func(context.Context, string) ([]net.IPAddr, error) {
+		return []net.IPAddr{{IP: net.ParseIP("203.0.113.10")}}, nil
+	}
+	svc.httpClient = &http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			if req.URL.Hostname() != "cdn.thegamesdb.net" {
+				return nil, fmt.Errorf("unexpected host: %s", req.URL.Hostname())
+			}
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader(bodyBytes)),
+				Header: http.Header{
+					"Content-Type": []string{contentType},
+				},
+			}, nil
+		}),
+	}
+	return svc, uploadDir
+}
+
+func TestApplyProviderSelectionAcceptsTrustedProviderImage(t *testing.T) {
+	svc, uploadDir := setupMockedProviderService(t, "https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg", testPNGBytes(), "image/png")
+
+	result, err := svc.ApplyProviderSelection(
+		context.Background(),
+		"tgdb",
+		"task123",
+		"123",
+	)
+	if err != nil {
+		t.Fatalf(unexpectedErrFmt, err)
+	}
+	if result == nil || result.ImagePath == "" {
+		t.Fatal("expected image path to be set")
+	}
+	if _, err := os.Stat(result.ImagePath); err != nil {
+		t.Fatalf("expected downloaded image to exist: %v", err)
+	}
+	if !strings.HasPrefix(result.ImagePath, uploadDir) {
+		t.Fatalf("expected image path under upload dir, got %s", result.ImagePath)
+	}
+	if filepath.Ext(result.ImagePath) != ".png" {
+		t.Fatalf("expected detected .png extension to be used, got %s", result.ImagePath)
+	}
+}
+
+func TestApplyProviderSelectionDeletesOldImageAfterSuccessfulUpdate(t *testing.T) {
+	svc, uploadDir := setupMockedProviderService(t, "https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg", testPNGBytes(), "image/png")
+	ctx := context.Background()
+
+	oldImagePath := createTestFile(t, uploadDir, "old-image.jpg", "old")
+	createTestMetadata(t, svc, &models.TaskMetadata{
+		TaskHash:    "task-update-success",
+		Name:        "Old Name",
+		Description: "Old description",
+		ImagePath:   oldImagePath,
+	})
+
+	result, err := svc.ApplyProviderSelection(
+		ctx,
+		"tgdb",
+		"task-update-success",
+		"123",
+	)
+	if err != nil {
+		t.Fatalf(unexpectedErrFmt, err)
+	}
+	if result == nil || result.ImagePath == "" {
+		t.Fatal("expected updated metadata with image path")
+	}
+	if result.ImagePath == oldImagePath {
+		t.Fatal("expected a newly downloaded image path")
+	}
+	if _, err := os.Stat(result.ImagePath); err != nil {
+		t.Fatalf("expected new image to exist: %v", err)
+	}
+	if _, err := os.Stat(oldImagePath); !os.IsNotExist(err) {
+		t.Fatal("expected old image to be removed after successful update")
+	}
+
+	stored, err := svc.repo.GetByTaskHash(ctx, "task-update-success")
+	if err != nil {
+		t.Fatalf(unexpectedErrFmt, err)
+	}
+	if stored == nil || stored.ImagePath != result.ImagePath {
+		t.Fatal("expected database to reference the new image path")
+	}
+}
+
+func TestApplyProviderSelectionRemovesNewImageWhenUpdateFails(t *testing.T) {
+	svc, uploadDir := setupMockedProviderService(t, "https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg", testPNGBytes(), "image/png")
+	ctx := context.Background()
+
+	oldImagePath := createTestFile(t, uploadDir, "old-image-failure.jpg", "old")
+	createTestMetadata(t, svc, &models.TaskMetadata{
+		TaskHash:    "task-update-failure",
+		Name:        "Old Name",
+		Description: "Old description",
+		ImagePath:   oldImagePath,
+	})
+
+	callbackName := "test:fail_task_metadata_update"
+	if err := svc.db.DB.Callback().Update().Before("gorm:update").Register(callbackName, func(tx *gorm.DB) {
+		if tx.Statement.Schema != nil && tx.Statement.Schema.Table == "task_metadata" {
+			_ = tx.AddError(errors.New("forced update failure"))
+		}
+	}); err != nil {
+		t.Fatalf("failed to register update callback: %v", err)
+	}
+	defer func() {
+		_ = svc.db.DB.Callback().Update().Remove(callbackName)
+	}()
+
+	result, err := svc.ApplyProviderSelection(
+		ctx,
+		"tgdb",
+		"task-update-failure",
+		"123",
+	)
+	if err == nil || !strings.Contains(err.Error(), "forced update failure") {
+		t.Fatalf("expected forced update failure, got result=%v err=%v", result, err)
+	}
+
+	stored, repoErr := svc.repo.GetByTaskHash(ctx, "task-update-failure")
+	if repoErr != nil {
+		t.Fatalf(unexpectedErrFmt, repoErr)
+	}
+	if stored == nil {
+		t.Fatal("expected original metadata row to remain")
+	}
+	if stored.ImagePath != oldImagePath {
+		t.Fatalf("expected database to keep old image path, got %q", stored.ImagePath)
+	}
+	if _, err := os.Stat(oldImagePath); err != nil {
+		t.Fatalf("expected old image to remain after failed update: %v", err)
+	}
+
+	entries, readErr := os.ReadDir(uploadDir)
+	if readErr != nil {
+		t.Fatalf("failed to read upload dir: %v", readErr)
+	}
+	if len(entries) != 1 || entries[0].Name() != filepath.Base(oldImagePath) {
+		t.Fatalf("expected only the original image to remain, found %v", entries)
+	}
+}
+
+func TestApplyProviderSelectionRejectsOversizedImage(t *testing.T) {
+	oversizedBody := append(testPNGBytes(), bytes.Repeat([]byte("a"), MaxFileSize)...)
+	svc, uploadDir := setupMockedProviderService(t, "https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg", oversizedBody, "image/png")
+
+	_, err := svc.ApplyProviderSelection(
+		context.Background(),
+		"tgdb",
+		"task123",
+		"123",
+	)
+	if err == nil || !strings.Contains(err.Error(), "image size exceeds maximum allowed size") {
+		t.Fatalf("expected oversized image rejection, got %v", err)
+	}
+
+	entries, readErr := os.ReadDir(uploadDir)
+	if readErr != nil {
+		t.Fatalf("failed to read upload dir: %v", readErr)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("expected no files to be written for oversized image, found %d", len(entries))
+	}
+}
+
+func TestApplyProviderSelectionRejectsNonImageContent(t *testing.T) {
+	svc, uploadDir := setupMockedProviderService(t, "https://cdn.thegamesdb.net/images/large/boxart/front/123.jpg", []byte("not-an-image"), "text/plain")
+
+	_, err := svc.ApplyProviderSelection(
+		context.Background(),
+		"tgdb",
+		"task123",
+		"123",
+	)
+	if err == nil || !strings.Contains(err.Error(), "invalid image content type") {
+		t.Fatalf("expected non-image rejection, got %v", err)
+	}
+
+	entries, readErr := os.ReadDir(uploadDir)
+	if readErr != nil {
+		t.Fatalf("failed to read upload dir: %v", readErr)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("expected no files to be written for invalid image, found %d", len(entries))
+	}
+}
+
+func TestApplyProviderSelectionUsesDetectedExtensionWhenURLHasNoValidImageExt(t *testing.T) {
+	svc, _ := setupMockedProviderService(t, "https://cdn.thegamesdb.net/images/large/boxart/front/123.txt", testPNGBytes(), "image/png")
+
+	result, err := svc.ApplyProviderSelection(
+		context.Background(),
+		"tgdb",
+		"task123",
+		"123",
+	)
+	if err != nil {
+		t.Fatalf(unexpectedErrFmt, err)
+	}
+	if filepath.Ext(result.ImagePath) != ".png" {
+		t.Fatalf("expected detected .png extension, got %s", result.ImagePath)
+	}
+}
+
+func testPNGBytes() []byte {
+	return []byte{
+		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+		0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
+		0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41,
+		0x54, 0x78, 0x9C, 0x63, 0x60, 0x00, 0x00, 0x00,
+		0x02, 0x00, 0x01, 0xE5, 0x27, 0xD4, 0xA2, 0x00,
+		0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
+		0x42, 0x60, 0x82,
+	}
+}
+
+type mockMetadataProvider struct {
+	name              string
+	allowedImageHosts []string
+	selection         *MetadataProviderSelection
+	resolveErr        error
+}
+
+func (m mockMetadataProvider) Name() string {
+	return m.name
+}
+
+func (m mockMetadataProvider) Status(context.Context) (*MetadataProviderStatus, error) {
+	return &MetadataProviderStatus{Provider: m.name, Active: true}, nil
+}
+
+func (m mockMetadataProvider) Search(context.Context, string) ([]MetadataProviderSearchResult, error) {
+	return nil, nil
+}
+
+func (m mockMetadataProvider) Resolve(context.Context, string) (*MetadataProviderSelection, error) {
+	if m.resolveErr != nil {
+		return nil, m.resolveErr
+	}
+	if m.selection == nil {
+		return nil, ErrProviderSelectionNotFound
+	}
+	return m.selection, nil
+}
+
+func (m mockMetadataProvider) AllowedImageHosts() []string {
+	return m.allowedImageHosts
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
 }

@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { AddCategoryModal } from "@/components/AddCategoryModal";
 import { categoryService } from "@/services/categories";
-import { Folder, ChevronsUpDown, Check, Plus } from "lucide-react";
+import { Folder, ChevronsUpDown, Check, Plus, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Category, CreateCategoryRequest } from "@/types/category";
 
@@ -35,7 +36,12 @@ export function SelectCategory({
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
+  const filteredCategories = useMemo(
+    () => categories.filter((cat) => cat.name.toLowerCase().includes(searchQuery.trim().toLowerCase())),
+    [categories, searchQuery]
+  );
 
   // Load categories on mount if autoLoad is enabled
   useEffect(() => {
@@ -58,6 +64,12 @@ export function SelectCategory({
     }
   }, [categoryDropdownOpen]);
 
+  useEffect(() => {
+    if (!categoryDropdownOpen) {
+      setSearchQuery("");
+    }
+  }, [categoryDropdownOpen]);
+
   const loadCategories = async () => {
     try {
       const response = await categoryService.listCategories();
@@ -72,6 +84,7 @@ export function SelectCategory({
   const handleCategoryChange = (categoryId: string) => {
     const selectedCategory = categories.find(cat => cat.id === categoryId);
     onCategoryChange(categoryId, selectedCategory);
+    setSearchQuery("");
     setCategoryDropdownOpen(false);
   };
 
@@ -86,7 +99,7 @@ export function SelectCategory({
         // Reload categories list
         await loadCategories();
         // Select the newly created category
-        onCategoryChange(response.data.id);
+        onCategoryChange(response.data.id, response.data);
         // Call optional callback
         if (onCategoryCreated) {
           onCategoryCreated(response.data);
@@ -114,9 +127,9 @@ export function SelectCategory({
             type="button"
             variant="outline"
             onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
-            className={`w-full justify-between ${error ? "border-destructive" : ""}`}
+            className={`h-12 w-full justify-between px-4 text-left ${error ? "border-destructive" : ""}`}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               {selectedCategory ? (
                 <CategoryIcon 
                   iconName={selectedCategory.icon}
@@ -135,17 +148,32 @@ export function SelectCategory({
           
           {categoryDropdownOpen && (
             <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-auto">
+              <div className="sticky top-0 z-10 border-b bg-background p-2">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder={t("selectCategory.searchPlaceholder")}
+                    className="pl-9"
+                  />
+                </div>
+              </div>
               {categories.length === 0 ? (
                 <div className="px-3 py-2 text-sm text-muted-foreground">
                   {t("selectCategory.empty")}
                 </div>
+              ) : filteredCategories.length === 0 ? (
+                <div className="px-3 py-2 text-sm text-muted-foreground">
+                  {t("selectCategory.noResults")}
+                </div>
               ) : (
-                categories.map((cat) => (
+                filteredCategories.map((cat) => (
                   <button
                     key={cat.id}
                     type="button"
                     onClick={() => handleCategoryChange(cat.id)}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground text-left"
+                    className="flex w-full items-center gap-3 px-3 py-3 text-left text-sm hover:bg-accent hover:text-accent-foreground"
                   >
                     <CategoryIcon 
                       iconName={cat.icon}
@@ -168,7 +196,7 @@ export function SelectCategory({
             type="button"
             variant="default"
             size="sm"
-            className="h-10 px-3"
+            className="h-12 px-3"
             title={t("selectCategory.add")}
             onClick={handleAddCategoryClick}
           >

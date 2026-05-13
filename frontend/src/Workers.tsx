@@ -20,10 +20,6 @@ import {
   Wifi,
   Activity,
   Check,
-  Eye,
-  EyeOff,
-  
-  
   AlertTriangle
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -53,12 +49,12 @@ function Workers() {
   const [workerToEdit, setWorkerToEdit] = useState<Worker | null>(null);
   const [editForm, setEditForm] = useState<UpdateWorkerRequest>({
     name: "",
-    address: "",
-    token: "",
+    url: "",
+    username: "",
+    password: "",
     icon: "QBittorrent",
     color: "#3b82f6"
   });
-  const [showEditToken, setShowEditToken] = useState(false);
 
 
   const loadWorkers = useCallback(async () => {
@@ -122,8 +118,9 @@ function Workers() {
     setWorkerToEdit(worker);
     setEditForm({
       name: worker.name,
-      address: worker.address,
-      token: "", // Don't pre-fill token for security
+      url: worker.address,
+      username: "",
+      password: "",
       icon: worker.icon || "QBittorrent",
       color: worker.color || "#3b82f6"
     });
@@ -138,11 +135,14 @@ function Workers() {
     if (editForm.name && editForm.name !== workerToEdit.name) {
       updateData.name = editForm.name;
     }
-    if (editForm.address && editForm.address !== workerToEdit.address) {
-      updateData.address = editForm.address;
+    if (editForm.url && editForm.url !== workerToEdit.address) {
+      updateData.url = editForm.url;
     }
-    if (editForm.token) {
-      updateData.token = editForm.token;
+    if (editForm.username) {
+      updateData.username = editForm.username;
+    }
+    if (editForm.password) {
+      updateData.password = editForm.password;
     }
     if (editForm.icon && editForm.icon !== (workerToEdit.icon || "QBittorrent")) {
       updateData.icon = editForm.icon;
@@ -176,7 +176,6 @@ function Workers() {
         toast.success(t('workers.success.updated'));
         setShowEditModal(false);
         setShowDetailsModal(false);
-        setShowEditToken(false);
         setWorkerToEdit(null);
         setSelectedWorker(null);
       }
@@ -464,36 +463,35 @@ function Workers() {
                         <Label htmlFor="edit-address" className="text-sm">{t('workers.address')}</Label>
                         <Input
                           id="edit-address"
-                          placeholder="http://localhost:3100"
-                          value={editForm.address}
-                          onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                          placeholder="http://localhost:8080"
+                          value={editForm.url}
+                          onChange={(e) => setEditForm({ ...editForm, url: e.target.value })}
                           className="h-9"
                         />
                       </div>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <Label htmlFor="edit-token" className="text-sm">{t('workers.token')} ({t('workers.leaveEmptyToKeep')})</Label>
-                      <div className="relative">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="edit-username" className="text-sm">{t('workers.username', 'Username')} ({t('workers.leaveEmptyToKeep')})</Label>
                         <Input
-                          id="edit-token"
-                          type={showEditToken ? "text" : "password"}
-                          placeholder={t('workers.newAuthenticationToken')}
-                          value={editForm.token}
-                          onChange={(e) => setEditForm({ ...editForm, token: e.target.value })}
-                          className="h-9 pr-10"
+                          id="edit-username"
+                          placeholder={t('workers.usernamePlaceholder', 'qBittorrent username')}
+                          value={editForm.username}
+                          onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
+                          className="h-9"
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowEditToken(!showEditToken)}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          {showEditToken ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </button>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="edit-password" className="text-sm">{t('workers.password', 'Password')} ({t('workers.leaveEmptyToKeep')})</Label>
+                        <Input
+                          id="edit-password"
+                          type="password"
+                          placeholder={t('workers.passwordPlaceholder', 'New qBittorrent password')}
+                          value={editForm.password}
+                          onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                          className="h-9"
+                        />
                       </div>
                     </div>
 
@@ -550,7 +548,7 @@ function Workers() {
                             {editForm.name || t('workers.workerName')}
                           </div>
                           <div className="text-xs text-muted-foreground truncate">
-                            {editForm.address || "http://localhost:8080"}
+                            {editForm.url || "http://localhost:8080"}
                           </div>
                         </div>
                       </div>
@@ -561,7 +559,6 @@ function Workers() {
                         variant="outline"
                         onClick={() => {
                           setShowEditModal(false);
-                          setShowEditToken(false);
                           setWorkerToEdit(null);
                         }}
                         size="sm"

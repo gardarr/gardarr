@@ -8,15 +8,17 @@ import (
 )
 
 type Worker struct {
-	UUID            uuid.UUID `gorm:"type:uuid;primaryKey;uniqueIndex"`
-	Name            string    `gorm:"size:100;uniqueIndex"`
-	Type            string    `gorm:"size:25"`
-	Address         string    `gorm:"size:600;not null"`
-	EncrypetedToken string    `gorm:"size:600;not null"`
-	Icon            string    `gorm:"size:100"`
-	Color           string    `gorm:"size:50"`
-	CreatedAt       time.Time `gorm:"autoCreateTime"`
-	UpdatedAt       time.Time `gorm:"autoUpdateTime"`
+	UUID                         uuid.UUID `gorm:"type:uuid;primaryKey;uniqueIndex"`
+	Name                         string    `gorm:"size:100;uniqueIndex"`
+	Type                         string    `gorm:"size:25"`
+	Address                      string    `gorm:"size:600;not null"`
+	EncryptedQBittorrentURL      string    `gorm:"size:600"`
+	EncryptedQBittorrentUsername string    `gorm:"size:600"`
+	EncryptedQBittorrentPassword string    `gorm:"size:600"`
+	Icon                         string    `gorm:"size:100"`
+	Color                        string    `gorm:"size:50"`
+	CreatedAt                    time.Time `gorm:"autoCreateTime"`
+	UpdatedAt                    time.Time `gorm:"autoUpdateTime"`
 }
 
 func (a *Worker) TableName() string {
@@ -55,11 +57,4 @@ type WorkerVersionResponse struct {
 	Commit         string `json:"commit"`
 	Date           string `json:"date"`
 	QbittorrentURL string `json:"qbittorrent_url,omitempty"`
-}
-
-type WorkerLivenessResponse struct {
-	Status    string `json:"status"`
-	ErrorCode string `json:"error_code,omitempty"`
-	Message   string `json:"message,omitempty"`
-	Permanent bool   `json:"permanent,omitempty"`
 }

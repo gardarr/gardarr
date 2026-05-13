@@ -12,6 +12,8 @@ type TaskMetadata struct {
 	UUID           uuid.UUID `gorm:"type:uuid;primaryKey"`
 	TaskHash       string    `gorm:"type:varchar(40);not null;uniqueIndex"`
 	ImagePath      string    `gorm:"type:text"`
+	Name           string    `gorm:"type:varchar(255)"`
+	ReleaseDate    string    `gorm:"type:varchar(50)"`
 	Description    string    `gorm:"type:text"`
 	ImagePositionY float64   `gorm:"type:float;default:50"`
 	ImageOpacity   float64   `gorm:"type:float;default:65"`
@@ -50,6 +52,8 @@ type TaskMetadataResponse struct {
 	TaskHash       string    `json:"task_hash"`
 	ImageURL       string    `json:"image_url,omitempty"`
 	ThumbnailURL   string    `json:"thumbnail_url,omitempty"`
+	Name           string    `json:"name,omitempty"`
+	ReleaseDate    string    `json:"release_date,omitempty"`
 	Description    string    `json:"description,omitempty"`
 	ImagePositionY float64   `json:"image_position_y,omitempty"`
 	ImageOpacity   float64   `json:"image_opacity,omitempty"`

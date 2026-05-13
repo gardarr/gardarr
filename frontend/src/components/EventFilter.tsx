@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/select';
 import { Filter, Plus, X } from 'lucide-react';
 import { TASK_STATUSES, type TaskStatus } from '@/utils/statusUtils';
-import { getStatusIcon, getStatusColor } from '@/components/TorrentStatusIcon';
+import { getStatusIcon, getStatusColor } from '@/components/torrents/TorrentStatusIcon';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { EVENT_TYPES, EVENT_TYPE_LABELS, EVENT_TYPE_DESCRIPTIONS } from '@/constants/eventTypes';
 

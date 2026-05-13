@@ -52,11 +52,12 @@ func (m *Module) createCategory(c *gin.Context) {
 	}
 
 	category := entities.Category{
-		Name:        body.Name,
-		DefaultTags: body.DefaultTags,
-		Directory:   body.Directory,
-		Color:       body.Color,
-		Icon:        body.Icon,
+		Name:             body.Name,
+		DefaultTags:      body.DefaultTags,
+		DefaultDirectory: body.DefaultDirectory,
+		MetadataSource:   defaultMetadataSource(body.MetadataSource),
+		Color:            body.Color,
+		Icon:             body.Icon,
 	}
 
 	created, err := m.service.CreateCategory(c.Request.Context(), category)
@@ -139,20 +140,24 @@ func (m *Module) updateCategory(c *gin.Context) {
 
 	// Update only mutable fields (name and ID are immutable)
 	updated := entities.Category{
-		ID:          id,
-		Name:        existing.Name, // Name is immutable
-		DefaultTags: existing.DefaultTags,
-		Directory:   existing.Directory,
-		Color:       existing.Color,
-		Icon:        existing.Icon,
+		ID:               id,
+		Name:             existing.Name, // Name is immutable
+		DefaultTags:      existing.DefaultTags,
+		DefaultDirectory: existing.DefaultDirectory,
+		MetadataSource:   existing.MetadataSource,
+		Color:            existing.Color,
+		Icon:             existing.Icon,
 	}
 
 	// Update only provided fields
 	if body.DefaultTags != nil {
 		updated.DefaultTags = body.DefaultTags
 	}
-	if body.Directory != "" {
-		updated.Directory = body.Directory
+	if body.DefaultDirectory != "" {
+		updated.DefaultDirectory = body.DefaultDirectory
+	}
+	if body.MetadataSource != "" {
+		updated.MetadataSource = body.MetadataSource
 	}
 	if body.Color != "" {
 		updated.Color = body.Color
@@ -197,13 +202,21 @@ func (m *Module) deleteCategory(c *gin.Context) {
 // toResponse converts an entity to a response model
 func (m *Module) toResponse(cat *entities.Category) models.CategoryResponse {
 	return models.CategoryResponse{
-		ID:          cat.ID,
-		Name:        cat.Name,
-		DefaultTags: cat.DefaultTags,
-		Directory:   cat.Directory,
-		Color:       cat.Color,
-		Icon:        cat.Icon,
-		CreatedAt:   cat.CreatedAt,
-		UpdatedAt:   cat.UpdatedAt,
+		ID:               cat.ID,
+		Name:             cat.Name,
+		DefaultTags:      cat.DefaultTags,
+		DefaultDirectory: cat.DefaultDirectory,
+		MetadataSource:   defaultMetadataSource(cat.MetadataSource),
+		Color:            cat.Color,
+		Icon:             cat.Icon,
+		CreatedAt:        cat.CreatedAt,
+		UpdatedAt:        cat.UpdatedAt,
 	}
+}
+
+func defaultMetadataSource(value string) string {
+	if value == "" {
+		return "none"
+	}
+	return value
 }

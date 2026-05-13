@@ -151,7 +151,9 @@
   "selectCategory": {
     "placeholder": "Select a category",
     "empty": "No categories available",
-    "add": "Add Category"
+    "add": "Add Category",
+    "searchPlaceholder": "Search category...",
+    "noResults": "No categories found"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -651,6 +653,12 @@
     "subtitle": "Manage your downloads and uploads",
     "addTorrent": "Add Torrent",
     "addModal": {
+      "stepCounter": "Step {{current}} of {{total}}",
+      "steps": {
+        "magnet": "Magnet",
+        "create": "Create",
+        "metadata": "Metadata"
+      },
       "magnetUri": {
         "label": "Magnet URI",
         "placeholder": "magnet:?xt=urn:btih:..."
@@ -658,6 +666,7 @@
       "magnetInfo": {
         "title": "Torrent information",
         "name": "Name",
+        "hash": "Hash",
         "trackers": "Trackers",
         "trackersCount": "{{count}} found",
         "size": "Size"
@@ -682,6 +691,57 @@
         "select": "Select a worker",
         "freeSpace": "Free disk space:"
       },
+      "metadata": {
+        "title": "Metadata",
+        "description": "Search external metadata or fine-tune the fields manually to enrich the torrent you already created.",
+        "optionalTitle": "Torrent added successfully",
+        "optionalDescription": "You can optionally enrich the metadata and image now, or close the modal if you prefer.",
+        "searchButton": "Search Metadata",
+        "searchPlaceholder": "Search by media name",
+        "queryRequired": "Enter a search term for metadata",
+        "searchFailed": "Failed to search metadata",
+        "searching": "Searching provider results...",
+        "noResults": "No results found",
+        "searchSuggestion": "You can remove unnecessary terms to find the media in the catalog more easily.",
+        "resultsLabel": "Matching results",
+        "noImage": "No image",
+        "unknownRelease": "Unknown release date",
+        "clearSelection": "Clear selection",
+        "noProvider": "The selected category does not use an external provider. You can still fill in name and description manually.",
+        "tmdbUnavailable": "TMDB is not available yet for this category. You can still upload an image manually.",
+        "tgdbInactive": "TGDB is not configured right now.",
+        "fields": {
+          "name": "Name",
+          "releaseDate": "Release date",
+          "description": "Description"
+        },
+        "namePlaceholder": "Friendly media name",
+        "releaseDatePlaceholder": "This will be filled by the provider when available",
+        "descriptionPlaceholder": "Add an optional media summary"
+      },
+      "image": {
+        "title": "Image",
+        "description": "Choose the provider image or upload one manually. You can skip this step.",
+        "uploadButton": "Upload image",
+        "replaceUpload": "Replace image",
+        "uploadHint": "PNG, JPG, GIF, or WEBP up to 5MB.",
+        "providerImageUnavailable": "The selected result does not have an image available from the provider.",
+        "preview": "Preview",
+        "skipHint": "No image selected. You can continue without cover art."
+      },
+      "createSuccess": {
+        "title": "Torrent created",
+        "description": "\"{{name}}\" is already persisted. You can enrich it with metadata and an image now if you want.",
+        "toast": "Torrent created successfully"
+      },
+      "actions": {
+        "createTorrent": "Create torrent",
+        "creating": "Creating...",
+        "skipMetadata": "Skip metadata",
+        "finish": "Finish",
+        "finishing": "Finishing...",
+        "closeCreated": "Close"
+      },
       "submit": "Add",
       "submitting": "Adding...",
       "errors": {
@@ -689,7 +749,9 @@
         "magnetRequired": "Magnet URI is required",
         "magnetInvalidPrefix": "Magnet URI must start with 'magnet:'",
         "categoryRequired": "Select a category",
-        "tagsRequired": "Add at least one tag"
+        "tagsRequired": "Add at least one tag",
+        "createOrFinalizeFailed": "Failed to finish adding the torrent. You can try again.",
+        "taskHashMissing": "The task was created, but the returned hash is missing."
       }
     },
     "search": "Search torrents...",
@@ -853,16 +915,26 @@
     "fields": {
       "name": "Name",
       "defaultTags": "Default Tags",
-      "directory": "Directory",
+      "defaultDirectory": "Default Directory",
       "directories": "Directories",
+      "metadataSource": "Metadata Source",
       "color": "Color",
       "icon": "Icon"
     },
     "placeholders": {
       "name": "Enter category name...",
       "tag": "Add a tag...",
-      "directory": "Add a directory path...",
+      "defaultDirectory": "Add a default directory path...",
       "tags": "Enter tags (ex: action, genre::action)"
+    },
+    "metadataSource": {
+      "placeholder": "Select a metadata source",
+      "help": "Choose which external source this category can use for metadata and images.",
+      "options": {
+        "none": "None",
+        "tgdb": "TGDB",
+        "tmdb": "TMDB"
+      }
     },
     "tagsHint": "💡 Tip: Type \"action, adventure, genre::action, year::2024\" to create simple and hierarchical tags",
     "tagsExamples": {
@@ -924,10 +996,51 @@
       "name": "RoMM",
       "description": "Sync library with RoMM to keep ROMs and retro games updated"
     },
+    "tgdb": {
+      "name": "TGDB",
+      "subtitle": "The Games Database",
+      "description": "Configure TheGamesDB as a metadata source for game categories",
+      "sheetTitle": "Configure TGDB",
+      "sheetDescription": "Manage the TGDB API key used by external metadata providers.",
+      "enabledLabel": "Integration status",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "apiKeyLabel": "API Key",
+      "apiKeyPlaceholder": "Enter your TGDB API key",
+      "apiKeyConfigured": "An API key is already configured. Leave this blank to keep it.",
+      "apiKeyNotConfigured": "No API key configured yet.",
+      "status": {
+        "enabled": "Configured and enabled",
+        "disabled": "Configured but disabled",
+        "notConfigured": "Not configured"
+      },
+      "success": {
+        "saved": "TGDB configuration saved successfully"
+      },
+      "errors": {
+        "loadFailed": "Failed to load TGDB configuration",
+        "saveFailed": "Failed to save TGDB configuration"
+      }
+    },
     "configure": "Configure",
     "comingSoon": "Coming Soon",
     "noIntegrations": "No integrations available",
     "noIntegrationsDescription": "More integrations will be added in future updates"
+  },
+  "tgdb": {
+    "search": {
+      "placeholder": "Search for a game...",
+      "noImage": "No image",
+      "unknownDate": "Unknown date",
+      "noResults": "No results found"
+    },
+    "errors": {
+      "searchFailed": "Failed to search TGDB",
+      "applyFailed": "Failed to apply metadata"
+    },
+    "success": {
+      "applied": "Metadata applied successfully"
+    }
   },
   "webhooks": {
     "title": "Webhooks",
@@ -1364,6 +1477,21 @@
     },
     "thumbnail": {
       "label": "Thumbnail"
+    },
+    "sources": {
+      "options": {
+        "upload": "Upload",
+        "tmdb": "TMDB",
+        "tgdb": "TGDB"
+      },
+      "subtitles": {
+        "tgdb": "The Games Database"
+      },
+      "restricted": {
+        "tgdb": "This category is restricted to TGDB for external metadata.",
+        "tmdb": "This category is restricted to TMDB for external metadata."
+      },
+      "tmdbUnavailable": "TMDB is not available yet for this category. You can still upload an image manually."
     },
     "errors": {
       "invalidFileType": "Please select a valid image file",

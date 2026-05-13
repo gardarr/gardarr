@@ -8,21 +8,23 @@ import (
 
 // WorkerCreateSchema represents the request body for creating a worker
 type WorkerCreateSchema struct {
-	Name    string `json:"name"     binding:"required"`
-	Type    string `json:"type"     binding:"omitempty,instancetype"`
-	Address string `json:"address"  binding:"required"`
-	Token   string `json:"token"    binding:"required"`
-	Icon    string `json:"icon"     binding:"omitempty,max=100"`
-	Color   string `json:"color"    binding:"omitempty,max=50"`
+	Name     string `json:"name"     binding:"required"`
+	Type     string `json:"type"     binding:"omitempty,instancetype"`
+	URL      string `json:"url"      binding:"required,url"`
+	Username string `json:"username" binding:"required"`
+	Password string `json:"password" binding:"required"`
+	Icon     string `json:"icon"     binding:"omitempty,max=100"`
+	Color    string `json:"color"    binding:"omitempty,max=50"`
 }
 
 // WorkerUpdateSchema represents the request body for updating a worker
 type WorkerUpdateSchema struct {
-	Name    string `json:"name"     binding:"omitempty"`
-	Address string `json:"address"  binding:"omitempty"`
-	Token   string `json:"token"    binding:"omitempty"`
-	Icon    string `json:"icon"     binding:"omitempty,max=100"`
-	Color   string `json:"color"    binding:"omitempty,max=50"`
+	Name     string `json:"name"     binding:"omitempty"`
+	URL      string `json:"url"      binding:"omitempty,url"`
+	Username string `json:"username" binding:"omitempty"`
+	Password string `json:"password" binding:"omitempty"`
+	Icon     string `json:"icon"     binding:"omitempty,max=100"`
+	Color    string `json:"color"    binding:"omitempty,max=50"`
 }
 
 var validInstanceTypes = []string{

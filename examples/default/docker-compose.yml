@@ -12,6 +12,10 @@ services:
       # APP_URL should be origin-only: http://example.com or http://localhost:3200 (no trailing slash or path)
       APP_URL: ${APP_URL:-http://gardarr.mydomain.com}
       APP_MODE: standalone
+      # Optional: configure one local qBittorrent directly at startup
+      QBITTORRENT_URL: "${QBITTORRENT_URL}"
+      QBITTORRENT_USERNAME: "${QBITTORRENT_USERNAME}"
+      QBITTORRENT_PASSWORD: "${QBITTORRENT_PASSWORD}"
     volumes:
       # Use /data to persist SQLite database
       - gardarr_data:/data
@@ -26,32 +30,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
-
-  gardarr-worker:
-    image: ghcr.io/jfxdev/gardarr:latest
-    container_name: gardarr-worker
-    # Run as host user to ensure proper filesystem permissions
-    user: "${UID:-1000}:${GID:-1000}"
-    command: ["/app/main", "worker"]
-    ports:
-      - "${WORKER_PORT:-3100}:3100"
-    environment:
-      WORKER_PORT: ${WORKER_PORT:-3100}
-      # Generate a random secret for the worker
-      WORKER_SECRET: ${WORKER_SECRET}
-      # Replace the following placeholder values with your actual qBittorrent credentials
-      QBITTORRENT_URL: "${QBITTORRENT_URL}"
-      QBITTORRENT_USERNAME: "${QBITTORRENT_USERNAME}"
-      QBITTORRENT_PASSWORD: "${QBITTORRENT_PASSWORD}"
-    restart: unless-stopped
-    networks:
-      - gardarr-network
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3100/v1/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
 volumes:
   gardarr_data:

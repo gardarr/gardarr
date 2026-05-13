@@ -53,11 +53,12 @@ func TestRoutes_CreateCategory_Success(t *testing.T) {
 	router, _ := setupTestRouter(t)
 
 	body := map[string]interface{}{
-		"name":         "Test Category",
-		"default_tags": []string{"tag1", "tag2"},
-		"directory":    "/path1",
-		"color":        "#FF5733",
-		"icon":         "folder-icon",
+		"name":              "Test Category",
+		"default_tags":      []string{"tag1", "tag2"},
+		"default_directory": "/path1",
+		"metadata_source":   "tgdb",
+		"color":             "#FF5733",
+		"icon":              "folder-icon",
 	}
 
 	w := sendJSONRequest(router, "POST", "/api/v1/categories", body)
@@ -85,6 +86,10 @@ func TestRoutes_CreateCategory_Success(t *testing.T) {
 
 	if response.Icon != "folder-icon" {
 		t.Errorf("Expected icon 'folder-icon', got '%s'", response.Icon)
+	}
+
+	if response.MetadataSource != "tgdb" {
+		t.Errorf("Expected metadata source 'tgdb', got '%s'", response.MetadataSource)
 	}
 }
 
@@ -195,9 +200,11 @@ func TestRoutes_UpdateCategory_Success(t *testing.T) {
 
 	// Update the category (only mutable fields)
 	updateBody := map[string]interface{}{
-		"default_tags": []string{"tag1", "tag2"},
-		"color":        "#00FF00",
-		"icon":         "new-icon",
+		"default_tags":      []string{"tag1", "tag2"},
+		"default_directory": "/updated/path",
+		"metadata_source":   "tgdb",
+		"color":             "#00FF00",
+		"icon":              "new-icon",
 	}
 
 	w = sendJSONRequest(router, "PUT", "/api/v1/categories/"+created.ID, updateBody)
@@ -223,6 +230,14 @@ func TestRoutes_UpdateCategory_Success(t *testing.T) {
 
 	if response.Icon != "new-icon" {
 		t.Errorf("Expected icon 'new-icon', got '%s'", response.Icon)
+	}
+
+	if response.DefaultDirectory != "/updated/path" {
+		t.Errorf("Expected default directory '/updated/path', got '%s'", response.DefaultDirectory)
+	}
+
+	if response.MetadataSource != "tgdb" {
+		t.Errorf("Expected metadata source 'tgdb', got '%s'", response.MetadataSource)
 	}
 
 	if len(response.DefaultTags) != 2 {

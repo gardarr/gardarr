@@ -106,7 +106,7 @@ This document lists all environment variables used by Gardarr backend.
 ## Security
 
 ### `ENCRYPTION_KEY`
-- **Description**: Key used to encrypt sensitive data (e.g., worker tokens)
+- **Description**: Key used to encrypt sensitive data (e.g., stored qBittorrent credentials)
 - **Default**: None (required for production)
 - **Example**: `ENCRYPTION_KEY=your-32-byte-encryption-key-here`
 - **Security**: Use `ENCRYPTION_KEY_FILE` with Docker secrets in production
@@ -119,30 +119,19 @@ This document lists all environment variables used by Gardarr backend.
 
 ---
 
-## Worker
-
-### `WORKER_PORT`
-- **Description**: Port for the worker HTTP service (when running the worker component)
-- **Default**: `3100`
-- **Example**: `WORKER_PORT=3100`
-
-### `WORKER_SECRET`
-- **Description**: Shared secret for worker authentication
-- **Default**: None
-- **Example**: `WORKER_SECRET=your-secret-key`
-- **Security**: Use `WORKER_SECRET_FILE` with Docker secrets in production
+## Worker Connectivity
 
 ### `WORKER_TIMEOUT_SECONDS`
-- **Description**: Timeout in seconds for HTTP calls from the backend to worker endpoints
+- **Description**: Timeout in seconds for validating and communicating with direct qBittorrent worker connections
 - **Default**: `10` (applied when not set or empty)
 - **Example**: `WORKER_TIMEOUT_SECONDS=15`
 
 ---
 
-## qBittorrent (Worker)
+## qBittorrent
 
 ### `QBITTORRENT_URL`
-- **Description**: Base URL of the qBittorrent Web UI (required for worker)
+- **Description**: Base URL of the qBittorrent Web UI
 - **Example**: `QBITTORRENT_URL=http://localhost:8080`
 
 ### `QBITTORRENT_USERNAME`
@@ -172,7 +161,7 @@ This document lists all environment variables used by Gardarr backend.
 - **Example**: `QBITTORRENT_RETRY_BACKOFF=2`
 
 ### `QBITTORRENT_LOGIN_MAX_RETRIES`
-- **Description**: Maximum number of consecutive authentication failures before the worker gives up and shuts down (triggering a Docker restart). Distinct from `QBITTORRENT_MAX_RETRIES` which governs per-request retries.
+- **Description**: Maximum number of consecutive authentication failures before the direct client gives up reconnecting. Distinct from `QBITTORRENT_MAX_RETRIES` which governs per-request retries.
 - **Default**: `5`
 - **Example**: `QBITTORRENT_LOGIN_MAX_RETRIES=5`
 
