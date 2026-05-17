@@ -904,7 +904,7 @@ func (s *Service) ApplyProviderSelectionWithFallback(
 		return nil, err
 	}
 
-	if imageWarning != "" {
+	if imageWarning != "" && resolved.warning == "" {
 		resolved.warning = imageWarning
 		resolved.warningReason = imageWarningReason
 	}

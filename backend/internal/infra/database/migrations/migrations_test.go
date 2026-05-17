@@ -131,13 +131,15 @@ func TestMigration030RemovesLegacyWorkerTokenColumns(t *testing.T) {
 		t.Fatalf("Failed to create test database: %v", err)
 	}
 
+	legacyColumns := legacyWorkerTokenColumns()
+
 	createWorkersSQL := `
 		CREATE TABLE workers (
 			uuid TEXT PRIMARY KEY,
 			name TEXT UNIQUE,
 			type TEXT,
 			address TEXT NOT NULL,
-			encrypeted_token TEXT NOT NULL,
+			` + legacyColumns[0] + ` TEXT NOT NULL,
 			created_at DATETIME,
 			updated_at DATETIME
 		)
@@ -182,12 +184,10 @@ func TestMigration030RemovesLegacyWorkerTokenColumns(t *testing.T) {
 		columnNames = append(columnNames, col.Name())
 	}
 
-	if slices.Contains(columnNames, "encrypeted_token") {
-		t.Fatalf("Legacy column still present after migration: %s", fmt.Sprint(columnNames))
-	}
-
-	if slices.Contains(columnNames, "encrypted_token") {
-		t.Fatalf("Legacy column with corrected spelling still present after migration: %s", fmt.Sprint(columnNames))
+	for _, legacyColumn := range legacyColumns {
+		if slices.Contains(columnNames, legacyColumn) {
+			t.Fatalf("Legacy worker token column still present after migration: %s", fmt.Sprint(columnNames))
+		}
 	}
 }
 

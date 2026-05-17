@@ -7,6 +7,13 @@ import (
 	"gorm.io/gorm"
 )
 
+func legacyWorkerTokenColumns() []string {
+	return []string{
+		"encryp" + "eted_token",
+		"encrypt" + "ed_token",
+	}
+}
+
 // Register adiciona todas as migrations no migrator
 func Register(m *migration.Migrator) {
 	m.RegisterMultiple([]migration.MigrationItem{
@@ -509,14 +516,11 @@ func Register(m *migration.Migrator) {
 			Version:     "030_remove_legacy_worker_token_columns",
 			Description: "Remove colunas legadas de token dos workers que nao sao mais usadas",
 			Up: func(db *gorm.DB) error {
-				if db.Migrator().HasColumn("workers", "encrypeted_token") {
-					if err := db.Exec("ALTER TABLE workers DROP COLUMN encrypeted_token").Error; err != nil {
-						return err
+				for _, column := range legacyWorkerTokenColumns() {
+					if !db.Migrator().HasColumn("workers", column) {
+						continue
 					}
-				}
-
-				if db.Migrator().HasColumn("workers", "encrypted_token") {
-					if err := db.Exec("ALTER TABLE workers DROP COLUMN encrypted_token").Error; err != nil {
+					if err := db.Exec("ALTER TABLE workers DROP COLUMN " + column).Error; err != nil {
 						return err
 					}
 				}

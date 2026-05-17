@@ -1,6 +1,7 @@
 import {
   cloneElement,
   isValidElement,
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -20,7 +21,7 @@ type PreviewPosition = {
 };
 
 function canUseHoverPreview() {
-  if (typeof globalThis.window === "undefined" || typeof globalThis.window.matchMedia !== "function") {
+  if (globalThis.window === undefined || typeof globalThis.window.matchMedia !== "function") {
     return true;
   }
 
@@ -40,7 +41,7 @@ export function TorrentMetadataHoverCard({
   const [position, setPosition] = useState<PreviewPosition>({ top: 0, left: 0 });
 
   useEffect(() => {
-    if (typeof globalThis.window === "undefined" || typeof globalThis.window.matchMedia !== "function") {
+    if (globalThis.window === undefined || typeof globalThis.window.matchMedia !== "function") {
       return undefined;
     }
 
@@ -62,9 +63,9 @@ export function TorrentMetadataHoverCard({
   const imageUrl = getTorrentImageUrl(torrent);
   const title = getTorrentDisplayName(torrent);
   const description = getTorrentDisplayDescription(torrent);
-  const portalRoot = typeof document !== "undefined" ? document.body : null;
+  const portalRoot = globalThis.document?.body ?? null;
 
-  const updatePosition = (element: HTMLElement) => {
+  const updatePosition = useCallback((element: HTMLElement) => {
     const rect = element.getBoundingClientRect();
     const previewWidth = 320;
     const gutter = 12;
@@ -82,20 +83,20 @@ export function TorrentMetadataHoverCard({
       top: nextTop,
       left: nextLeft,
     });
-  };
+  }, []);
 
-  const handleMouseEnter = (event: ReactMouseEvent<HTMLElement>) => {
+  const handleMouseEnter = useCallback((event: ReactMouseEvent<HTMLElement>) => {
     updatePosition(event.currentTarget);
     setIsOpen(true);
-  };
+  }, [updatePosition]);
 
-  const handleMouseMove = (event: ReactMouseEvent<HTMLElement>) => {
+  const handleMouseMove = useCallback((event: ReactMouseEvent<HTMLElement>) => {
     updatePosition(event.currentTarget);
-  };
+  }, [updatePosition]);
 
-  const handleMouseLeave = () => {
+  const handleMouseLeave = useCallback(() => {
     setIsOpen(false);
-  };
+  }, []);
 
   const child = useMemo(() => {
     if (!isValidElement(children)) {

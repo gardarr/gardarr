@@ -143,36 +143,6 @@ func (r *Repository) CreateWorker(ctx context.Context, worker entities.Worker) (
 		Color:                        worker.Color,
 	}
 
-	if legacyColumn := r.findLegacyWorkerTokenColumn(db); legacyColumn != "" {
-		handler.UUID = uuid.New()
-		handler.CreatedAt = time.Now()
-		handler.UpdatedAt = handler.CreatedAt
-
-		record := map[string]interface{}{
-			"uuid":                            handler.UUID,
-			"name":                            handler.Name,
-			"type":                            handler.Type,
-			"address":                         handler.Address,
-			"encrypted_q_bittorrent_url":      handler.EncryptedQBittorrentURL,
-			"encrypted_q_bittorrent_username": handler.EncryptedQBittorrentUsername,
-			"encrypted_q_bittorrent_password": handler.EncryptedQBittorrentPassword,
-			"icon":                            handler.Icon,
-			"color":                           handler.Color,
-			"created_at":                      handler.CreatedAt,
-			"updated_at":                      handler.UpdatedAt,
-			legacyColumn:                      handler.EncryptedQBittorrentPassword,
-		}
-
-		if err := db.Table(handler.TableName()).Create(record).Error; err != nil {
-			if errors.Is(err, gorm.ErrDuplicatedKey) || strings.Contains(err.Error(), "UNIQUE constraint failed") {
-				return nil, fmt.Errorf("worker already exists")
-			}
-			return nil, err
-		}
-
-		return toWorker(*handler), nil
-	}
-
 	if err := db.Create(handler).Error; err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) || strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return nil, fmt.Errorf("worker already exists")
@@ -181,21 +151,6 @@ func (r *Repository) CreateWorker(ctx context.Context, worker entities.Worker) (
 	}
 
 	return toWorker(*handler), nil
-}
-
-func (r *Repository) findLegacyWorkerTokenColumn(db *gorm.DB) string {
-	legacyColumns := []string{
-		"encrypeted_token",
-		"encrypted_token",
-	}
-
-	for _, column := range legacyColumns {
-		if db.Migrator().HasColumn("workers", column) {
-			return column
-		}
-	}
-
-	return ""
 }
 
 func (r *Repository) ListWorkers() ([]*entities.Worker, error) {

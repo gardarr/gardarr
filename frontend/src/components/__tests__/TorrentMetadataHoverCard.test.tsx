@@ -173,6 +173,18 @@ vi.mock("@/components/torrents/TorrentContextMenu", () => ({
 }));
 
 it("keeps row click behavior intact in compact list", async () => {
+  Object.defineProperty(globalThis, "matchMedia", {
+    writable: true,
+    value: vi.fn().mockImplementation(() => ({
+      matches: true,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    })),
+  });
+
   const user = userEvent.setup();
   const { default: TorrentListCompact } = await import("@/components/torrents/TorrentListCompact");
   const onShowDetails = vi.fn();

@@ -84,6 +84,10 @@ func (p *MetadataProvider) AllowedImageHosts() []string {
 }
 
 func (p *MetadataProvider) BuildImageURL(imageID string) (string, error) {
+	return buildImageURL(imageID, "https://cdn.thegamesdb.net/images/large/")
+}
+
+func buildImageURL(imageID, baseURL string) (string, error) {
 	trimmedImageID := strings.TrimSpace(imageID)
 	if trimmedImageID == "" {
 		return "", nil
@@ -92,7 +96,7 @@ func (p *MetadataProvider) BuildImageURL(imageID string) (string, error) {
 		return "", fmt.Errorf("invalid image id")
 	}
 
-	return fmt.Sprintf("https://cdn.thegamesdb.net/images/large/%s", trimmedImageID), nil
+	return fmt.Sprintf("%s%s", baseURL, trimmedImageID), nil
 }
 
 func (p *MetadataProvider) client(ctx context.Context) (*tgdbclient.Client, error) {
@@ -140,5 +144,11 @@ func selectImageURL(gameID int, boxart tgdbclient.BoxartData) string {
 	if imageID == "" {
 		return ""
 	}
-	return fmt.Sprintf("%s%s", boxart.BaseURL.Large, imageID)
+
+	imageURL, err := buildImageURL(imageID, boxart.BaseURL.Large)
+	if err != nil {
+		return ""
+	}
+
+	return imageURL
 }
