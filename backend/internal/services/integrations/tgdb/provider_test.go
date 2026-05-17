@@ -113,8 +113,23 @@ func TestBuildSelectionMapsGameFields(t *testing.T) {
 	if selection.ID != "123" || selection.Title != "Test Game" || selection.Description != "Overview" {
 		t.Fatalf("unexpected selection: %#v", selection)
 	}
+	if selection.ImageID != "front.jpg" {
+		t.Fatalf("unexpected image ID: %s", selection.ImageID)
+	}
 	if selection.ImageURL != "https://cdn.thegamesdb.net/images/large/front.jpg" {
 		t.Fatalf("unexpected image URL: %s", selection.ImageURL)
+	}
+}
+
+func TestMetadataProviderBuildImageURL(t *testing.T) {
+	provider := setupTGDBProvider(t)
+
+	imageURL, err := provider.BuildImageURL("boxart/front.jpg")
+	if err != nil {
+		t.Fatalf("BuildImageURL failed: %v", err)
+	}
+	if imageURL != "https://cdn.thegamesdb.net/images/large/boxart/front.jpg" {
+		t.Fatalf("unexpected image URL: %s", imageURL)
 	}
 }
 

@@ -55,6 +55,8 @@ type TaskMetadataResponse struct {
 	Name           string    `json:"name,omitempty"`
 	ReleaseDate    string    `json:"release_date,omitempty"`
 	Description    string    `json:"description,omitempty"`
+	Warning        string    `json:"warning,omitempty"`
+	WarningReason  string    `json:"warning_reason,omitempty"`
 	ImagePositionY float64   `json:"image_position_y,omitempty"`
 	ImageOpacity   float64   `json:"image_opacity,omitempty"`
 	CreatedAt      time.Time `json:"created_at"`

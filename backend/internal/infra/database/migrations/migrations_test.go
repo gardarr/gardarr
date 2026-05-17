@@ -1,6 +1,7 @@
 package migrations
 
 import (
+	"fmt"
 	"slices"
 	"testing"
 
@@ -122,6 +123,72 @@ func TestMigrationAllMigrationsCanRunTwice(t *testing.T) {
 	}
 
 	assertSeededCategories(t, db)
+}
+
+func TestMigration030RemovesLegacyWorkerTokenColumns(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("Failed to create test database: %v", err)
+	}
+
+	legacyColumns := legacyWorkerTokenColumns()
+
+	createWorkersSQL := `
+		CREATE TABLE workers (
+			uuid TEXT PRIMARY KEY,
+			name TEXT UNIQUE,
+			type TEXT,
+			address TEXT NOT NULL,
+			` + legacyColumns[0] + ` TEXT NOT NULL,
+			created_at DATETIME,
+			updated_at DATETIME
+		)
+	`
+	if err := db.Exec(createWorkersSQL).Error; err != nil {
+		t.Fatalf("Failed to create legacy workers table: %v", err)
+	}
+
+	m := migration.NewMigrator(db)
+	Register(m)
+
+	if err := m.Up(); err != nil {
+		t.Fatalf("Failed to run migrations: %v", err)
+	}
+
+	worker := models.Worker{
+		Name:    "test-worker",
+		Type:    "qbittorrent",
+		Address: "http://localhost:8080",
+	}
+
+	if err := db.Create(&worker).Error; err != nil {
+		t.Fatalf("Expected worker insert without legacy token column to succeed, got: %v", err)
+	}
+
+	var count int64
+	if err := db.Model(&models.Worker{}).Where("name = ?", worker.Name).Count(&count).Error; err != nil {
+		t.Fatalf("Failed to count inserted workers: %v", err)
+	}
+
+	if count != 1 {
+		t.Fatalf("Expected 1 inserted worker, got %d", count)
+	}
+
+	cols, err := db.Migrator().ColumnTypes("workers")
+	if err != nil {
+		t.Fatalf("Failed to inspect workers columns: %v", err)
+	}
+
+	columnNames := make([]string, 0, len(cols))
+	for _, col := range cols {
+		columnNames = append(columnNames, col.Name())
+	}
+
+	for _, legacyColumn := range legacyColumns {
+		if slices.Contains(columnNames, legacyColumn) {
+			t.Fatalf("Legacy worker token column still present after migration: %s", fmt.Sprint(columnNames))
+		}
+	}
 }
 
 func TestMigration026SeedsOnlyMissingCategories(t *testing.T) {

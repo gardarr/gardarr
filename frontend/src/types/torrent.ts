@@ -67,6 +67,7 @@ export interface MetadataProviderSearchResult {
   title: string;
   release_date?: string;
   description?: string;
+  image_id?: string;
   image_url?: string;
 }
 
@@ -120,6 +121,8 @@ export interface TaskMetadata {
   name?: string;
   release_date?: string;
   description?: string;
+  warning?: string;
+  warning_reason?: string;
   image_position_y?: number; // Vertical position offset in percentage (0-100)
   image_opacity?: number; // Image opacity in percentage (0-100)
   created_at: string;

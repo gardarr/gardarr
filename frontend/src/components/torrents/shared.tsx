@@ -35,6 +35,7 @@ export function TorrentContextMenuWrapper({
       onForceReannounce={actions.onForceReannounce}
       onForceRecheck={actions.onForceRecheck}
       onSearchMetadata={actions.onSearchMetadata}
+      canSearchMetadata={torrent.canSearchMetadata}
       onLimits={actions.onLimits}
       onShowDetails={actions.onShowDetails}
     >
@@ -219,3 +220,5 @@ export function TorrentThumbnail({
     </div>
   );
 }
+
+export { TorrentMetadataHoverCard } from "./TorrentMetadataHoverCard";

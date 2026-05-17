@@ -12,6 +12,7 @@ interface TGDBGameResult {
   title: string;
   release_date?: string;
   description?: string;
+  image_id?: string;
   image_url?: string;
 }
 
@@ -61,10 +62,14 @@ export function TGDBSearch({ taskHash, initialQuery, onSelect, onCancel }: TGDBS
     setApplyingGameId(game.id);
     try {
       const response = await api.post<TGDBAppliedMetadata>(`/tasks/metadata/${taskHash}/providers/tgdb`, {
-        id: game.id
+        id: game.id,
+        title: game.title,
+        release_date: game.release_date,
+        description: game.description,
+        image_id: game.image_id,
       });
-      if (!response.data) {
-        toast.error(t("tgdb.errors.applyFailed"));
+      if (response.error || !response.data) {
+        toast.error(response.error || t("tgdb.errors.applyFailed"));
         return;
       }
 

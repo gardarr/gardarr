@@ -3,6 +3,7 @@ import { getBlurPixels, useTorrentBlurIntensity, useTorrentOpenHandler } from ".
 import {
   TorrentContextMenuWrapper,
   TorrentDisplayName,
+  TorrentMetadataHoverCard,
   TorrentProgressBar,
   TorrentSelectionCheckbox,
   TorrentSpeedStat,
@@ -90,72 +91,74 @@ function TorrentCompactRow({
 
   return (
     <TorrentContextMenuWrapper torrent={torrent} actions={actions} selection={selection}>
-      <div
-        onClick={handleRowClick}
-        className={`relative flex flex-col px-4 ${pyClass} rounded-lg border overflow-hidden bg-card hover:brightness-105 transition-all cursor-pointer ${
-          selection.selectedIds?.has(torrent.id) ? "ring-2 ring-primary" : ""
-        }`}
-      >
-        {hasImage && (
-          <>
-            <div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{
-                backgroundImage: `url(${encodedImageUrl})`,
-                filter: `blur(${blurPx}px)`,
-                transform: 'scale(1.1)',
-              }}
-            />
-            <div className="absolute inset-0 bg-background/80 dark:bg-background/85" />
-          </>
-        )}
-
-        <div className="relative z-10">
-          <div className="flex items-center gap-3">
-            <TorrentThumbnail
-              torrent={torrent}
-              sizeClassName="w-12 h-12"
-              iconClassName="h-6 w-6 text-muted-foreground"
-            />
-
-            {selection.selectionMode && (
-              <TorrentSelectionCheckbox
-                torrentId={torrent.id}
-                selected={selection.selectedIds?.has(torrent.id)}
-                compact={compact}
-                onToggleSelect={selection.onToggleSelect}
+      <TorrentMetadataHoverCard torrent={torrent}>
+        <div
+          onClick={handleRowClick}
+          className={`relative flex flex-col px-4 ${pyClass} rounded-lg border overflow-hidden bg-card hover:brightness-105 transition-all cursor-pointer ${
+            selection.selectedIds?.has(torrent.id) ? "ring-2 ring-primary" : ""
+          }`}
+        >
+          {hasImage && (
+            <>
+              <div
+                className="absolute inset-0 bg-cover bg-center"
+                style={{
+                  backgroundImage: `url(${encodedImageUrl})`,
+                  filter: `blur(${blurPx}px)`,
+                  transform: 'scale(1.1)',
+                }}
               />
-            )}
+              <div className="absolute inset-0 bg-background/80 dark:bg-background/85" />
+            </>
+          )}
 
-            <div className="flex-shrink-0">
-              <StatusBadge status={torrent.status} size="sm" />
-            </div>
+          <div className="relative z-10">
+            <div className="flex items-center gap-3">
+              <TorrentThumbnail
+                torrent={torrent}
+                sizeClassName="w-12 h-12"
+                iconClassName="h-6 w-6 text-muted-foreground"
+              />
 
-            <div className="flex-1 min-w-0">
-              <TorrentDisplayName torrent={torrent} className="truncate text-sm font-medium" truncate={false} />
-            </div>
+              {selection.selectionMode && (
+                <TorrentSelectionCheckbox
+                  torrentId={torrent.id}
+                  selected={selection.selectedIds?.has(torrent.id)}
+                  compact={compact}
+                  onToggleSelect={selection.onToggleSelect}
+                />
+              )}
 
-            {(torrent.downloadRateBps > 0 || torrent.uploadRateBps > 0) && (
-              <div className="hidden md:flex flex-shrink-0 items-center gap-2 text-xs text-muted-foreground">
-                <TorrentSpeedStat rate={torrent.downloadRateBps} direction="download" compact showWhenIdle={false} />
-                <TorrentSpeedStat rate={torrent.uploadRateBps} direction="upload" compact showWhenIdle={false} />
+              <div className="flex-shrink-0">
+                <StatusBadge status={torrent.status} size="sm" />
               </div>
-            )}
 
-            <TorrentWorkerBadge
-              torrent={torrent}
-              className="flex-shrink-0 inline-flex items-center justify-center rounded-full border p-1 bg-background/50"
-            />
-          </div>
+              <div className="flex-1 min-w-0">
+                <TorrentDisplayName torrent={torrent} className="truncate text-sm font-medium" truncate={false} />
+              </div>
 
-          <div className="mt-2">
-            <TorrentProgressBar
-              progress={torrent.progress}
-              labelClassName="text-xs text-muted-foreground w-12 text-right font-medium"
-            />
+              {(torrent.downloadRateBps > 0 || torrent.uploadRateBps > 0) && (
+                <div className="hidden md:flex flex-shrink-0 items-center gap-2 text-xs text-muted-foreground">
+                  <TorrentSpeedStat rate={torrent.downloadRateBps} direction="download" compact showWhenIdle={false} />
+                  <TorrentSpeedStat rate={torrent.uploadRateBps} direction="upload" compact showWhenIdle={false} />
+                </div>
+              )}
+
+              <TorrentWorkerBadge
+                torrent={torrent}
+                className="flex-shrink-0 inline-flex items-center justify-center rounded-full border p-1 bg-background/50"
+              />
+            </div>
+
+            <div className="mt-2">
+              <TorrentProgressBar
+                progress={torrent.progress}
+                labelClassName="text-xs text-muted-foreground w-12 text-right font-medium"
+              />
+            </div>
           </div>
         </div>
-      </div>
+      </TorrentMetadataHoverCard>
     </TorrentContextMenuWrapper>
   );
 }

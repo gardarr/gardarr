@@ -10,10 +10,11 @@ interface ProviderStatusResponse {
 }
 
 interface ApplyProviderRequest {
-  name: string;
-  release_date: string;
-  description: string;
-  image_url: string;
+  id: string;
+  title?: string;
+  release_date?: string;
+  description?: string;
+  image_id?: string;
 }
 
 class TaskMetadataService {

@@ -54,6 +54,18 @@ type Service struct {
 	lookupIPAddr     func(context.Context, string) ([]net.IPAddr, error)
 }
 
+type ApplyProviderSelectionResult struct {
+	Metadata      *entities.TaskMetadata
+	Warning       string
+	WarningReason string
+}
+
+type resolvedProviderSelection struct {
+	selection     *MetadataProviderSelection
+	warning       string
+	warningReason string
+}
+
 // NewService creates a new task metadata service
 func NewService(db *database.Database, baseURL, uploadDir string, providerRegistry *MetadataProviderRegistry) (*Service, error) {
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
@@ -861,7 +873,18 @@ func (s *Service) SearchProvider(ctx context.Context, providerName string, query
 }
 
 // ApplyProviderSelection resolves provider-owned metadata and applies it to a task.
-func (s *Service) ApplyProviderSelection(ctx context.Context, providerName string, taskHash string, selectionID string) (*entities.TaskMetadata, error) {
+func (s *Service) ApplyProviderSelection(ctx context.Context, providerName string, taskHash string, selectionID string) (*ApplyProviderSelectionResult, error) {
+	return s.ApplyProviderSelectionWithFallback(ctx, providerName, taskHash, selectionID, nil)
+}
+
+func (s *Service) ApplyProviderSelectionWithFallback(
+	ctx context.Context,
+	providerName string,
+	taskHash string,
+	selectionID string,
+	fallback *MetadataProviderSelection,
+) (*ApplyProviderSelectionResult, error) {
+	slog.Info("applying provider metadata", "provider", providerName, "task_hash", taskHash, "selection_id", selectionID, "has_fallback", fallback != nil)
 	provider, ok := s.providerRegistry.Get(providerName)
 	if !ok {
 		return nil, ErrProviderNotFound
@@ -871,129 +894,285 @@ func (s *Service) ApplyProviderSelection(ctx context.Context, providerName strin
 		return nil, fmt.Errorf("invalid task_hash: %w", err)
 	}
 
-	selection, err := provider.Resolve(ctx, selectionID)
+	resolved, err := s.resolveProviderSelection(ctx, provider, taskHash, selectionID, fallback)
 	if err != nil {
 		return nil, err
 	}
-	if selection == nil {
+
+	filePath, imageWarning, imageWarningReason, err := s.processProviderImage(ctx, provider, taskHash, selectionID, resolved.selection)
+	if err != nil {
+		return nil, err
+	}
+
+	if imageWarning != "" && resolved.warning == "" {
+		resolved.warning = imageWarning
+		resolved.warningReason = imageWarningReason
+	}
+
+	metadata, err := s.saveProviderSelection(ctx, taskHash, resolved.selection, filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	s.logProviderMetadataApplied(provider, taskHash, selectionID, filePath != "", resolved.warning, resolved.warningReason)
+	return &ApplyProviderSelectionResult{
+		Metadata:      s.modelToEntity(metadata),
+		Warning:       resolved.warning,
+		WarningReason: resolved.warningReason,
+	}, nil
+}
+
+func (s *Service) resolveProviderSelection(
+	ctx context.Context,
+	provider MetadataProvider,
+	taskHash string,
+	selectionID string,
+	fallback *MetadataProviderSelection,
+) (*resolvedProviderSelection, error) {
+	selection, err := provider.Resolve(ctx, selectionID)
+	if err != nil {
+		slog.Warn("provider resolve failed", "provider", provider.Name(), "task_hash", taskHash, "selection_id", selectionID, "error", err, "has_fallback", fallback != nil)
+		if fallback == nil {
+			return nil, err
+		}
+
+		slog.Info("using provider fallback selection after resolve failure", "provider", provider.Name(), "task_hash", taskHash, "selection_id", selectionID)
+		return &resolvedProviderSelection{
+			selection:     cloneFallbackSelection(fallback),
+			warning:       "provider_selection_fallback_used",
+			warningReason: err.Error(),
+		}, nil
+	}
+
+	slog.Info("provider selection resolved", "provider", provider.Name(), "task_hash", taskHash, "selection_id", selectionID)
+	if selection != nil {
+		return &resolvedProviderSelection{selection: selection}, nil
+	}
+
+	if fallback == nil {
 		return nil, ErrProviderSelectionNotFound
 	}
 
-	name := selection.Title
-	releaseDate := selection.ReleaseDate
-	description := selection.Description
-	imageURL := selection.ImageURL
+	slog.Info("using provider fallback selection after empty resolve", "provider", provider.Name(), "task_hash", taskHash, "selection_id", selectionID)
+	return &resolvedProviderSelection{
+		selection:     cloneFallbackSelection(fallback),
+		warning:       "provider_selection_fallback_used",
+		warningReason: ErrProviderSelectionNotFound.Error(),
+	}, nil
+}
 
-	var filePath string
-	if imageURL != "" {
-		sanitizedImageURL, parsedURL, err := s.validateExternalImageURL(ctx, provider, imageURL)
-		if err != nil {
-			return nil, err
-		}
-
-		// Download image
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, sanitizedImageURL, nil)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create image request: %w", err)
-		}
-		resp, err := s.httpClient.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("failed to download image: %w", err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("failed to download image, status code: %d", resp.StatusCode)
-		}
-
-		body, contentType, err := s.readAndValidateRemoteImage(resp)
-		if err != nil {
-			return nil, err
-		}
-
-		lastPart := filepath.Base(parsedURL.Path)
-		ext := s.selectImageExtension(filepath.Ext(lastPart), contentType)
-		filename := fmt.Sprintf("%s_%s_%s%s", taskHash, provider.Name(), time.Now().Format("20060102150405"), ext)
-		var absFilePath string
-		filePath, absFilePath, err = s.buildUploadPath(filename)
-		if err != nil {
-			return nil, err
-		}
-
-		dst, err := os.Create(absFilePath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create image file: %w", err)
-		}
-		if _, err := io.Copy(dst, bytes.NewReader(body)); err != nil {
-			dst.Close()
-			os.Remove(absFilePath)
-			return nil, fmt.Errorf("failed to save image: %w", err)
-		}
-		if err := dst.Close(); err != nil {
-			os.Remove(absFilePath)
-			return nil, fmt.Errorf("failed to finalize image file: %w", err)
-		}
+func cloneFallbackSelection(selection *MetadataProviderSelection) *MetadataProviderSelection {
+	if selection == nil {
+		return nil
 	}
 
+	return &MetadataProviderSelection{
+		ID:          selection.ID,
+		Title:       selection.Title,
+		ReleaseDate: selection.ReleaseDate,
+		Description: selection.Description,
+		ImageID:     selection.ImageID,
+	}
+}
+
+func (s *Service) processProviderImage(
+	ctx context.Context,
+	provider MetadataProvider,
+	taskHash string,
+	selectionID string,
+	selection *MetadataProviderSelection,
+) (string, string, string, error) {
+	imageURL, err := s.providerImageURL(provider, selection)
+	if err != nil {
+		return "", "provider_image_skipped", err.Error(), nil
+	}
+	if imageURL == "" {
+		return "", "", "", nil
+	}
+
+	slog.Info("processing provider image", "provider", provider.Name(), "task_hash", taskHash, "selection_id", selectionID, "image_url", imageURL)
+	sanitizedImageURL, parsedURL, err := s.validateExternalImageURL(ctx, provider, imageURL)
+	if err != nil {
+		return "", "provider_image_skipped", s.logSkippedProviderImage("invalid image URL", provider, taskHash, err), nil
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, sanitizedImageURL, nil)
+	if err != nil {
+		return "", "provider_image_skipped", s.logSkippedProviderImage("request creation failure", provider, taskHash, err), nil
+	}
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		slog.Warn("skipping provider image due to download failure", "provider", provider.Name(), "task_hash", taskHash, "error", err)
+		return "", "provider_image_skipped", fmt.Sprintf("failed to download image: %v", err), nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		slog.Warn("skipping provider image due to unexpected status code", "provider", provider.Name(), "task_hash", taskHash, "status_code", resp.StatusCode)
+		return "", "provider_image_skipped", fmt.Sprintf("failed to download image, status code: %d", resp.StatusCode), nil
+	}
+
+	body, contentType, err := s.readAndValidateRemoteImage(resp)
+	if err != nil {
+		return "", "provider_image_skipped", s.logSkippedProviderImage("invalid image response", provider, taskHash, err), nil
+	}
+
+	filePath, err := s.saveProviderImage(taskHash, provider.Name(), parsedURL.Path, contentType, body)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	return filePath, "", "", nil
+}
+
+func (s *Service) providerImageURL(provider MetadataProvider, selection *MetadataProviderSelection) (string, error) {
+	if selection == nil {
+		return "", nil
+	}
+	if strings.TrimSpace(selection.ImageID) == "" {
+		if strings.TrimSpace(selection.ImageURL) != "" {
+			return selection.ImageURL, nil
+		}
+		return "", nil
+	}
+
+	imageURL, err := provider.BuildImageURL(selection.ImageID)
+	if err != nil {
+		slog.Warn("skipping provider image due to invalid image id", "provider", provider.Name(), "image_id", selection.ImageID, "error", err)
+		return "", fmt.Errorf("invalid provider image id: %w", err)
+	}
+
+	return imageURL, nil
+}
+
+func (s *Service) logSkippedProviderImage(reason string, provider MetadataProvider, taskHash string, err error) string {
+	slog.Warn("skipping provider image due to "+reason, "provider", provider.Name(), "task_hash", taskHash, "error", err)
+	return err.Error()
+}
+
+func (s *Service) saveProviderImage(taskHash string, providerName string, imagePath string, contentType string, body []byte) (string, error) {
+	lastPart := filepath.Base(imagePath)
+	ext := s.selectImageExtension(filepath.Ext(lastPart), contentType)
+	filename := fmt.Sprintf("%s_%s_%s%s", taskHash, providerName, time.Now().Format("20060102150405"), ext)
+	filePath, absFilePath, err := s.buildUploadPath(filename)
+	if err != nil {
+		return "", err
+	}
+
+	dst, err := os.Create(absFilePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create image file: %w", err)
+	}
+
+	if _, err := io.Copy(dst, bytes.NewReader(body)); err != nil {
+		dst.Close()
+		os.Remove(absFilePath)
+		return "", fmt.Errorf("failed to save image: %w", err)
+	}
+
+	if err := dst.Close(); err != nil {
+		os.Remove(absFilePath)
+		return "", fmt.Errorf("failed to finalize image file: %w", err)
+	}
+
+	return filePath, nil
+}
+
+func (s *Service) saveProviderSelection(
+	ctx context.Context,
+	taskHash string,
+	selection *MetadataProviderSelection,
+	filePath string,
+) (*models.TaskMetadata, error) {
 	existing, err := s.repo.GetByTaskHash(ctx, taskHash)
 	if err != nil {
-		if filePath != "" {
-			os.Remove(filePath)
-		}
+		s.removeImageFile(filePath)
 		return nil, err
 	}
 
 	if existing != nil {
-		existing.Name = name
-		existing.ReleaseDate = releaseDate
-		if description != "" {
-			existing.Description = description
-		}
-		if filePath != "" {
-			oldImagePath := existing.ImagePath
-			existing.ImagePath = filePath
-			existing.UpdatedAt = time.Now()
+		return s.updateExistingProviderMetadata(ctx, existing, selection, filePath)
+	}
 
-			if err := s.repo.Update(ctx, existing); err != nil {
-				os.Remove(filePath)
-				return nil, err
-			}
+	return s.createProviderMetadata(ctx, taskHash, selection, filePath)
+}
 
-			if oldImagePath != "" {
-				if err := s.validateImagePath(oldImagePath); err == nil {
-					os.Remove(oldImagePath)
-				}
-			}
+func (s *Service) updateExistingProviderMetadata(
+	ctx context.Context,
+	existing *models.TaskMetadata,
+	selection *MetadataProviderSelection,
+	filePath string,
+) (*models.TaskMetadata, error) {
+	existing.Name = selection.Title
+	existing.ReleaseDate = selection.ReleaseDate
+	if selection.Description != "" {
+		existing.Description = selection.Description
+	}
+	existing.UpdatedAt = time.Now()
 
-			return s.modelToEntity(existing), nil
-		}
-		existing.UpdatedAt = time.Now()
-
+	if filePath == "" {
 		if err := s.repo.Update(ctx, existing); err != nil {
 			return nil, err
 		}
-		return s.modelToEntity(existing), nil
+		return existing, nil
 	}
 
-	metadata := &models.TaskMetadata{
-		UUID:        uuid.New(),
-		TaskHash:    taskHash,
-		Name:        name,
-		ReleaseDate: releaseDate,
-		Description: description,
-		ImagePath:   filePath,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
-	}
-
-	if err := s.repo.Create(ctx, metadata); err != nil {
-		if filePath != "" {
-			os.Remove(filePath)
-		}
+	oldImagePath := existing.ImagePath
+	existing.ImagePath = filePath
+	if err := s.repo.Update(ctx, existing); err != nil {
+		s.removeImageFile(filePath)
 		return nil, err
 	}
 
-	return s.modelToEntity(metadata), nil
+	s.removeValidatedImageFile(oldImagePath)
+	return existing, nil
+}
+
+func (s *Service) createProviderMetadata(
+	ctx context.Context,
+	taskHash string,
+	selection *MetadataProviderSelection,
+	filePath string,
+) (*models.TaskMetadata, error) {
+	now := time.Now()
+	metadata := &models.TaskMetadata{
+		UUID:        uuid.New(),
+		TaskHash:    taskHash,
+		Name:        selection.Title,
+		ReleaseDate: selection.ReleaseDate,
+		Description: selection.Description,
+		ImagePath:   filePath,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+
+	if err := s.repo.Create(ctx, metadata); err != nil {
+		s.removeImageFile(filePath)
+		return nil, err
+	}
+
+	return metadata, nil
+}
+
+func (s *Service) removeImageFile(filePath string) {
+	if filePath != "" {
+		os.Remove(filePath)
+	}
+}
+
+func (s *Service) removeValidatedImageFile(filePath string) {
+	if filePath == "" {
+		return
+	}
+
+	if err := s.validateImagePath(filePath); err == nil {
+		os.Remove(filePath)
+	}
+}
+
+func (s *Service) logProviderMetadataApplied(provider MetadataProvider, taskHash string, selectionID string, hasImage bool, warning string, warningReason string) {
+	slog.Info("provider metadata applied", "provider", provider.Name(), "task_hash", taskHash, "selection_id", selectionID, "has_image", hasImage, "warning", warning, "warning_reason", warningReason)
 }
 
 func (s *Service) validateExternalImageURL(ctx context.Context, provider MetadataProvider, rawURL string) (string, *url.URL, error) {

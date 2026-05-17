@@ -54,6 +54,7 @@ export function TaskMetadataSearchSheet({
   const [isTGDBActive, setIsTGDBActive] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [searchError, setSearchError] = useState("");
+  const [applyError, setApplyError] = useState("");
 
   const provider = category?.metadata_source || "none";
   const initialQuery = useMemo(
@@ -79,6 +80,7 @@ export function TaskMetadataSearchSheet({
     setIsTGDBActive(false);
     setStatusMessage("");
     setSearchError("");
+    setApplyError("");
   }, [initialQuery, isOpen, task?.id]);
 
   const runSearch = useCallback(async (searchQuery: string) => {
@@ -97,6 +99,7 @@ export function TaskMetadataSearchSheet({
 
     setIsSearching(true);
     setSearchError("");
+    setApplyError("");
 
     try {
       const response = await taskMetadataService.searchProvider("tgdb", trimmedQuery);
@@ -178,17 +181,21 @@ export function TaskMetadataSearchSheet({
     }
 
     setIsApplying(true);
+    setApplyError("");
 
     try {
       const response = await taskMetadataService.applyProvider(task.hash, "tgdb", {
-        name: selectedResult.title,
-        release_date: selectedResult.release_date || "",
-        description: selectedResult.description || "",
-        image_url: selectedResult.image_url || "",
+        id: selectedResult.id,
+        title: selectedResult.title,
+        release_date: selectedResult.release_date,
+        description: selectedResult.description,
+        image_id: selectedResult.image_id,
       });
 
       if (response.error) {
-        setSearchError(response.error || t("tgdb.errors.applyFailed"));
+        const message = response.error || t("tgdb.errors.applyFailed");
+        setApplyError(message);
+        toast.error(message);
         return;
       }
 
@@ -197,8 +204,8 @@ export function TaskMetadataSearchSheet({
       onClose();
     } catch (err) {
       const message = err instanceof Error ? err.message : t("tgdb.errors.applyFailed");
-      setSearchError(message);
-      toast.error(t("tgdb.errors.applyFailed"));
+      setApplyError(message);
+      toast.error(message);
       return;
     } finally {
       setIsApplying(false);
@@ -274,9 +281,9 @@ export function TaskMetadataSearchSheet({
               </div>
             )}
 
-            {searchError && (
+            {(searchError || applyError) && (
               <div className="space-y-1 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
-                <p className="text-sm text-destructive">{searchError}</p>
+                <p className="text-sm text-destructive">{applyError || searchError}</p>
                 {provider === "tgdb" && (
                   <p className="text-xs text-muted-foreground">
                     {t("torrents.addModal.metadata.searchSuggestion")}

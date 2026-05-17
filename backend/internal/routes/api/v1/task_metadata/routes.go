@@ -19,6 +19,8 @@ import (
 const (
 	// MaxImageUploadSize defines the maximum allowed image upload size (5MB)
 	MaxImageUploadSize = 5 * 1024 * 1024 // 5MB
+
+	applyProviderMetadataError = "failed to apply provider metadata"
 )
 
 var (
@@ -439,7 +441,11 @@ func (m *Module) applyProvider(c *gin.Context) {
 	}
 
 	var body struct {
-		ID string `json:"id"`
+		ID          string `json:"id"`
+		Title       string `json:"title"`
+		ReleaseDate string `json:"release_date"`
+		Description string `json:"description"`
+		ImageID     string `json:"image_id"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
@@ -450,16 +456,34 @@ func (m *Module) applyProvider(c *gin.Context) {
 		return
 	}
 
-	metadata, err := m.service.ApplyProviderSelection(c.Request.Context(), provider, taskHash, body.ID)
+	var fallbackSelection *task_metadata_service.MetadataProviderSelection
+	if strings.TrimSpace(body.Title) != "" ||
+		strings.TrimSpace(body.ReleaseDate) != "" ||
+		strings.TrimSpace(body.Description) != "" ||
+		strings.TrimSpace(body.ImageID) != "" {
+		fallbackSelection = &task_metadata_service.MetadataProviderSelection{
+			ID:          body.ID,
+			Title:       body.Title,
+			ReleaseDate: body.ReleaseDate,
+			Description: body.Description,
+			ImageID:     body.ImageID,
+		}
+	}
+
+	metadata, err := m.service.ApplyProviderSelectionWithFallback(c.Request.Context(), provider, taskHash, body.ID, fallbackSelection)
 	if err != nil {
+		slog.Error(applyProviderMetadataError, "provider", provider, "task_hash", taskHash, "selection_id", body.ID, "error", err)
 		switch {
 		case errors.Is(err, task_metadata_service.ErrProviderNotFound), errors.Is(err, task_metadata_service.ErrProviderSelectionNotFound):
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			c.JSON(http.StatusNotFound, gin.H{"error": applyProviderMetadataError, "reason": err.Error()})
 		default:
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": applyProviderMetadataError, "reason": err.Error()})
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, mappers.ToTaskMetadataResponse(metadata))
+	response := mappers.ToTaskMetadataResponse(metadata.Metadata)
+	response.Warning = metadata.Warning
+	response.WarningReason = metadata.WarningReason
+	c.JSON(http.StatusOK, response)
 }

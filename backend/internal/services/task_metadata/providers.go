@@ -15,6 +15,7 @@ type MetadataProviderSearchResult struct {
 	Title       string `json:"title"`
 	ReleaseDate string `json:"release_date,omitempty"`
 	Description string `json:"description,omitempty"`
+	ImageID     string `json:"image_id,omitempty"`
 	ImageURL    string `json:"image_url,omitempty"`
 }
 
@@ -23,6 +24,7 @@ type MetadataProviderSelection struct {
 	Title       string
 	ReleaseDate string
 	Description string
+	ImageID     string
 	ImageURL    string
 }
 
@@ -36,6 +38,7 @@ type MetadataProvider interface {
 	Status(ctx context.Context) (*MetadataProviderStatus, error)
 	Search(ctx context.Context, query string) ([]MetadataProviderSearchResult, error)
 	Resolve(ctx context.Context, id string) (*MetadataProviderSelection, error)
+	BuildImageURL(imageID string) (string, error)
 	AllowedImageHosts() []string
 }
 
