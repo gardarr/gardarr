@@ -50,13 +50,8 @@ export function TorrentMetadataHoverCard({
 
     updateHoverEnabled();
 
-    if (typeof mediaQuery.addEventListener === "function") {
-      mediaQuery.addEventListener("change", updateHoverEnabled);
-      return () => mediaQuery.removeEventListener("change", updateHoverEnabled);
-    }
-
-    mediaQuery.addListener(updateHoverEnabled);
-    return () => mediaQuery.removeListener(updateHoverEnabled);
+    mediaQuery.addEventListener("change", updateHoverEnabled);
+    return () => mediaQuery.removeEventListener("change", updateHoverEnabled);
   }, []);
 
   const hasMetadata = hasTorrentMetadata(torrent);
