@@ -1,5 +1,6 @@
 import type {
   ButtonHTMLAttributes,
+  ComponentProps,
   InputHTMLAttributes,
   LabelHTMLAttributes,
   ReactNode,
@@ -76,49 +77,29 @@ vi.mock("@/services/taskMetadata", () => ({
   },
 }));
 
-const baseTask: Task = {
-  id: "task-1",
-  name: "Halo",
-  hash: "hash-1",
-  created_at: "2024-01-01T00:00:00Z",
-  state: "queued",
-  category: "Games",
-  path: "/downloads/halo",
-  priority: 0,
-  ratio: 0,
-  size: 0,
-  progress: 0,
-  magnet_uri: "magnet:?xt=urn:btih:test",
-  magnet_link: {
-    hash: "hash-1",
-    display_name: "Halo",
-    trackers: [],
-    exact_length: "",
-    exact_source: "",
-  },
-  popularity: 0,
-  pairs: {
-    swarm_seeders: 0,
-    swarm_leechers: 0,
-    seeders: 0,
-    leechers: 0,
-  },
-  network: {
-    download: { speed: 0, amount: 0 },
-    upload: { speed: 0, amount: 0 },
-  },
-  metadata: null,
+const searchResult = {
+  id: "123",
+  title: "Halo",
+  release_date: "2024-01-01",
+  description: "Overview",
+  image_id: "front.jpg",
+  image_url: "https://cdn.thegamesdb.net/images/large/front.jpg",
 };
 
-const baseCategory: Category = {
-  id: "cat-1",
-  name: "Games",
-  default_tags: [],
-  default_directory: "/downloads/games",
-  metadata_source: "tgdb",
-  created_at: "2024-01-01T00:00:00Z",
-  updated_at: "2024-01-01T00:00:00Z",
-};
+function renderSearchSheet(overrides: Partial<ComponentProps<typeof TaskMetadataSearchSheet>> = {}) {
+  const props = {
+    isOpen: true,
+    onClose: vi.fn(),
+    task: { name: "Halo", hash: "hash-1" } as Task,
+    category: { metadata_source: "tgdb" } as Category,
+    onApplied: vi.fn(),
+    ...overrides,
+  };
+
+  render(<TaskMetadataSearchSheet {...props} />);
+
+  return props;
+}
 
 describe("TaskMetadataSearchSheet", () => {
   beforeEach(() => {
@@ -131,24 +112,10 @@ describe("TaskMetadataSearchSheet", () => {
       },
     });
 
-    vi.mocked(taskMetadataService.searchProvider).mockResolvedValue({
-      data: [
-        {
-          id: "123",
-          title: "Halo",
-          release_date: "2024-01-01",
-          description: "Overview",
-          image_id: "front.jpg",
-          image_url: "https://cdn.thegamesdb.net/images/large/front.jpg",
-        },
-      ],
-    });
+    vi.mocked(taskMetadataService.searchProvider).mockResolvedValue({ data: [searchResult] });
   });
 
   it("applies metadata using the selected id with fallback metadata", async () => {
-    const onApplied = vi.fn();
-    const onClose = vi.fn();
-
     vi.mocked(taskMetadataService.applyProvider).mockResolvedValue({
       data: {
         uuid: "meta-1",
@@ -159,15 +126,7 @@ describe("TaskMetadataSearchSheet", () => {
       },
     });
 
-    render(
-      <TaskMetadataSearchSheet
-        isOpen={true}
-        onClose={onClose}
-        task={baseTask}
-        category={baseCategory}
-        onApplied={onApplied}
-      />
-    );
+    const { onApplied, onClose } = renderSearchSheet();
 
     await waitFor(() => expect(taskMetadataService.searchProvider).toHaveBeenCalledWith("tgdb", "Halo"));
 
@@ -189,22 +148,12 @@ describe("TaskMetadataSearchSheet", () => {
 
   it("shows a toast and resets the loading state when apply fails", async () => {
     const user = userEvent.setup();
-    const onApplied = vi.fn();
-    const onClose = vi.fn();
 
     vi.mocked(taskMetadataService.applyProvider).mockResolvedValue({
       error: "id is required",
     });
 
-    render(
-      <TaskMetadataSearchSheet
-        isOpen={true}
-        onClose={onClose}
-        task={baseTask}
-        category={baseCategory}
-        onApplied={onApplied}
-      />
-    );
+    const { onApplied, onClose } = renderSearchSheet();
 
     await waitFor(() => expect(taskMetadataService.searchProvider).toHaveBeenCalledWith("tgdb", "Halo"));
 

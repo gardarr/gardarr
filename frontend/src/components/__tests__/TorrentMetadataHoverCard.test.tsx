@@ -6,56 +6,59 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TorrentMetadataHoverCard } from "@/components/torrents/TorrentMetadataHoverCard";
 import type { TorrentListItem } from "@/components/torrents";
 
-const baseTorrent: TorrentListItem = {
+const metadata = {
+  uuid: "meta-1",
+  task_hash: "hash-1",
+  image_url: "https://example.com/cover.jpg",
+  name: "Friendly Title",
+  description: "A longer description for the hover preview.",
+  created_at: "2026-05-13T00:00:00Z",
+  updated_at: "2026-05-13T00:00:00Z",
+};
+
+const baseTorrent = {
   id: "task-1",
-  hash: "hash-1",
   name: "Raw Torrent Name",
-  totalSizeBytes: 1024,
+  status: "DOWNLOADING",
+  progress: 50,
   downloadRateBps: 0,
   uploadRateBps: 0,
-  downloadedBytes: 0,
-  uploadedBytes: 0,
-  status: "DOWNLOADING",
-  createdAt: "2026-05-13T00:00:00Z",
-  progress: 50,
-  ratio: 1.2,
-  numSeeds: 5,
-  numLeechs: 2,
-  category: "movies",
-  tags: [],
-  metadata: {
-    uuid: "meta-1",
-    task_hash: "hash-1",
-    image_url: "https://example.com/cover.jpg",
-    name: "Friendly Title",
-    description: "A longer description for the hover preview.",
-    created_at: "2026-05-13T00:00:00Z",
-    updated_at: "2026-05-13T00:00:00Z",
-  },
-};
+  metadata,
+} as TorrentListItem;
+
+function setHoverCapable(matches = true) {
+  Object.defineProperty(globalThis, "matchMedia", {
+    writable: true,
+    value: vi.fn().mockImplementation(() => ({
+      matches,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    })),
+  });
+}
+
+function renderHoverCard(torrent: TorrentListItem, onContextMenu?: () => void) {
+  render(
+    <TorrentMetadataHoverCard torrent={torrent} onContextMenu={onContextMenu}>
+      <button type="button">Task trigger</button>
+    </TorrentMetadataHoverCard>
+  );
+
+  return screen.getByRole("button", { name: "Task trigger" });
+}
 
 describe("TorrentMetadataHoverCard", () => {
   beforeEach(() => {
-    Object.defineProperty(globalThis, "matchMedia", {
-      writable: true,
-      value: vi.fn().mockImplementation(() => ({
-        matches: true,
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-      })),
-    });
+    setHoverCapable();
   });
 
   it("renders hover preview when metadata exists", async () => {
     const user = userEvent.setup();
 
-    render(
-      <TorrentMetadataHoverCard torrent={baseTorrent}>
-        <button type="button">Task trigger</button>
-      </TorrentMetadataHoverCard>
-    );
-
-    await user.hover(screen.getByRole("button", { name: "Task trigger" }));
+    await user.hover(renderHoverCard(baseTorrent));
 
     await waitFor(() => {
       expect(screen.getByText("Friendly Title")).toBeInTheDocument();
@@ -75,13 +78,7 @@ describe("TorrentMetadataHoverCard", () => {
       },
     };
 
-    render(
-      <TorrentMetadataHoverCard torrent={torrentWithoutImage}>
-        <button type="button">Task trigger</button>
-      </TorrentMetadataHoverCard>
-    );
-
-    await user.hover(screen.getByRole("button", { name: "Task trigger" }));
+    await user.hover(renderHoverCard(torrentWithoutImage));
 
     const description = await screen.findByText("A longer description for the hover preview.");
     expect(screen.queryByRole("img", { name: "Friendly Title" })).not.toBeInTheDocument();
@@ -94,11 +91,7 @@ describe("TorrentMetadataHoverCard", () => {
       metadata: null,
     };
 
-    render(
-      <TorrentMetadataHoverCard torrent={torrentWithoutMetadata}>
-        <button type="button">Task trigger</button>
-      </TorrentMetadataHoverCard>
-    );
+    renderHoverCard(torrentWithoutMetadata);
 
     expect(screen.queryByText("A longer description for the hover preview.")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Task trigger" })).toBeInTheDocument();
@@ -108,15 +101,7 @@ describe("TorrentMetadataHoverCard", () => {
     const user = userEvent.setup();
     const onContextMenu = vi.fn();
 
-    render(
-      <TorrentMetadataHoverCard torrent={baseTorrent} onContextMenu={onContextMenu}>
-        <button type="button">Task trigger</button>
-      </TorrentMetadataHoverCard>
-    );
-
-    await user.pointer([
-      { target: screen.getByRole("button", { name: "Task trigger" }), keys: "[MouseRight]" },
-    ]);
+    await user.pointer([{ target: renderHoverCard(baseTorrent, onContextMenu), keys: "[MouseRight]" }]);
 
     expect(onContextMenu).toHaveBeenCalledTimes(1);
   });
@@ -129,15 +114,7 @@ describe("TorrentMetadataHoverCard", () => {
       metadata: null,
     };
 
-    render(
-      <TorrentMetadataHoverCard torrent={torrentWithoutMetadata} onContextMenu={onContextMenu}>
-        <button type="button">Task trigger</button>
-      </TorrentMetadataHoverCard>
-    );
-
-    await user.pointer([
-      { target: screen.getByRole("button", { name: "Task trigger" }), keys: "[MouseRight]" },
-    ]);
+    await user.pointer([{ target: renderHoverCard(torrentWithoutMetadata, onContextMenu), keys: "[MouseRight]" }]);
 
     expect(onContextMenu).toHaveBeenCalledTimes(1);
   });
@@ -173,17 +150,7 @@ vi.mock("@/components/torrents/TorrentContextMenu", () => ({
 }));
 
 it("keeps row click behavior intact in compact list", async () => {
-  Object.defineProperty(globalThis, "matchMedia", {
-    writable: true,
-    value: vi.fn().mockImplementation(() => ({
-      matches: true,
-      onchange: null,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-    })),
-  });
+  setHoverCapable();
 
   const user = userEvent.setup();
   const { default: TorrentListCompact } = await import("@/components/torrents/TorrentListCompact");
