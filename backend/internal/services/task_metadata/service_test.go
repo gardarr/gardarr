@@ -871,6 +871,121 @@ func TestApplyProviderSelectionUsesDetectedExtensionWhenURLHasNoValidImageExt(t 
 	}
 }
 
+func TestApplyProviderSelectionWithFallbackUsesImageIDForDownload(t *testing.T) {
+	svc, uploadDir := setupTestService(t)
+	svc.providerRegistry = NewMetadataProviderRegistry(mockMetadataProvider{
+		name:              "tgdb",
+		allowedImageHosts: []string{"cdn.thegamesdb.net"},
+		resolveErr:        fmt.Errorf("unexpected status code: 404"),
+	})
+	svc.lookupIPAddr = func(context.Context, string) ([]net.IPAddr, error) {
+		return []net.IPAddr{{IP: net.ParseIP("203.0.113.10")}}, nil
+	}
+	svc.httpClient = &http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			if req.URL.String() != "https://cdn.thegamesdb.net/images/large/front.jpg" {
+				t.Fatalf("expected image download request built from image id, got %s", req.URL.String())
+			}
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader(testPNGBytes())),
+				Header:     http.Header{"Content-Type": []string{"image/png"}},
+			}, nil
+		}),
+	}
+
+	result, err := svc.ApplyProviderSelectionWithFallback(
+		context.Background(),
+		"tgdb",
+		"task123",
+		"123",
+		&MetadataProviderSelection{
+			ID:          "123",
+			Title:       "Fallback Game",
+			ReleaseDate: "2024-01-01",
+			Description: "Overview",
+			ImageID:     "front.jpg",
+		},
+	)
+	if err != nil {
+		t.Fatalf(unexpectedErrFmt, err)
+	}
+	if result == nil || result.Metadata == nil {
+		t.Fatal("expected metadata result")
+	}
+	if result.Metadata.Name != "Fallback Game" {
+		t.Fatalf("expected fallback metadata name to be saved, got %q", result.Metadata.Name)
+	}
+	if result.Metadata.ImagePath == "" {
+		t.Fatal("expected image path when fallback includes image id")
+	}
+	if result.Warning != "provider_selection_fallback_used" {
+		t.Fatalf("expected fallback warning, got %q", result.Warning)
+	}
+	if result.WarningReason == "" {
+		t.Fatalf("expected warning reason for fallback, got %#v", result)
+	}
+
+	entries, readErr := os.ReadDir(uploadDir)
+	if readErr != nil {
+		t.Fatalf("failed to read upload dir: %v", readErr)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected one file to be written during fallback, found %d", len(entries))
+	}
+}
+
+func TestApplyProviderSelectionWithFallbackWarnsOnEmptyResolution(t *testing.T) {
+	svc, uploadDir := setupTestService(t)
+	svc.providerRegistry = NewMetadataProviderRegistry(mockMetadataProvider{
+		name:              "tgdb",
+		allowedImageHosts: []string{"cdn.thegamesdb.net"},
+		selection:         nil,
+	})
+	svc.httpClient = &http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			t.Fatalf("expected no image download request during fallback, got %s", req.URL.String())
+			return nil, nil
+		}),
+	}
+
+	result, err := svc.ApplyProviderSelectionWithFallback(
+		context.Background(),
+		"tgdb",
+		"task123",
+		"123",
+		&MetadataProviderSelection{
+			ID:          "123",
+			Title:       "Fallback Game",
+			ReleaseDate: "2024-01-01",
+			Description: "Overview",
+		},
+	)
+	if err != nil {
+		t.Fatalf(unexpectedErrFmt, err)
+	}
+	if result == nil || result.Metadata == nil {
+		t.Fatal("expected metadata result")
+	}
+	if result.Warning != "provider_selection_fallback_used" {
+		t.Fatalf("expected fallback warning, got %q", result.Warning)
+	}
+	if result.WarningReason != ErrProviderSelectionNotFound.Error() {
+		t.Fatalf("expected fallback warning reason %q, got %q", ErrProviderSelectionNotFound.Error(), result.WarningReason)
+	}
+	if result.Metadata.ImagePath != "" {
+		t.Fatalf("expected no image path when fallback is used, got %q", result.Metadata.ImagePath)
+	}
+
+	entries, readErr := os.ReadDir(uploadDir)
+	if readErr != nil {
+		t.Fatalf("failed to read upload dir: %v", readErr)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("expected no files to be written during fallback, found %d", len(entries))
+	}
+}
+
 func testPNGBytes() []byte {
 	return []byte{
 		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
@@ -912,6 +1027,13 @@ func (m mockMetadataProvider) Resolve(context.Context, string) (*MetadataProvide
 		return nil, ErrProviderSelectionNotFound
 	}
 	return m.selection, nil
+}
+
+func (m mockMetadataProvider) BuildImageURL(imageID string) (string, error) {
+	if strings.TrimSpace(imageID) == "" {
+		return "", nil
+	}
+	return "https://cdn.thegamesdb.net/images/large/" + imageID, nil
 }
 
 func (m mockMetadataProvider) AllowedImageHosts() []string {

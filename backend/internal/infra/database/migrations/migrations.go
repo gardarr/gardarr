@@ -505,5 +505,28 @@ func Register(m *migration.Migrator) {
 				return nil
 			},
 		},
+		{
+			Version:     "030_remove_legacy_worker_token_columns",
+			Description: "Remove colunas legadas de token dos workers que nao sao mais usadas",
+			Up: func(db *gorm.DB) error {
+				if db.Migrator().HasColumn("workers", "encrypeted_token") {
+					if err := db.Exec("ALTER TABLE workers DROP COLUMN encrypeted_token").Error; err != nil {
+						return err
+					}
+				}
+
+				if db.Migrator().HasColumn("workers", "encrypted_token") {
+					if err := db.Exec("ALTER TABLE workers DROP COLUMN encrypted_token").Error; err != nil {
+						return err
+					}
+				}
+
+				return nil
+			},
+			Down: func(db *gorm.DB) error {
+				// No-op: as colunas removidas continham segredos legados e nao devem ser recriadas.
+				return nil
+			},
+		},
 	})
 }

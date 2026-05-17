@@ -6,7 +6,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { WorkerIcon } from "@/components/ui/WorkerIcon";
 import { formatBytes, formatBytesPerSecond } from "@/utils/bytes";
 import { truncateText, isTextTruncated } from "@/utils/textUtils";
-import { TorrentMetadataHoverCard } from "./TorrentMetadataHoverCard";
 import TorrentContextMenu from "./TorrentContextMenu";
 import type { TorrentActionHandlers, TorrentListItem, TorrentSelectionProps } from "./types";
 import { getTorrentDisplayName, getTorrentImageUrl } from "./helpers";
@@ -222,4 +221,4 @@ export function TorrentThumbnail({
   );
 }
 
-export { TorrentMetadataHoverCard };
+export { TorrentMetadataHoverCard } from "./TorrentMetadataHoverCard";

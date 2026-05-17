@@ -20,11 +20,11 @@ type PreviewPosition = {
 };
 
 function canUseHoverPreview() {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+  if (typeof globalThis.window === "undefined" || typeof globalThis.window.matchMedia !== "function") {
     return true;
   }
 
-  return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  return globalThis.window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 }
 
 export function TorrentMetadataHoverCard({
@@ -40,11 +40,11 @@ export function TorrentMetadataHoverCard({
   const [position, setPosition] = useState<PreviewPosition>({ top: 0, left: 0 });
 
   useEffect(() => {
-    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    if (typeof globalThis.window === "undefined" || typeof globalThis.window.matchMedia !== "function") {
       return undefined;
     }
 
-    const mediaQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const mediaQuery = globalThis.window.matchMedia("(hover: hover) and (pointer: fine)");
     const updateHoverEnabled = () => setHoverEnabled(mediaQuery.matches);
 
     updateHoverEnabled();
@@ -138,7 +138,7 @@ export function TorrentMetadataHoverCard({
         }
       },
     });
-  }, [children, hasMetadata, hoverEnabled, passthroughProps]);
+  }, [children, handleMouseEnter, handleMouseLeave, handleMouseMove, hasMetadata, hoverEnabled, passthroughProps]);
 
   return (
     <>

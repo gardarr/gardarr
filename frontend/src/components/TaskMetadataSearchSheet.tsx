@@ -189,7 +189,7 @@ export function TaskMetadataSearchSheet({
         title: selectedResult.title,
         release_date: selectedResult.release_date,
         description: selectedResult.description,
-        image_url: selectedResult.image_url,
+        image_id: selectedResult.image_id,
       });
 
       if (response.error) {

@@ -14,7 +14,7 @@ interface ApplyProviderRequest {
   title?: string;
   release_date?: string;
   description?: string;
-  image_url?: string;
+  image_id?: string;
 }
 
 class TaskMetadataService {

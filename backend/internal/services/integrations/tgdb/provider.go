@@ -3,6 +3,7 @@ package tgdb
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	integrationService "github.com/jfxdev/gardarr/internal/services/integration"
 	taskmetadata "github.com/jfxdev/gardarr/internal/services/task_metadata"
@@ -52,6 +53,7 @@ func (p *MetadataProvider) Search(ctx context.Context, query string) ([]taskmeta
 			Title:       selection.Title,
 			ReleaseDate: selection.ReleaseDate,
 			Description: selection.Description,
+			ImageID:     selection.ImageID,
 			ImageURL:    selection.ImageURL,
 		})
 	}
@@ -81,6 +83,18 @@ func (p *MetadataProvider) AllowedImageHosts() []string {
 	return []string{"cdn.thegamesdb.net"}
 }
 
+func (p *MetadataProvider) BuildImageURL(imageID string) (string, error) {
+	trimmedImageID := strings.TrimSpace(imageID)
+	if trimmedImageID == "" {
+		return "", nil
+	}
+	if strings.Contains(trimmedImageID, "://") || strings.HasPrefix(trimmedImageID, "/") {
+		return "", fmt.Errorf("invalid image id")
+	}
+
+	return fmt.Sprintf("https://cdn.thegamesdb.net/images/large/%s", trimmedImageID), nil
+}
+
 func (p *MetadataProvider) client(ctx context.Context) (*tgdbclient.Client, error) {
 	key, err := p.configService.GetDecryptedAPIKey(ctx, p.Name())
 	if err != nil {
@@ -99,11 +113,12 @@ func buildSelection(game tgdbclient.GameResult, boxart tgdbclient.BoxartData) *t
 		Title:       game.GameTitle,
 		ReleaseDate: game.ReleaseDate,
 		Description: game.Overview,
+		ImageID:     selectImageID(game.ID, boxart),
 		ImageURL:    selectImageURL(game.ID, boxart),
 	}
 }
 
-func selectImageURL(gameID int, boxart tgdbclient.BoxartData) string {
+func selectImageID(gameID int, boxart tgdbclient.BoxartData) string {
 	boxarts, ok := boxart.Data[fmt.Sprintf("%d", gameID)]
 	if !ok || len(boxarts) == 0 {
 		return ""
@@ -117,9 +132,13 @@ func selectImageURL(gameID int, boxart tgdbclient.BoxartData) string {
 		}
 	}
 
-	if selected.Filename == "" {
+	return strings.TrimPrefix(selected.Filename, "/")
+}
+
+func selectImageURL(gameID int, boxart tgdbclient.BoxartData) string {
+	imageID := selectImageID(gameID, boxart)
+	if imageID == "" {
 		return ""
 	}
-
-	return fmt.Sprintf("%s%s", boxart.BaseURL.Large, selected.Filename)
+	return fmt.Sprintf("%s%s", boxart.BaseURL.Large, imageID)
 }

@@ -63,6 +63,10 @@ const getSortTypeKey = (type: string): string => {
 };
 
 type Torrent = TorrentListItem;
+type TaskFetchResult = {
+  tasks: Task[];
+  errors: Record<string, string>;
+};
 
 const canCategorySearchMetadata = (categoryName: string, categories: Category[]): boolean => {
   if (!categoryName) {
@@ -252,110 +256,122 @@ export default function TorrentsPage() {
   const mapTasksToTorrents = useCallback((tasks: Task[]) => {
     return tasks.map((task) => mapTaskToTorrent(task, categories));
   }, [categories]);
+  const getFunctionalWorkers = useCallback(() => {
+    return workers.filter((worker) => worker.status !== "ERRORED");
+  }, [workers]);
+
+  const clearTorrentData = useCallback((markInitialLoadComplete = false) => {
+    setOriginalTasks([]);
+    setTorrents([]);
+    if (markInitialLoadComplete) {
+      setInitialLoadComplete(true);
+    }
+  }, []);
+
+  const fetchTasksFromWorkers = useCallback(async (
+    functionalWorkers: Worker[],
+    { collectErrors }: { collectErrors: boolean }
+  ): Promise<TaskFetchResult> => {
+    const taskCollections = await Promise.allSettled(
+      functionalWorkers.map(async (worker) => {
+        const response = await torrentService.listWorkerTasks(worker.uuid);
+
+        if (response?.data) {
+          return {
+            workerId: worker.uuid,
+            tasks: response.data.map((task) => ({
+              ...task,
+              worker,
+            })),
+          };
+        }
+
+        if (response?.error) {
+          throw new Error(response.error);
+        }
+
+        return {
+          workerId: worker.uuid,
+          tasks: [] as Task[],
+        };
+      })
+    );
+
+    return taskCollections.reduce<TaskFetchResult>((result, entry, index) => {
+      const worker = functionalWorkers[index];
+      if (entry.status === "fulfilled") {
+        result.tasks.push(...entry.value.tasks);
+        return result;
+      }
+
+      if (collectErrors) {
+        result.errors[worker.uuid] = entry.reason instanceof Error
+          ? entry.reason.message
+          : "Unknown error";
+      }
+
+      return result;
+    }, { tasks: [], errors: {} });
+  }, []);
+
+  const applyFetchedTasks = useCallback((tasks: Task[]) => {
+    setOriginalTasks(tasks);
+    setTorrents(mapTasksToTorrents(tasks));
+  }, [mapTasksToTorrents]);
+
+  const showWorkerTaskErrors = useCallback((errors: Record<string, string>) => {
+    if (Object.keys(errors).length === 0) {
+      return;
+    }
+
+    const errorMessages = Object.entries(errors).map(([workerId, error]) => {
+      const worker = workers.find((item) => item.uuid === workerId);
+      return `Worker ${worker?.name || workerId}: ${error}`;
+    });
+
+    console.warn("Some workers failed to load tasks:", errorMessages);
+    toast.warning(t("torrents.notifications.someWorkersFailed"), {
+      description: errorMessages.join("\n"),
+      duration: 5000,
+    });
+  }, [t, workers]);
 
   // Carregar torrents da API
   const loadTorrents = useCallback(async () => {
     try {
-      // Verificar se há pelo menos um worker funcional (não erro) antes de tentar carregar tasks
-      const functionalWorkers = workers.filter(worker => worker.status !== 'ERRORED');
+      const functionalWorkers = getFunctionalWorkers();
       if (functionalWorkers.length === 0) {
-        // Se não há workers funcionais, limpar tasks e marcar como completo
-        setOriginalTasks([]);
-        setTorrents([]);
-        setInitialLoadComplete(true);
+        clearTorrentData(true);
         return;
       }
 
-      // Carregar tasks apenas dos workers funcionais
-      const allTasks: Task[] = [];
-      const errors: Record<string, string> = {};
-
-      // Buscar tasks de cada worker funcional individualmente
-      await Promise.allSettled(
-        functionalWorkers.map(async (worker) => {
-          try {
-            const response = await torrentService.listWorkerTasks(worker.uuid);
-            if (response?.data) {
-              // Adicionar informações do worker a cada task
-              const tasksWithWorker = response.data.map(task => ({
-                ...task,
-                worker: worker
-              }));
-              allTasks.push(...tasksWithWorker);
-            } else if (response?.error) {
-              errors[worker.uuid] = response.error;
-            }
-          } catch (err) {
-            errors[worker.uuid] = err instanceof Error ? err.message : 'Unknown error';
-          }
-        })
-      );
-
-      // Mostrar erros se houver
-      if (Object.keys(errors).length > 0) {
-        const errorMessages = Object.entries(errors).map(([workerId, error]) => {
-          const worker = workers.find(a => a.uuid === workerId);
-          return `Worker ${worker?.name || workerId}: ${error}`;
-        });
-
-        console.warn('Some workers failed to load tasks:', errorMessages);
-        toast.warning(t('torrents.notifications.someWorkersFailed'), {
-          description: errorMessages.join('\n'),
-          duration: 5000,
-        });
-      }
-
-      setOriginalTasks(allTasks);
-      const mappedTorrents = mapTasksToTorrents(allTasks);
-      setTorrents(mappedTorrents);
+      const { tasks, errors } = await fetchTasksFromWorkers(functionalWorkers, { collectErrors: true });
+      showWorkerTaskErrors(errors);
+      applyFetchedTasks(tasks);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('torrents.error'));
     } finally {
       setInitialLoadComplete(true);
     }
-  }, [mapTasksToTorrents, t, workers]);
+  }, [applyFetchedTasks, clearTorrentData, fetchTasksFromWorkers, getFunctionalWorkers, showWorkerTaskErrors, t]);
 
   // Atualização silenciosa para não afetar UI (sem spinner)
   const refreshTorrentsSilently = useCallback(async (): Promise<Task[]> => {
     try {
-      // Verificar se há pelo menos um worker funcional (não erro) antes de tentar carregar tasks
-      const functionalWorkers = workers.filter(worker => worker.status !== 'ERRORED');
+      const functionalWorkers = getFunctionalWorkers();
       if (functionalWorkers.length === 0) {
-        // Se não há workers funcionais, limpar tasks e retornar
-        setOriginalTasks([]);
-        setTorrents([]);
+        clearTorrentData();
         return [];
       }
 
-      // Buscar tasks de cada worker funcional individualmente
-      const allTasks: Task[] = [];
-
-      await Promise.allSettled(
-        functionalWorkers.map(async (worker) => {
-          try {
-            const response = await torrentService.listWorkerTasks(worker.uuid);
-            if (response?.data) {
-              const tasksWithWorker = response.data.map(task => ({
-                ...task,
-                worker: worker
-              }));
-              allTasks.push(...tasksWithWorker);
-            }
-          } catch {
-            // silencioso - ignorar erros individuais de workers
-          }
-        })
-      );
-
-      setOriginalTasks(allTasks);
-      const mappedTorrents = mapTasksToTorrents(allTasks);
-      setTorrents(mappedTorrents);
-      return allTasks;
+      const { tasks } = await fetchTasksFromWorkers(functionalWorkers, { collectErrors: false });
+      applyFetchedTasks(tasks);
+      return tasks;
     } catch {
       // silencioso
       return [];
     }
-  }, [mapTasksToTorrents, workers]);
+  }, [applyFetchedTasks, clearTorrentData, fetchTasksFromWorkers, getFunctionalWorkers]);
 
   // Carregar workers da API
   const loadWorkers = useCallback(async () => {

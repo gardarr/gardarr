@@ -138,6 +138,7 @@ describe("TaskMetadataSearchSheet", () => {
           title: "Halo",
           release_date: "2024-01-01",
           description: "Overview",
+          image_id: "front.jpg",
           image_url: "https://cdn.thegamesdb.net/images/large/front.jpg",
         },
       ],
@@ -178,7 +179,7 @@ describe("TaskMetadataSearchSheet", () => {
         title: "Halo",
         release_date: "2024-01-01",
         description: "Overview",
-        image_url: "https://cdn.thegamesdb.net/images/large/front.jpg",
+        image_id: "front.jpg",
       })
     );
     expect(toast.success).toHaveBeenCalledWith("tgdb.success.applied");

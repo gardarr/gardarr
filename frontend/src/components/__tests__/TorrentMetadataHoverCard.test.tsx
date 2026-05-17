@@ -36,7 +36,7 @@ const baseTorrent: TorrentListItem = {
 
 describe("TorrentMetadataHoverCard", () => {
   beforeEach(() => {
-    Object.defineProperty(window, "matchMedia", {
+    Object.defineProperty(globalThis, "matchMedia", {
       writable: true,
       value: vi.fn().mockImplementation(() => ({
         matches: true,

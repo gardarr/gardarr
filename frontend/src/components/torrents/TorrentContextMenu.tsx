@@ -33,31 +33,45 @@ export default function TorrentContextMenu(props: TorrentContextMenuProps) {
   const { taskId, workerId, children, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onSearchMetadata, canSearchMetadata, onLimits, onShowDetails, selectionMode, selectedIds, onRequestDelete } = props;
 
   const [isMenuReady, setIsMenuReady] = React.useState(false);
+  const getTargetIds = React.useCallback(() => {
+    return selectionMode && selectedIds && selectedIds.size > 1
+      ? Array.from(selectedIds)
+      : [taskId];
+  }, [selectionMode, selectedIds, taskId]);
 
-  const handleStart = React.useCallback((e: React.MouseEvent) => {
-    if (!isMenuReady) { e.preventDefault(); e.stopPropagation(); return; }
+  const guardMenuAction = React.useCallback((e: React.MouseEvent): boolean => {
+    if (!isMenuReady) {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    }
+
     e.preventDefault();
     e.stopPropagation();
-    if (onStart) {
-      const ids = selectionMode && selectedIds && selectedIds.size > 1 ? Array.from(selectedIds) : [taskId];
-      ids.forEach(id => onStart(id));
-    }
-  }, [isMenuReady, onStart, taskId, selectionMode, selectedIds]);
+    return true;
+  }, [isMenuReady]);
 
-  const handleStop = React.useCallback((e: React.MouseEvent) => {
-    if (!isMenuReady) { e.preventDefault(); e.stopPropagation(); return; }
-    e.preventDefault();
-    e.stopPropagation();
-    if (onStop) {
-      const ids = selectionMode && selectedIds && selectedIds.size > 1 ? Array.from(selectedIds) : [taskId];
-      ids.forEach(id => onStop(id));
-    }
-  }, [isMenuReady, onStop, taskId, selectionMode, selectedIds]);
+  const createBatchHandler = React.useCallback((
+    action?: (taskId: string) => void,
+    options?: { enabled?: boolean }
+  ) => {
+    return (e: React.MouseEvent) => {
+      if (!guardMenuAction(e) || !action || options?.enabled === false) {
+        return;
+      }
+
+      getTargetIds().forEach((id) => action(id));
+    };
+  }, [getTargetIds, guardMenuAction]);
+
+  const handleStart = React.useMemo(() => createBatchHandler(onStart), [createBatchHandler, onStart]);
+  const handleStop = React.useMemo(() => createBatchHandler(onStop), [createBatchHandler, onStop]);
 
   const handleRemove = React.useCallback((e: React.MouseEvent) => {
-    if (!isMenuReady) { e.preventDefault(); e.stopPropagation(); return; }
-    e.preventDefault();
-    e.stopPropagation();
+    if (!guardMenuAction(e)) {
+      return;
+    }
+
     if (onRequestDelete) {
       const ids = selectionMode && selectedIds && selectedIds.size > 0 ? Array.from(selectedIds) : [taskId];
       onRequestDelete(ids);
@@ -66,64 +80,36 @@ export default function TorrentContextMenu(props: TorrentContextMenuProps) {
     if (onRemove) {
       onRemove(taskId);
     }
-  }, [isMenuReady, onRequestDelete, selectionMode, selectedIds, onRemove, taskId]);
+  }, [guardMenuAction, onRequestDelete, selectionMode, selectedIds, onRemove, taskId]);
 
-  const handleForceDownload = React.useCallback((e: React.MouseEvent) => {
-    if (!isMenuReady) { e.preventDefault(); e.stopPropagation(); return; }
-    e.preventDefault();
-    e.stopPropagation();
-    if (onForceDownload) {
-      const ids = selectionMode && selectedIds && selectedIds.size > 1 ? Array.from(selectedIds) : [taskId];
-      ids.forEach(id => onForceDownload(id));
-    }
-  }, [isMenuReady, onForceDownload, taskId, selectionMode, selectedIds]);
-
-  const handleForceReannounce = React.useCallback((e: React.MouseEvent) => {
-    if (!isMenuReady) { e.preventDefault(); e.stopPropagation(); return; }
-    e.preventDefault();
-    e.stopPropagation();
-    if (onForceReannounce) {
-      const ids = selectionMode && selectedIds && selectedIds.size > 1 ? Array.from(selectedIds) : [taskId];
-      ids.forEach(id => onForceReannounce(id));
-    }
-  }, [isMenuReady, onForceReannounce, taskId, selectionMode, selectedIds]);
-
-  const handleForceRecheck = React.useCallback((e: React.MouseEvent) => {
-    if (!isMenuReady) { e.preventDefault(); e.stopPropagation(); return; }
-    e.preventDefault();
-    e.stopPropagation();
-    if (onForceRecheck) {
-      const ids = selectionMode && selectedIds && selectedIds.size > 1 ? Array.from(selectedIds) : [taskId];
-      ids.forEach(id => onForceRecheck(id));
-    }
-  }, [isMenuReady, onForceRecheck, taskId, selectionMode, selectedIds]);
+  const handleForceDownload = React.useMemo(() => createBatchHandler(onForceDownload), [createBatchHandler, onForceDownload]);
+  const handleForceReannounce = React.useMemo(() => createBatchHandler(onForceReannounce), [createBatchHandler, onForceReannounce]);
+  const handleForceRecheck = React.useMemo(() => createBatchHandler(onForceRecheck), [createBatchHandler, onForceRecheck]);
 
   const handleLimits = React.useCallback((e: React.MouseEvent) => {
-    if (!isMenuReady) { e.preventDefault(); e.stopPropagation(); return; }
-    e.preventDefault();
-    e.stopPropagation();
+    if (!guardMenuAction(e)) {
+      return;
+    }
+
     if (onLimits) {
       onLimits(taskId, workerId);
     }
-  }, [isMenuReady, onLimits, taskId, workerId]);
+  }, [guardMenuAction, onLimits, taskId, workerId]);
 
-  const handleSearchMetadata = React.useCallback((e: React.MouseEvent) => {
-    if (!isMenuReady) { e.preventDefault(); e.stopPropagation(); return; }
-    e.preventDefault();
-    e.stopPropagation();
-    if (onSearchMetadata && canSearchMetadata) {
-      onSearchMetadata(taskId);
-    }
-  }, [canSearchMetadata, isMenuReady, onSearchMetadata, taskId]);
+  const handleSearchMetadata = React.useMemo(
+    () => createBatchHandler(onSearchMetadata, { enabled: canSearchMetadata }),
+    [canSearchMetadata, createBatchHandler, onSearchMetadata]
+  );
 
   const handleShowDetails = React.useCallback((e: React.MouseEvent) => {
-    if (!isMenuReady) { e.preventDefault(); e.stopPropagation(); return; }
-    e.preventDefault();
-    e.stopPropagation();
+    if (!guardMenuAction(e)) {
+      return;
+    }
+
     if (onShowDetails) {
       onShowDetails(taskId);
     }
-  }, [isMenuReady, onShowDetails, taskId]);
+  }, [guardMenuAction, onShowDetails, taskId]);
 
   const handleOpenChange = React.useCallback((open: boolean) => {
     if (open) {

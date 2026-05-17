@@ -67,6 +67,7 @@ export interface MetadataProviderSearchResult {
   title: string;
   release_date?: string;
   description?: string;
+  image_id?: string;
   image_url?: string;
 }
 

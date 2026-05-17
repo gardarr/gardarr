@@ -12,6 +12,7 @@ interface TGDBGameResult {
   title: string;
   release_date?: string;
   description?: string;
+  image_id?: string;
   image_url?: string;
 }
 
@@ -65,7 +66,7 @@ export function TGDBSearch({ taskHash, initialQuery, onSelect, onCancel }: TGDBS
         title: game.title,
         release_date: game.release_date,
         description: game.description,
-        image_url: game.image_url,
+        image_id: game.image_id,
       });
       if (response.error || !response.data) {
         toast.error(response.error || t("tgdb.errors.applyFailed"));

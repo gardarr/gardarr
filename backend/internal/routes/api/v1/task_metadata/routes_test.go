@@ -16,7 +16,7 @@ import (
 )
 
 type routeMockProvider struct {
-	selection *taskmetadatasvc.MetadataProviderSelection
+	selection  *taskmetadatasvc.MetadataProviderSelection
 	resolveErr error
 }
 
@@ -37,6 +37,10 @@ func (m routeMockProvider) Resolve(_ context.Context, _ string) (*taskmetadatasv
 		return nil, m.resolveErr
 	}
 	return m.selection, nil
+}
+
+func (m routeMockProvider) BuildImageURL(imageID string) (string, error) {
+	return "https://cdn.thegamesdb.net/images/large/" + imageID, nil
 }
 
 func (m routeMockProvider) AllowedImageHosts() []string {
@@ -163,7 +167,6 @@ func TestApplyProviderRouteFallsBackToProvidedSelectionOnResolveError(t *testing
 		"title":        "Fallback Game",
 		"release_date": "2024-01-01",
 		"description":  "Overview",
-		"image_url":    "",
 	})
 
 	if w.Code != http.StatusOK {
@@ -180,5 +183,35 @@ func TestApplyProviderRouteFallsBackToProvidedSelectionOnResolveError(t *testing
 	}
 	if response.Warning == "" || response.WarningReason == "" {
 		t.Fatalf("expected warning fields to be set, got %#v", response)
+	}
+}
+
+func TestApplyProviderRouteIgnoresLegacyImageURLField(t *testing.T) {
+	router := setupTaskMetadataApplyRouter(t, routeMockProvider{
+		resolveErr: fmt.Errorf("unexpected status code: 404"),
+	})
+
+	w := sendTaskMetadataJSONRequest(t, router, http.MethodPost, "/api/v1/tasks/metadata/task-123/providers/tgdb", map[string]string{
+		"id":           "123",
+		"title":        "Fallback Game",
+		"release_date": "2024-01-01",
+		"description":  "Overview",
+		"image_url":    "https://cdn.thegamesdb.net/images/large/front.jpg",
+	})
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var response models.TaskMetadataResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+		t.Fatalf("failed to unmarshal response: %v", err)
+	}
+
+	if response.ImageURL != "" {
+		t.Fatalf("expected legacy image_url payload to be ignored, got image_url=%q", response.ImageURL)
+	}
+	if response.Name != "Fallback Game" {
+		t.Fatalf("expected fallback metadata to be applied, got %#v", response)
 	}
 }
