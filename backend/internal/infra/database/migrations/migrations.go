@@ -389,42 +389,6 @@ func Register(m *migration.Migrator) {
 			},
 		},
 		{
-			Version:     "026_seed_default_categories",
-			Description: "Popula categorias padrão do sistema sem sobrescrever categorias existentes",
-			Up: func(db *gorm.DB) error {
-				defaultCategories := []models.Category{
-					{Name: "Movies", Color: "#ef4444", Icon: "Film"},
-					{Name: "Shows", Color: "#3b82f6", Icon: "Tv"},
-					{Name: "Games", Color: "#10b981", Icon: "Gamepad2"},
-					{Name: "Other", Color: "#6b7280", Icon: "Folder"},
-					{Name: "Books", Color: "#f59e0b", Icon: "BookOpen"},
-					{Name: "Anime", Color: "#ec4899", Icon: "Star"},
-					{Name: "Music", Color: "#14b8a6", Icon: "Music"},
-				}
-
-				for _, category := range defaultCategories {
-					var existingCount int64
-					if err := db.Table("categories").Where("name = ?", category.Name).Count(&existingCount).Error; err != nil {
-						return err
-					}
-
-					if existingCount > 0 {
-						continue
-					}
-
-					if err := db.Create(&category).Error; err != nil {
-						return err
-					}
-				}
-
-				return nil
-			},
-			Down: func(db *gorm.DB) error {
-				// No-op: rollback não deve remover categorias que podem já estar em uso.
-				return nil
-			},
-		},
-		{
 			Version:     "027_rename_category_directory_and_add_metadata_source",
 			Description: "Renomeia directory para default_directory e adiciona metadata_source em categories",
 			Up: func(db *gorm.DB) error {
@@ -457,6 +421,42 @@ func Register(m *migration.Migrator) {
 					}
 				}
 
+				return nil
+			},
+		},
+		{
+			Version:     "026_seed_default_categories",
+			Description: "Popula categorias padrão do sistema sem sobrescrever categorias existentes",
+			Up: func(db *gorm.DB) error {
+				defaultCategories := []models.Category{
+					{Name: "Movies", Color: "#ef4444", Icon: "Film"},
+					{Name: "Shows", Color: "#3b82f6", Icon: "Tv"},
+					{Name: "Games", Color: "#10b981", Icon: "Gamepad2"},
+					{Name: "Other", Color: "#6b7280", Icon: "Folder"},
+					{Name: "Books", Color: "#f59e0b", Icon: "BookOpen"},
+					{Name: "Anime", Color: "#ec4899", Icon: "Star"},
+					{Name: "Music", Color: "#14b8a6", Icon: "Music"},
+				}
+
+				for _, category := range defaultCategories {
+					var existingCount int64
+					if err := db.Table("categories").Where("name = ?", category.Name).Count(&existingCount).Error; err != nil {
+						return err
+					}
+
+					if existingCount > 0 {
+						continue
+					}
+
+					if err := db.Create(&category).Error; err != nil {
+						return err
+					}
+				}
+
+				return nil
+			},
+			Down: func(db *gorm.DB) error {
+				// No-op: rollback não deve remover categorias que podem já estar em uso.
 				return nil
 			},
 		},
