@@ -13,52 +13,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEnableRealTimeEmission(t *testing.T) {
+func TestSubscribe(t *testing.T) {
 	// Create a minimal service for testing
 	svc := &Service{
 		taskStates: make(map[uuid.UUID]map[string]*entities.TaskState),
 	}
 
-	// Initially nil
-	assert.Nil(t, svc.eventChan)
+	// Initially empty
+	assert.Empty(t, svc.subscribers)
 
-	// Enable with default buffer (0 should default to 100)
-	ch := svc.EnableRealTimeEmission(0)
+	// Subscribe with buffer 100
+	ch := svc.Subscribe(100)
 	assert.NotNil(t, ch)
-	assert.NotNil(t, svc.eventChan)
-	assert.Equal(t, 100, cap(svc.eventChan))
+	assert.Equal(t, 100, cap(ch))
+	assert.Equal(t, 1, len(svc.subscribers))
 
-	// Create new service and test with custom buffer
-	svc2 := &Service{
-		taskStates: make(map[uuid.UUID]map[string]*entities.TaskState),
-	}
-	ch2 := svc2.EnableRealTimeEmission(50)
+	// Subscribe with custom buffer 50
+	ch2 := svc.Subscribe(50)
 	assert.NotNil(t, ch2)
-	assert.Equal(t, 50, cap(svc2.eventChan))
-}
-
-func TestEnableRealTimeEmissionMultipleBufferSizes(t *testing.T) {
-	tests := []struct {
-		name       string
-		bufferSize int
-		expected   int
-	}{
-		{"Zero defaults to 100", 0, 100},
-		{"Negative defaults to 100", -5, 100},
-		{"Custom size 50", 50, 50},
-		{"Custom size 200", 200, 200},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			svc := &Service{
-				taskStates: make(map[uuid.UUID]map[string]*entities.TaskState),
-			}
-			ch := svc.EnableRealTimeEmission(tt.bufferSize)
-			assert.NotNil(t, ch)
-			assert.Equal(t, tt.expected, cap(svc.eventChan))
-		})
-	}
+	assert.Equal(t, 50, cap(ch2))
+	assert.Equal(t, 2, len(svc.subscribers))
 }
 
 func TestIsSignificantStateChange(t *testing.T) {

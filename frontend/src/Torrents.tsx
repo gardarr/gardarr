@@ -12,6 +12,7 @@ import { torrentService } from "./services/torrents";
 import { workerService } from "./services/workers";
 import { categoryService } from "./services/categories";
 import { preferencesService } from "@/services/preferences";
+import { useTorrentsWS } from "@/hooks/useTorrentsWS";
 import {
   getStatusColor,
   getStatusIcon,
@@ -63,10 +64,7 @@ const getSortTypeKey = (type: string): string => {
 };
 
 type Torrent = TorrentListItem;
-type TaskFetchResult = {
-  tasks: Task[];
-  errors: Record<string, string>;
-};
+
 
 const canCategorySearchMetadata = (categoryName: string, categories: Category[]): boolean => {
   if (!categoryName) {
@@ -256,122 +254,59 @@ export default function TorrentsPage() {
   const mapTasksToTorrents = useCallback((tasks: Task[]) => {
     return tasks.map((task) => mapTaskToTorrent(task, categories));
   }, [categories]);
-  const getFunctionalWorkers = useCallback(() => {
-    return workers.filter((worker) => worker.status !== "ERRORED");
-  }, [workers]);
 
-  const clearTorrentData = useCallback((markInitialLoadComplete = false) => {
-    setOriginalTasks([]);
-    setTorrents([]);
-    if (markInitialLoadComplete) {
+  // Hook WebSocket updating all REST polling 
+  const { requestSync } = useTorrentsWS({
+    onInitialState: (tasks, errors) => {
+      setOriginalTasks(tasks);
+      setTorrents(mapTasksToTorrents(tasks));
       setInitialLoadComplete(true);
-    }
-  }, []);
-
-  const fetchTasksFromWorkers = useCallback(async (
-    functionalWorkers: Worker[],
-    { collectErrors }: { collectErrors: boolean }
-  ): Promise<TaskFetchResult> => {
-    const taskCollections = await Promise.allSettled(
-      functionalWorkers.map(async (worker) => {
-        const response = await torrentService.listWorkerTasks(worker.uuid);
-
-        if (response?.data) {
-          return {
-            workerId: worker.uuid,
-            tasks: response.data.map((task) => ({
-              ...task,
-              worker,
-            })),
-          };
+      if (errors && Object.keys(errors).length > 0) {
+        toast.error(t('torrents.notifications.someWorkersFailed'));
+      }
+    },
+    onTaskUpdated: (updatedTask) => {
+      setOriginalTasks(prev => {
+        const index = prev.findIndex(t => t.hash === updatedTask.hash && t.worker?.uuid === updatedTask.worker_id);
+        if (index >= 0) {
+          const next = [...prev];
+          next[index] = { ...next[index], ...updatedTask } as Task;
+          setTorrents(mapTasksToTorrents(next));
+          return next;
+        } else {
+          // If new task, find worker
+          const worker = workers.find(w => w.uuid === updatedTask.worker_id);
+          if (worker) {
+            const next = [...prev, { ...updatedTask, worker } as Task];
+            setTorrents(mapTasksToTorrents(next));
+            return next;
+          }
         }
-
-        if (response?.error) {
-          throw new Error(response.error);
-        }
-
-        return {
-          workerId: worker.uuid,
-          tasks: [] as Task[],
-        };
-      })
-    );
-
-    return taskCollections.reduce<TaskFetchResult>((result, entry, index) => {
-      const worker = functionalWorkers[index];
-      if (entry.status === "fulfilled") {
-        result.tasks.push(...entry.value.tasks);
-        return result;
-      }
-
-      if (collectErrors) {
-        result.errors[worker.uuid] = entry.reason instanceof Error
-          ? entry.reason.message
-          : "Unknown error";
-      }
-
-      return result;
-    }, { tasks: [], errors: {} });
-  }, []);
-
-  const applyFetchedTasks = useCallback((tasks: Task[]) => {
-    setOriginalTasks(tasks);
-    setTorrents(mapTasksToTorrents(tasks));
-  }, [mapTasksToTorrents]);
-
-  const showWorkerTaskErrors = useCallback((errors: Record<string, string>) => {
-    if (Object.keys(errors).length === 0) {
-      return;
+        return prev;
+      });
+    },
+    onTaskRemoved: (hash, workerId) => {
+      setOriginalTasks(prev => {
+        const next = prev.filter(t => !(t.hash === hash && t.worker?.uuid === workerId));
+        setTorrents(mapTasksToTorrents(next));
+        return next;
+      });
+    },
+    onWorkerStats: () => {
+      // Optional: Update worker stats in UI if needed
     }
+  });
 
-    const errorMessages = Object.entries(errors).map(([workerId, error]) => {
-      const worker = workers.find((item) => item.uuid === workerId);
-      return `Worker ${worker?.name || workerId}: ${error}`;
-    });
+  // Client-driven state sync loop
+  useEffect(() => {
+    if (isRefreshPaused || !initialLoadComplete) return;
 
-    console.warn("Some workers failed to load tasks:", errorMessages);
-    toast.warning(t("torrents.notifications.someWorkersFailed"), {
-      description: errorMessages.join("\n"),
-      duration: 5000,
-    });
-  }, [t, workers]);
+    const intervalId = setInterval(() => {
+      requestSync();
+    }, refreshIntervalSec * 1000);
 
-  // Carregar torrents da API
-  const loadTorrents = useCallback(async () => {
-    try {
-      const functionalWorkers = getFunctionalWorkers();
-      if (functionalWorkers.length === 0) {
-        clearTorrentData(true);
-        return;
-      }
-
-      const { tasks, errors } = await fetchTasksFromWorkers(functionalWorkers, { collectErrors: true });
-      showWorkerTaskErrors(errors);
-      applyFetchedTasks(tasks);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('torrents.error'));
-    } finally {
-      setInitialLoadComplete(true);
-    }
-  }, [applyFetchedTasks, clearTorrentData, fetchTasksFromWorkers, getFunctionalWorkers, showWorkerTaskErrors, t]);
-
-  // Atualização silenciosa para não afetar UI (sem spinner)
-  const refreshTorrentsSilently = useCallback(async (): Promise<Task[]> => {
-    try {
-      const functionalWorkers = getFunctionalWorkers();
-      if (functionalWorkers.length === 0) {
-        clearTorrentData();
-        return [];
-      }
-
-      const { tasks } = await fetchTasksFromWorkers(functionalWorkers, { collectErrors: false });
-      applyFetchedTasks(tasks);
-      return tasks;
-    } catch {
-      // silencioso
-      return [];
-    }
-  }, [applyFetchedTasks, clearTorrentData, fetchTasksFromWorkers, getFunctionalWorkers]);
+    return () => clearInterval(intervalId);
+  }, [refreshIntervalSec, isRefreshPaused, initialLoadComplete, requestSync]);
 
   // Carregar workers da API
   const loadWorkers = useCallback(async () => {
@@ -441,8 +376,7 @@ export default function TorrentsPage() {
         }
       }));
 
-      // Recarregar lista
-      await loadTorrents();
+      // A UI será atualizada via WebSocket (evento TORRENT_REMOVED)
 
       // Exibir mensagem de sucesso
       const message = isBulk
@@ -526,18 +460,8 @@ export default function TorrentsPage() {
 
   // Handler para atualização de metadados
   const handleMetadataUpdate = useCallback(async () => {
-    // Recarregar torrents silenciosamente para obter metadados atualizados
-    const updatedTasks = await refreshTorrentsSilently();
-
-    // Atualizar o torrent selecionado no modal se houver um aberto
-    setSelectedTorrent(prev => {
-      if (prev && updatedTasks.length > 0) {
-        const updatedTask = updatedTasks.find(t => t.id === prev.id);
-        return updatedTask || prev;
-      }
-      return prev;
-    });
-  }, [refreshTorrentsSilently]);
+    // A UI será atualizada via evento WS TORRENT_STATE_CHANGE automaticamente
+  }, []);
 
   // Controles de torrent
   const handleGenericTorrentAction = async (
@@ -561,14 +485,7 @@ export default function TorrentsPage() {
 
       toast.success(successMessage);
 
-      // Recarregar dados de todos os workers sem fechar o modal
-      const updatedTasks = await refreshTorrentsSilently();
-
-      // Atualizar o torrent selecionado para refletir mudanças
-      const updatedTask = updatedTasks.find(t => t.id === torrentId);
-      if (updatedTask) {
-        setSelectedTorrent(updatedTask);
-      }
+      // A UI será atualizada via WebSocket (evento TORRENT_STATE_CHANGE)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : `Erro ao ${actionName}`);
     }
@@ -631,14 +548,7 @@ export default function TorrentsPage() {
 
       toast.success(t('torrents.notifications.pathChangeSuccess'));
 
-      // Recarregar dados de todos os workers sem fechar o modal
-      const updatedTasks = await refreshTorrentsSilently();
-
-      // Atualizar o torrent selecionado para refletir mudanças
-      const updatedTask = updatedTasks.find(t => t.id === torrentId);
-      if (updatedTask) {
-        setSelectedTorrent(updatedTask);
-      }
+      // A UI será atualizada via WebSocket
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('torrents.notifications.pathChangeError'));
     }
@@ -659,9 +569,9 @@ export default function TorrentsPage() {
         return;
       }
 
-      // Fechar modal e recarregar lista
+      // Fechar modal
       handleCloseModal();
-      await loadTorrents();
+      // WebSocket remove automaticamente da UI
       toast.success(purge
         ? t('torrents.notifications.deleteWithFilesSuccess')
         : t('torrents.notifications.deleteSuccess')
@@ -698,7 +608,7 @@ export default function TorrentsPage() {
   const handleFinalizeTorrent = async (task: Task) => {
     void task;
     try {
-      await loadTorrents();
+      // WS cuida da UI
       setIsAddModalOpen(false);
       toast.success(t('torrents.notifications.addSuccess'));
     } catch (err) {
@@ -734,55 +644,7 @@ export default function TorrentsPage() {
     setTorrents(mapTasksToTorrents(originalTasks));
   }, [mapTasksToTorrents, originalTasks]);
 
-  // Carregar torrents quando workers mudarem (para detectar mudanças de status)
-  useEffect(() => {
-    if (!workersLoading) {
-      loadTorrents();
-    }
-  }, [workers, loadTorrents, workersLoading]);
-
-  // Intervalo de atualização automática com debounce e otimização de visibilidade
-  useEffect(() => {
-    // Skip if paused or interval is 0
-    if (isRefreshPaused || refreshIntervalSec <= 0) return;
-
-    // Don't start auto-refresh until workers have been loaded
-    if (workersLoading) return;
-
-    // Pause refresh if there are no functional workers
-    const hasFunctionalWorkers = workers.some(worker => worker.status !== 'ERRORED');
-    if (!hasFunctionalWorkers) return;
-
-    let timeoutId: NodeJS.Timeout;
-    let isPageVisible = !document.hidden;
-    let isActive = true;
-
-    // Pause auto refresh when page is not visible
-    const handleVisibilityChange = () => {
-      isPageVisible = !document.hidden;
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    const scheduleNext = () => {
-      if (!isActive) return;
-      timeoutId = setTimeout(async () => {
-        if (!isActive) return;
-        if (isPageVisible) {
-          await refreshTorrentsSilently();
-        }
-        scheduleNext();
-      }, refreshIntervalSec * 1000);
-    };
-
-    scheduleNext();
-
-    return () => {
-      isActive = false;
-      clearTimeout(timeoutId);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [refreshIntervalSec, refreshTorrentsSilently, workersLoading, workers, isRefreshPaused]);
+  // O WebSocket gerencia o estado e as atualizações em tempo real!
 
   // Handle clicking outside the add dropdown
   useEffect(() => {

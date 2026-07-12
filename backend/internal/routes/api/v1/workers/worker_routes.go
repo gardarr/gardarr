@@ -29,7 +29,6 @@ func NewModule(router *gin.RouterGroup, svc *workermanager.Service) *Module {
 
 func (m Module) Register() {
 	m.workersRouter.GET("/", m.listWorkers)
-	m.workersRouter.GET("/tasks", m.listWorkersTasks)
 
 	m.workerRouter.POST("/", m.createWorker)
 	m.workerRouter.GET("/:id", m.getWorker)
@@ -39,8 +38,6 @@ func (m Module) Register() {
 	m.workerRouter.POST("/:id/active/limits", m.setWorkerMaxActiveTorrents)
 
 	m.workerRouter.GET("/:id/version", m.getWorkerVersion)
-	m.workerRouter.GET("/:id/tasks", m.listWorkerTasks)
-	m.workerRouter.GET("/:id/tasks/stats", m.getWorkerTasksStats)
 	m.workerRouter.GET("/:id/preferences", m.getWorkerPreferences)
 	m.workerRouter.GET("/:id/logs", m.getWorkerLogs)
 	m.workerRouter.DELETE("/:id", m.deleteWorker)
@@ -159,40 +156,7 @@ func (m *Module) deleteWorker(c *gin.Context) {
 	c.JSON(http.StatusNoContent, nil)
 }
 
-func (m *Module) listWorkersTasks(c *gin.Context) {
-	result, err := m.service.ListWorkersTasks(c.Request.Context())
-	if err != nil {
-		errors.HandleError(c, err)
-		return
-	}
 
-	tasks := make([]models.TaskResponseModel, len(result.Tasks))
-	for i, item := range result.Tasks {
-		tasks[i] = mappers.ToTaskResponse(item)
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"tasks":  tasks,
-		"errors": result.Errors,
-	})
-}
-
-func (m *Module) listWorkerTasks(c *gin.Context) {
-	id := c.Param("id")
-
-	result, err := m.service.ListWorkerTasks(c.Request.Context(), id)
-	if err != nil {
-		errors.HandleError(c, err)
-		return
-	}
-
-	resp := make([]models.TaskResponseModel, len(result))
-	for i, item := range result {
-		resp[i] = mappers.ToTaskResponse(item)
-	}
-
-	c.JSON(http.StatusOK, resp)
-}
 
 func (m *Module) createWorkerTask(c *gin.Context) {
 	id := c.Param("id")
@@ -478,17 +442,7 @@ func (m *Module) setWorkerTaskCategory(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Task category updated successfully"})
 }
 
-func (m *Module) getWorkerTasksStats(c *gin.Context) {
-	workerID := c.Param("id")
 
-	stats, err := m.service.GetWorkerTasksStats(c.Request.Context(), workerID)
-	if err != nil {
-		errors.HandleError(c, err)
-		return
-	}
-
-	c.JSON(http.StatusOK, mappers.ToTaskStatsResponse(stats))
-}
 
 func (m *Module) getWorkerVersion(c *gin.Context) {
 	workerID := c.Param("id")
