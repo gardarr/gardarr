@@ -101,8 +101,8 @@ func readPump(c *websocketSvc.Client, conn *websocket.Conn, sessionSvc *session.
 		conn.Close()
 	}()
 	conn.SetReadLimit(maxMessageSize)
-	conn.SetReadDeadline(time.Now().Add(pongWait))
-	conn.SetPongHandler(func(string) error { conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+	_ = conn.SetReadDeadline(time.Now().Add(pongWait))
+	conn.SetPongHandler(func(string) error { return conn.SetReadDeadline(time.Now().Add(pongWait)) })
 
 	stopSessionCheck := make(chan struct{})
 	defer close(stopSessionCheck)
@@ -113,27 +113,39 @@ func readPump(c *websocketSvc.Client, conn *websocket.Conn, sessionSvc *session.
 	for {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				slog.Error("websocket unexpected close error", "error", err)
-			}
+			logUnexpectedCloseError(err)
 			break
 		}
-		// Parse message from client
-		var msg struct {
-			Action string `json:"action"`
-		}
-		if err := json.Unmarshal(message, &msg); err == nil {
-			if msg.Action == "request_sync" {
-				// Rate limit to once every 5 seconds
-				if time.Since(lastSync) > 5*time.Second {
-					lastSync = time.Now()
-					go c.Hub.SendInitialState(c)
-				} else {
-					slog.Debug("request_sync rate limited", "client_id", c.ID)
-				}
-			}
-		}
+		handleClientMessage(c, message, &lastSync)
 	}
+}
+
+// logUnexpectedCloseError logs read errors that indicate an abnormal disconnect,
+// ignoring the routine close cases (going away, abnormal closure already logged elsewhere).
+func logUnexpectedCloseError(err error) {
+	if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+		slog.Error("websocket unexpected close error", "error", err)
+	}
+}
+
+// handleClientMessage parses a single client message and, for a rate-limited
+// "request_sync" action, triggers an async INITIAL_STATE resend.
+func handleClientMessage(c *websocketSvc.Client, message []byte, lastSync *time.Time) {
+	var msg struct {
+		Action string `json:"action"`
+	}
+	if err := json.Unmarshal(message, &msg); err != nil || msg.Action != "request_sync" {
+		return
+	}
+
+	// Rate limit to once every 5 seconds
+	if time.Since(*lastSync) <= 5*time.Second {
+		slog.Debug("request_sync rate limited", "client_id", c.ID)
+		return
+	}
+
+	*lastSync = time.Now()
+	go c.Hub.SendInitialState(c)
 }
 
 // monitorSession periodically revalidates the session backing this connection
@@ -174,10 +186,10 @@ func writePump(c *websocketSvc.Client, conn *websocket.Conn) {
 	for {
 		select {
 		case message, ok := <-c.Send:
-			conn.SetWriteDeadline(time.Now().Add(writeWait))
+			_ = conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				// The hub closed the channel.
-				conn.WriteMessage(websocket.CloseMessage, []byte{})
+				_ = conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
 
@@ -185,7 +197,7 @@ func writePump(c *websocketSvc.Client, conn *websocket.Conn) {
 				return
 			}
 		case <-ticker.C:
-			conn.SetWriteDeadline(time.Now().Add(writeWait))
+			_ = conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}

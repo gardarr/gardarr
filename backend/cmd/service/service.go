@@ -48,6 +48,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/jfxdev/gardarr/pkg/env"
+	"github.com/jfxdev/gardarr/pkg/filters"
 	"github.com/jfxdev/gardarr/pkg/validations"
 	"github.com/pkg/errors"
 )
@@ -220,46 +221,38 @@ func Run(cmd *cobra.Command, args []string) error {
 
 // GetAllAllowedOrigins returns a list of allowed origins based on APP_URL and APP_DOMAINS
 func GetAllAllowedOrigins() []string {
-	baseURL := getBaseURL()
-	var allowedOrigins []string
+	allowedOrigins := originsFromBaseURL(getBaseURL())
 
-	if u, err := url.Parse(baseURL); err == nil {
-		// Build origin as scheme://host (host includes port if present)
-		origin := u.Scheme + "://" + u.Host
-		allowedOrigins = append(allowedOrigins, origin)
-
-		// Allow common development origins for localhost
-		host := u.Hostname()
-		if host == "localhost" || host == "127.0.0.1" {
-			allowedOrigins = append(allowedOrigins, "http://localhost:3200", "http://localhost:5173")
-		}
-	} else {
-		allowedOrigins = append(allowedOrigins, strings.TrimRight(baseURL, "/"))
-	}
-
-	// Also add domains from APP_DOMAINS env var
 	appDomains := env.Get(constants.AppDomainsEnv).Default("").Value()
-	if appDomains != "" {
-		domains := strings.Split(appDomains, ",")
-		for _, d := range domains {
-			d = strings.TrimSpace(d)
-			if d != "" {
-				// Prevent duplicates
-				exists := false
-				for _, o := range allowedOrigins {
-					if o == d {
-						exists = true
-						break
-					}
-				}
-				if !exists {
-					allowedOrigins = append(allowedOrigins, d)
-				}
-			}
+	for _, d := range strings.Split(appDomains, ",") {
+		d = strings.TrimSpace(d)
+		if d == "" || filters.ContainsString(allowedOrigins, d) {
+			continue
 		}
+		allowedOrigins = append(allowedOrigins, d)
 	}
 
 	return allowedOrigins
+}
+
+// originsFromBaseURL builds the initial allowed-origins list from APP_URL,
+// including common localhost dev ports when the base URL points at localhost.
+func originsFromBaseURL(baseURL string) []string {
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return []string{strings.TrimRight(baseURL, "/")}
+	}
+
+	// Build origin as scheme://host (host includes port if present)
+	origins := []string{u.Scheme + "://" + u.Host}
+
+	// Allow common development origins for localhost
+	host := u.Hostname()
+	if host == "localhost" || host == "127.0.0.1" {
+		origins = append(origins, "http://localhost:3200", "http://localhost:5173")
+	}
+
+	return origins
 }
 
 // securityHeadersMiddleware adds comprehensive security headers
@@ -268,7 +261,7 @@ func securityHeadersMiddleware(allowedOrigins []string) gin.HandlerFunc {
 		// Build dynamic CSP directives based on allowed origins
 		// Only adding the host part (without scheme) to make CSP cleaner, or just raw origin
 		cspOrigins := strings.Join(allowedOrigins, " ")
-		
+
 		// Content Security Policy - Restrictive but compatible with React/Vite
 		csp := []string{
 			"default-src 'self'",

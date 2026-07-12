@@ -199,7 +199,7 @@ func (h *Hub) SendInitialState(client *Client) {
 	func() {
 		defer func() {
 			if r := recover(); r != nil {
-				// Ignore send on closed channel
+				slog.Debug("recovered from send on closed client channel", "client_id", client.ID, "error", r)
 			}
 		}()
 		timer := time.NewTimer(5 * time.Second)
@@ -247,7 +247,7 @@ func (h *Hub) broadcastEvent(event *WSEvent) {
 		func(c *Client) {
 			defer func() {
 				if r := recover(); r != nil {
-					// Ignore send on closed channel
+					slog.Debug("recovered from send on closed client channel", "client_id", c.ID, "error", r)
 				}
 			}()
 			select {
