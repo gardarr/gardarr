@@ -173,14 +173,16 @@ func (m *Module) logoutAll(c *gin.Context) {
 	}
 
 	currentUser := user.(*entities.User)
+
+	// Fetch sessions before deleting so we still have their tokens to drop
+	// the corresponding WS connections afterward.
+	sessions, _ := m.sessionService.GetUserSessions(c.Request.Context(), currentUser.UUID)
+
 	if err := m.sessionService.DeleteUserSessions(c.Request.Context(), currentUser.UUID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to logout from all devices"})
 		return
 	}
 
-	// Also drop all WS connections for this user's sessions. 
-	// For simplicity, we can fetch all sessions and drop them.
-	sessions, _ := m.sessionService.GetUserSessions(c.Request.Context(), currentUser.UUID)
 	if m.wsHub != nil {
 		for _, s := range sessions {
 			m.wsHub.DropSession(s.Token)

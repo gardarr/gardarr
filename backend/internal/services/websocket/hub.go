@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -80,6 +81,8 @@ type Hub struct {
 
 	eventSvc  *events.Service
 	workerSvc *workermanager.Service
+
+	statsInFlight atomic.Bool
 }
 
 // NewHub creates a new WebSocket Hub
@@ -152,7 +155,13 @@ func (h *Hub) Start(ctx context.Context) {
 		case <-statsTicker.C:
 			// Fetch and broadcast stats for all workers off the main loop so a
 			// slow/unresponsive worker doesn't stall registration/broadcast processing.
-			go h.broadcastWorkerStats(ctx)
+			// Skip if a previous run is still in flight to avoid overlapping fetches.
+			if h.statsInFlight.CompareAndSwap(false, true) {
+				go func() {
+					defer h.statsInFlight.Store(false)
+					h.broadcastWorkerStats(ctx)
+				}()
+			}
 		}
 	}
 }

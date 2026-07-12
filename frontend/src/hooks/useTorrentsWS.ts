@@ -6,7 +6,7 @@ export type WSEventType = 'INITIAL_STATE' | 'WORKER_STATS_UPDATED' | 'TORRENT_AD
 export interface WSEvent {
   event_type: WSEventType;
   worker_id?: string;
-  payload: Record<string, unknown> | unknown;
+  payload: unknown;
   errors?: Record<string, string>;
 }
 

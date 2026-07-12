@@ -255,7 +255,7 @@ export default function TorrentsPage() {
     return tasks.map((task) => mapTaskToTorrent(task, categories));
   }, [categories]);
 
-  // Hook WebSocket substituindo todo o polling REST
+  // Hook WebSocket updating all REST polling 
   const { requestSync } = useTorrentsWS({
     onInitialState: (tasks, errors) => {
       setOriginalTasks(tasks);
