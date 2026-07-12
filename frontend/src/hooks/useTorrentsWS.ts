@@ -6,12 +6,12 @@ export type WSEventType = 'INITIAL_STATE' | 'WORKER_STATS_UPDATED' | 'TORRENT_AD
 export interface WSEvent {
   event_type: WSEventType;
   worker_id?: string;
-  payload: any;
+  payload: Record<string, unknown> | unknown;
 }
 
 interface UseTorrentsWSOptions {
   onInitialState?: (tasks: Task[]) => void;
-  onWorkerStats?: (workerId: string, stats: any) => void;
+  onWorkerStats?: (workerId: string, stats: Record<string, unknown>) => void;
   onTaskUpdated?: (task: Partial<Task> & { hash: string, worker_id: string }) => void;
   onTaskRemoved?: (hash: string, workerId: string) => void;
 }
@@ -62,7 +62,7 @@ export function useTorrentsWS(options: UseTorrentsWSOptions = {}) {
             
           case 'WORKER_STATS_UPDATED':
             if (optionsRef.current.onWorkerStats && data.worker_id) {
-              optionsRef.current.onWorkerStats(data.worker_id, data.payload);
+              optionsRef.current.onWorkerStats(data.worker_id, data.payload as Record<string, unknown>);
             }
             break;
             
@@ -70,20 +70,20 @@ export function useTorrentsWS(options: UseTorrentsWSOptions = {}) {
           case 'TORRENT_STATE_CHANGE':
             if (optionsRef.current.onTaskUpdated && data.worker_id) {
               // Payload has { hash, old_value, new_value, metadata }
-              const payload = data.payload;
-              const meta = payload.metadata || {};
+              const payload = data.payload as Record<string, unknown>;
+              const meta = (payload.metadata || {}) as Record<string, unknown>;
               
               const updatedTask: Partial<Task> & { hash: string, worker_id: string } = {
-                hash: payload.hash,
+                hash: payload.hash as string,
                 worker_id: data.worker_id,
-                state: payload.new_value,
-                name: meta.name,
-                category: meta.category,
-                tags: meta.tags,
-                path: meta.directory,
-                size: meta.size,
-                progress: meta.progress,
-                ratio: meta.ratio,
+                state: payload.new_value as string,
+                name: meta.name as string,
+                category: meta.category as string,
+                tags: meta.tags as string[],
+                path: meta.directory as string,
+                size: meta.size as number,
+                progress: meta.progress as number,
+                ratio: meta.ratio as number,
               };
               
               optionsRef.current.onTaskUpdated(updatedTask);
@@ -92,7 +92,8 @@ export function useTorrentsWS(options: UseTorrentsWSOptions = {}) {
             
           case 'TORRENT_REMOVED':
             if (optionsRef.current.onTaskRemoved && data.worker_id) {
-              optionsRef.current.onTaskRemoved(data.payload.hash, data.worker_id);
+              const payload = data.payload as Record<string, unknown>;
+              optionsRef.current.onTaskRemoved(payload.hash as string, data.worker_id);
             }
             break;
         }
@@ -112,7 +113,12 @@ export function useTorrentsWS(options: UseTorrentsWSOptions = {}) {
       // Exponential backoff with jitter: min(1s * 2^attempts, 30s) + random(0-1s)
       const attempts = reconnectAttemptsRef.current;
       const baseDelay = Math.min(1000 * Math.pow(2, attempts), 30000);
-      const jitter = Math.random() * 1000;
+      
+      // Use crypto for safe random generation instead of Math.random
+      const randomArray = new Uint32Array(1);
+      window.crypto.getRandomValues(randomArray);
+      const jitter = randomArray[0] % 1000;
+      
       const nextDelay = baseDelay + jitter;
       
       reconnectAttemptsRef.current += 1;
