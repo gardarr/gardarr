@@ -1,5 +1,5 @@
 package websocket
-	
+
 import (
 	"context"
 	"log/slog"
@@ -7,17 +7,37 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jfxdev/gardarr/internal/constants"
 	"github.com/jfxdev/gardarr/internal/mappers"
 	"github.com/jfxdev/gardarr/internal/models"
 	"github.com/jfxdev/gardarr/internal/services/events"
 	"github.com/jfxdev/gardarr/internal/services/workermanager"
 )
 
+// wsEventTypeFor translates an internal entities.Event.Type (dotted, lowercase)
+// into the WebSocket wire protocol's event_type vocabulary (uppercase, underscored),
+// which the frontend switches on.
+func wsEventTypeFor(eventType string) string {
+	switch eventType {
+	case constants.EventTypeTorrentAdded:
+		return "TORRENT_ADDED"
+	case constants.EventTypeTorrentStateChange:
+		return "TORRENT_STATE_CHANGE"
+	case constants.EventTypeTorrentRemoved:
+		return "TORRENT_REMOVED"
+	case constants.EventTypeTorrentCompleted:
+		return "TORRENT_COMPLETED"
+	default:
+		return eventType
+	}
+}
+
 // WSEvent defines the structure of events sent to the client
 type WSEvent struct {
-	EventType string      `json:"event_type"`
-	WorkerID  string      `json:"worker_id,omitempty"`
-	Payload   interface{} `json:"payload"`
+	EventType string            `json:"event_type"`
+	WorkerID  string            `json:"worker_id,omitempty"`
+	Payload   interface{}       `json:"payload"`
+	Errors    map[string]string `json:"errors,omitempty"`
 }
 
 // Client represents a connected WebSocket client
@@ -29,12 +49,25 @@ type Client struct {
 	closeOnce sync.Once
 }
 
-// Close safely closes the client's send channel and deregisters it
-func (c *Client) Close() {
+// closeSend closes the client's send channel exactly once, safe to call
+// concurrently from readPump/writePump and from the hub's shutdown path.
+// Returns true if this call performed the close (i.e. was first).
+func (c *Client) closeSend() bool {
+	closed := false
 	c.closeOnce.Do(func() {
 		close(c.Send)
-		c.Hub.Unregister <- c
+		closed = true
 	})
+	return closed
+}
+
+// Close safely closes the client's send channel and deregisters it.
+// If the send channel was already closed elsewhere (e.g. hub shutdown),
+// this is a no-op: the caller that closed it is responsible for cleanup.
+func (c *Client) Close() {
+	if c.closeSend() {
+		c.Hub.Unregister <- c
+	}
 }
 
 // Hub maintains the set of active clients and broadcasts messages to them
@@ -45,7 +78,7 @@ type Hub struct {
 	Unregister chan *Client
 	mu         sync.RWMutex
 
-	eventSvc *events.Service
+	eventSvc  *events.Service
 	workerSvc *workermanager.Service
 }
 
@@ -76,7 +109,7 @@ func (h *Hub) Start(ctx context.Context) {
 			slog.Info("shutting down websocket hub, disconnecting clients")
 			h.mu.Lock()
 			for client := range h.clients {
-				close(client.Send)
+				client.closeSend()
 				delete(h.clients, client)
 			}
 			h.mu.Unlock()
@@ -105,20 +138,21 @@ func (h *Hub) Start(ctx context.Context) {
 		case e := <-eventChan:
 			// Map entities.Event to WSEvent and broadcast
 			wsEvent := &WSEvent{
-				EventType: e.Type,
+				EventType: wsEventTypeFor(e.Type),
 				WorkerID:  e.WorkerID.String(),
 				Payload: map[string]interface{}{
-					"hash":     e.TaskHash,
+					"hash":      e.TaskHash,
 					"old_value": e.OldValue,
 					"new_value": e.NewValue,
 					"metadata":  e.Metadata,
 				},
 			}
 			h.broadcastEvent(wsEvent)
-			
+
 		case <-statsTicker.C:
-			// Fetch and broadcast stats for all workers
-			h.broadcastWorkerStats(ctx)
+			// Fetch and broadcast stats for all workers off the main loop so a
+			// slow/unresponsive worker doesn't stall registration/broadcast processing.
+			go h.broadcastWorkerStats(ctx)
 		}
 	}
 }
@@ -137,6 +171,7 @@ func (h *Hub) SendInitialState(client *Client) {
 
 	result, err := h.workerSvc.ListWorkersTasks(ctx)
 	var responseTasks []models.TaskResponseModel
+	var workerErrors map[string]string
 	if err != nil {
 		slog.Error("failed to list workers tasks for initial ws state", "error", err)
 		// We proceed with empty tasks to prevent infinite loading in the frontend
@@ -146,13 +181,18 @@ func (h *Hub) SendInitialState(client *Client) {
 		for _, t := range result.Tasks {
 			responseTasks = append(responseTasks, mappers.ToTaskResponse(t))
 		}
+		workerErrors = result.Errors
 	} else {
 		responseTasks = []models.TaskResponseModel{}
+		if result != nil {
+			workerErrors = result.Errors
+		}
 	}
 
 	wsEvent := &WSEvent{
 		EventType: "INITIAL_STATE",
 		Payload:   responseTasks,
+		Errors:    workerErrors,
 	}
 
 	// Send to specific client

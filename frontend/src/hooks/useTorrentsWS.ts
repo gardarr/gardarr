@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { Task } from '@/types/torrent';
 
-export type WSEventType = 'INITIAL_STATE' | 'WORKER_STATS_UPDATED' | 'TORRENT_ADDED' | 'TORRENT_STATE_CHANGE' | 'TORRENT_REMOVED';
+export type WSEventType = 'INITIAL_STATE' | 'WORKER_STATS_UPDATED' | 'TORRENT_ADDED' | 'TORRENT_STATE_CHANGE' | 'TORRENT_COMPLETED' | 'TORRENT_REMOVED';
 
 export interface WSEvent {
   event_type: WSEventType;
   worker_id?: string;
   payload: Record<string, unknown> | unknown;
+  errors?: Record<string, string>;
 }
 
 interface UseTorrentsWSOptions {
-  onInitialState?: (tasks: Task[]) => void;
+  onInitialState?: (tasks: Task[], errors?: Record<string, string>) => void;
   onWorkerStats?: (workerId: string, stats: Record<string, unknown>) => void;
   onTaskUpdated?: (task: Partial<Task> & { hash: string, worker_id: string }) => void;
   onTaskRemoved?: (hash: string, workerId: string) => void;
@@ -56,18 +57,19 @@ export function useTorrentsWS(options: UseTorrentsWSOptions = {}) {
         switch (data.event_type) {
           case 'INITIAL_STATE':
             if (optionsRef.current.onInitialState) {
-              optionsRef.current.onInitialState(data.payload as Task[]);
+              optionsRef.current.onInitialState(data.payload as Task[], data.errors);
             }
             break;
-            
+
           case 'WORKER_STATS_UPDATED':
             if (optionsRef.current.onWorkerStats && data.worker_id) {
               optionsRef.current.onWorkerStats(data.worker_id, data.payload as Record<string, unknown>);
             }
             break;
-            
+
           case 'TORRENT_ADDED':
           case 'TORRENT_STATE_CHANGE':
+          case 'TORRENT_COMPLETED':
             if (optionsRef.current.onTaskUpdated && data.worker_id) {
               // Payload has { hash, old_value, new_value, metadata }
               const payload = data.payload as Record<string, unknown>;
@@ -95,6 +97,10 @@ export function useTorrentsWS(options: UseTorrentsWSOptions = {}) {
               const payload = data.payload as Record<string, unknown>;
               optionsRef.current.onTaskRemoved(payload.hash as string, data.worker_id);
             }
+            break;
+
+          default:
+            console.warn('[WS] Unknown event_type received', data.event_type);
             break;
         }
       } catch (err) {

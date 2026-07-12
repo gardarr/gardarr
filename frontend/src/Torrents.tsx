@@ -257,10 +257,13 @@ export default function TorrentsPage() {
 
   // Hook WebSocket substituindo todo o polling REST
   const { requestSync } = useTorrentsWS({
-    onInitialState: (tasks) => {
+    onInitialState: (tasks, errors) => {
       setOriginalTasks(tasks);
       setTorrents(mapTasksToTorrents(tasks));
       setInitialLoadComplete(true);
+      if (errors && Object.keys(errors).length > 0) {
+        toast.error(t('torrents.notifications.someWorkersFailed'));
+      }
     },
     onTaskUpdated: (updatedTask) => {
       setOriginalTasks(prev => {

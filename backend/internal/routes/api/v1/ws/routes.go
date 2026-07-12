@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/middlewares"
+	"github.com/jfxdev/gardarr/internal/services/session"
 	websocketSvc "github.com/jfxdev/gardarr/internal/services/websocket"
 )
 
@@ -28,6 +30,7 @@ type Module struct {
 	hub            *websocketSvc.Hub
 	db             *database.Database
 	allowedOrigins []string
+	sessionSvc     *session.Service
 }
 
 func NewModule(router *gin.RouterGroup, db *database.Database, hub *websocketSvc.Hub, allowedOrigins []string) *Module {
@@ -36,6 +39,7 @@ func NewModule(router *gin.RouterGroup, db *database.Database, hub *websocketSvc
 		hub:            hub,
 		db:             db,
 		allowedOrigins: allowedOrigins,
+		sessionSvc:     session.NewService(db),
 	}
 }
 
@@ -54,7 +58,8 @@ func (m *Module) serveWs(c *gin.Context) {
 		CheckOrigin: func(r *http.Request) bool {
 			origin := r.Header.Get("Origin")
 			if origin == "" {
-				return true
+				slog.Warn("WebSocket origin rejected: missing Origin header")
+				return false
 			}
 			for _, allowed := range m.allowedOrigins {
 				if origin == allowed {
@@ -73,7 +78,7 @@ func (m *Module) serveWs(c *gin.Context) {
 	}
 
 	// Extract session token from cookie to allow forced drops on logout
-	sessionToken, _ := c.Cookie("session_token")
+	sessionToken, _ := c.Cookie(middlewares.SessionCookieName)
 
 	client := &websocketSvc.Client{
 		ID:        uuid.New(),
@@ -87,10 +92,10 @@ func (m *Module) serveWs(c *gin.Context) {
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.
 	go writePump(client, conn)
-	go readPump(client, conn)
+	go readPump(client, conn, m.sessionSvc, sessionToken)
 }
 
-func readPump(c *websocketSvc.Client, conn *websocket.Conn) {
+func readPump(c *websocketSvc.Client, conn *websocket.Conn, sessionSvc *session.Service, sessionToken string) {
 	defer func() {
 		c.Close()
 		conn.Close()
@@ -98,7 +103,11 @@ func readPump(c *websocketSvc.Client, conn *websocket.Conn) {
 	conn.SetReadLimit(maxMessageSize)
 	conn.SetReadDeadline(time.Now().Add(pongWait))
 	conn.SetPongHandler(func(string) error { conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
-	
+
+	stopSessionCheck := make(chan struct{})
+	defer close(stopSessionCheck)
+	go monitorSession(sessionSvc, sessionToken, conn, stopSessionCheck)
+
 	var lastSync time.Time
 
 	for {
@@ -122,6 +131,35 @@ func readPump(c *websocketSvc.Client, conn *websocket.Conn) {
 				} else {
 					slog.Debug("request_sync rate limited", "client_id", c.ID)
 				}
+			}
+		}
+	}
+}
+
+// monitorSession periodically revalidates the session backing this connection
+// (expiry is only checked lazily by ValidateSession, so a WS client that never
+// hits an HTTP endpoint again would otherwise never notice its session died)
+// and forcibly closes the connection once the session is no longer valid.
+func monitorSession(sessionSvc *session.Service, sessionToken string, conn *websocket.Conn, stop <-chan struct{}) {
+	if sessionToken == "" {
+		return
+	}
+
+	ticker := time.NewTicker(pongWait)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-stop:
+			return
+		case <-ticker.C:
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			_, _, err := sessionSvc.ValidateSession(ctx, sessionToken)
+			cancel()
+			if err != nil {
+				slog.Info("websocket session no longer valid, closing connection")
+				conn.Close()
+				return
 			}
 		}
 	}
