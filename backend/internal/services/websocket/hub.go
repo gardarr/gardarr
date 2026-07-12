@@ -1,0 +1,238 @@
+package websocket
+	
+import (
+	"context"
+	"log/slog"
+	"sync"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jfxdev/gardarr/internal/mappers"
+	"github.com/jfxdev/gardarr/internal/models"
+	"github.com/jfxdev/gardarr/internal/services/events"
+	"github.com/jfxdev/gardarr/internal/services/workermanager"
+)
+
+// WSEvent defines the structure of events sent to the client
+type WSEvent struct {
+	EventType string      `json:"event_type"`
+	WorkerID  string      `json:"worker_id,omitempty"`
+	Payload   interface{} `json:"payload"`
+}
+
+// Client represents a connected WebSocket client
+type Client struct {
+	ID        uuid.UUID
+	SessionID string // To map to auth session for logout termination
+	Send      chan *WSEvent
+	Hub       *Hub
+	closeOnce sync.Once
+}
+
+// Close safely closes the client's send channel and deregisters it
+func (c *Client) Close() {
+	c.closeOnce.Do(func() {
+		close(c.Send)
+		c.Hub.Unregister <- c
+	})
+}
+
+// Hub maintains the set of active clients and broadcasts messages to them
+type Hub struct {
+	clients    map[*Client]bool
+	Broadcast  chan *WSEvent
+	Register   chan *Client
+	Unregister chan *Client
+	mu         sync.RWMutex
+
+	eventSvc *events.Service
+	workerSvc *workermanager.Service
+}
+
+// NewHub creates a new WebSocket Hub
+func NewHub(eventSvc *events.Service, workerSvc *workermanager.Service) *Hub {
+	return &Hub{
+		clients:    make(map[*Client]bool),
+		Broadcast:  make(chan *WSEvent, 256),
+		Register:   make(chan *Client),
+		Unregister: make(chan *Client),
+		eventSvc:   eventSvc,
+		workerSvc:  workerSvc,
+	}
+}
+
+// Start begins processing hub registration and broadcast events
+func (h *Hub) Start(ctx context.Context) {
+	// Subscribe to internal events
+	eventChan := h.eventSvc.Subscribe(100)
+
+	// Ticker for sending WORKER_STATS_UPDATED periodically
+	statsTicker := time.NewTicker(2 * time.Second)
+	defer statsTicker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			slog.Info("shutting down websocket hub, disconnecting clients")
+			h.mu.Lock()
+			for client := range h.clients {
+				close(client.Send)
+				delete(h.clients, client)
+			}
+			h.mu.Unlock()
+			return
+
+		case client := <-h.Register:
+			h.mu.Lock()
+			h.clients[client] = true
+			h.mu.Unlock()
+			slog.Debug("websocket client registered", "client_id", client.ID)
+
+			// Send INITIAL_STATE to this newly registered client
+			go h.SendInitialState(client)
+
+		case client := <-h.Unregister:
+			h.mu.Lock()
+			if _, ok := h.clients[client]; ok {
+				delete(h.clients, client)
+				slog.Debug("websocket client unregistered", "client_id", client.ID)
+			}
+			h.mu.Unlock()
+
+		case wsEvent := <-h.Broadcast:
+			h.broadcastEvent(wsEvent)
+
+		case e := <-eventChan:
+			// Map entities.Event to WSEvent and broadcast
+			wsEvent := &WSEvent{
+				EventType: e.Type,
+				WorkerID:  e.WorkerID.String(),
+				Payload: map[string]interface{}{
+					"hash":     e.TaskHash,
+					"old_value": e.OldValue,
+					"new_value": e.NewValue,
+					"metadata":  e.Metadata,
+				},
+			}
+			h.broadcastEvent(wsEvent)
+			
+		case <-statsTicker.C:
+			// Fetch and broadcast stats for all workers
+			h.broadcastWorkerStats(ctx)
+		}
+	}
+}
+
+func (h *Hub) SendInitialState(client *Client) {
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Debug("recovered from panic in SendInitialState (client likely disconnected)", "error", r)
+		}
+	}()
+
+	// Need to fetch all tasks from all workers to build the INITIAL_STATE
+	// Note: We use context.Background() since this runs asynchronously
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	result, err := h.workerSvc.ListWorkersTasks(ctx)
+	var responseTasks []models.TaskResponseModel
+	if err != nil {
+		slog.Error("failed to list workers tasks for initial ws state", "error", err)
+		// We proceed with empty tasks to prevent infinite loading in the frontend
+		responseTasks = []models.TaskResponseModel{}
+	} else if result != nil && result.Tasks != nil {
+		responseTasks = make([]models.TaskResponseModel, 0, len(result.Tasks))
+		for _, t := range result.Tasks {
+			responseTasks = append(responseTasks, mappers.ToTaskResponse(t))
+		}
+	} else {
+		responseTasks = []models.TaskResponseModel{}
+	}
+
+	wsEvent := &WSEvent{
+		EventType: "INITIAL_STATE",
+		Payload:   responseTasks,
+	}
+
+	// Send to specific client
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				// Ignore send on closed channel
+			}
+		}()
+		timer := time.NewTimer(5 * time.Second)
+		defer timer.Stop()
+		select {
+		case client.Send <- wsEvent:
+		case <-timer.C:
+			slog.Warn("timeout sending initial state to client", "client_id", client.ID)
+		}
+	}()
+}
+
+func (h *Hub) broadcastWorkerStats(ctx context.Context) {
+	// Skip if no clients
+	h.mu.RLock()
+	clientCount := len(h.clients)
+	h.mu.RUnlock()
+	if clientCount == 0 {
+		return
+	}
+
+	// Fetch workers
+	workers, err := h.workerSvc.ListWorkers()
+	if err != nil {
+		return
+	}
+
+	for _, w := range workers {
+		stats, err := h.workerSvc.GetWorkerTasksStats(ctx, w.UUID.String())
+		if err == nil {
+			h.broadcastEvent(&WSEvent{
+				EventType: "WORKER_STATS_UPDATED",
+				WorkerID:  w.UUID.String(),
+				Payload:   stats,
+			})
+		}
+	}
+}
+
+func (h *Hub) broadcastEvent(event *WSEvent) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	for client := range h.clients {
+		func(c *Client) {
+			defer func() {
+				if r := recover(); r != nil {
+					// Ignore send on closed channel
+				}
+			}()
+			select {
+			case c.Send <- event:
+			default:
+				// if send buffer is full, we could drop the client, but for now just drop the message
+				slog.Warn("websocket buffer full, dropping message", "client_id", c.ID)
+			}
+		}(client)
+	}
+}
+
+// DropSession forcefully disconnects all clients associated with a given session token
+func (h *Hub) DropSession(sessionToken string) {
+	h.mu.RLock()
+	var toDrop []*Client
+	for client := range h.clients {
+		if client.SessionID == sessionToken {
+			toDrop = append(toDrop, client)
+		}
+	}
+	h.mu.RUnlock()
+
+	for _, client := range toDrop {
+		slog.Info("Dropping WS client due to session termination", "client_id", client.ID)
+		go client.Close()
+	}
+}

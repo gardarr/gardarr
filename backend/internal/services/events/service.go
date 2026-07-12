@@ -27,7 +27,7 @@ type Service struct {
 	taskStates    map[uuid.UUID]map[string]*entities.TaskState // workerID -> taskHash -> state
 	mu            sync.RWMutex
 	retentionDays int
-	eventChan     chan *entities.Event // Optional channel for real-time event emission
+	subscribers   []chan *entities.Event
 }
 
 // NewService creates a new event service and loads existing state from database
@@ -37,7 +37,7 @@ func NewService(db *database.Database) (*Service, error) {
 		repo:          event.NewRepository(db),
 		taskStates:    make(map[uuid.UUID]map[string]*entities.TaskState),
 		retentionDays: env.Get("EVENT_RETENTION_DAYS").Default(7).ValueInt(),
-		eventChan:     nil, // Initially nil, enabled via EnableRealTimeEmission
+		subscribers:   make([]chan *entities.Event, 0),
 	}
 
 	// Load existing task states from database - fail fast if this fails
@@ -66,15 +66,46 @@ func (s *Service) LoadStates(ctx context.Context) error {
 	return nil
 }
 
-// EnableRealTimeEmission creates and returns a channel for real-time event emission.
-// This allows consumers (like integration services) to receive events as they occur.
-// Call this only once during service initialization.
-func (s *Service) EnableRealTimeEmission(bufferSize int) <-chan *entities.Event {
+// GetTaskStates returns a snapshot of all current task states in memory
+func (s *Service) GetTaskStates() []*entities.TaskState {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var states []*entities.TaskState
+	for _, workerTasks := range s.taskStates {
+		for _, state := range workerTasks {
+			// Create a copy to prevent concurrent modification issues
+			stateCopy := *state
+			states = append(states, &stateCopy)
+		}
+	}
+	return states
+}
+
+// Subscribe creates and returns a channel for real-time event emission.
+// This allows multiple consumers (like integration services and websockets) to receive events as they occur.
+func (s *Service) Subscribe(bufferSize int) <-chan *entities.Event {
 	if bufferSize <= 0 {
 		bufferSize = 100
 	}
-	s.eventChan = make(chan *entities.Event, bufferSize)
-	return s.eventChan
+	ch := make(chan *entities.Event, bufferSize)
+	s.mu.Lock()
+	s.subscribers = append(s.subscribers, ch)
+	s.mu.Unlock()
+	return ch
+}
+
+// broadcastEvent sends an event to all subscribers non-blocking
+func (s *Service) broadcastEvent(event *entities.Event) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, ch := range s.subscribers {
+		select {
+		case ch <- event:
+		default:
+			// Channel full - skip emission to prevent blocking
+		}
+	}
 }
 
 // isErrorState checks if a state represents an error condition
@@ -274,18 +305,22 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, worker
 
 	// Second pass: persist all updates to database (no lock held)
 	var wg sync.WaitGroup
-	for update := range updatesChan {
+	numWorkers := 5
+
+	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
-		go func(u stateUpdate) {
+		go func() {
 			defer wg.Done()
-			if err := s.repo.SaveTaskState(ctx, workerID, u.hash, u.state, u.progress, u.timestamp); err != nil {
-				slog.Error(logMsgFailedToSaveTaskState,
-					"error", err,
-					"worker_id", workerID.String(),
-					"task_hash", u.hash,
-				)
+			for u := range updatesChan {
+				if err := s.repo.SaveTaskState(ctx, workerID, u.hash, u.state, u.progress, u.timestamp); err != nil {
+					slog.Error(logMsgFailedToSaveTaskState,
+						"error", err,
+						"worker_id", workerID.String(),
+						"task_hash", u.hash,
+					)
+				}
 			}
-		}(update)
+		}()
 	}
 	wg.Wait()
 
@@ -338,14 +373,8 @@ func (s *Service) processCompletionEvents(ctx context.Context, checksChan <-chan
 			"task_name", check.event.Metadata["name"],
 		)
 
-		// Emit to real-time channel if enabled (non-blocking)
-		if s.eventChan != nil {
-			select {
-			case s.eventChan <- check.event:
-			default:
-				// Channel full - skip emission to prevent blocking
-			}
-		}
+		// Emit to real-time subscribers
+		s.broadcastEvent(check.event)
 	}
 }
 
@@ -399,14 +428,8 @@ func (s *Service) processEvents(ctx context.Context, eventsChan <-chan *entities
 			continue
 		}
 
-		// Emit to real-time channel if enabled (non-blocking)
-		if s.eventChan != nil {
-			select {
-			case s.eventChan <- event:
-			default:
-				// Channel full - skip emission to prevent blocking
-			}
-		}
+		// Emit to real-time subscribers
+		s.broadcastEvent(event)
 	}
 }
 

@@ -15,6 +15,7 @@ import (
 	"github.com/jfxdev/gardarr/internal/services/ratelimit"
 	"github.com/jfxdev/gardarr/internal/services/session"
 	"github.com/jfxdev/gardarr/internal/services/user"
+	websocketSvc "github.com/jfxdev/gardarr/internal/services/websocket"
 )
 
 const (
@@ -29,9 +30,10 @@ type Module struct {
 	authService    *auth.Service
 	rateLimiter    *ratelimit.Service
 	db             *database.Database
+	wsHub          *websocketSvc.Hub
 }
 
-func NewModule(router *gin.RouterGroup, db *database.Database) *Module {
+func NewModule(router *gin.RouterGroup, db *database.Database, wsHub *websocketSvc.Hub) *Module {
 	return &Module{
 		group:          router.Group("/auth"),
 		userService:    user.NewService(db),
@@ -39,6 +41,7 @@ func NewModule(router *gin.RouterGroup, db *database.Database) *Module {
 		authService:    auth.NewService(db),
 		rateLimiter:    ratelimit.NewDefaultService(),
 		db:             db,
+		wsHub:          wsHub,
 	}
 }
 
@@ -151,6 +154,9 @@ func (m *Module) logout(c *gin.Context) {
 	token, err := c.Cookie(sessionCookieName)
 	if err == nil && token != "" {
 		_ = m.sessionService.DeleteSession(c.Request.Context(), token)
+		if m.wsHub != nil {
+			m.wsHub.DropSession(token)
+		}
 	}
 
 	// Clear cookie
@@ -170,6 +176,15 @@ func (m *Module) logoutAll(c *gin.Context) {
 	if err := m.sessionService.DeleteUserSessions(c.Request.Context(), currentUser.UUID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to logout from all devices"})
 		return
+	}
+
+	// Also drop all WS connections for this user's sessions. 
+	// For simplicity, we can fetch all sessions and drop them.
+	sessions, _ := m.sessionService.GetUserSessions(c.Request.Context(), currentUser.UUID)
+	if m.wsHub != nil {
+		for _, s := range sessions {
+			m.wsHub.DropSession(s.Token)
+		}
 	}
 
 	// Clear cookie

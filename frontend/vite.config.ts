@@ -30,6 +30,7 @@ export default defineConfig({
         target: 'http://localhost:3200',
         changeOrigin: true,
         secure: false,
+        ws: true,
       },
       '/media': {
         target: 'http://localhost:3200',

@@ -33,6 +33,7 @@ import (
 	"github.com/jfxdev/gardarr/internal/routes/api/v1/users"
 	"github.com/jfxdev/gardarr/internal/routes/api/v1/version"
 	"github.com/jfxdev/gardarr/internal/routes/api/v1/workers"
+	wsRoutes "github.com/jfxdev/gardarr/internal/routes/api/v1/ws"
 	metricsRoutes "github.com/jfxdev/gardarr/internal/routes/metrics"
 	"github.com/jfxdev/gardarr/internal/schemas"
 	"github.com/jfxdev/gardarr/internal/services/crypto"
@@ -42,6 +43,7 @@ import (
 	tgdbintegration "github.com/jfxdev/gardarr/internal/services/integrations/tgdb"
 	settingsService "github.com/jfxdev/gardarr/internal/services/settings"
 	metadata "github.com/jfxdev/gardarr/internal/services/task_metadata"
+	websocketSvc "github.com/jfxdev/gardarr/internal/services/websocket"
 	"github.com/jfxdev/gardarr/internal/services/workermanager"
 	"github.com/spf13/cobra"
 
@@ -129,7 +131,7 @@ func Run(cmd *cobra.Command, args []string) error {
 	baseURL := getBaseURL()
 	mediaDirectory := getMediaDirectory()
 
-	setRouter()
+	allowedOrigins := setRouter()
 
 	workerSvc, err := workermanager.NewService(db, cryptoSvc, baseURL, mediaDirectory)
 	if err != nil {
@@ -141,13 +143,17 @@ func Run(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize events service: %w", err)
 	}
-	eventChan := eventSvc.EnableRealTimeEmission(100)
+	eventChan := eventSvc.Subscribe(100)
 
 	// Event poller — polls workers for task state changes to feed events system
 	eventPollerSvc := eventpoller.NewService(workerSvc, eventSvc)
 	ctx, cancelPoller := context.WithCancel(context.Background())
 	defer cancelPoller()
 	eventPollerSvc.Start(ctx)
+
+	// WebSocket Hub
+	wsHub := websocketSvc.NewHub(eventSvc, workerSvc)
+	go wsHub.Start(ctx)
 
 	// Integration service - consumes events in real-time
 	integrationSvc := integration.NewService(eventChan, db)
@@ -165,7 +171,7 @@ func Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err = setRoutes(db, workerSvc, metaSvc, integrationSvc, providerConfigSvc); err != nil {
+	if err = setRoutes(db, workerSvc, metaSvc, integrationSvc, providerConfigSvc, wsHub, allowedOrigins); err != nil {
 		return err
 	}
 
@@ -212,9 +218,57 @@ func Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// GetAllAllowedOrigins returns a list of allowed origins based on APP_URL and APP_DOMAINS
+func GetAllAllowedOrigins() []string {
+	baseURL := getBaseURL()
+	var allowedOrigins []string
+
+	if u, err := url.Parse(baseURL); err == nil {
+		// Build origin as scheme://host (host includes port if present)
+		origin := u.Scheme + "://" + u.Host
+		allowedOrigins = append(allowedOrigins, origin)
+
+		// Allow common development origins for localhost
+		host := u.Hostname()
+		if host == "localhost" || host == "127.0.0.1" {
+			allowedOrigins = append(allowedOrigins, "http://localhost:3200", "http://localhost:5173")
+		}
+	} else {
+		allowedOrigins = append(allowedOrigins, strings.TrimRight(baseURL, "/"))
+	}
+
+	// Also add domains from APP_DOMAINS env var
+	appDomains := env.Get(constants.AppDomainsEnv).Default("").Value()
+	if appDomains != "" {
+		domains := strings.Split(appDomains, ",")
+		for _, d := range domains {
+			d = strings.TrimSpace(d)
+			if d != "" {
+				// Prevent duplicates
+				exists := false
+				for _, o := range allowedOrigins {
+					if o == d {
+						exists = true
+						break
+					}
+				}
+				if !exists {
+					allowedOrigins = append(allowedOrigins, d)
+				}
+			}
+		}
+	}
+
+	return allowedOrigins
+}
+
 // securityHeadersMiddleware adds comprehensive security headers
-func securityHeadersMiddleware() gin.HandlerFunc {
+func securityHeadersMiddleware(allowedOrigins []string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Build dynamic CSP directives based on allowed origins
+		// Only adding the host part (without scheme) to make CSP cleaner, or just raw origin
+		cspOrigins := strings.Join(allowedOrigins, " ")
+		
 		// Content Security Policy - Restrictive but compatible with React/Vite
 		csp := []string{
 			"default-src 'self'",
@@ -222,7 +276,7 @@ func securityHeadersMiddleware() gin.HandlerFunc {
 			"style-src 'self' 'unsafe-inline'",                // React/Tailwind need unsafe-inline
 			"img-src 'self' data: blob: https:",
 			"font-src 'self' data:",
-			"connect-src 'self' ws: wss:", // Allow WebSocket for dev HMR
+			"connect-src 'self' ws: wss: " + cspOrigins, // Allow WebSocket for dev HMR and allowed domains
 			"frame-ancestors 'none'",
 			"base-uri 'self'",
 			"form-action 'self'",
@@ -289,7 +343,7 @@ func securityHeadersMiddleware() gin.HandlerFunc {
 	}
 }
 
-func setRouter() {
+func setRouter() []string {
 	// Set GIN mode based on GIN_MODE environment variable (case-insensitive)
 	// Falls back to LOG_LEVEL for compatibility, defaults to release mode
 	ginMode := strings.TrimSpace(env.Get("GIN_MODE").Default("").Value())
@@ -311,24 +365,7 @@ func setRouter() {
 		schemas.RegisterCustomValidators(v)
 	}
 
-	// Derive the base URL once and normalize it to a proper origin for CORS
-	baseURL := getBaseURL()
-	var allowedOrigins []string
-
-	if u, err := url.Parse(baseURL); err == nil {
-		// Build origin as scheme://host (host includes port if present)
-		origin := u.Scheme + "://" + u.Host
-		allowedOrigins = append(allowedOrigins, origin)
-
-		// Allow common development origins for localhost
-		host := u.Hostname()
-		if host == "localhost" || host == "127.0.0.1" {
-			allowedOrigins = append(allowedOrigins, "http://localhost:3200", "http://localhost:5173")
-		}
-	} else {
-		// Fallback if parsing fails
-		allowedOrigins = append(allowedOrigins, strings.TrimRight(baseURL, "/"))
-	}
+	allowedOrigins := GetAllAllowedOrigins()
 
 	corsConfig := cors.Config{
 		AllowOrigins:     allowedOrigins,
@@ -341,7 +378,9 @@ func setRouter() {
 	router.Use(cors.New(corsConfig))
 
 	// Setup Security Headers
-	router.Use(securityHeadersMiddleware())
+	router.Use(securityHeadersMiddleware(allowedOrigins))
+
+	return allowedOrigins
 }
 
 // buildSafeMediaPath extracts and validates path components safely
@@ -426,6 +465,8 @@ func setRoutes(
 	metaSvc *metadata.Service,
 	integrationSvc *integration.Service,
 	providerConfigSvc *integration.ProviderConfigService,
+	wsHub *websocketSvc.Hub,
+	allowedOrigins []string,
 ) error {
 	// Get current working directory
 	wd, _ := os.Getwd()
@@ -447,7 +488,7 @@ func setRoutes(
 	// API routes
 	v1 := router.Group("/v1")
 	health.NewModule(v1, db).Register()
-	auth.NewModule(v1, db).Register()
+	auth.NewModule(v1, db, wsHub).Register()
 	workers.NewModule(v1, a).Register()
 	category.NewModule(v1, db).Register()
 	users.NewModule(v1, db).Register()
@@ -461,6 +502,7 @@ func setRoutes(
 		return fmt.Errorf("failed to initialize events module: %w", err)
 	}
 	eventsModule.Register()
+	wsRoutes.NewModule(v1, db, wsHub, allowedOrigins).Register()
 	task_metadata.NewModule(v1, db, metaSvc).Register()
 	integrations.NewModule(v1, db, integrationSvc, providerConfigSvc).Register()
 
