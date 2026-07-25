@@ -97,7 +97,8 @@
       "displayModeChanged": "Display mode changed to {{mode}}",
       "modes": {
         "table": "Table",
-        "card": "Card",
+        "card": "Card A",
+        "cardCompact": "Card B",
         "list": "List"
       },
       "compactModeEnabled": "Compact mode enabled",
@@ -461,6 +462,7 @@
     "info": "Info",
     "stats": "Stats",
     "instanceInformation": "Instance Information",
+    "instanceInfoUnavailable": "Instance information unavailable - worker connection failed",
     "application": "Application",
     "version": "Version",
     "api": "API",
@@ -652,6 +654,9 @@
     "title": "Torrents",
     "subtitle": "Manage your downloads and uploads",
     "addTorrent": "Add Torrent",
+    "ws": {
+      "reconnecting": "Reconnecting…"
+    },
     "addModal": {
       "stepCounter": "Step {{current}} of {{total}}",
       "steps": {
@@ -662,6 +667,10 @@
       "magnetUri": {
         "label": "Magnet URI",
         "placeholder": "magnet:?xt=urn:btih:..."
+      },
+      "file": {
+        "label": "Torrent file",
+        "placeholder": "Choose a .torrent file"
       },
       "magnetInfo": {
         "title": "Torrent information",
@@ -717,7 +726,8 @@
         },
         "namePlaceholder": "Friendly media name",
         "releaseDatePlaceholder": "This will be filled by the provider when available",
-        "descriptionPlaceholder": "Add an optional media summary"
+        "descriptionPlaceholder": "Add an optional media summary",
+        "tmdbInactive": "TMDB is not configured right now."
       },
       "image": {
         "title": "Image",
@@ -740,7 +750,8 @@
         "skipMetadata": "Skip metadata",
         "finish": "Finish",
         "finishing": "Finishing...",
-        "closeCreated": "Close"
+        "closeCreated": "Close",
+        "add": "Add"
       },
       "submit": "Add",
       "submitting": "Adding...",
@@ -748,11 +759,14 @@
         "workerRequired": "Select a worker",
         "magnetRequired": "Magnet URI is required",
         "magnetInvalidPrefix": "Magnet URI must start with 'magnet:'",
+        "fileRequired": "Select a .torrent file",
+        "fileInvalidExtension": "File must have a .torrent extension",
         "categoryRequired": "Select a category",
         "tagsRequired": "Add at least one tag",
         "createOrFinalizeFailed": "Failed to finish adding the torrent. You can try again.",
         "taskHashMissing": "The task was created, but the returned hash is missing."
-      }
+      },
+      "subtitle": "Paste a magnet link, pick a category and add it instantly"
     },
     "search": "Search torrents...",
     "itemsPerPage": "Items per page",
@@ -884,6 +898,21 @@
       "selectedCount": "{{count}} selected",
       "selectedCount_plural": "{{count}} selected"
     },
+    "bulk": {
+      "pause": "Pause",
+      "resume": "Resume",
+      "recheck": "Force recheck",
+      "reannounce": "Force reannounce",
+      "category": "Set category",
+      "removeCategory": "Remove category",
+      "tags": "Add tags",
+      "limits": "Limits",
+      "delete": "Delete",
+      "apply": "Apply",
+      "success": "Action applied to {{count}} torrent(s)",
+      "partial": "Applied to {{succeeded}} torrent(s), but some workers failed",
+      "error": "Bulk action failed"
+    },
     "addFile": "Add file",
     "workerErrorWarning": {
       "title": "Worker Errors Detected",
@@ -894,6 +923,9 @@
     },
     "updateInterval": {
       "title": "Update every {{seconds}} seconds"
+    },
+    "pendingCard": {
+      "adding": "Adding…"
     }
   },
   "categories": {
@@ -1025,7 +1057,33 @@
     "configure": "Configure",
     "comingSoon": "Coming Soon",
     "noIntegrations": "No integrations available",
-    "noIntegrationsDescription": "More integrations will be added in future updates"
+    "noIntegrationsDescription": "More integrations will be added in future updates",
+    "tmdb": {
+      "name": "TMDB",
+      "subtitle": "The Movie Database",
+      "description": "Configure The Movie Database as a metadata source for movie and TV categories",
+      "sheetTitle": "Configure TMDB",
+      "sheetDescription": "Manage the TMDB API key used by external metadata providers.",
+      "enabledLabel": "Integration status",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "apiKeyLabel": "API Key",
+      "apiKeyPlaceholder": "Enter your TMDB API key",
+      "apiKeyConfigured": "An API key is already configured. Leave this blank to keep it.",
+      "apiKeyNotConfigured": "No API key configured yet.",
+      "status": {
+        "enabled": "Configured and enabled",
+        "disabled": "Configured but disabled",
+        "notConfigured": "Not configured"
+      },
+      "success": {
+        "saved": "TMDB configuration saved successfully"
+      },
+      "errors": {
+        "loadFailed": "Failed to load TMDB configuration",
+        "saveFailed": "Failed to save TMDB configuration"
+      }
+    }
   },
   "tgdb": {
     "search": {
@@ -1123,8 +1181,10 @@
     "title": "Torrent Details",
     "subtitle": "Complete information about the selected torrent",
     "tabs": {
-      "details": "Details",
-      "images": "Images"
+      "overview": "Overview",
+      "files": "Files",
+      "trackers": "Trackers",
+      "image": "Image"
     },
     "actions": {
       "forceDownload": "Force Download",
@@ -1134,7 +1194,8 @@
     "name": {
       "label": "Name",
       "edit": "Edit name",
-      "save": "Save name"
+      "save": "Save name",
+      "file": "File"
     },
     "general": {
       "title": "General Information",
@@ -1159,7 +1220,8 @@
       "edit": "Edit tags",
       "cancel": "Cancel",
       "save": "Save",
-      "placeholder": "Type tags and press Enter"
+      "placeholder": "Type tags and press Enter",
+      "empty": "No tags"
     },
     "path": {
       "title": "Path",
@@ -1167,7 +1229,14 @@
       "save": "Save path"
     },
     "files": {
-      "title": "File List"
+      "title": "File List",
+      "heading": "Torrent Files",
+      "loading": "Loading files...",
+      "loadError": "Failed to load files",
+      "retry": "Try again",
+      "empty": "No files found",
+      "count_one": "{{count}} file",
+      "count_other": "{{count}} files"
     },
     "network": {
       "title": "Network & Peers",
@@ -1210,7 +1279,12 @@
       "categoryUpdateSuccess": "Category updated successfully",
       "categoryUpdateError": "Failed to update category",
       "tagsUpdateSuccess": "Tags updated successfully",
-      "tagsUpdateError": "Failed to update tags"
+      "tagsUpdateError": "Failed to update tags",
+      "nameUpdateSuccess": "Name updated successfully",
+      "nameUpdateError": "Failed to update name"
+    },
+    "description": {
+      "label": "Description"
     }
   },
   "torrent": {
@@ -1466,14 +1540,15 @@
     "imageAdjustments": {
       "label": "Image Adjustments"
     },
-    "opacity": {
-      "label": "Image Opacity",
+    "brightness": {
+      "label": "Image Brightness",
       "hint": "Adjust between 15% (more transparent) and 85% (more visible)"
     },
     "preview": {
       "label": "Preview",
       "normal": "Normal View",
-      "compact": "Compact View"
+      "compact": "Compact View",
+      "cardB": "Card B View"
     },
     "thumbnail": {
       "label": "Thumbnail"
@@ -1485,7 +1560,8 @@
         "tgdb": "TGDB"
       },
       "subtitles": {
-        "tgdb": "The Games Database"
+        "tgdb": "The Games Database",
+        "tmdb": "The Movie Database"
       },
       "restricted": {
         "tgdb": "This category is restricted to TGDB for external metadata.",
@@ -1499,12 +1575,27 @@
       "uploadFailed": "Failed to upload image",
       "deleteFailed": "Failed to remove image",
       "savePositionFailed": "Failed to save position",
-      "saveOpacityFailed": "Failed to save opacity"
+      "saveBrightnessFailed": "Failed to save brightness"
     },
     "success": {
       "imageUploaded": "Image uploaded successfully",
       "imageDeleted": "Image removed successfully",
       "positionUpdated": "Image position updated"
+    }
+  },
+  "tmdb": {
+    "search": {
+      "placeholder": "Search for a movie or TV show...",
+      "noImage": "No image",
+      "unknownDate": "Unknown date",
+      "noResults": "No results found"
+    },
+    "errors": {
+      "searchFailed": "Failed to search TMDB",
+      "applyFailed": "Failed to apply metadata"
+    },
+    "success": {
+      "applied": "Metadata applied successfully"
     }
   }
 }

@@ -7,6 +7,14 @@ type TaskCreateSchema struct {
 	Tags      []string `json:"tags" binding:"required"`
 }
 
+// TaskCreateFromFileSchema carries the multipart form fields that accompany
+// an uploaded .torrent file (the file itself arrives as the "torrent" part).
+type TaskCreateFromFileSchema struct {
+	Category  string   `form:"category" binding:"required"`
+	Directory string   `form:"directory"`
+	Tags      []string `form:"tags"`
+}
+
 type TaskDeleteSchema struct {
 	ID string `uri:"id" binding:"required"`
 }
@@ -47,4 +55,25 @@ type TaskSetTagsSchema struct {
 
 type TaskSetCategorySchema struct {
 	Category string `json:"category" binding:"required,min=1"`
+}
+
+// BulkTaskItemSchema identifies a single task inside a bulk action request.
+type BulkTaskItemSchema struct {
+	WorkerID string `json:"worker_id" binding:"required,uuid"`
+	Hash     string `json:"hash" binding:"required"`
+}
+
+// BulkTaskActionSchema applies one action to many tasks, possibly across
+// multiple workers. Hashes are grouped per worker and sent to qBittorrent in
+// a single batched call (hashes separated by "|").
+type BulkTaskActionSchema struct {
+	Action string               `json:"action" binding:"required,oneof=stop start force_resume force_recheck force_reannounce set_category add_tags delete"`
+	Items  []BulkTaskItemSchema `json:"items" binding:"required,min=1,max=500,dive"`
+
+	// Category is required when Action is "set_category" (empty string removes the category).
+	Category *string `json:"category,omitempty"`
+	// Tags is required (non-empty) when Action is "add_tags".
+	Tags []string `json:"tags,omitempty"`
+	// Purge deletes downloaded files too when Action is "delete".
+	Purge bool `json:"purge,omitempty"`
 }

@@ -47,26 +47,18 @@ func (s *Service) Start(ctx context.Context) {
 }
 
 func (s *Service) pollOnce(ctx context.Context) {
-	workers, err := s.workers.ListWorkers()
+	// ListWorkersBasic skips the per-worker login/health-check ListWorkers
+	// performs; an unreachable worker simply fails ListTasks in pollWorker,
+	// so probing availability upfront on every poll cycle bought nothing.
+	workers, err := s.workers.ListWorkersBasic()
 	if err != nil || len(workers) == 0 {
 		return
 	}
 
 	now := time.Now().UTC()
 
-	var activeWorkers []*entities.Worker
-	for _, w := range workers {
-		if w.Status == entities.WorkerStatusActive {
-			activeWorkers = append(activeWorkers, w)
-		}
-	}
-
-	if len(activeWorkers) == 0 {
-		return
-	}
-
 	var wg sync.WaitGroup
-	for _, worker := range activeWorkers {
+	for _, worker := range workers {
 		wg.Add(1)
 		go func(w *entities.Worker) {
 			defer wg.Done()

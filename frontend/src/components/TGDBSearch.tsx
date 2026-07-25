@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Loader2 } from "lucide-react";
@@ -46,12 +46,6 @@ export function TGDBSearch({ taskHash, initialQuery, onSelect, onCancel }: TGDBS
       setIsSearching(false);
     }
   }, [taskHash, t]);
-
-  useEffect(() => {
-    if (initialQuery) {
-      handleSearch(initialQuery);
-    }
-  }, [initialQuery, handleSearch]);
 
   const handleApply = async (game: TGDBGameResult) => {
     if (isApplying) {

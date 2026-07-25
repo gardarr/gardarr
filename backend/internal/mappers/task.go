@@ -1,6 +1,7 @@
 package mappers
 
 import (
+	"github.com/google/uuid"
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/models"
 )
@@ -11,8 +12,11 @@ func ToTask(e models.TaskResponseModel) *entities.Task {
 		status = value
 	}
 
+	workerID, _ := uuid.Parse(e.WorkerID)
+
 	return &entities.Task{
 		ID:          e.Hash,
+		WorkerID:    workerID,
 		Name:        e.Name,
 		Hash:        e.Hash,
 		CreatedAt:   e.CreatedAt,
@@ -61,8 +65,14 @@ func ToTaskResponse(e *entities.Task) models.TaskResponseModel {
 		return models.TaskResponseModel{}
 	}
 
+	var workerID string
+	if e.WorkerID != uuid.Nil {
+		workerID = e.WorkerID.String()
+	}
+
 	return models.TaskResponseModel{
 		ID:          e.ID,
+		WorkerID:    workerID,
 		Name:        e.Name,
 		Hash:        e.Hash,
 		CreatedAt:   e.CreatedAt,

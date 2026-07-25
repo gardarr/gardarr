@@ -13,7 +13,7 @@ interface TorrentCardPreviewProps {
   taskName: string;
   metadata?: TaskMetadata | null;
   imagePositionY: number;
-  imageOpacity: number;
+  imageBrightness: number;
   compact?: boolean;
 }
 
@@ -21,7 +21,7 @@ export function TorrentCardPreview({
   taskName,
   metadata,
   imagePositionY,
-  imageOpacity,
+  imageBrightness,
   compact = false,
 }: TorrentCardPreviewProps) {
   const blurPx = 12; // Default blur
@@ -50,7 +50,7 @@ export function TorrentCardPreview({
             backgroundImage: `url(${encodedImageUrl})`,
             ...(blurPx > 0 && { filter: `blur(${blurPx}px)` }),
             backgroundPosition: `center ${imagePositionY}%`,
-            opacity: Math.max(0.15, Math.min(0.85, imageOpacity / 100))
+            opacity: Math.max(0.15, Math.min(0.85, imageBrightness / 100))
           }}
           aria-hidden
         />

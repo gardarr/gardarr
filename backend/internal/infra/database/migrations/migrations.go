@@ -1,6 +1,8 @@
 package migrations
 
 import (
+	"encoding/json"
+
 	"github.com/jfxdev/gardarr/internal/infra/migration"
 	"github.com/jfxdev/gardarr/internal/models"
 
@@ -532,5 +534,144 @@ func Register(m *migration.Migrator) {
 				return nil
 			},
 		},
+		{
+			Version:     "031_add_last_known_fields_to_task_states",
+			Description: "Adiciona name, category e size na tabela task_states para preservar dados em eventos de remoção",
+			Up: func(db *gorm.DB) error {
+				for _, field := range []string{"Name", "Category", "Size"} {
+					if db.Migrator().HasColumn(&models.TaskState{}, field) {
+						continue
+					}
+					if err := db.Migrator().AddColumn(&models.TaskState{}, field); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			Down: func(db *gorm.DB) error {
+				for _, field := range []string{"Size", "Category", "Name"} {
+					if !db.Migrator().HasColumn(&models.TaskState{}, field) {
+						continue
+					}
+					if err := db.Migrator().DropColumn(&models.TaskState{}, field); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		},
+		{
+			Version:     "032_backfill_removed_event_names",
+			Description: "Preenche name em eventos torrent.removed a partir de eventos anteriores do mesmo hash",
+			Up:          backfillRemovedEventNames,
+			Down: func(db *gorm.DB) error {
+				// No-op: backfill não destrutivo, não há o que reverter.
+				return nil
+			},
+		},
+		{
+			Version:     "033_add_composite_indexes_to_events",
+			Description: "Adiciona índices compostos (worker_id, created_at) e (worker_id, task_hash, type) em events para listagem/dedupe/purge",
+			Up: func(db *gorm.DB) error {
+				for _, index := range []string{"idx_events_worker_created", "idx_events_worker_hash_type"} {
+					if db.Migrator().HasIndex(&models.Event{}, index) {
+						continue
+					}
+					if err := db.Migrator().CreateIndex(&models.Event{}, index); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			Down: func(db *gorm.DB) error {
+				for _, index := range []string{"idx_events_worker_hash_type", "idx_events_worker_created"} {
+					if !db.Migrator().HasIndex(&models.Event{}, index) {
+						continue
+					}
+					if err := db.Migrator().DropIndex(&models.Event{}, index); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		},
+		{
+			Version:     "034_rename_image_opacity_to_brightness",
+			Description: "Renomeia coluna image_opacity para image_brightness em task_metadata",
+			Up: func(db *gorm.DB) error {
+				if db.Migrator().HasColumn(&models.TaskMetadata{}, "image_opacity") {
+					if err := db.Migrator().RenameColumn(&models.TaskMetadata{}, "image_opacity", "image_brightness"); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			Down: func(db *gorm.DB) error {
+				if db.Migrator().HasColumn(&models.TaskMetadata{}, "image_brightness") {
+					if err := db.Migrator().RenameColumn(&models.TaskMetadata{}, "image_brightness", "image_opacity"); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		},
 	})
+}
+
+// backfillRemovedEventNames copia name/category/size do evento mais recente de
+// cada task para os eventos torrent.removed que foram criados sem esses dados.
+func backfillRemovedEventNames(db *gorm.DB) error {
+	var removed []models.Event
+	if err := db.Where("type = ?", "torrent.removed").
+		Where("metadata NOT LIKE ?", `%"name"%`).
+		Find(&removed).Error; err != nil {
+		return err
+	}
+
+	for _, ev := range removed {
+		var src models.Event
+		err := db.Where("worker_id = ? AND task_hash = ? AND type <> ? AND metadata LIKE ?",
+			ev.WorkerID, ev.TaskHash, "torrent.removed", `%"name"%`).
+			Order("created_at DESC").
+			First(&src).Error
+		if err != nil {
+			// Sem evento de origem para este hash: mantém como está.
+			continue
+		}
+
+		var srcMeta, evMeta map[string]interface{}
+		if err := json.Unmarshal([]byte(src.Metadata), &srcMeta); err != nil {
+			continue
+		}
+		if ev.Metadata == "" {
+			evMeta = map[string]interface{}{}
+		} else if err := json.Unmarshal([]byte(ev.Metadata), &evMeta); err != nil {
+			continue
+		}
+
+		name, _ := srcMeta["name"].(string)
+		if name == "" {
+			continue
+		}
+		evMeta["name"] = name
+		for _, key := range []string{"category", "size"} {
+			if _, exists := evMeta[key]; !exists {
+				if v, ok := srcMeta[key]; ok {
+					evMeta[key] = v
+				}
+			}
+		}
+
+		merged, err := json.Marshal(evMeta)
+		if err != nil {
+			continue
+		}
+		if err := db.Model(&models.Event{}).
+			Where("uuid = ?", ev.UUID).
+			Update("metadata", string(merged)).Error; err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

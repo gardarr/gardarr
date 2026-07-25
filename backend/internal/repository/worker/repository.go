@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -32,6 +33,18 @@ type Repository struct {
 	maxRetries      int
 	loginMaxRetries int
 	retryBackoff    time.Duration
+
+	clientMu    sync.Mutex
+	clientCache map[uuid.UUID]*cachedClient
+}
+
+// cachedClient keeps a live *qbt.Client alive across calls for a given worker
+// so we don't spin up a fresh cookie-cleanup goroutine and re-login on every
+// single request. It's invalidated (and the old client closed) whenever the
+// worker's resolved credentials change.
+type cachedClient struct {
+	client      *qbt.Client
+	fingerprint string
 }
 
 const (
@@ -56,6 +69,7 @@ func NewRepository(db *database.Database, crypto *crypto.CryptoService) (*Reposi
 		maxRetries:      env.Get(constants.QBittorrentMaxRetriesEnv).Default(0).ValueInt(),
 		loginMaxRetries: env.Get(constants.QBittorrentLoginMaxRetriesEnv).Default(5).ValueInt(),
 		retryBackoff:    time.Duration(env.Get(constants.QBittorrentRetryBackoffEnv).Default(1).ValueInt()) * time.Second,
+		clientCache:     make(map[uuid.UUID]*cachedClient),
 	}, nil
 }
 
@@ -352,7 +366,12 @@ func (r *Repository) UpdateWorker(ctx context.Context, uid uuid.UUID, updates ma
 }
 
 func (r *Repository) DeleteWorker(uid uuid.UUID) error {
-	return r.db.DB.Where("uuid = ?", uid).Delete(&models.Worker{}).Error
+	if err := r.db.DB.Where("uuid = ?", uid).Delete(&models.Worker{}).Error; err != nil {
+		return err
+	}
+
+	r.evictClient(uid)
+	return nil
 }
 
 func (r *Repository) GetWorkerLogs(worker *entities.Worker, normal, info, warning, critical bool, lastKnownID int) ([]*qbt.LogEntry, error) {
@@ -380,6 +399,15 @@ func (r *Repository) CreateWorkerTask(worker *entities.Worker, schema schemas.Ta
 	}
 
 	return taskservice.New(client).CreateTask(context.Background(), schema)
+}
+
+func (r *Repository) CreateWorkerTaskFromFile(worker *entities.Worker, fileName string, fileData []byte, schema schemas.TaskCreateFromFileSchema) (*entities.Task, error) {
+	client, err := r.getClient(worker)
+	if err != nil {
+		return nil, err
+	}
+
+	return taskservice.New(client).CreateTaskFromFile(context.Background(), fileName, fileData, schema)
 }
 
 func (r *Repository) DeleteWorkerTask(worker *entities.Worker, id string, purge bool) error {
@@ -521,6 +549,17 @@ func (r *Repository) SetWorkerTaskTags(worker *entities.Worker, taskID string, s
 	return taskservice.New(client).SetTaskTags(context.Background(), taskID, schema)
 }
 
+// AddWorkerTaskTags adds tags to one or more tasks (taskID may be a
+// "|"-separated hash batch) without the per-hash diff SetWorkerTaskTags does.
+func (r *Repository) AddWorkerTaskTags(worker *entities.Worker, taskID string, tags []string) error {
+	client, err := r.getClient(worker)
+	if err != nil {
+		return err
+	}
+
+	return taskservice.New(client).AddTaskTags(context.Background(), taskID, tags)
+}
+
 func (r *Repository) SetWorkerTaskCategory(worker *entities.Worker, taskID string, schema schemas.TaskSetCategorySchema) error {
 	client, err := r.getClient(worker)
 	if err != nil {
@@ -573,7 +612,48 @@ func (r *Repository) getClient(worker *entities.Worker) (*qbt.Client, error) {
 		return nil, err
 	}
 
-	return r.newClient(urlValue, username, password)
+	fingerprint := urlValue + "|" + username + "|" + password
+
+	r.clientMu.Lock()
+	defer r.clientMu.Unlock()
+
+	if cached, ok := r.clientCache[worker.UUID]; ok {
+		if cached.fingerprint == fingerprint {
+			return cached.client, nil
+		}
+		// Credentials changed (or stale cache) - abort any in-flight
+		// requests still using the old creds immediately, then retire the
+		// old client without blocking the caller on its logout round trip.
+		cached.client.Cancel()
+		go cached.client.Close()
+		delete(r.clientCache, worker.UUID)
+	}
+
+	client, err := r.newClient(urlValue, username, password)
+	if err != nil {
+		return nil, err
+	}
+
+	r.clientCache[worker.UUID] = &cachedClient{client: client, fingerprint: fingerprint}
+	return client, nil
+}
+
+// evictClient removes and closes any cached client for the given worker. Call
+// this whenever a worker is deleted so its background goroutines are stopped.
+func (r *Repository) evictClient(uid uuid.UUID) {
+	r.clientMu.Lock()
+	cached, ok := r.clientCache[uid]
+	if ok {
+		delete(r.clientCache, uid)
+	}
+	r.clientMu.Unlock()
+
+	if ok {
+		// Abort any in-flight requests immediately, then best-effort logout
+		// in the background - the caller must not wait on the round trip.
+		cached.client.Cancel()
+		go cached.client.Close()
+	}
 }
 
 func (r *Repository) newClient(urlValue, username, password string) (*qbt.Client, error) {

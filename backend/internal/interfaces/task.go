@@ -12,6 +12,7 @@ type TaskService interface {
 	ListTasks(context.Context) ([]*entities.Task, error)
 	GetTask(context.Context, string) (*entities.Task, error)
 	CreateTask(context.Context, schemas.TaskCreateSchema) (*entities.Task, error)
+	CreateTaskFromFile(context.Context, string, []byte, schemas.TaskCreateFromFileSchema) (*entities.Task, error)
 	DeleteTask(context.Context, string, bool) error
 	StopTask(context.Context, string) error
 	StartTask(context.Context, string) error
@@ -24,6 +25,7 @@ type TaskService interface {
 	SetTaskDownloadLimit(context.Context, string, schemas.TaskSetDownloadLimitSchema) error
 	SetTaskUploadLimit(context.Context, string, schemas.TaskSetUploadLimitSchema) error
 	SetTaskTags(context.Context, string, schemas.TaskSetTagsSchema) error
+	AddTaskTags(context.Context, string, []string) error
 	SetTaskCategory(context.Context, string, schemas.TaskSetCategorySchema) error
 	ListTaskFiles(context.Context, string) ([]*entities.TaskFile, error)
 	GetTasksStats(context.Context) (*entities.TaskStats, error)
@@ -49,11 +51,13 @@ type TaskRepositoryInterface interface {
 	Get(hash string) (*entities.Task, error)
 	GetLimits(hash string) (*entities.TaskLimits, error)
 	Add(schema schemas.TaskCreateSchema) (*entities.Task, error)
+	AddFile(fileName string, fileData []byte, schema schemas.TaskCreateFromFileSchema) (*entities.Task, error)
 	Stop(hash string) error
 	Start(hash string) error
 	ForceResume(hash string) error
 	Delete(id string, deleteFiles bool) error
 	SetTags(hash string, tags []string) error
+	AddTags(hash string, tags []string) error
 	SetCategory(hash string, category string) error
 	SetShareLimit(hash string, limits entities.TaskShareLimit) error
 	SetLocation(hash string, schema schemas.TaskSetLocationSchema) error

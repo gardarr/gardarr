@@ -12,6 +12,7 @@ import (
 	"github.com/jfxdev/go-qbt"
 
 	"github.com/jfxdev/gardarr/pkg/errors"
+	"github.com/jfxdev/gardarr/pkg/torrentfile"
 )
 
 type Repository struct {
@@ -90,6 +91,45 @@ func (s *Repository) Add(schema schemas.TaskCreateSchema) (*entities.Task, error
 	}
 
 	return toTask(task), nil
+}
+
+// AddFile adds a torrent from an uploaded .torrent file, mirroring Add's
+// magnet flow: the info-hash is parsed locally from the file so the created
+// task can be located for tag application and returned to the caller.
+func (s *Repository) AddFile(fileName string, fileData []byte, schema schemas.TaskCreateFromFileSchema) (*entities.Task, error) {
+	hash, err := torrentfile.InfoHash(fileData)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse torrent file")
+	}
+
+	if err := s.client.AddTorrentFile(qbt.TorrentFileConfig{
+		FileName:  fileName,
+		FileData:  fileData,
+		Category:  schema.Category,
+		Directory: schema.Directory,
+	}); err != nil {
+		return nil, errors.Wrap(err, "failed to add task from file")
+	}
+
+	list, err := s.client.ListTorrents(qbt.ListOptions{
+		Category: schema.Category,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, item := range list {
+		if strings.EqualFold(item.Hash, hash) {
+			if len(schema.Tags) > 0 {
+				if err := s.client.AddTorrentTags(item.Hash, schema.Tags); err != nil {
+					return nil, err
+				}
+			}
+			return toTask(item), nil
+		}
+	}
+
+	return nil, fmt.Errorf("failed to retrieve created task")
 }
 
 func (s *Repository) Stop(hash string) error {
@@ -224,6 +264,22 @@ func normalizeDesiredTags(tags []string) []string {
 	}
 
 	return result
+}
+
+// AddTags adds tags to one or more torrents (hash may be "h1|h2|...").
+// Unlike SetTags it does not diff against current tags, so it works with
+// qBittorrent's native multi-hash batching.
+func (s *Repository) AddTags(hash string, tags []string) error {
+	normalized := normalizeDesiredTags(tags)
+	if len(normalized) == 0 {
+		return nil
+	}
+
+	if err := s.client.AddTorrentTags(hash, normalized); err != nil {
+		return errors.Wrap(err, "failed to add torrent tags")
+	}
+
+	return nil
 }
 
 func (s *Repository) SetCategory(hash string, category string) error {

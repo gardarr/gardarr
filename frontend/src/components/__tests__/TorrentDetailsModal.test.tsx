@@ -66,6 +66,10 @@ vi.mock("@/components/ui/tabs", () => ({
   TabsContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
+vi.mock("@/components/ui/custom-scroll-area", () => ({
+  CustomScrollArea: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+}));
+
 vi.mock("@/components/ui/tooltip", () => ({
   Tooltip: ({ children }: { children: ReactNode }) => <>{children}</>,
   TooltipTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,

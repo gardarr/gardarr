@@ -60,6 +60,24 @@ func (m *mockRepository) Add(schema schemas.TaskCreateSchema) (*entities.Task, e
 	return task, nil
 }
 
+func (m *mockRepository) AddFile(fileName string, fileData []byte, schema schemas.TaskCreateFromFileSchema) (*entities.Task, error) {
+	if m.createError != nil {
+		return nil, m.createError
+	}
+
+	task := &entities.Task{
+		ID:       "test-file-hash",
+		Name:     fileName,
+		Hash:     "test-file-hash",
+		Category: schema.Category,
+		Path:     schema.Directory,
+		State:    "DOWNLOADING",
+	}
+
+	m.tasks[task.Hash] = task
+	return task, nil
+}
+
 func (m *mockRepository) Stop(hash string) error {
 	if m.stopError != nil {
 		return m.stopError
@@ -107,6 +125,14 @@ func (m *mockRepository) Delete(id string, deleteFiles bool) error {
 func (m *mockRepository) SetTags(hash string, tags []string) error {
 	if task, exists := m.tasks[hash]; exists {
 		task.Tags = tags
+		return nil
+	}
+	return errors.New("task not found")
+}
+
+func (m *mockRepository) AddTags(hash string, tags []string) error {
+	if task, exists := m.tasks[hash]; exists {
+		task.Tags = append(task.Tags, tags...)
 		return nil
 	}
 	return errors.New("task not found")

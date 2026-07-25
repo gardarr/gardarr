@@ -1,10 +1,14 @@
 package workers
 
 import (
+	"io"
 	"net/http"
+	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/mappers"
 	"github.com/jfxdev/gardarr/internal/models"
 	"github.com/jfxdev/gardarr/internal/schemas"
@@ -29,6 +33,7 @@ func NewModule(router *gin.RouterGroup, svc *workermanager.Service) *Module {
 
 func (m Module) Register() {
 	m.workersRouter.GET("/", m.listWorkers)
+	m.workersRouter.POST("/tasks/bulk", m.bulkWorkerTaskAction)
 
 	m.workerRouter.POST("/", m.createWorker)
 	m.workerRouter.GET("/:id", m.getWorker)
@@ -42,6 +47,7 @@ func (m Module) Register() {
 	m.workerRouter.GET("/:id/logs", m.getWorkerLogs)
 	m.workerRouter.DELETE("/:id", m.deleteWorker)
 	m.workerRouter.POST("/:id/task", m.createWorkerTask)
+	m.workerRouter.POST("/:id/task/file", m.createWorkerTaskFromFile)
 	m.workerRouter.GET("/:id/task/:task_id", m.getWorkerTask)
 	m.workerRouter.DELETE("/:id/task/:task_id", m.deleteWorkerTask)
 	m.workerRouter.POST("/:id/task/:task_id/stop", m.stopWorkerTask)
@@ -80,7 +86,19 @@ func (m *Module) createWorker(c *gin.Context) {
 }
 
 func (m *Module) listWorkers(c *gin.Context) {
-	result, err := m.service.ListWorkers()
+	// live=false skips the per-worker qBittorrent connectivity/instance
+	// check and returns DB rows only (fast path for the /workers page's
+	// initial render). Defaults to true so every existing caller keeps
+	// getting real status unless it explicitly opts out.
+	live := c.DefaultQuery("live", "true") != "false"
+
+	var result []*entities.Worker
+	var err error
+	if live {
+		result, err = m.service.ListWorkers()
+	} else {
+		result, err = m.service.ListWorkersBasic()
+	}
 	if err != nil {
 		errors.HandleError(c, err)
 		return
@@ -158,6 +176,25 @@ func (m *Module) deleteWorker(c *gin.Context) {
 
 
 
+// bulkWorkerTaskAction applies one action to many tasks, possibly spanning
+// multiple workers. Returns 200 with per-worker partial failures in the body.
+func (m *Module) bulkWorkerTaskAction(c *gin.Context) {
+	var body schemas.BulkTaskActionSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	result, err := m.service.BulkTaskAction(c.Request.Context(), body)
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
 func (m *Module) createWorkerTask(c *gin.Context) {
 	id := c.Param("id")
 
@@ -169,6 +206,70 @@ func (m *Module) createWorkerTask(c *gin.Context) {
 	}
 
 	result, err := m.service.CreateWorkerTask(c.Request.Context(), id, body)
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, mappers.ToTaskResponse(result))
+}
+
+// maxTorrentFileSize bounds uploaded .torrent files (metadata only; real
+// torrents rarely exceed a few hundred KB).
+const maxTorrentFileSize = 5 << 20 // 5MB
+
+// createWorkerTaskFromFile adds a torrent from an uploaded .torrent file
+// (multipart form: "torrent" file part + category/directory/tags fields).
+func (m *Module) createWorkerTaskFromFile(c *gin.Context) {
+	id := c.Param("id")
+
+	var body schemas.TaskCreateFromFileSchema
+	if err := c.ShouldBind(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	fileHeader, err := c.FormFile("torrent")
+	if err != nil {
+		respErr := errors.NewBadRequestError("Missing torrent file", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	if fileHeader.Size > maxTorrentFileSize {
+		respErr := errors.NewBadRequestError("Torrent file too large (max 5MB)", nil)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	if !strings.EqualFold(filepath.Ext(fileHeader.Filename), ".torrent") {
+		respErr := errors.NewBadRequestError("File must have .torrent extension", nil)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		respErr := errors.NewBadRequestError("Failed to read torrent file", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+	defer file.Close()
+
+	fileData, err := io.ReadAll(io.LimitReader(file, maxTorrentFileSize+1))
+	if err != nil {
+		respErr := errors.NewBadRequestError("Failed to read torrent file", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+	if len(fileData) > maxTorrentFileSize {
+		respErr := errors.NewBadRequestError("Torrent file too large (max 5MB)", nil)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	result, err := m.service.CreateWorkerTaskFromFile(c.Request.Context(), id, fileHeader.Filename, fileData, body)
 	if err != nil {
 		errors.HandleError(c, err)
 		return

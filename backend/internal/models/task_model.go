@@ -4,6 +4,7 @@ import "time"
 
 type TaskResponseModel struct {
 	ID           string                   `json:"id"`
+	WorkerID     string                   `json:"worker_id,omitempty"`
 	Name         string                   `json:"name"`
 	Hash         string                   `json:"hash"`
 	CreatedAt    time.Time                `json:"created_at"`

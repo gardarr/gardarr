@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, SortAsc, SortDesc } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -30,7 +31,7 @@ interface TorrentsTableProps extends TorrentListDisplayProps, TorrentActionHandl
   onSortChange: (type: SortType) => void;
 }
 
-function TorrentRow({ torrent, actions, selection, selected, compact }: {
+const TorrentRow = memo(function TorrentRow({ torrent, actions, selection, selected, compact }: {
   torrent: TorrentListItem;
   actions: TorrentActionHandlers;
   selection: TorrentSelectionProps;
@@ -107,7 +108,7 @@ function TorrentRow({ torrent, actions, selection, selected, compact }: {
       </TorrentMetadataHoverCard>
     </TorrentContextMenuWrapper>
   );
-}
+});
 
 function SortButton({
   sortType: currentSortType,
@@ -205,7 +206,10 @@ export default function TorrentsTable({
   onRequestDelete
 }: TorrentsTableProps) {
   const { t } = useTranslation();
-  const actions = {
+  // Memoized so TorrentRow (React.memo) only sees a new actions/selection
+  // reference when one of these actually changes, instead of on every
+  // TorrentsTable render (e.g. sort/pagination chrome updates).
+  const actions = useMemo<TorrentActionHandlers>(() => ({
     onShowDetails,
     onStart,
     onStop,
@@ -216,8 +220,11 @@ export default function TorrentsTable({
     onSearchMetadata,
     onLimits,
     onMetadataUpdate,
-  };
-  const selection = { selectionMode, selectedIds, onToggleSelect, onRequestDelete };
+  }), [onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onSearchMetadata, onLimits, onMetadataUpdate]);
+  const selection = useMemo<TorrentSelectionProps>(
+    () => ({ selectionMode, selectedIds, onToggleSelect, onRequestDelete }),
+    [selectionMode, selectedIds, onToggleSelect, onRequestDelete]
+  );
 
   return (
     <div className="hidden md:block">

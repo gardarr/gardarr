@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/repository/webhook_history"
+	"github.com/jfxdev/gardarr/pkg/env"
 	"github.com/jfxdev/gardarr/pkg/logger"
 )
 
@@ -37,6 +39,30 @@ type Service struct {
 	httpClient         *http.Client
 	enabled            bool
 	historyRepo        *webhook_history.Repository
+	maxAttempts        int
+	baseBackoff        time.Duration
+}
+
+// deliveryError carries the HTTP status returned by the webhook endpoint so
+// the retry loop can distinguish permanent client errors (4xx) from
+// transient ones (5xx/429/network).
+type deliveryError struct {
+	statusCode int
+}
+
+func (e *deliveryError) Error() string {
+	return fmt.Sprintf("webhook returned status %d", e.statusCode)
+}
+
+// isRetryable reports whether a delivery error is worth retrying: network
+// failures and server-side errors are; 4xx responses (except 429) mean the
+// request itself is rejected and will keep failing.
+func isRetryable(err error) bool {
+	var de *deliveryError
+	if errors.As(err, &de) {
+		return de.statusCode >= 500 || de.statusCode == http.StatusTooManyRequests
+	}
+	return true
 }
 
 // NewService creates a new webhook service that sends events to the specified URL
@@ -62,7 +88,45 @@ func NewService(webhookID uuid.UUID, webhookURL string, insecureSkipVerify bool,
 		},
 		enabled:     true,
 		historyRepo: historyRepo,
+		maxAttempts: env.Get("WEBHOOK_MAX_ATTEMPTS").Default(3).ValueInt(),
+		baseBackoff: env.Get("WEBHOOK_RETRY_BASE_DELAY").Default("2s").ValueDuration(),
 	}
+}
+
+// SendEventWithRetry delivers an event, retrying transient failures with
+// exponential backoff (baseBackoff, 2x baseBackoff, ...). Permanent failures
+// (4xx other than 429) abort immediately. Each attempt is recorded in
+// webhook history by SendEvent.
+func (s *Service) SendEventWithRetry(ctx context.Context, event *entities.Event) error {
+	maxAttempts := s.maxAttempts
+	if maxAttempts <= 0 {
+		maxAttempts = 1
+	}
+
+	var lastErr error
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		lastErr = s.SendEvent(ctx, event)
+		if lastErr == nil {
+			return nil
+		}
+		if !isRetryable(lastErr) {
+			return lastErr
+		}
+		if attempt == maxAttempts {
+			break
+		}
+
+		delay := s.baseBackoff * time.Duration(1<<(attempt-1))
+		timer := time.NewTimer(delay)
+		select {
+		case <-timer.C:
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		}
+	}
+
+	return fmt.Errorf("webhook delivery failed after %d attempts: %w", maxAttempts, lastErr)
 }
 
 // SendEvent sends an event to the configured webhook URL
@@ -137,9 +201,9 @@ func (s *Service) SendEvent(ctx context.Context, event *entities.Event) error {
 			"status_code", resp.StatusCode,
 			"url", s.webhookURL,
 		)
-		errMsg := fmt.Sprintf("webhook returned status %d", resp.StatusCode)
-		s.saveHistory(ctx, event, resp.StatusCode, respBodyStr, string(jsonData), errMsg)
-		return fmt.Errorf("webhook returned status %d", resp.StatusCode)
+		deliveryErr := &deliveryError{statusCode: resp.StatusCode}
+		s.saveHistory(ctx, event, resp.StatusCode, respBodyStr, string(jsonData), deliveryErr.Error())
+		return deliveryErr
 	}
 
 	// Save successful webhook delivery
@@ -192,6 +256,10 @@ func (s *Service) saveHistory(ctx context.Context, event *entities.Event, status
 		if name, ok := event.Metadata["name"].(string); ok {
 			taskName = name
 		}
+	}
+	if taskName == "" {
+		// Fallback so history entries are never blank-named
+		taskName = event.TaskHash
 	}
 
 	history := entities.WebhookHistory{

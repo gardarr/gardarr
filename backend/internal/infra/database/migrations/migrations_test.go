@@ -1,10 +1,13 @@
 package migrations
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 	"testing"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/jfxdev/gardarr/internal/infra/migration"
 	"github.com/jfxdev/gardarr/internal/models"
 	"gorm.io/driver/sqlite"
@@ -355,6 +358,110 @@ func TestMigration027RenamesCategoryDirectoryAndAddsMetadataSource(t *testing.T)
 	}
 }
 
+func TestMigration031AddsLastKnownFieldsToTaskStates(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("Failed to create test database: %v", err)
+	}
+
+	m := migration.NewMigrator(db)
+	Register(m)
+
+	if err := m.Up(); err != nil {
+		t.Fatalf("Failed to run migrations: %v", err)
+	}
+
+	for _, column := range []string{"name", "category", "size"} {
+		if !db.Migrator().HasColumn(&models.TaskState{}, column) {
+			t.Errorf("Expected %s column to exist in task_states table", column)
+		}
+	}
+}
+
+func TestMigration032BackfillsRemovedEventNames(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("Failed to create test database: %v", err)
+	}
+
+	m := migration.NewMigrator(db)
+	Register(m)
+
+	if err := m.Up(); err != nil {
+		t.Fatalf("Failed to run migrations: %v", err)
+	}
+
+	workerID := uuid.New()
+	now := time.Now().UTC()
+
+	added := models.Event{
+		UUID:      uuid.New(),
+		WorkerID:  workerID,
+		Type:      "torrent.added",
+		TaskHash:  "hash-with-source",
+		Metadata:  `{"name":"Fedora ISO","category":"linux","size":2048}`,
+		CreatedAt: now.Add(-2 * time.Hour),
+	}
+	removedWithSource := models.Event{
+		UUID:      uuid.New(),
+		WorkerID:  workerID,
+		Type:      "torrent.removed",
+		TaskHash:  "hash-with-source",
+		Metadata:  `{"last_progress":1}`,
+		CreatedAt: now.Add(-1 * time.Hour),
+	}
+	removedOrphan := models.Event{
+		UUID:      uuid.New(),
+		WorkerID:  workerID,
+		Type:      "torrent.removed",
+		TaskHash:  "hash-orphan",
+		Metadata:  `{"last_progress":0.5}`,
+		CreatedAt: now,
+	}
+
+	for _, ev := range []models.Event{added, removedWithSource, removedOrphan} {
+		if err := db.Create(&ev).Error; err != nil {
+			t.Fatalf("Failed to seed event: %v", err)
+		}
+	}
+
+	// Rerun only the backfill migration against the seeded data
+	if err := db.Table("migrations").Where("version = ?", "032_backfill_removed_event_names").Delete(&migration.Migration{}).Error; err != nil {
+		t.Fatalf("Failed to reset migration record: %v", err)
+	}
+	if err := m.Up(); err != nil {
+		t.Fatalf("Failed to rerun migrations: %v", err)
+	}
+
+	var backfilled models.Event
+	if err := db.Where("uuid = ?", removedWithSource.UUID).First(&backfilled).Error; err != nil {
+		t.Fatalf("Failed to load backfilled event: %v", err)
+	}
+
+	var meta map[string]interface{}
+	if err := json.Unmarshal([]byte(backfilled.Metadata), &meta); err != nil {
+		t.Fatalf("Failed to parse backfilled metadata: %v", err)
+	}
+
+	if meta["name"] != "Fedora ISO" {
+		t.Errorf("Expected backfilled name 'Fedora ISO', got %v", meta["name"])
+	}
+	if meta["category"] != "linux" {
+		t.Errorf("Expected backfilled category 'linux', got %v", meta["category"])
+	}
+	if meta["last_progress"] != float64(1) {
+		t.Errorf("Expected last_progress preserved as 1, got %v", meta["last_progress"])
+	}
+
+	var orphan models.Event
+	if err := db.Where("uuid = ?", removedOrphan.UUID).First(&orphan).Error; err != nil {
+		t.Fatalf("Failed to load orphan event: %v", err)
+	}
+	if orphan.Metadata != removedOrphan.Metadata {
+		t.Errorf("Expected orphan event metadata untouched, got %s", orphan.Metadata)
+	}
+}
+
 func TestMigration028CreatesIntegrationProviderConfigsTable(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	if err != nil {
@@ -370,5 +477,46 @@ func TestMigration028CreatesIntegrationProviderConfigsTable(t *testing.T) {
 
 	if !db.Migrator().HasTable(&models.IntegrationProviderConfig{}) {
 		t.Error("Expected integration provider configs table to exist")
+	}
+}
+
+func TestMigration033AddsCompositeIndexesToEvents(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("Failed to create test database: %v", err)
+	}
+
+	m := migration.NewMigrator(db)
+	Register(m)
+
+	if err := m.Up(); err != nil {
+		t.Fatalf("Failed to run migrations: %v", err)
+	}
+
+	for _, index := range []string{"idx_events_worker_created", "idx_events_worker_hash_type"} {
+		if !db.Migrator().HasIndex(&models.Event{}, index) {
+			t.Errorf("Expected index %s to exist on events table", index)
+		}
+	}
+}
+
+func TestMigration034RenamesImageOpacityToBrightness(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("Failed to create test database: %v", err)
+	}
+
+	m := migration.NewMigrator(db)
+	Register(m)
+
+	if err := m.Up(); err != nil {
+		t.Fatalf("Failed to run migrations: %v", err)
+	}
+
+	if !db.Migrator().HasColumn(&models.TaskMetadata{}, "image_brightness") {
+		t.Error("Expected column image_brightness to exist on task_metadata table")
+	}
+	if db.Migrator().HasColumn(&models.TaskMetadata{}, "image_opacity") {
+		t.Error("Expected column image_opacity to no longer exist on task_metadata table")
 	}
 }

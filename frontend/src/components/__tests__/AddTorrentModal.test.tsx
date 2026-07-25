@@ -6,10 +6,26 @@ import type {
   TextareaHTMLAttributes,
 } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AddTorrentModal } from "@/components/AddTorrentModal";
+import { AddTorrentContext, type AddTorrentContextValue } from "@/contexts/add-torrent-context";
 import type { Task } from "@/types/torrent";
 import type { Worker } from "@/types/worker";
+
+const navigateMock = vi.fn();
+let currentPathname = "/workers";
+
+vi.mock("react-router-dom", () => ({
+  useNavigate: () => navigateMock,
+  useLocation: () => ({ pathname: currentPathname }),
+}));
+
+vi.mock("sonner", () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -22,7 +38,6 @@ vi.mock("@/hooks/use-portrait-mobile-tablet", () => ({
 }));
 
 vi.mock("lucide-react", () => ({
-  ArrowLeft: () => <span aria-hidden="true" />,
   Check: () => <span aria-hidden="true" />,
   ChevronsUpDown: () => <span aria-hidden="true" />,
   Database: () => <span aria-hidden="true" />,
@@ -78,49 +93,52 @@ vi.mock("@/components/ui/WorkerIcon", () => ({
 vi.mock("@/components/SelectCategory", () => ({
   SelectCategory: ({
     onCategoryChange,
+    error,
   }: {
     onCategoryChange: (categoryId: string, category?: { id: string; name: string; default_tags?: string[]; default_directory?: string }) => void;
+    error?: string;
   }) => (
-    <button
-      type="button"
-      onClick={() =>
-        onCategoryChange("cat-1", {
-          id: "cat-1",
-          name: "Games",
-          default_tags: ["auto-tag"],
-          default_directory: "/downloads/games",
-        })
-      }
-    >
-      Select category
-    </button>
+    <div>
+      <button
+        type="button"
+        onClick={() =>
+          onCategoryChange("cat-1", {
+            id: "cat-1",
+            name: "Games",
+            default_tags: ["auto-tag"],
+            default_directory: "/downloads/games",
+          })
+        }
+      >
+        Select category
+      </button>
+      {error && <p>{error}</p>}
+    </div>
   ),
 }));
 
 vi.mock("@/components/SelectTags", () => ({
-  SelectTags: () => <div>Tags</div>,
+  SelectTags: ({ tags, error }: { tags: string[]; error?: string }) => (
+    <div>
+      <div data-testid="tags">{tags.join(",")}</div>
+      {error && <p>{error}</p>}
+    </div>
+  ),
 }));
 
-vi.mock("@/components/reui/stepper", () => ({
-  Stepper: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  StepperContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  StepperIndicator: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  StepperItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  StepperNav: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  StepperPanel: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  StepperSeparator: () => <div />,
-  StepperTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  StepperTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}));
+const createTaskMock = vi.fn();
 
 vi.mock("@/services/torrents", () => ({
   convertMagnetUriToTaskMagnetLink: (magnetUri: string) => ({
-    hash: "hash-1",
+    hash: "HASH-1",
     display_name: magnetUri,
     trackers: [],
     exact_length: "",
     exact_source: "",
   }),
+  torrentService: {
+    createTask: (...args: unknown[]) => createTaskMock(...args),
+  },
 }));
 
 const baseWorker: Worker = {
@@ -147,6 +165,12 @@ const baseWorker: Worker = {
     },
   },
 };
+
+vi.mock("@/services/workers", () => ({
+  workerService: {
+    listWorkers: () => Promise.resolve({ data: [baseWorker] }),
+  },
+}));
 
 const baseTask: Task = {
   id: "task-1",
@@ -182,102 +206,121 @@ const baseTask: Task = {
   tags: ["auto-tag"],
 };
 
+function buildContext(overrides: Partial<AddTorrentContextValue> = {}): AddTorrentContextValue {
+  return {
+    isAddModalOpen: true,
+    openAddModal: vi.fn(),
+    closeAddModal: vi.fn(),
+    pendingTorrents: [],
+    addPendingTorrent: vi.fn(),
+    removePendingTorrent: vi.fn(),
+    ...overrides,
+  };
+}
+
+function renderModal(context: AddTorrentContextValue) {
+  return render(
+    <AddTorrentContext.Provider value={context}>
+      <AddTorrentModal />
+    </AddTorrentContext.Provider>
+  );
+}
+
+async function fillForm() {
+  fireEvent.change(screen.getByPlaceholderText("torrents.addModal.magnetUri.placeholder"), {
+    target: { value: "magnet:?xt=urn:btih:test-hash" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Select category" }));
+  await waitFor(() => expect(screen.getAllByText("Worker 1")[0]).toBeInTheDocument());
+}
+
 describe("AddTorrentModal", () => {
-  it("preserves form state across worker refreshes and still defaults the worker on open", () => {
-    const onCreateTorrent = vi.fn(async () => {
-      throw new Error("should not submit");
-    });
-    const onFinalizeTorrent = vi.fn(async () => {});
-
-    const { rerender } = render(
-      <AddTorrentModal
-        isOpen={true}
-        onClose={() => {}}
-        onCreateTorrent={onCreateTorrent}
-        onFinalizeTorrent={onFinalizeTorrent}
-        workers={[baseWorker]}
-      />
-    );
-
-    const magnetInput = screen.getByPlaceholderText("torrents.addModal.magnetUri.placeholder");
-    fireEvent.change(magnetInput, { target: { value: "magnet:?xt=urn:btih:test-hash" } });
-    fireEvent.click(screen.getByRole("button", { name: "Select category" }));
-    fireEvent.click(screen.getByRole("button", { name: "torrents.next" }));
-
-    expect(screen.getByDisplayValue("magnet:?xt=urn:btih:test-hash")).toBeInTheDocument();
-    expect(screen.getAllByText("Worker 1")[0]).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "torrents.previous" })).toBeInTheDocument();
-
-    rerender(
-      <AddTorrentModal
-        isOpen={true}
-        onClose={() => {}}
-        onCreateTorrent={onCreateTorrent}
-        onFinalizeTorrent={onFinalizeTorrent}
-        workers={[
-          { ...baseWorker, address: "http://worker-updated.test" },
-          { ...baseWorker, uuid: "worker-2", name: "Worker 2" },
-        ]}
-      />
-    );
-
-    expect(screen.getByDisplayValue("magnet:?xt=urn:btih:test-hash")).toBeInTheDocument();
-    expect(screen.getAllByText("Worker 1")[0]).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "torrents.previous" })).toBeInTheDocument();
+  beforeEach(() => {
+    vi.clearAllMocks();
+    currentPathname = "/workers";
+    createTaskMock.mockResolvedValue({ data: baseTask });
   });
 
-  it("reuses the created task when finalize fails and clears the recoverable error on reopen", async () => {
-    const onCreateTorrent = vi.fn(async () => baseTask);
-    const onFinalizeTorrent = vi
-      .fn(async () => {})
-      .mockRejectedValueOnce(new Error("Finalize failed"))
-      .mockResolvedValueOnce();
+  it("renders a single-page form without step navigation", async () => {
+    renderModal(buildContext());
 
-    const { rerender } = render(
-      <AddTorrentModal
-        isOpen={true}
-        onClose={() => {}}
-        onCreateTorrent={onCreateTorrent}
-        onFinalizeTorrent={onFinalizeTorrent}
-        workers={[baseWorker]}
-      />
-    );
+    await waitFor(() => expect(screen.getAllByText("Worker 1")[0]).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "torrents.next" })).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText("torrents.addModal.magnetUri.placeholder")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "torrents.addModal.actions.add" })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("torrents.addModal.directory.placeholder")).toBeInTheDocument();
+  });
 
-    fireEvent.change(screen.getByPlaceholderText("torrents.addModal.magnetUri.placeholder"), {
-      target: { value: "magnet:?xt=urn:btih:test-hash" },
-    });
+  it("auto-fills directory and tags when a category is selected", async () => {
+    renderModal(buildContext());
+
     fireEvent.click(screen.getByRole("button", { name: "Select category" }));
-    fireEvent.click(screen.getByRole("button", { name: "torrents.next" }));
-    fireEvent.click(screen.getByRole("button", { name: "Add" }));
 
-    await waitFor(() => expect(onCreateTorrent).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(onFinalizeTorrent).toHaveBeenCalledTimes(1));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Finalize failed");
+    expect(screen.getByDisplayValue("/downloads/games")).toBeInTheDocument();
+    expect(screen.getByTestId("tags")).toHaveTextContent("auto-tag");
+  });
 
-    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+  it("submits optimistically: pending placeholder, close, navigate, createTask", async () => {
+    const context = buildContext();
+    renderModal(context);
+    await fillForm();
 
-    await waitFor(() => expect(onCreateTorrent).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(onFinalizeTorrent).toHaveBeenCalledTimes(2));
+    fireEvent.click(screen.getByRole("button", { name: "torrents.addModal.actions.add" }));
 
-    rerender(
-      <AddTorrentModal
-        isOpen={false}
-        onClose={() => {}}
-        onCreateTorrent={onCreateTorrent}
-        onFinalizeTorrent={onFinalizeTorrent}
-        workers={[baseWorker]}
-      />
+    await waitFor(() => expect(createTaskMock).toHaveBeenCalledTimes(1));
+    expect(createTaskMock).toHaveBeenCalledWith("worker-1", {
+      magnet_uri: "magnet:?xt=urn:btih:test-hash",
+      category: "Games",
+      tags: ["auto-tag"],
+      directory: "/downloads/games",
+    });
+    expect(context.addPendingTorrent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        hash: "hash-1",
+        workerId: "worker-1",
+        category: "Games",
+      })
     );
-    rerender(
-      <AddTorrentModal
-        isOpen={true}
-        onClose={() => {}}
-        onCreateTorrent={onCreateTorrent}
-        onFinalizeTorrent={onFinalizeTorrent}
-        workers={[baseWorker]}
-      />
-    );
+    expect(context.closeAddModal).toHaveBeenCalled();
+    expect(navigateMock).toHaveBeenCalledWith("/torrents");
+    expect(context.removePendingTorrent).not.toHaveBeenCalled();
+  });
 
-    await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
+  it("does not navigate when already on /torrents", async () => {
+    currentPathname = "/torrents";
+    const context = buildContext();
+    renderModal(context);
+    await fillForm();
+
+    fireEvent.click(screen.getByRole("button", { name: "torrents.addModal.actions.add" }));
+
+    await waitFor(() => expect(createTaskMock).toHaveBeenCalledTimes(1));
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it("removes the pending placeholder when createTask fails", async () => {
+    createTaskMock.mockResolvedValue({ error: "boom" });
+    const context = buildContext();
+    renderModal(context);
+    await fillForm();
+
+    fireEvent.click(screen.getByRole("button", { name: "torrents.addModal.actions.add" }));
+
+    await waitFor(() => expect(context.removePendingTorrent).toHaveBeenCalledWith("hash-1"));
+    expect(context.addPendingTorrent).toHaveBeenCalled();
+  });
+
+  it("blocks submission when required fields are missing", async () => {
+    const context = buildContext();
+    renderModal(context);
+    await waitFor(() => expect(screen.getAllByText("Worker 1")[0]).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "torrents.addModal.actions.add" }));
+
+    expect(createTaskMock).not.toHaveBeenCalled();
+    expect(context.addPendingTorrent).not.toHaveBeenCalled();
+    expect(screen.getByText("torrents.addModal.errors.magnetRequired")).toBeInTheDocument();
+    expect(screen.getByText("torrents.addModal.errors.categoryRequired")).toBeInTheDocument();
+    expect(screen.getByText("torrents.addModal.errors.tagsRequired")).toBeInTheDocument();
   });
 });

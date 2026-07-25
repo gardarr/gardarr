@@ -1,5 +1,4 @@
-import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -12,6 +11,7 @@ interface ImageSourceSelectorProps {
   onValueChange: (value: ImageSource) => void;
   className?: string;
   isTGDBActive?: boolean;
+  isTMDBActive?: boolean;
   categoryMetadataSource?: CategoryMetadataSource;
 }
 
@@ -20,16 +20,18 @@ export function ImageSourceSelector({
   onValueChange,
   className,
   isTGDBActive = false,
+  isTMDBActive = false,
   categoryMetadataSource = "none",
 }: ImageSourceSelectorProps) {
   const { t } = useTranslation();
+  // Category source (if any) sempre em primeiro, Upload em segundo.
   const sources = useMemo<ImageSource[]>(() => {
     if (categoryMetadataSource === "tgdb") {
-      return ["TGDB"];
+      return ["TGDB", "Upload"];
     }
 
     if (categoryMetadataSource === "tmdb") {
-      return ["TMDB"];
+      return ["TMDB", "Upload"];
     }
 
     return ["Upload"];
@@ -40,45 +42,52 @@ export function ImageSourceSelector({
       return false;
     }
 
-    if (categoryMetadataSource === "none") {
-      return true;
-    }
-
     if (categoryMetadataSource === "tgdb") {
-      return source !== "TGDB" || !isTGDBActive;
+      return !isTGDBActive;
     }
 
     if (categoryMetadataSource === "tmdb") {
-      return source !== "TMDB";
+      return !isTMDBActive;
     }
 
-    return true;
+    return false;
   };
 
+  // Sem image source de categoria: só Upload existe, não exibir abas.
+  if (sources.length <= 1) {
+    return null;
+  }
+
   return (
-    <ButtonGroup orientation="horizontal" className={cn("w-full", className)}>
-      {sources.map((source) => (
-        <Button
-          key={source}
-          variant={value === source ? "default" : "outline"}
-          size="sm"
-          onClick={() => onValueChange(source)}
-          disabled={isSourceDisabled(source)}
-          className={cn(
-            "transition-all flex-1",
-            value === source && "shadow-sm"
-          )}
-        >
-          <span className="flex flex-col items-center text-center leading-tight">
-            <span>{t(`torrentImageEditor.sources.options.${source.toLowerCase()}`)}</span>
-            {source === "TGDB" && (
-              <span className="text-[11px] font-normal text-muted-foreground">
-                {t("torrentImageEditor.sources.subtitles.tgdb")}
-              </span>
-            )}
-          </span>
-        </Button>
-      ))}
-    </ButtonGroup>
+    <Tabs
+      value={value}
+      onValueChange={(v) => onValueChange(v as ImageSource)}
+      className={cn("w-full", className)}
+    >
+      <TabsList className="w-full h-auto">
+        {sources.map((source) => (
+          <TabsTrigger
+            key={source}
+            value={source}
+            disabled={isSourceDisabled(source)}
+            className="flex-1 py-2"
+          >
+            <span className="flex flex-col items-center text-center leading-tight">
+              <span>{t(`torrentImageEditor.sources.options.${source.toLowerCase()}`)}</span>
+              {source === "TGDB" && (
+                <span className="text-[11px] font-normal text-muted-foreground">
+                  {t("torrentImageEditor.sources.subtitles.tgdb")}
+                </span>
+              )}
+              {source === "TMDB" && (
+                <span className="text-[11px] font-normal text-muted-foreground">
+                  {t("torrentImageEditor.sources.subtitles.tmdb")}
+                </span>
+              )}
+            </span>
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   );
 }

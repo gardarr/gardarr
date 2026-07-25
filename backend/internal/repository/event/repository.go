@@ -134,11 +134,29 @@ func (r *Repository) GetEventByUUID(ctx context.Context, uuid uuid.UUID) (*entit
 	}, nil
 }
 
-// DeleteOldEvents deletes events older than the specified date
+// deleteOldEventsBatchSize bounds each purge round trip so the first cleanup
+// on a long-lived install doesn't hold the SQLite writer lock for one giant
+// DELETE covering months of accumulated events.
+const deleteOldEventsBatchSize = 10000
+
+// DeleteOldEvents deletes events older than the specified date in batches
 func (r *Repository) DeleteOldEvents(ctx context.Context, olderThan time.Time) error {
-	return r.db.DB.WithContext(ctx).
-		Where("created_at < ?", olderThan).
-		Delete(&models.Event{}).Error
+	for {
+		result := r.db.DB.WithContext(ctx).
+			Where("uuid IN (?)", r.db.DB.
+				Model(&models.Event{}).
+				Select("uuid").
+				Where("created_at < ?", olderThan).
+				Limit(deleteOldEventsBatchSize),
+			).
+			Delete(&models.Event{})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected < deleteOldEventsBatchSize {
+			return nil
+		}
+	}
 }
 
 // SaveTaskState saves or updates a task state in the database atomically
@@ -164,6 +182,25 @@ func (r *Repository) SaveTaskState(ctx context.Context, workerID uuid.UUID, hash
 		Create(taskState).Error
 }
 
+// SaveTaskStates upserts a batch of task states in a single round trip.
+// Used instead of N individual SaveTaskState calls when a poll cycle touches
+// many tasks at once, since that was the dominant DB cost per poll.
+func (r *Repository) SaveTaskStates(ctx context.Context, states []*models.TaskState) error {
+	if len(states) == 0 {
+		return nil
+	}
+
+	return r.db.DB.WithContext(ctx).
+		Clauses(clause.OnConflict{
+			Columns: []clause.Column{
+				{Name: "worker_id"},
+				{Name: "hash"},
+			},
+			DoUpdates: clause.AssignmentColumns([]string{"name", "category", "size", "state", "progress", "updated_at"}),
+		}).
+		Create(&states).Error
+}
+
 // LoadTaskStates loads all task states for a specific worker from the database
 func (r *Repository) LoadTaskStates(ctx context.Context, workerID uuid.UUID) (map[string]*entities.TaskState, error) {
 	var states []models.TaskState
@@ -178,6 +215,9 @@ func (r *Repository) LoadTaskStates(ctx context.Context, workerID uuid.UUID) (ma
 		result[s.Hash] = &entities.TaskState{
 			WorkerID:  s.WorkerID,
 			Hash:      s.Hash,
+			Name:      s.Name,
+			Category:  s.Category,
+			Size:      s.Size,
 			State:     s.State,
 			Progress:  s.Progress,
 			UpdatedAt: s.UpdatedAt,
@@ -218,6 +258,9 @@ func (r *Repository) LoadAllTaskStates(ctx context.Context) (map[uuid.UUID]map[s
 			result[s.WorkerID][s.Hash] = &entities.TaskState{
 				WorkerID:  s.WorkerID,
 				Hash:      s.Hash,
+				Name:      s.Name,
+				Category:  s.Category,
+				Size:      s.Size,
 				State:     s.State,
 				Progress:  s.Progress,
 				UpdatedAt: s.UpdatedAt,

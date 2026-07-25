@@ -22,6 +22,9 @@ type Event struct {
 type TaskState struct {
 	WorkerID  uuid.UUID
 	Hash      string
+	Name      string
+	Category  string
+	Size      int64
 	State     string
 	Progress  float64
 	UpdatedAt time.Time

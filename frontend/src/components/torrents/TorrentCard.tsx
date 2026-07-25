@@ -1,4 +1,5 @@
 import type { ElementType } from "react";
+import { memo, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RatioBadge } from "@/components/RatioBadge";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -26,7 +27,7 @@ type TorrentCardProps = TorrentActionHandlers & TorrentSelectionProps & {
   selected?: boolean;
 };
 
-export function TorrentCard({
+export const TorrentCard = memo(function TorrentCard({
   torrent,
   onShowDetails,
   onStart,
@@ -57,7 +58,9 @@ export function TorrentCard({
   const blurPx = getBlurPixels(blurIntensity);
   const hasImage = !!torrent.metadata?.image_url;
   const encodedImageUrl = getTorrentImageUrl(torrent);
-  const actions = {
+  // Memoized so this component (React.memo) only sees a new actions/selection
+  // reference when one of these actually changes.
+  const actions = useMemo(() => ({
     onShowDetails,
     onStart,
     onStop,
@@ -68,8 +71,11 @@ export function TorrentCard({
     onSearchMetadata,
     onLimits,
     onMetadataUpdate,
-  };
-  const selection = { selectionMode, selectedIds, onToggleSelect, onRequestDelete };
+  }), [onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onSearchMetadata, onLimits, onMetadataUpdate]);
+  const selection = useMemo(
+    () => ({ selectionMode, selectedIds, onToggleSelect, onRequestDelete }),
+    [selectionMode, selectedIds, onToggleSelect, onRequestDelete]
+  );
 
   return (
     <TorrentContextMenuWrapper torrent={torrent} actions={actions} selection={selection}>
@@ -85,7 +91,7 @@ export function TorrentCard({
               backgroundImage: `url(${encodedImageUrl})`,
               ...(blurPx > 0 && { filter: `blur(${blurPx}px)` }),
               backgroundPosition: `center ${torrent.metadata!.image_position_y ?? 50}%`,
-              opacity: Math.max(0.15, Math.min(0.85, (torrent.metadata!.image_opacity ?? 65) / 100))
+              opacity: Math.max(0.15, Math.min(0.85, (torrent.metadata!.image_brightness ?? 65) / 100))
             }}
             aria-hidden
           />
@@ -239,7 +245,7 @@ export function TorrentCard({
       </Card>
     </TorrentContextMenuWrapper>
   );
-}
+});
 
 // Helper Components
 

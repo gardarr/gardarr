@@ -28,12 +28,14 @@ func (s *StringArray) Scan(value interface{}) error {
 		return nil
 	}
 
-	bytes, ok := value.([]byte)
-	if !ok {
+	switch v := value.(type) {
+	case []byte:
+		return json.Unmarshal(v, s)
+	case string:
+		return json.Unmarshal([]byte(v), s)
+	default:
 		return errors.New("failed to scan StringArray")
 	}
-
-	return json.Unmarshal(bytes, s)
 }
 
 type Category struct {

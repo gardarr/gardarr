@@ -40,6 +40,7 @@ export function WorkerLogsTab({ workerId }: WorkerLogsTabProps) {
     const fetchLogs = useCallback(async (isRefresh = false) => {
         if (!workerId) return;
 
+        let succeeded = false;
         try {
             setLoading(true);
             setError(null);
@@ -58,6 +59,8 @@ export function WorkerLogsTab({ workerId }: WorkerLogsTabProps) {
                 setError(response.error);
                 return;
             }
+
+            succeeded = true;
 
             if (response.data && response.data.length > 0) {
                 const newLogs = response.data;
@@ -81,12 +84,15 @@ export function WorkerLogsTab({ workerId }: WorkerLogsTabProps) {
             setError(err instanceof Error ? err.message : "Failed to load logs");
         } finally {
             setLoading(false);
-            if (isRefresh && !error) {
+            if (isRefresh && succeeded) {
                 setRefreshSuccess(true);
                 setTimeout(() => setRefreshSuccess(false), 2000);
             }
         }
-    }, [workerId, showNormal, showInfo, showWarning, showCritical, error]);
+        // `error` is intentionally excluded: including it recreated this
+        // callback whenever a fetch failed, which retriggered the effect
+        // below and re-fired the request in a tight loop with no backoff.
+    }, [workerId, showNormal, showInfo, showWarning, showCritical]);
 
     // Initial fetch and handle filter changes
     useEffect(() => {

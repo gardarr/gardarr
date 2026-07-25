@@ -97,7 +97,8 @@
       "displayModeChanged": "Modo de visualização alterado para {{mode}}",
       "modes": {
         "table": "Tabela",
-        "card": "Cartão",
+        "card": "Cartão A",
+        "cardCompact": "Cartão B",
         "list": "Lista"
       },
       "compactModeEnabled": "Modo compacto ativado",
@@ -461,6 +462,7 @@
     "info": "Informações",
     "stats": "Estatísticas",
     "instanceInformation": "Informações da Instância",
+    "instanceInfoUnavailable": "Informações da instância indisponíveis - falha na conexão com o worker",
     "application": "Aplicação",
     "version": "Versão",
     "api": "API",
@@ -678,6 +680,9 @@
     "title": "Torrents",
     "subtitle": "Gerencie seus downloads e uploads",
     "addTorrent": "Adicionar Torrent",
+    "ws": {
+      "reconnecting": "Reconectando…"
+    },
     "addModal": {
       "stepCounter": "Etapa {{current}} de {{total}}",
       "steps": {
@@ -688,6 +693,10 @@
       "magnetUri": {
         "label": "Magnet URI",
         "placeholder": "magnet:?xt=urn:btih:..."
+      },
+      "file": {
+        "label": "Arquivo torrent",
+        "placeholder": "Escolha um arquivo .torrent"
       },
       "magnetInfo": {
         "title": "Informações do Torrent",
@@ -743,7 +752,8 @@
         },
         "namePlaceholder": "Nome amigável da mídia",
         "releaseDatePlaceholder": "Será preenchido pelo provider quando disponível",
-        "descriptionPlaceholder": "Adicione um resumo opcional para a mídia"
+        "descriptionPlaceholder": "Adicione um resumo opcional para a mídia",
+        "tmdbInactive": "O TMDB não está configurado no momento."
       },
       "image": {
         "title": "Imagem",
@@ -766,7 +776,8 @@
         "skipMetadata": "Ignorar metadata",
         "finish": "Concluir",
         "finishing": "Concluindo...",
-        "closeCreated": "Fechar"
+        "closeCreated": "Fechar",
+        "add": "Adicionar"
       },
       "submit": "Adicionar",
       "submitting": "Adicionando...",
@@ -774,11 +785,14 @@
         "workerRequired": "Selecione um worker",
         "magnetRequired": "Magnet URI é obrigatório",
         "magnetInvalidPrefix": "Magnet URI deve começar com 'magnet:'",
+        "fileRequired": "Selecione um arquivo .torrent",
+        "fileInvalidExtension": "O arquivo deve ter extensão .torrent",
         "categoryRequired": "Selecione uma categoria",
         "tagsRequired": "Adicione pelo menos uma tag",
         "createOrFinalizeFailed": "Não foi possível concluir a adição do torrent. Você pode tentar novamente.",
         "taskHashMissing": "A task foi criada, mas o hash retornado está ausente."
-      }
+      },
+      "subtitle": "Cole um link magnet, escolha uma categoria e adicione na hora"
     },
     "search": "Buscar torrents...",
     "itemsPerPage": "Itens por página",
@@ -910,6 +924,21 @@
       "selectedCount": "{{count}} selecionado",
       "selectedCount_plural": "{{count}} selecionados"
     },
+    "bulk": {
+      "pause": "Pausar",
+      "resume": "Retomar",
+      "recheck": "Forçar verificação",
+      "reannounce": "Forçar reannounce",
+      "category": "Definir categoria",
+      "removeCategory": "Remover categoria",
+      "tags": "Adicionar tags",
+      "limits": "Limites",
+      "delete": "Excluir",
+      "apply": "Aplicar",
+      "success": "Ação aplicada a {{count}} torrent(s)",
+      "partial": "Aplicada a {{succeeded}} torrent(s), mas alguns workers falharam",
+      "error": "Falha na ação em lote"
+    },
     "addFile": "Adicionar arquivo",
     "workerErrorWarning": {
       "title": "Erros de Worker Detectados",
@@ -920,6 +949,9 @@
     },
     "updateInterval": {
       "title": "Atualizar a cada {{seconds}} segundos"
+    },
+    "pendingCard": {
+      "adding": "Adicionando…"
     }
   },
   "categories": {
@@ -1051,7 +1083,33 @@
       }
     },
     "noIntegrations": "Nenhuma integração disponível",
-    "noIntegrationsDescription": "Mais integrações serão adicionadas em atualizações futuras"
+    "noIntegrationsDescription": "Mais integrações serão adicionadas em atualizações futuras",
+    "tmdb": {
+      "name": "TMDB",
+      "subtitle": "The Movie Database",
+      "description": "Configure o The Movie Database como fonte de metadata para categorias de filmes e séries",
+      "sheetTitle": "Configurar TMDB",
+      "sheetDescription": "Gerencie a chave de API do TMDB usada pelos providers externos de metadata.",
+      "enabledLabel": "Status da integração",
+      "enabled": "Habilitada",
+      "disabled": "Desabilitada",
+      "apiKeyLabel": "Chave de API",
+      "apiKeyPlaceholder": "Digite sua chave de API do TMDB",
+      "apiKeyConfigured": "Já existe uma chave configurada. Deixe em branco para mantê-la.",
+      "apiKeyNotConfigured": "Nenhuma chave de API configurada ainda.",
+      "status": {
+        "enabled": "Configurada e habilitada",
+        "disabled": "Configurada, mas desabilitada",
+        "notConfigured": "Não configurada"
+      },
+      "success": {
+        "saved": "Configuração do TMDB salva com sucesso"
+      },
+      "errors": {
+        "loadFailed": "Falha ao carregar a configuração do TMDB",
+        "saveFailed": "Falha ao salvar a configuração do TMDB"
+      }
+    }
   },
   "tgdb": {
     "search": {
@@ -1149,8 +1207,10 @@
     "title": "Detalhes do Torrent",
     "subtitle": "Informações completas sobre o torrent selecionado",
     "tabs": {
-      "details": "Detalhes",
-      "images": "Imagens"
+      "overview": "Visão Geral",
+      "files": "Arquivos",
+      "trackers": "Trackers",
+      "image": "Imagem"
     },
     "actions": {
       "forceDownload": "Forçar Download",
@@ -1192,7 +1252,8 @@
     "name": {
       "label": "Nome",
       "edit": "Editar nome",
-      "save": "Salvar nome"
+      "save": "Salvar nome",
+      "file": "Arquivo"
     },
     "general": {
       "title": "Informações Gerais",
@@ -1215,7 +1276,8 @@
       "edit": "Editar tags",
       "cancel": "Cancelar",
       "save": "Salvar",
-      "placeholder": "Digite tags e pressione Enter"
+      "placeholder": "Digite tags e pressione Enter",
+      "empty": "Sem tags"
     },
     "path": {
       "title": "Caminho",
@@ -1223,7 +1285,14 @@
       "save": "Salvar caminho"
     },
     "files": {
-      "title": "Lista de Arquivos"
+      "title": "Lista de Arquivos",
+      "heading": "Arquivos do Torrent",
+      "loading": "Carregando arquivos...",
+      "loadError": "Erro ao carregar arquivos",
+      "retry": "Tentar novamente",
+      "empty": "Nenhum arquivo encontrado",
+      "count_one": "{{count}} arquivo",
+      "count_other": "{{count}} arquivos"
     },
     "network": {
       "title": "Rede e Pares",
@@ -1266,7 +1335,12 @@
       "categoryUpdateSuccess": "Categoria atualizada com sucesso",
       "categoryUpdateError": "Falha ao atualizar categoria",
       "tagsUpdateSuccess": "Tags atualizadas com sucesso",
-      "tagsUpdateError": "Falha ao atualizar tags"
+      "tagsUpdateError": "Falha ao atualizar tags",
+      "nameUpdateSuccess": "Nome atualizado com sucesso",
+      "nameUpdateError": "Erro ao atualizar nome"
+    },
+    "description": {
+      "label": "Descrição"
     }
   },
   "torrent": {
@@ -1522,14 +1596,15 @@
     "imageAdjustments": {
       "label": "Ajustes da Imagem"
     },
-    "opacity": {
-      "label": "Opacidade da Imagem",
+    "brightness": {
+      "label": "Brilho da Imagem",
       "hint": "Ajuste entre 15% (mais transparente) e 85% (mais visível)"
     },
     "preview": {
       "label": "Pré-visualização",
       "normal": "Visualização Normal",
-      "compact": "Visualização Compacta"
+      "compact": "Visualização Compacta",
+      "cardB": "Visualização Cartão B"
     },
     "thumbnail": {
       "label": "Miniatura"
@@ -1541,7 +1616,8 @@
         "tgdb": "TGDB"
       },
       "subtitles": {
-        "tgdb": "The Games Database"
+        "tgdb": "The Games Database",
+        "tmdb": "The Movie Database"
       },
       "restricted": {
         "tgdb": "Esta categoria está restrita ao TGDB para metadata externa.",
@@ -1555,12 +1631,27 @@
       "uploadFailed": "Erro ao enviar imagem",
       "deleteFailed": "Erro ao remover imagem",
       "savePositionFailed": "Erro ao salvar posição",
-      "saveOpacityFailed": "Erro ao salvar opacidade"
+      "saveBrightnessFailed": "Erro ao salvar brilho"
     },
     "success": {
       "imageUploaded": "Imagem enviada com sucesso",
       "imageDeleted": "Imagem removida com sucesso",
       "positionUpdated": "Posição da imagem atualizada"
+    }
+  },
+  "tmdb": {
+    "search": {
+      "placeholder": "Busque um filme ou série...",
+      "noImage": "Sem imagem",
+      "unknownDate": "Data desconhecida",
+      "noResults": "Nenhum resultado encontrado"
+    },
+    "errors": {
+      "searchFailed": "Falha ao buscar no TMDB",
+      "applyFailed": "Falha ao aplicar metadata"
+    },
+    "success": {
+      "applied": "Metadata aplicada com sucesso"
     }
   }
 }

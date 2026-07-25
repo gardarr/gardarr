@@ -4,11 +4,12 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { LoadingBar } from "@/components/ui/LoadingBar";
-import { ChevronDown, SortAsc, SortDesc, Plus, Download, Server, Activity, Folder, Tag, FileUp, AlertTriangle, Star, X, Search, CheckSquare } from "lucide-react";
+import { ChevronDown, SortAsc, SortDesc, Plus, Download, Server, Activity, Folder, Tag, FileUp, AlertTriangle, Star, Search } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { torrentService } from "./services/torrents";
+import { torrentService, type BulkTaskAction } from "./services/torrents";
+import { BulkActionBar } from "@/components/torrents/BulkActionBar";
 import { workerService } from "./services/workers";
 import { categoryService } from "./services/categories";
 import { preferencesService } from "@/services/preferences";
@@ -29,8 +30,7 @@ import {
   type TorrentListItem,
   type TorrentStatus,
 } from "@/components/torrents";
-import type { CreateTorrentSubmission } from "./services/torrents";
-import type { Task } from "./types/torrent";
+import type { Task, TaskMetadata } from "./types/torrent";
 import type { Worker } from "./types/worker";
 import type { Category } from "./types/category";
 import WorkerFilter from "@/components/ui/WorkerFilter";
@@ -39,8 +39,9 @@ import CategoryFilter from "@/components/ui/CategoryFilter";
 import { ListFilter } from "@/components/ui/ListFilter";
 import { FilterSidebar } from "@/components/ui/FilterSidebar";
 import { useFilterControls } from "@/hooks/useFilterControls";
-import { AddTorrentModal } from "@/components/AddTorrentModal";
 import { TaskMetadataSearchSheet } from "@/components/TaskMetadataSearchSheet";
+import { TorrentPlaceholderCard } from "@/components/torrents/TorrentPlaceholderCard";
+import { useAddTorrent } from "@/contexts/add-torrent-hooks";
 import { RatioBadge } from "@/components/RatioBadge";
 import { LazyLoadingSentinel } from "@/components/LazyLoadingSentinel";
 import { toast } from "sonner";
@@ -94,14 +95,22 @@ function mapTaskToTorrent(task: Task, categories: Category[]): Torrent {
     downloadedBytes: task.network?.download?.amount || 0,
     uploadedBytes: task.network?.upload?.amount || 0,
     status: mapStatus(task.state),
-    createdAt: new Date().toISOString(), // Backend não fornece data de criação
+    // Backend não fornece data de criação, e o campo não é usado para
+    // exibição/ordenação hoje; um valor fixo evita quebrar a igualdade
+    // referencial do objeto a cada remapeamento (new Date() gerava um valor
+    // novo sempre, mesmo quando nada no torrent havia mudado).
+    createdAt: "",
     progress: task.progress,
     ratio: task.ratio,
     numSeeds: task.pairs?.seeders || 0,
     numLeechs: task.pairs?.leechers || 0,
     workerName: task.worker?.name,
     workerStatus: task.worker?.status,
-    workerUUID: task.worker?.uuid,
+    // task.worker_id always comes straight from the backend; task.worker is
+    // only populated client-side by joining against the loaded workers list
+    // (which can race), so fall back to worker_id to keep context-menu
+    // actions (which need a worker id) working even before that join happens.
+    workerUUID: task.worker?.uuid || task.worker_id,
     workerIcon: task.worker?.icon,
     workerColor: task.worker?.color,
     category: task.category || "",
@@ -116,7 +125,6 @@ function mapTaskToTorrent(task: Task, categories: Category[]): Torrent {
 export default function TorrentsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [torrents, setTorrents] = useState<Torrent[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -135,7 +143,7 @@ export default function TorrentsPage() {
   const [selectedTorrent, setSelectedTorrent] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [originalTasks, setOriginalTasks] = useState<Task[]>([]);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const { openAddModal, pendingTorrents, removePendingTorrent } = useAddTorrent();
   const [isLimitsModalOpen, setIsLimitsModalOpen] = useState(false);
   const [limitsTaskIds, setLimitsTaskIds] = useState<string[]>([]);
   const [limitsWorkerId, setLimitsWorkerId] = useState<string>("");
@@ -144,7 +152,7 @@ export default function TorrentsPage() {
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false);
   const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
   const [compact, setCompact] = useState(false);
-  const [displayMode, setDisplayMode] = useState<"table" | "card" | "list">("card");
+  const [displayMode, setDisplayMode] = useState<"table" | "card" | "card_b" | "list">("card");
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [lastNonEmptyTorrents, setLastNonEmptyTorrents] = useState<Torrent[]>([]);
@@ -177,35 +185,25 @@ export default function TorrentsPage() {
   }, []);
 
   // Toggle single selection
-  const handleToggleSelect = (id: string) => {
+  const handleToggleSelect = useCallback((id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
-  };
-
-  // Tri-state select-all button behavior
-  const handleToggleSelectAll = () => {
-    // Phase 0 -> 1: enable selection with none selected
-    if (!selectionMode) {
-      setSelectionMode(true);
-      setSelectedIds(new Set());
-      return;
-    }
-    // Phase 1 -> 2: select all visible
-    const visibleIdsLocal = paginatedTorrents.map(t => t.id);
-    const allSelectedLocal = visibleIdsLocal.length > 0 && visibleIdsLocal.every(id => selectedIds.has(id));
-    if (!allSelectedLocal) {
-      setSelectedIds(new Set(visibleIdsLocal));
-      return;
-    }
-    // Phase 2 -> 0: disable selection mode
-    setSelectionMode(false);
-    setSelectedIds(new Set());
-  };
+  }, []);
 
   const addDropdownRef = useRef<HTMLDivElement | null>(null);
+
+  const mapTasksToTorrents = useCallback((tasks: Task[]) => {
+    return tasks.map((task) => mapTaskToTorrent(task, categories));
+  }, [categories]);
+
+  // Fonte única de verdade: torrents é sempre derivado de originalTasks.
+  // Antes cada callback WS também chamava setTorrents diretamente E um
+  // useEffect separado recomputava a partir de originalTasks, causando dois
+  // re-renders da lista inteira por evento.
+  const torrents = useMemo(() => mapTasksToTorrents(originalTasks), [mapTasksToTorrents, originalTasks]);
 
   // Extrair status únicos disponíveis
   const availableStatuses = useMemo(() => {
@@ -251,51 +249,93 @@ export default function TorrentsPage() {
   const categoryControls = useFilterControls(selectedCategories, setSelectedCategories, availableCategories);
   const tagControls = useFilterControls(selectedTags, setSelectedTags, availableTags);
   const gradeControls = useFilterControls(selectedGrades, setSelectedGrades, availableGrades);
-  const mapTasksToTorrents = useCallback((tasks: Task[]) => {
-    return tasks.map((task) => mapTaskToTorrent(task, categories));
-  }, [categories]);
 
-  // Hook WebSocket updating all REST polling 
-  const { requestSync } = useTorrentsWS({
-    onInitialState: (tasks, errors) => {
-      setOriginalTasks(tasks);
-      setTorrents(mapTasksToTorrents(tasks));
+  // Refs para os dados voláteis que os handlers de ação precisam ler, sem
+  // precisar entrar nas deps do useCallback: assim os handlers passados aos
+  // cards mantêm identidade estável entre polls/eventos WS, o que é o que
+  // permite o React.memo dos cards evitar re-render da lista inteira a cada
+  // atualização de um único torrent.
+  const originalTasksRef = useRef<Task[]>(originalTasks);
+  useEffect(() => { originalTasksRef.current = originalTasks; }, [originalTasks]);
+  const torrentsRef = useRef<Torrent[]>(torrents);
+  useEffect(() => { torrentsRef.current = torrents; }, [torrents]);
+  const lastNonEmptyTorrentsRef = useRef<Torrent[]>(lastNonEmptyTorrents);
+  useEffect(() => { lastNonEmptyTorrentsRef.current = lastNonEmptyTorrents; }, [lastNonEmptyTorrents]);
+  const selectedIdsRef = useRef<Set<string>>(selectedIds);
+  useEffect(() => { selectedIdsRef.current = selectedIds; }, [selectedIds]);
+  const selectionModeRef = useRef(selectionMode);
+  useEffect(() => { selectionModeRef.current = selectionMode; }, [selectionMode]);
+
+  // originalTasks lido de dentro dos handlers WS via ref: assim os handlers
+  // passados ao hook não precisam de `workers` nas deps (o join usa a lista
+  // mais recente sem recriar o callback subscrito no WS a cada mudança de
+  // workers).
+  const workersRef = useRef<Worker[]>(workers);
+  useEffect(() => {
+    workersRef.current = workers;
+  }, [workers]);
+
+  // Hook WebSocket updating all REST polling
+  const { isConnected: isWsConnected, requestSync } = useTorrentsWS({
+    onInitialState: useCallback((tasks: Task[], errors?: Record<string, string>) => {
+      const joinedTasks = tasks.map((task) => ({
+        ...task,
+        worker: task.worker ?? workersRef.current.find((w) => w.uuid === task.worker_id),
+      }));
+      setOriginalTasks(joinedTasks);
       setInitialLoadComplete(true);
       if (errors && Object.keys(errors).length > 0) {
         toast.error(t('torrents.notifications.someWorkersFailed'));
       }
-    },
-    onTaskUpdated: (updatedTask) => {
+    }, [t]),
+    onTaskUpdated: useCallback((updatedTask: Partial<Task> & { hash: string, worker_id: string }) => {
       setOriginalTasks(prev => {
-        const index = prev.findIndex(t => t.hash === updatedTask.hash && t.worker?.uuid === updatedTask.worker_id);
+        // Match by hash only: the backend's task payload never carries a
+        // `worker` field, so `t.worker?.uuid` is always undefined here and
+        // comparing it against `updatedTask.worker_id` never matched,
+        // causing every state-change/added/completed event to fall into the
+        // "new task" branch below and duplicate the card instead of
+        // updating the existing one.
+        const index = prev.findIndex(t => t.hash === updatedTask.hash);
         if (index >= 0) {
           const next = [...prev];
-          next[index] = { ...next[index], ...updatedTask } as Task;
-          setTorrents(mapTasksToTorrents(next));
+          const worker = next[index].worker ?? workersRef.current.find(w => w.uuid === updatedTask.worker_id);
+          next[index] = { ...next[index], ...updatedTask, worker } as Task;
           return next;
-        } else {
-          // If new task, find worker
-          const worker = workers.find(w => w.uuid === updatedTask.worker_id);
-          if (worker) {
-            const next = [...prev, { ...updatedTask, worker } as Task];
-            setTorrents(mapTasksToTorrents(next));
-            return next;
-          }
         }
-        return prev;
+        // New task: attach worker if already known; otherwise keep it
+        // unresolved (a later effect re-joins it once `workers` loads)
+        // instead of dropping the event, which used to make torrents added
+        // before the worker list finished loading vanish from the UI.
+        const worker = workersRef.current.find(w => w.uuid === updatedTask.worker_id);
+        return [...prev, { ...updatedTask, worker } as Task];
       });
-    },
-    onTaskRemoved: (hash, workerId) => {
-      setOriginalTasks(prev => {
-        const next = prev.filter(t => !(t.hash === hash && t.worker?.uuid === workerId));
-        setTorrents(mapTasksToTorrents(next));
-        return next;
-      });
-    },
-    onWorkerStats: () => {
+    }, []),
+    onTaskRemoved: useCallback((hash: string) => {
+      setOriginalTasks(prev => prev.filter(t => t.hash !== hash));
+    }, []),
+    onWorkerStats: useCallback(() => {
       // Optional: Update worker stats in UI if needed
-    }
+    }, []),
   });
+
+  // Re-join: quando a lista de workers chega/muda, resolve o `worker` de
+  // tasks que ficaram sem ele (ex.: TORRENT_ADDED que chegou antes do
+  // primeiro loadWorkers terminar).
+  useEffect(() => {
+    if (workers.length === 0) return;
+    setOriginalTasks(prev => {
+      let changed = false;
+      const next = prev.map(task => {
+        if (task.worker) return task;
+        const worker = workers.find(w => w.uuid === task.worker_id);
+        if (!worker) return task;
+        changed = true;
+        return { ...task, worker };
+      });
+      return changed ? next : prev;
+    });
+  }, [workers]);
 
   // Client-driven state sync loop
   useEffect(() => {
@@ -345,38 +385,57 @@ export default function TorrentsPage() {
     }
   }, []);
 
+  // Remoção otimista: tira da lista na hora, sem esperar o próximo tick do WS
+  const removeTasksLocally = useCallback((ids: string[]) => {
+    const idSet = new Set(ids.map((id) => id.toLowerCase()));
+    setOriginalTasks((prev) =>
+      prev.filter(
+        (task) => !idSet.has(task.id?.toLowerCase() ?? "") && !idSet.has(task.hash?.toLowerCase() ?? "")
+      )
+    );
+  }, []);
+
   // Abrir modal de deleção (single/bulk) a partir do contexto (tabela/cards/menu)
-  const openDeleteModal = (ids: string[]) => {
+  const openDeleteModal = useCallback((ids: string[]) => {
     setDeleteIds(ids);
-    const isBulk = selectionMode && ids.length > 1;
+    const isBulk = selectionModeRef.current && ids.length > 1;
     setDeleteMode(isBulk ? "bulk" : "single");
     if (!isBulk) {
-      const t = (torrents.find(x => x.id === ids[0]) || lastNonEmptyTorrents.find(x => x.id === ids[0]));
-      setDeleteSingleName(t?.name || "");
+      const found = (torrentsRef.current.find(x => x.id === ids[0]) || lastNonEmptyTorrentsRef.current.find(x => x.id === ids[0]));
+      setDeleteSingleName(found?.name || "");
     } else {
       setDeleteSingleName("");
     }
     setIsDeleteModalOpen(true);
-  };
+  }, []);
 
   // Confirma deleção de 1..N torrents selecionados
-  const handleConfirmDelete = async (purge: boolean) => {
+  const handleConfirmDelete = useCallback(async (purge: boolean) => {
     try {
       const ids = deleteIds;
-      const source = torrents.length > 0 ? torrents : lastNonEmptyTorrents;
+      const source = torrentsRef.current.length > 0 ? torrentsRef.current : lastNonEmptyTorrentsRef.current;
       const isBulk = ids.length > 1;
 
       // Marcar que estamos fazendo refresh para manter cache ativo
       setIsRefreshing(true);
 
-      await Promise.allSettled(ids.map(async (id) => {
+      const results = await Promise.allSettled(ids.map(async (id) => {
         const t = source.find(x => x.id === id);
-        if (t?.workerUUID) {
-          await torrentService.deleteTask(t.workerUUID, id, purge);
+        if (!t?.workerUUID) {
+          throw new Error("worker not found");
         }
+        const response = await torrentService.deleteTask(t.workerUUID, id, purge);
+        if (response.error) {
+          throw new Error(response.error);
+        }
+        return id;
       }));
 
-      // A UI será atualizada via WebSocket (evento TORRENT_REMOVED)
+      const deletedIds = results
+        .filter((result): result is PromiseFulfilledResult<string> => result.status === "fulfilled")
+        .map((result) => result.value);
+
+      removeTasksLocally(deletedIds);
 
       // Exibir mensagem de sucesso
       const message = isBulk
@@ -403,75 +462,89 @@ export default function TorrentsPage() {
       setIsDeleteModalOpen(false);
       setDeleteIds([]);
     }
-  };
+  }, [deleteIds, t, removeTasksLocally]);
 
   // Abrir modal de detalhes
-  const handleShowDetails = (torrentId: string) => {
-    const task = originalTasks.find(t => t.id === torrentId);
+  const handleShowDetails = useCallback((torrentId: string) => {
+    const task = originalTasksRef.current.find(t => t.id === torrentId);
     if (task) {
       setSelectedTorrent(task);
       setIsModalOpen(true);
     }
-  };
+  }, []);
 
   // Fechar modal
-  const handleCloseModal = () => {
+  const handleCloseModal = useCallback(() => {
     setIsModalOpen(false);
     setSelectedTorrent(null);
-  };
+  }, []);
 
-  const handleOpenMetadataSearch = (taskId: string) => {
-    const task = originalTasks.find((item) => item.id === taskId);
+  const handleOpenMetadataSearch = useCallback((taskId: string) => {
+    const task = originalTasksRef.current.find((item) => item.id === taskId);
     if (!task) {
       return;
     }
 
     setMetadataSearchTask(task);
     setIsMetadataSearchOpen(true);
-  };
+  }, []);
 
-  const handleCloseMetadataSearch = () => {
+  const handleCloseMetadataSearch = useCallback(() => {
     setIsMetadataSearchOpen(false);
     setMetadataSearchTask(null);
-  };
+  }, []);
 
-  const handleShowLimits = (taskId: string, workerId?: string) => {
-    const task = originalTasks.find(t => t.id === taskId);
+  const handleShowLimits = useCallback((taskId: string, workerId?: string) => {
+    const task = originalTasksRef.current.find(t => t.id === taskId);
 
     // Se está em modo de seleção e há múltiplos torrents selecionados, usar a seleção
-    const isBulkEdit = selectionMode && selectedIds.size > 1;
-    const taskIds = isBulkEdit ? Array.from(selectedIds) : [taskId];
+    const isBulkEdit = selectionModeRef.current && selectedIdsRef.current.size > 1;
+    const taskIds = isBulkEdit ? Array.from(selectedIdsRef.current) : [taskId];
 
     setLimitsTaskIds(taskIds);
     setLimitsWorkerId(workerId || "");
     setLimitsTaskName(task?.name || "");
     setLimitsTaskStatus(task?.state || "");
     setIsLimitsModalOpen(true);
-  };
+  }, []);
 
   // Fechar modal de limites
-  const handleCloseLimitsModal = () => {
+  const handleCloseLimitsModal = useCallback(() => {
     setIsLimitsModalOpen(false);
     setLimitsTaskIds([]);
     setLimitsWorkerId("");
     setLimitsTaskName("");
     setLimitsTaskStatus("");
-  };
+  }, []);
 
-  // Handler para atualização de metadados
-  const handleMetadataUpdate = useCallback(async () => {
-    // A UI será atualizada via evento WS TORRENT_STATE_CHANGE automaticamente
+  // Handler para atualização de metadados: aplica o retorno da API
+  // diretamente na lista e no modal aberto, sem depender de evento WS
+  // (uploads/edições de metadata não disparam TORRENT_STATE_CHANGE).
+  const handleMetadataUpdate = useCallback((metadata?: TaskMetadata) => {
+    if (!metadata?.task_hash) return;
+
+    setOriginalTasks(prev => {
+      const index = prev.findIndex(t => t.hash === metadata.task_hash);
+      if (index < 0) return prev;
+      const next = [...prev];
+      next[index] = { ...next[index], metadata };
+      return next;
+    });
+
+    setSelectedTorrent(prev =>
+      prev && prev.hash === metadata.task_hash ? { ...prev, metadata } : prev
+    );
   }, []);
 
   // Controles de torrent
-  const handleGenericTorrentAction = async (
+  const handleGenericTorrentAction = useCallback(async (
     torrentId: string,
     actionName: string,
     actionFn: (workerId: string, taskId: string) => Promise<{ error?: string }>,
     successMessage: string
   ) => {
     try {
-      const task = originalTasks.find(t => t.id === torrentId);
+      const task = originalTasksRef.current.find(t => t.id === torrentId);
       if (!task || !task.worker?.uuid) {
         toast.error(t('torrents.notifications.workerIdNotFound'));
         return;
@@ -489,52 +562,51 @@ export default function TorrentsPage() {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : `Erro ao ${actionName}`);
     }
-  };
+  }, [t]);
 
-  const handlePlayTorrent = (torrentId: string) =>
+  const handlePlayTorrent = useCallback((torrentId: string) =>
     handleGenericTorrentAction(
       torrentId,
       t('torrents.actionButtons.play'),
       torrentService.resumeTask,
       t('torrents.notifications.resumeSuccess')
-    );
+    ), [handleGenericTorrentAction, t]);
 
-  const handlePauseTorrent = (torrentId: string) =>
+  const handlePauseTorrent = useCallback((torrentId: string) =>
     handleGenericTorrentAction(
       torrentId,
       t('torrents.actionButtons.pause'),
       torrentService.pauseTask,
       t('torrents.notifications.pauseSuccess')
-    );
+    ), [handleGenericTorrentAction, t]);
 
-  const handleForceDownloadTorrent = (torrentId: string) =>
+  const handleForceDownloadTorrent = useCallback((torrentId: string) =>
     handleGenericTorrentAction(
       torrentId,
       t('torrents.forceDownload'),
       torrentService.forceDownloadTask,
       t('torrents.notifications.forceDownloadSuccess')
-    );
+    ), [handleGenericTorrentAction, t]);
 
-  const handleForceReannounceTorrent = (torrentId: string) =>
+  const handleForceReannounceTorrent = useCallback((torrentId: string) =>
     handleGenericTorrentAction(
       torrentId,
       t('torrents.forceReannounce'),
       torrentService.forceReannounceTask,
       t('torrents.notifications.forceReannounceSuccess')
-    );
+    ), [handleGenericTorrentAction, t]);
 
-  const handleForceRecheckTorrent = (torrentId: string) =>
+  const handleForceRecheckTorrent = useCallback((torrentId: string) =>
     handleGenericTorrentAction(
       torrentId,
       t('torrents.forceRecheck'),
       torrentService.forceRecheckTask,
       t('torrents.notifications.forceRecheckSuccess')
-    );
+    ), [handleGenericTorrentAction, t]);
 
-
-  const handleSetLocationTorrent = async (torrentId: string, location: string) => {
+  const handleSetLocationTorrent = useCallback(async (torrentId: string, location: string) => {
     try {
-      const task = originalTasks.find(t => t.id === torrentId);
+      const task = originalTasksRef.current.find(t => t.id === torrentId);
       if (!task || !task.worker?.uuid) {
         toast.error(t('torrents.notifications.workerIdNotFound'));
         return;
@@ -552,11 +624,11 @@ export default function TorrentsPage() {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('torrents.notifications.pathChangeError'));
     }
-  };
+  }, [t]);
 
-  const handleDeleteTorrent = async (torrentId: string, purge: boolean = false) => {
+  const handleDeleteTorrent = useCallback(async (torrentId: string, purge: boolean = false) => {
     try {
-      const task = originalTasks.find(t => t.id === torrentId);
+      const task = originalTasksRef.current.find(t => t.id === torrentId);
       if (!task || !task.worker?.uuid) {
         toast.error(t('torrents.notifications.workerIdNotFound'));
         return;
@@ -571,7 +643,7 @@ export default function TorrentsPage() {
 
       // Fechar modal
       handleCloseModal();
-      // WebSocket remove automaticamente da UI
+      removeTasksLocally([torrentId]);
       toast.success(purge
         ? t('torrents.notifications.deleteWithFilesSuccess')
         : t('torrents.notifications.deleteSuccess')
@@ -579,52 +651,100 @@ export default function TorrentsPage() {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('torrents.notifications.deleteError'));
     }
-  };
+  }, [t, handleCloseModal, removeTasksLocally]);
 
-  // Criar novo torrent
-  const handleCreateTorrent = async ({ workerId, taskData }: CreateTorrentSubmission): Promise<Task> => {
+  // Aplica uma ação em lote aos torrents selecionados via endpoint bulk
+  const handleBulkAction = useCallback(async (
+    action: BulkTaskAction,
+    options?: { category?: string; tags?: string[] }
+  ) => {
+    const source = torrentsRef.current.length > 0 ? torrentsRef.current : lastNonEmptyTorrentsRef.current;
+    const items = Array.from(selectedIdsRef.current)
+      .map((id) => {
+        const torrent = source.find((x) => x.id === id);
+        return torrent?.workerUUID
+          ? { worker_id: torrent.workerUUID, hash: torrent.hash || id }
+          : null;
+      })
+      .filter((item): item is { worker_id: string; hash: string } => item !== null);
+
+    if (items.length === 0) {
+      toast.error(t('torrents.notifications.workerIdNotFound'));
+      return;
+    }
+
     try {
-      const response = await torrentService.createTask(workerId, taskData);
-
-      if (response.error) {
-        throw new Error(response.error);
+      const response = await torrentService.bulkTaskAction(action, items, options);
+      if (response.error || !response.data) {
+        toast.error(response.error || t('torrents.bulk.error'));
+        return;
       }
 
-      const createdTask = response.data;
-      const taskHash = createdTask?.hash;
-
-      if (!taskHash) {
-        throw new Error(t('torrents.addModal.errors.taskHashMissing'));
+      const { succeeded, failed } = response.data;
+      if (failed && Object.keys(failed).length > 0) {
+        toast.warning(t('torrents.bulk.partial', { succeeded }));
+      } else {
+        toast.success(t('torrents.bulk.success', { count: succeeded }));
       }
 
-      return createdTask;
+      // Categoria/tags não geram evento de mudança de estado no WS; força sync
+      requestSync();
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : t('torrents.error');
-      toast.error(t('torrents.notifications.addError', { error: errorMessage }));
-      throw err instanceof Error ? err : new Error(errorMessage);
+      toast.error(err instanceof Error ? err.message : t('torrents.bulk.error'));
     }
-  };
+  }, [t, requestSync]);
 
-  const handleFinalizeTorrent = async (task: Task) => {
-    void task;
-    try {
-      // WS cuida da UI
-      setIsAddModalOpen(false);
-      toast.success(t('torrents.notifications.addSuccess'));
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : t('torrents.error');
-      toast.error(t('torrents.notifications.addError', { error: errorMessage }));
-      throw err instanceof Error ? err : new Error(errorMessage);
-    }
-  };
+  // Limites em lote a partir da action-bar: usa o worker do primeiro selecionado
+  const handleBulkLimits = useCallback(() => {
+    const firstId = Array.from(selectedIdsRef.current)[0];
+    if (!firstId) return;
+    const source = torrentsRef.current.length > 0 ? torrentsRef.current : lastNonEmptyTorrentsRef.current;
+    const torrent = source.find((x) => x.id === firstId);
+    handleShowLimits(firstId, torrent?.workerUUID);
+  }, [handleShowLimits]);
 
-  // Load preferences from localStorage
+  // Reconciliação dos placeholders otimistas: remove quando o torrent real chega via WS
   useEffect(() => {
-    const prefs = preferencesService.load();
-    if (prefs) {
-      setCompact(prefs.compact);
-      setDisplayMode(prefs.torrent_display_mode);
+    if (pendingTorrents.length === 0) {
+      return;
     }
+
+    const now = Date.now();
+    for (const pending of pendingTorrents) {
+      const arrived = originalTasks.some((task) => task.hash?.toLowerCase() === pending.hash);
+      const isStale = now - pending.addedAt > 120_000;
+      if (arrived || isStale) {
+        removePendingTorrent(pending.hash);
+      }
+    }
+  }, [originalTasks, pendingTorrents, removePendingTorrent]);
+
+  // Antecipar a chegada do torrent real quando um placeholder é criado
+  const previousPendingCount = useRef(0);
+  useEffect(() => {
+    if (pendingTorrents.length > previousPendingCount.current && initialLoadComplete) {
+      requestSync();
+    }
+    previousPendingCount.current = pendingTorrents.length;
+  }, [pendingTorrents, initialLoadComplete, requestSync]);
+
+  // Load preferences from localStorage, live-updating when changed elsewhere (e.g. topbar)
+  useEffect(() => {
+    const loadPrefs = () => {
+      const prefs = preferencesService.load();
+      if (prefs) {
+        setCompact(prefs.compact);
+        setDisplayMode(prefs.torrent_display_mode);
+      }
+    };
+
+    loadPrefs();
+    window.addEventListener("storage", loadPrefs);
+    window.addEventListener("preferencesUpdated", loadPrefs);
+    return () => {
+      window.removeEventListener("storage", loadPrefs);
+      window.removeEventListener("preferencesUpdated", loadPrefs);
+    };
   }, []);
 
   // Carregar dados na inicialização
@@ -639,10 +759,6 @@ export default function TorrentsPage() {
       setLastNonEmptyTorrents(torrents);
     }
   }, [torrents]);
-
-  useEffect(() => {
-    setTorrents(mapTasksToTorrents(originalTasks));
-  }, [mapTasksToTorrents, originalTasks]);
 
   // O WebSocket gerencia o estado e as atualizações em tempo real!
 
@@ -691,7 +807,7 @@ export default function TorrentsPage() {
   });
 
   // Calcular dados de paginação ou lazy loading baseado no displayMode
-  const useCardLazyLoading = displayMode === "card" || displayMode === "list";
+  const useCardLazyLoading = displayMode === "card" || displayMode === "card_b" || displayMode === "list";
 
   // Para card/list view (desktop) e mobile: usar lazy loading
   // Para table view (desktop): usar paginação tradicional
@@ -703,6 +819,25 @@ export default function TorrentsPage() {
   const paginatedTorrents = displayedTorrents;
   const visibleIds = useMemo(() => paginatedTorrents.map(t => t.id), [paginatedTorrents]);
   const allSelected = selectionMode && visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
+
+  // Tri-state select-all button behavior
+  const handleToggleSelectAll = useCallback(() => {
+    // Phase 0 -> 1: enable selection with none selected
+    if (!selectionModeRef.current) {
+      setSelectionMode(true);
+      setSelectedIds(new Set());
+      return;
+    }
+    // Phase 1 -> 2: select all visible
+    const allSelectedLocal = visibleIds.length > 0 && visibleIds.every(id => selectedIdsRef.current.has(id));
+    if (!allSelectedLocal) {
+      setSelectedIds(new Set(visibleIds));
+      return;
+    }
+    // Phase 2 -> 0: disable selection mode
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }, [visibleIds]);
 
   // Resetar página/contador quando o filtro, itens por página ou tipo de ordenação mudarem
   useEffect(() => {
@@ -778,7 +913,18 @@ export default function TorrentsPage() {
             <Download className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{t('torrents.title')}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl font-bold tracking-tight">{t('torrents.title')}</h1>
+              {!isWsConnected && initialLoadComplete && (
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400"
+                  title={t('torrents.ws.reconnecting')}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  {t('torrents.ws.reconnecting')}
+                </span>
+              )}
+            </div>
             <p className="text-muted-foreground">
               {t('torrents.subtitle')}
             </p>
@@ -789,7 +935,7 @@ export default function TorrentsPage() {
           <div className="relative" ref={addDropdownRef}>
             <div className="flex">
               <Button
-                onClick={() => setIsAddModalOpen(true)}
+                onClick={() => openAddModal()}
                 disabled={isInitialLoading || workers.length === 0}
                 className="rounded-r-none border-r-0"
               >
@@ -814,11 +960,12 @@ export default function TorrentsPage() {
                 aria-label={t('torrents.addTorrent')}
               >
                 <button
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground cursor-not-allowed opacity-50"
-                  onClick={(e) => e.preventDefault()}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground"
+                  onClick={() => {
+                    setIsAddDropdownOpen(false);
+                    openAddModal('file');
+                  }}
                   role="option"
-                  disabled
-                  aria-disabled="true"
                 >
                   <FileUp className="h-4 w-4" />
                   {t('torrents.addFile')}
@@ -1007,7 +1154,7 @@ export default function TorrentsPage() {
       )}
 
       {/* Estado vazio - com workers funcionais mas sem torrents */}
-      {!isInitialLoading && workers.length > 0 && workers.some(worker => worker.status !== 'ERRORED') && torrents.length === 0 && (
+      {!isInitialLoading && workers.length > 0 && workers.some(worker => worker.status !== 'ERRORED') && torrents.length === 0 && pendingTorrents.length === 0 && (
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
@@ -1019,7 +1166,7 @@ export default function TorrentsPage() {
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button onClick={() => setIsAddModalOpen(true)}>
+            <Button onClick={() => openAddModal()}>
               <Plus className="h-4 w-4 mr-2" />
               {t('torrents.addTorrent')}
             </Button>
@@ -1030,6 +1177,21 @@ export default function TorrentsPage() {
       {/* Barra de loading acima do conteúdo */}
       {isInitialLoading && (
         <LoadingBar className="mb-4" />
+      )}
+
+      {/* Placeholders otimistas de torrents recém-adicionados (aguardando o WS) */}
+      {!isInitialLoading && pendingTorrents.length > 0 && (
+        <div
+          className={
+            displayMode === "card" || displayMode === "card_b"
+              ? "w-full grid grid-cols-1 md:grid-cols-3 gap-2"
+              : "w-full space-y-2"
+          }
+        >
+          {pendingTorrents.map((pending) => (
+            <TorrentPlaceholderCard key={pending.hash} pending={pending} variant={displayMode} />
+          ))}
+        </div>
       )}
 
       {/* Conteúdo principal - apenas quando há workers funcionais e torrents */}
@@ -1099,7 +1261,7 @@ export default function TorrentsPage() {
                 />
               </>
             ) : (
-              // Card view for desktop
+              // Card view (or dense card_b view) for desktop
               <>
                 <TorrentSortingHeader
                   sortType={sortType}
@@ -1125,6 +1287,7 @@ export default function TorrentsPage() {
                   selectedIds={selectedIds}
                   onToggleSelect={handleToggleSelect}
                   onRequestDelete={openDeleteModal}
+                  variant={displayMode === "card_b" ? "card_b" : "card"}
                 />
 
                 {/* Lazy loading sentinel for card view */}
@@ -1162,6 +1325,7 @@ export default function TorrentsPage() {
               selectedIds={selectedIds}
               onToggleSelect={handleToggleSelect}
               onRequestDelete={openDeleteModal}
+              variant={displayMode === "card_b" ? "card_b" : "card"}
             />
 
             {/* Lazy loading sentinel for mobile */}
@@ -1187,17 +1351,6 @@ export default function TorrentsPage() {
           onForceRecheck={handleForceRecheckTorrent}
           onSetLocation={handleSetLocationTorrent}
           onUpdate={handleMetadataUpdate}
-        />
-      )}
-
-      {/* Modal de adicionar torrent - só renderiza quando aberto */}
-      {isAddModalOpen && (
-        <AddTorrentModal
-          isOpen={isAddModalOpen}
-          onClose={() => setIsAddModalOpen(false)}
-          onCreateTorrent={handleCreateTorrent}
-          onFinalizeTorrent={handleFinalizeTorrent}
-          workers={workers}
         />
       )}
 
@@ -1233,26 +1386,20 @@ export default function TorrentsPage() {
         />
       )}
 
-      {/* Floating selection counter - shows when selection mode is active */}
+      {/* Floating bulk action bar - shows when selection mode is active */}
       {selectionMode && (
-        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-5 duration-300">
-          <div className="bg-primary text-primary-foreground border border-primary/20 rounded-full px-5 py-2.5 shadow-lg flex items-center gap-3">
-            <CheckSquare className="h-4 w-4" />
-            <span className="text-sm font-medium">
-              <span className="font-semibold">{selectedIds.size}</span>
-              <span className="opacity-90"> {t('torrents.selection.selected')}</span>
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 rounded-full hover:bg-primary-foreground/20 ml-1"
-              onClick={handleToggleSelectAll}
-              aria-label={t('torrents.selection.disable')}
-            >
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </div>
+        <BulkActionBar
+          selectedCount={selectedIds.size}
+          categories={categories}
+          availableTags={availableTags}
+          onAction={handleBulkAction}
+          onLimits={handleBulkLimits}
+          onDelete={() => openDeleteModal(Array.from(selectedIds))}
+          onClear={() => {
+            setSelectionMode(false);
+            setSelectedIds(new Set());
+          }}
+        />
       )}
 
       {/* Filter Sidebar - só renderiza quando aberto */}

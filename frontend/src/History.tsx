@@ -20,6 +20,13 @@ export default function HistoryPage() {
   const [limit] = useState(50);
   const [filterType, setFilterType] = useState<FilterType>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>("");
+
+  // Debounce the search box so typing doesn't fire a request per keystroke.
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedSearchQuery(searchQuery), 350);
+    return () => clearTimeout(handle);
+  }, [searchQuery]);
 
   const loadEvents = useCallback(async () => {
     setIsLoading(true);
@@ -31,8 +38,8 @@ export default function HistoryPage() {
         url += `&type=${encodeURIComponent(filterType)}`;
       }
 
-      if (searchQuery) {
-        url += `&search=${encodeURIComponent(searchQuery)}`;
+      if (debouncedSearchQuery) {
+        url += `&search=${encodeURIComponent(debouncedSearchQuery)}`;
       }
 
       const response = await api.get<EventsResponse>(url);
@@ -46,7 +53,7 @@ export default function HistoryPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, limit, filterType, searchQuery]);
+  }, [page, limit, filterType, debouncedSearchQuery]);
 
   useEffect(() => {
     loadEvents();

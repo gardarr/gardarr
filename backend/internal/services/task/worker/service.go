@@ -9,6 +9,7 @@ import (
 	"github.com/jfxdev/gardarr/internal/interfaces"
 	repository "github.com/jfxdev/gardarr/internal/repository/task/worker"
 	"github.com/jfxdev/gardarr/internal/schemas"
+	"github.com/jfxdev/gardarr/pkg/torrentfile"
 	"github.com/jfxdev/go-qbt"
 )
 
@@ -63,6 +64,28 @@ func (s *service) CreateTask(ctx context.Context, schema schemas.TaskCreateSchem
 	return s.repository.Add(schema)
 }
 
+// CreateTaskFromFile adds a torrent from an uploaded .torrent file. Dedupe by
+// info-hash mirrors CreateTask's magnet flow.
+func (s *service) CreateTaskFromFile(ctx context.Context, fileName string, fileData []byte, schema schemas.TaskCreateFromFileSchema) (*entities.Task, error) {
+	hash, err := torrentfile.InfoHash(fileData)
+	if err != nil {
+		return nil, err
+	}
+
+	list, err := s.repository.List()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, item := range list {
+		if strings.EqualFold(item.Hash, hash) {
+			return item, nil
+		}
+	}
+
+	return s.repository.AddFile(fileName, fileData, schema)
+}
+
 func (s *service) StopTask(ctx context.Context, hash string) error {
 	return s.repository.Stop(hash)
 }
@@ -109,6 +132,10 @@ func (s *service) SetTaskUploadLimit(ctx context.Context, hash string, schema sc
 
 func (s *service) SetTaskTags(ctx context.Context, hash string, schema schemas.TaskSetTagsSchema) error {
 	return s.repository.SetTags(hash, schema.Tags)
+}
+
+func (s *service) AddTaskTags(ctx context.Context, hash string, tags []string) error {
+	return s.repository.AddTags(hash, tags)
 }
 
 func (s *service) SetTaskCategory(ctx context.Context, hash string, schema schemas.TaskSetCategorySchema) error {

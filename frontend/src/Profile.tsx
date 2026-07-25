@@ -7,9 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { User, Monitor, Globe, Moon, Sun, LogOut, Lock, Eye, EyeOff, Settings, Palette, Minimize2, Check, Sparkles } from "lucide-react";
+import { User, Monitor, Globe, Moon, Sun, LogOut, Lock, Eye, EyeOff, Settings, Palette, Check, Sparkles } from "lucide-react";
 import { api } from "@/lib/api";
-import { preferencesService } from "@/services/preferences";
+import { preferencesService, type UserPreferences } from "@/services/preferences";
 import { toast } from "sonner";
 import { ColorPicker } from "@/components/ColorPicker";
 
@@ -117,9 +117,6 @@ export default function ProfilePage() {
   const [passwordSuccess, setPasswordSuccess] = useState("");
 
   // Preferences state
-  const [displayMode, setDisplayMode] = useState<"table" | "card" | "list">("card");
-  const [compact, setCompact] = useState(false);
-  const [blurIntensity, setBlurIntensity] = useState(50);
   const [isLoadingPreferences, setIsLoadingPreferences] = useState(false);
 
   // Color Palettes state - consolidated into structured objects for cleaner state management
@@ -182,9 +179,6 @@ export default function ProfilePage() {
     // First try to load from localStorage
     const cached = preferencesService.load();
     if (cached) {
-      setDisplayMode(cached.torrent_display_mode);
-      setCompact(cached.compact);
-      setBlurIntensity(cached.background_image_blur_intensity);
       setPalettes({
         palette1: {
           primary: cached.color_palette_1_primary,
@@ -209,29 +203,8 @@ export default function ProfilePage() {
 
     // Then fetch from API to ensure data is up to date
     try {
-      const response = await api.get<{
-        torrent_display_mode: string;
-        compact: boolean;
-        background_image_blur_intensity: number;
-        active_color_palette: number;
-        color_palette_1_primary: string;
-        color_palette_1_secondary: string;
-        color_palette_1_accent: string;
-        color_palette_1_muted: string;
-        color_palette_2_primary: string;
-        color_palette_2_secondary: string;
-        color_palette_2_accent: string;
-        color_palette_2_muted: string;
-        color_palette_3_primary: string;
-        color_palette_3_secondary: string;
-        color_palette_3_accent: string;
-        color_palette_3_muted: string;
-      }>("/profile/preferences");
+      const response = await api.get<UserPreferences>("/profile/preferences");
       if (response.data) {
-        const displayMode = response.data.torrent_display_mode as "table" | "card" | "list";
-        setDisplayMode(displayMode);
-        setCompact(response.data.compact);
-        setBlurIntensity(response.data.background_image_blur_intensity);
         setPalettes({
           palette1: {
             primary: response.data.color_palette_1_primary,
@@ -253,24 +226,7 @@ export default function ProfilePage() {
           }
         });
         // Save to localStorage
-        preferencesService.save({
-          torrent_display_mode: displayMode,
-          compact: response.data.compact,
-          background_image_blur_intensity: response.data.background_image_blur_intensity,
-          active_color_palette: response.data.active_color_palette,
-          color_palette_1_primary: response.data.color_palette_1_primary,
-          color_palette_1_secondary: response.data.color_palette_1_secondary,
-          color_palette_1_accent: response.data.color_palette_1_accent,
-          color_palette_1_muted: response.data.color_palette_1_muted,
-          color_palette_2_primary: response.data.color_palette_2_primary,
-          color_palette_2_secondary: response.data.color_palette_2_secondary,
-          color_palette_2_accent: response.data.color_palette_2_accent,
-          color_palette_2_muted: response.data.color_palette_2_muted,
-          color_palette_3_primary: response.data.color_palette_3_primary,
-          color_palette_3_secondary: response.data.color_palette_3_secondary,
-          color_palette_3_accent: response.data.color_palette_3_accent,
-          color_palette_3_muted: response.data.color_palette_3_muted,
-        });
+        preferencesService.save(response.data);
       }
     } catch (error) {
       console.error("Failed to load preferences:", error);
@@ -284,30 +240,9 @@ export default function ProfilePage() {
     setIsLoadingPreferences(true);
     try {
       const payload = { [key]: value };
-      const response = await api.put<{
-        torrent_display_mode: string;
-        compact: boolean;
-        background_image_blur_intensity: number;
-        active_color_palette: number;
-        color_palette_1_primary: string;
-        color_palette_1_secondary: string;
-        color_palette_1_accent: string;
-        color_palette_1_muted: string;
-        color_palette_2_primary: string;
-        color_palette_2_secondary: string;
-        color_palette_2_accent: string;
-        color_palette_2_muted: string;
-        color_palette_3_primary: string;
-        color_palette_3_secondary: string;
-        color_palette_3_accent: string;
-        color_palette_3_muted: string;
-      }>("/profile/preferences", payload);
+      const response = await api.put<UserPreferences>("/profile/preferences", payload);
 
       if (response.data) {
-        const displayMode = response.data.torrent_display_mode as "table" | "card" | "list";
-        setDisplayMode(displayMode);
-        setCompact(response.data.compact);
-        setBlurIntensity(response.data.background_image_blur_intensity);
         setPalettes({
           palette1: {
             primary: response.data.color_palette_1_primary,
@@ -329,46 +264,12 @@ export default function ProfilePage() {
           }
         });
 
-        preferencesService.save({
-          torrent_display_mode: displayMode,
-          compact: response.data.compact,
-          background_image_blur_intensity: response.data.background_image_blur_intensity,
-          active_color_palette: response.data.active_color_palette,
-          color_palette_1_primary: response.data.color_palette_1_primary,
-          color_palette_1_secondary: response.data.color_palette_1_secondary,
-          color_palette_1_accent: response.data.color_palette_1_accent,
-          color_palette_1_muted: response.data.color_palette_1_muted,
-          color_palette_2_primary: response.data.color_palette_2_primary,
-          color_palette_2_secondary: response.data.color_palette_2_secondary,
-          color_palette_2_accent: response.data.color_palette_2_accent,
-          color_palette_2_muted: response.data.color_palette_2_muted,
-          color_palette_3_primary: response.data.color_palette_3_primary,
-          color_palette_3_secondary: response.data.color_palette_3_secondary,
-          color_palette_3_accent: response.data.color_palette_3_accent,
-          color_palette_3_muted: response.data.color_palette_3_muted,
-        });
+        preferencesService.save(response.data);
 
         // Dispatch custom event to notify other components
         window.dispatchEvent(new Event('preferencesUpdated'));
 
-        // Show success feedback based on preference changed
-        let message = t("profile.display.preferencesSaved");
-        if (key === "torrent_display_mode") {
-          const modeKeys: Record<string, string> = {
-            table: "profile.display.modes.table",
-            card: "profile.display.modes.card",
-            list: "profile.display.modes.list"
-          };
-          const modeKey = modeKeys[value as string];
-          const modeName = modeKey ? t(modeKey) : (value as string);
-          message = t("profile.display.displayModeChanged", { mode: modeName });
-        } else if (key === "compact") {
-          message = value ? t("profile.display.compactModeEnabled") : t("profile.display.compactModeDisabled");
-        } else if (key === "background_image_blur_intensity") {
-          message = t("profile.display.blurIntensityUpdated", { value: value as number });
-        }
-
-        toast.success(message, {
+        toast.success(t("profile.display.preferencesSaved"), {
           icon: <Check className="h-4 w-4" />,
           duration: 2000,
         });
@@ -602,178 +503,6 @@ export default function ProfilePage() {
               description={t("profile.display.description")}
             />
             <CardContent className="space-y-6">
-              {/* Torrent Display Mode */}
-              <div className="space-y-4">
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">
-                    {t("profile.display.torrentDisplayMode")}
-                  </label>
-                  <p className="text-sm text-muted-foreground">
-                    {t("profile.display.torrentDisplayModeDesc")}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  {/* Table Mode */}
-                  <button
-                    onClick={() => updatePreference("torrent_display_mode", "table")}
-                    disabled={isLoadingPreferences}
-                    className={`relative p-4 rounded-lg border-2 transition-all hover:border-primary/50 ${displayMode === "table"
-                      ? "border-primary bg-primary/5"
-                      : "border-border"
-                      } disabled:opacity-50 disabled:cursor-not-allowed`}
-                  >
-                    <div className="space-y-2">
-                      <div className="font-medium text-sm">Table</div>
-                      <div className="space-y-1.5">
-                        <div className="h-2 bg-primary/20 rounded w-full"></div>
-                        <div className="h-2 bg-primary/20 rounded w-full"></div>
-                        <div className="h-2 bg-primary/20 rounded w-full"></div>
-                      </div>
-                    </div>
-                    {displayMode === "table" && (
-                      <div className="absolute top-2 right-2 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
-                        <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                    )}
-                  </button>
-
-                  {/* Card Mode */}
-                  <button
-                    onClick={() => updatePreference("torrent_display_mode", "card")}
-                    disabled={isLoadingPreferences}
-                    className={`relative p-4 rounded-lg border-2 transition-all hover:border-primary/50 ${displayMode === "card"
-                      ? "border-primary bg-primary/5"
-                      : "border-border"
-                      } disabled:opacity-50 disabled:cursor-not-allowed`}
-                  >
-                    <div className="space-y-2">
-                      <div className="font-medium text-sm">Card</div>
-                      <div className="space-y-2">
-                        <div className="h-6 bg-primary/20 rounded w-full"></div>
-                        <div className="h-6 bg-primary/20 rounded w-full"></div>
-                      </div>
-                    </div>
-                    {displayMode === "card" && (
-                      <div className="absolute top-2 right-2 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
-                        <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                    )}
-                  </button>
-
-                  {/* List Mode */}
-                  <button
-                    onClick={() => updatePreference("torrent_display_mode", "list")}
-                    disabled={isLoadingPreferences}
-                    className={`relative p-4 rounded-lg border-2 transition-all hover:border-primary/50 ${displayMode === "list"
-                      ? "border-primary bg-primary/5"
-                      : "border-border"
-                      } disabled:opacity-50 disabled:cursor-not-allowed`}
-                  >
-                    <div className="space-y-2">
-                      <div className="font-medium text-sm">List</div>
-                      <div className="space-y-1.5">
-                        <div className="flex gap-1">
-                          <div className="h-2 w-2 bg-primary/20 rounded"></div>
-                          <div className="h-2 flex-1 bg-primary/20 rounded"></div>
-                        </div>
-                        <div className="flex gap-1">
-                          <div className="h-2 w-2 bg-primary/20 rounded"></div>
-                          <div className="h-2 flex-1 bg-primary/20 rounded"></div>
-                        </div>
-                        <div className="flex gap-1">
-                          <div className="h-2 w-2 bg-primary/20 rounded"></div>
-                          <div className="h-2 flex-1 bg-primary/20 rounded"></div>
-                        </div>
-                      </div>
-                    </div>
-                    {displayMode === "list" && (
-                      <div className="absolute top-2 right-2 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
-                        <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Compact Mode Toggle */}
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Minimize2 className="h-4 w-4 text-muted-foreground" />
-                    <label className="text-sm font-medium">
-                      {t("profile.display.compactMode")}
-                    </label>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {t("profile.display.compactModeDesc")}
-                  </p>
-                </div>
-                <button
-                  onClick={() => updatePreference("compact", !compact)}
-                  disabled={isLoadingPreferences}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${compact ? "bg-primary" : "bg-muted"
-                    }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${compact ? "translate-x-6" : "translate-x-1"
-                      }`}
-                  />
-                </button>
-              </div>
-
-              <Separator />
-
-              {/* Background Image Blur Intensity */}
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Palette className="h-4 w-4 text-muted-foreground" />
-                    <label className="text-sm font-medium">
-                      {t("profile.display.blurIntensity")}
-                    </label>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {t("profile.display.blurIntensityDesc")}
-                  </p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={blurIntensity}
-                    onChange={(e) => {
-                      const value = Number.parseInt(e.target.value, 10);
-                      setBlurIntensity(value);
-                    }}
-                    onMouseUp={(e) => {
-                      const value = Number.parseInt((e.target as HTMLInputElement).value, 10);
-                      updatePreference("background_image_blur_intensity", value);
-                    }}
-                    onTouchEnd={(e) => {
-                      const value = Number.parseInt((e.target as HTMLInputElement).value, 10);
-                      updatePreference("background_image_blur_intensity", value);
-                    }}
-                    disabled={isLoadingPreferences}
-                    className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-0"
-                  />
-                  <span className="text-sm font-medium text-muted-foreground min-w-[3ch]">
-                    {blurIntensity}
-                  </span>
-                </div>
-              </div>
-
-              <Separator />
-
               {/* Color Palettes */}
               <div className="space-y-4">
                 <div className="space-y-1">

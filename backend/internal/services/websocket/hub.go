@@ -13,6 +13,7 @@ import (
 	"github.com/jfxdev/gardarr/internal/models"
 	"github.com/jfxdev/gardarr/internal/services/events"
 	"github.com/jfxdev/gardarr/internal/services/workermanager"
+	"github.com/jfxdev/gardarr/pkg/env"
 )
 
 // wsEventTypeFor translates an internal entities.Event.Type (dotted, lowercase)
@@ -99,11 +100,12 @@ func NewHub(eventSvc *events.Service, workerSvc *workermanager.Service) *Hub {
 
 // Start begins processing hub registration and broadcast events
 func (h *Hub) Start(ctx context.Context) {
-	// Subscribe to internal events
-	eventChan := h.eventSvc.Subscribe(100)
+	// Subscribe to internal events (0 = default buffer, EVENT_SUBSCRIBER_BUFFER)
+	eventChan := h.eventSvc.Subscribe(0)
 
 	// Ticker for sending WORKER_STATS_UPDATED periodically
-	statsTicker := time.NewTicker(2 * time.Second)
+	statsInterval := env.Get("WS_STATS_INTERVAL").Default("2s").ValueDuration()
+	statsTicker := time.NewTicker(statsInterval)
 	defer statsTicker.Stop()
 
 	for {
@@ -230,22 +232,36 @@ func (h *Hub) broadcastWorkerStats(ctx context.Context) {
 		return
 	}
 
-	// Fetch workers
-	workers, err := h.workerSvc.ListWorkers()
+	// Fetch workers without the per-worker login/health-check ListWorkers does:
+	// GetWorkerTasksStats already fails (and suppresses the broadcast) when a
+	// worker is unreachable, so the extra availability probe per tick is waste.
+	workers, err := h.workerSvc.ListWorkersBasic()
 	if err != nil {
 		return
 	}
 
+	// Fetch stats per worker in parallel with an individual timeout so one
+	// slow/hung worker doesn't delay or block stats for the others.
+	var wg sync.WaitGroup
 	for _, w := range workers {
-		stats, err := h.workerSvc.GetWorkerTasksStats(ctx, w.UUID.String())
-		if err == nil {
+		wg.Add(1)
+		go func(workerID string) {
+			defer wg.Done()
+			statsCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			defer cancel()
+
+			stats, err := h.workerSvc.GetWorkerTasksStats(statsCtx, workerID)
+			if err != nil {
+				return
+			}
 			h.broadcastEvent(&WSEvent{
 				EventType: "WORKER_STATS_UPDATED",
-				WorkerID:  w.UUID.String(),
+				WorkerID:  workerID,
 				Payload:   stats,
 			})
-		}
+		}(w.UUID.String())
 	}
+	wg.Wait()
 }
 
 func (h *Hub) broadcastEvent(event *WSEvent) {

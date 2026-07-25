@@ -16,11 +16,7 @@ import {
   Search,
   Loader2,
   RefreshCw,
-  HardDrive,
-  Wifi,
-  Activity,
   Check,
-  AlertTriangle
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -29,16 +25,17 @@ import type { Worker, UpdateWorkerRequest } from "./types/worker";
 import { toast } from "sonner";
 import { WorkerIcon } from "./components/ui/WorkerIcon";
 import { availableIcons, availableColors } from "./utils/workerUtils";
-import { QBittorrentIcon } from "./components/ui/QBittorrentIcon";
 import { WorkerDetailsModal } from "./components/WorkerDetailsModal";
 import { AddWorkerModal } from "./components/AddWorkerModal";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./components/ui/tooltip";
-import { WorkerErrorBadge } from "./components/WorkerErrorDisplay";
+import { WorkerCard } from "./components/WorkerCard";
 
 function Workers() {
   const { t } = useTranslation();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(true);
+  // Bumped whenever the user forces a refresh, so every already-mounted
+  // WorkerCard re-checks its own live status without a full remount.
+  const [statusRefreshToken, setStatusRefreshToken] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
@@ -60,7 +57,9 @@ function Workers() {
   const loadWorkers = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await workerService.listWorkers();
+      // DB-only fetch - no live qBittorrent check. Each WorkerCard checks
+      // its own live status independently once rendered.
+      const response = await workerService.listWorkersBasic();
 
       if (response.error) {
         toast.error(response.error);
@@ -78,6 +77,11 @@ function Workers() {
   useEffect(() => {
     loadWorkers();
   }, [loadWorkers]);
+
+  const handleRefresh = () => {
+    loadWorkers();
+    setStatusRefreshToken(token => token + 1);
+  };
 
 
   const confirmDeleteWorker = (worker: Worker) => {
@@ -190,14 +194,6 @@ function Workers() {
     w.address.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
 
 
   return (
@@ -215,7 +211,7 @@ function Workers() {
           </div>
         </div>
         <div className="flex gap-2 w-full sm:w-auto justify-between sm:justify-end">
-          <Button onClick={loadWorkers} variant="outline" size="sm">
+          <Button onClick={handleRefresh} variant="outline" size="sm">
             <RefreshCw className="h-4 w-4 mr-2" />
             {t('workers.refresh')}
           </Button>
@@ -273,110 +269,12 @@ function Workers() {
         <>
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {filteredWorkers.map((worker) => (
-              <Card
+              <WorkerCard
                 key={worker.uuid}
-                className={`relative cursor-pointer hover:container-content-background/50 transition-colors ${worker.status === 'ERRORED' ? 'border border-red-500/30' : ''
-                  } ${worker.status === 'INITIALIZING' ? 'border border-yellow-500/30' : ''}`}
-                onClick={() => showWorkerDetails(worker)}
-              >
-                <CardContent className="p-0">
-                  <div className="flex">
-                    {/* Main Content */}
-                    <div className="flex-1 p-4">
-                      <div className="flex gap-3 items-center">
-                        {/* Icon */}
-                        <WorkerIcon
-                          iconName={worker.icon}
-                          color={worker.color}
-                          size="lg"
-                          className="w-16 h-16 rounded-lg"
-                        />
-
-                        {/* Content */}
-                        <div className="flex-1 min-w-0 space-y-1.5">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              {worker.status === 'ACTIVE' && (
-                                <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] ml-0.5"></div>
-                              )}
-                              {worker.status === 'ERRORED' && (
-                                <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)] ml-0.5"></div>
-                              )}
-                              {worker.status === 'INITIALIZING' && (
-                                <div className="w-2 h-2 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.6)] ml-0.5 animate-pulse"></div>
-                              )}
-                              <h3 className="font-semibold text-base truncate">{worker.name}</h3>
-                              {worker.status === 'ERRORED' && (
-                                <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0" />
-                              )}
-                              {worker.status === 'INITIALIZING' && (
-                                <Loader2 className="h-4 w-4 text-yellow-500 flex-shrink-0 animate-spin" />
-                              )}
-                            </div>
-                            <p className="text-xs text-muted-foreground flex items-center gap-2">
-                              <Wifi className="h-3 w-3" />
-                              <span className="truncate">{worker.address}</span>
-                            </p>
-                          </div>
-
-                          <WorkerErrorBadge worker={worker} />
-
-                          {worker.instance && worker.status === 'ACTIVE' && (
-                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                              <div className="flex items-center gap-1">
-                                <HardDrive className="h-3 w-3" />
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span className="cursor-help">{formatBytes(worker.instance.server.free_space_on_disk)}</span>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>{t('workers.freeSpaceOnDisk', 'Free Space on Disk')}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              </div>
-                              <div className="h-3 w-px bg-border"></div>
-                              <div className="flex items-center gap-1">
-                                <Activity className="h-3 w-3" />
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span className="cursor-help">{worker.instance.transfer.global_ratio.toFixed(2)}</span>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>{t('workers.globalRatio', 'Global Ratio')}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Icons - Always displayed on the right */}
-                        <div className="flex-shrink-0 flex items-center gap-2">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <div className="cursor-help">
-                                  <QBittorrentIcon
-                                    size="lg"
-                                    className="w-8 h-8 text-muted-foreground/60"
-                                  />
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>qBittorrent</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                worker={worker}
+                statusRefreshToken={statusRefreshToken}
+                onShowDetails={showWorkerDetails}
+              />
             ))}
           </div>
 

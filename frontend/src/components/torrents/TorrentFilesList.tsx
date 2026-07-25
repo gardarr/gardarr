@@ -14,6 +14,7 @@ interface TorrentFilesListProps {
   onValueChange?: (value: string) => void;
   className?: string;
   showAccordion?: boolean;
+  defaultOpen?: boolean;
   title?: string;
 }
 
@@ -33,7 +34,8 @@ export function TorrentFilesList({
   onValueChange,
   className = "",
   showAccordion = true,
-  title = "Lista de Arquivos"
+  defaultOpen = false,
+  title
 }: TorrentFilesListProps) {
   const [files, setFiles] = useState<TaskFile[]>([]);
   const [loading, setLoading] = useState(false);
@@ -75,6 +77,15 @@ export function TorrentFilesList({
     }
   };
 
+  // Without accordion (or with it already expanded) there is no expand event,
+  // so load as soon as mounted
+  useEffect(() => {
+    if ((!showAccordion || defaultOpen) && !hasLoaded && !loading) {
+      loadFiles();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showAccordion, defaultOpen, workerId, taskId]);
+
   const handleValueChange = (value: string) => {
     if (value === "files" && !hasLoaded && !loading) {
       loadFiles();
@@ -96,7 +107,7 @@ export function TorrentFilesList({
       return (
         <div className="flex items-center justify-center py-8">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          <span className="ml-2 text-sm text-muted-foreground">Carregando arquivos...</span>
+          <span className="ml-2 text-sm text-muted-foreground">{t('torrentDetails.files.loading', { defaultValue: 'Carregando arquivos...' })}</span>
         </div>
       );
     }
@@ -105,7 +116,7 @@ export function TorrentFilesList({
       return (
         <div className="text-center py-8">
           <div className="text-sm text-red-600 dark:text-red-400 mb-2">
-            Erro ao carregar arquivos
+            {t('torrentDetails.files.loadError', { defaultValue: 'Erro ao carregar arquivos' })}
           </div>
           <div className="text-xs text-muted-foreground mb-4">
             {error}
@@ -116,7 +127,7 @@ export function TorrentFilesList({
             onClick={handleRetry}
             className="h-8"
           >
-            Tentar novamente
+            {t('torrentDetails.files.retry', { defaultValue: 'Tentar novamente' })}
           </Button>
         </div>
       );
@@ -127,7 +138,7 @@ export function TorrentFilesList({
         <div className="text-center py-8">
           <File className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
           <div className="text-sm text-muted-foreground">
-            Nenhum arquivo encontrado
+            {t('torrentDetails.files.empty', { defaultValue: 'Nenhum arquivo encontrado' })}
           </div>
         </div>
       );
@@ -153,7 +164,7 @@ export function TorrentFilesList({
                         />
                       </TooltipTrigger>
                       <TooltipContent>
-                        {t('torrents.status.uploading')}
+                        {t('taskStatus.UPLOADING')}
                       </TooltipContent>
                     </Tooltip>
                   ) : (
@@ -188,17 +199,17 @@ export function TorrentFilesList({
   if (showAccordion) {
     return (
       <div className={`space-y-2 ${className}`}>
-        <h3 className="text-sm font-medium text-muted-foreground">Arquivos do Torrent</h3>
-        
-        <Accordion type="single" collapsible onValueChange={handleValueChange}>
+        <h3 className="text-sm font-medium text-muted-foreground">{t('torrentDetails.files.heading', { defaultValue: 'Arquivos do Torrent' })}</h3>
+
+        <Accordion type="single" collapsible defaultValue={defaultOpen ? "files" : undefined} onValueChange={handleValueChange}>
           <AccordionItem value="files">
             <AccordionTrigger className="hover:no-underline">
               <div className="flex items-center gap-2">
                 <File className="h-4 w-4" />
-                <span>{title}</span>
+                <span>{title ?? t('torrentDetails.files.title', { defaultValue: 'Lista de Arquivos' })}</span>
                 {files.length > 0 && (
                   <span className="text-xs text-muted-foreground">
-                    ({files.length} arquivo{files.length !== 1 ? 's' : ''})
+                    ({t('torrentDetails.files.count', { count: files.length, defaultValue: `${files.length} arquivos` })})
                   </span>
                 )}
               </div>
