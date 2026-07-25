@@ -23,7 +23,7 @@ export interface RequestConfig {
 }
 
 class ApiClient {
-  private baseURL: string;
+  private readonly baseURL: string;
 
   constructor(baseURL: string = API_BASE_URL) {
     this.baseURL = baseURL;

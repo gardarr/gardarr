@@ -122,6 +122,16 @@ function mapTaskToTorrent(task: Task, categories: Category[]): Torrent {
 
 // Desktop table moved to components/TorrentsTable
 
+// Resolves `task.worker` from the loaded workers list when it's still
+// missing (e.g. a TORRENT_ADDED event that arrived before the first
+// loadWorkers finished). Returns the same reference when nothing changed.
+function reattachTaskWorker(task: Task, workers: Worker[]): Task {
+  if (task.worker) return task;
+  const worker = workers.find((w) => w.uuid === task.worker_id);
+  if (!worker) return task;
+  return { ...task, worker };
+}
+
 export default function TorrentsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -327,11 +337,9 @@ export default function TorrentsPage() {
     setOriginalTasks(prev => {
       let changed = false;
       const next = prev.map(task => {
-        if (task.worker) return task;
-        const worker = workers.find(w => w.uuid === task.worker_id);
-        if (!worker) return task;
-        changed = true;
-        return { ...task, worker };
+        const joined = reattachTaskWorker(task, workers);
+        if (joined !== task) changed = true;
+        return joined;
       });
       return changed ? next : prev;
     });
@@ -533,6 +541,23 @@ export default function TorrentsPage() {
 
     setSelectedTorrent(prev =>
       prev && prev.hash === metadata.task_hash ? { ...prev, metadata } : prev
+    );
+  }, []);
+
+  // Aplica o resultado de uma edição de categoria/tags direto na lista e no
+  // modal aberto, pelas mesmas razões do handleMetadataUpdate acima: a
+  // mudança não dispara TORRENT_STATE_CHANGE de imediato.
+  const handleCategoryTagsUpdate = useCallback((torrentId: string, patch: { category?: string; tags?: string[] }) => {
+    setOriginalTasks(prev => {
+      const index = prev.findIndex(t => t.id === torrentId);
+      if (index < 0) return prev;
+      const next = [...prev];
+      next[index] = { ...next[index], ...patch };
+      return next;
+    });
+
+    setSelectedTorrent(prev =>
+      prev && prev.id === torrentId ? { ...prev, ...patch } : prev
     );
   }, []);
 
@@ -960,6 +985,7 @@ export default function TorrentsPage() {
                 aria-label={t('torrents.addTorrent')}
               >
                 <button
+                  type="button"
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground"
                   onClick={() => {
                     setIsAddDropdownOpen(false);
@@ -1351,6 +1377,7 @@ export default function TorrentsPage() {
           onForceRecheck={handleForceRecheckTorrent}
           onSetLocation={handleSetLocationTorrent}
           onUpdate={handleMetadataUpdate}
+          onCategoryTagsUpdate={handleCategoryTagsUpdate}
         />
       )}
 

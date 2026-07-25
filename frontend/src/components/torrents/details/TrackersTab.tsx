@@ -71,7 +71,7 @@ export function TrackersTab({ torrent }: TrackersTabProps) {
                 <span className="font-medium">{t("torrentDetails.magnet.trackers", { defaultValue: "Trackers:" })}</span>
                 <ul className="space-y-1">
                   {torrent.magnet_link.trackers.map((tracker, index) => (
-                    <li key={index} className="flex items-center justify-between gap-2 p-2 container-content-background/50 rounded-md border">
+                    <li key={tracker} className="flex items-center justify-between gap-2 p-2 container-content-background/50 rounded-md border">
                       <span className="font-mono break-all text-muted-foreground">{tracker}</span>
                       {copyButton(tracker, `tracker-${index}`)}
                     </li>

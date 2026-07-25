@@ -232,6 +232,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
 
             const logoutItem = (
               <button
+                type="button"
                 onClick={() => {
                   handleLogout();
                   if (isMobile) {

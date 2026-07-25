@@ -47,7 +47,6 @@ export const TorrentCardCompact = memo(function TorrentCardCompact({
   selectedIds,
   onRequestDelete,
 }: Readonly<TorrentCardCompactProps>) {
-  void onMetadataUpdate;
   const blurIntensity = useTorrentBlurIntensity();
   const handleCardClick = useTorrentOpenHandler({
     torrentId: torrent.id,

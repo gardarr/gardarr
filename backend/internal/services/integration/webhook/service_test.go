@@ -349,6 +349,7 @@ func TestSendEventWithRetryRespectsContextCancellation(t *testing.T) {
 	svc.baseBackoff = time.Hour // would block forever if cancellation were ignored
 
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	go func() {
 		time.Sleep(50 * time.Millisecond)
 		cancel()

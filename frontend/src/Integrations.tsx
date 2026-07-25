@@ -23,6 +23,28 @@ interface ProviderIntegrationResponse {
   updated_at?: string;
 }
 
+type ProviderConfigStatus = {
+  isLoading: boolean;
+  configured: boolean;
+  enabled: boolean;
+};
+
+function getProviderStatusText(
+  t: (key: string) => string,
+  integrationId: string,
+  providerConfig: ProviderConfigStatus
+): string {
+  if (providerConfig.isLoading) {
+    return t('common.loading');
+  }
+  if (!providerConfig.configured) {
+    return t(`integrations.${integrationId}.status.notConfigured`);
+  }
+  return providerConfig.enabled
+    ? t(`integrations.${integrationId}.status.enabled`)
+    : t(`integrations.${integrationId}.status.disabled`);
+}
+
 export default function IntegrationsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -369,11 +391,7 @@ export default function IntegrationsPage() {
                     {integration.description}
                   </CardDescription>
                   <p className="mb-4 text-sm text-muted-foreground">
-                    {providerConfig.isLoading
-                      ? t('common.loading')
-                      : providerConfig.configured
-                        ? (providerConfig.enabled ? t(`integrations.${integration.id}.status.enabled`) : t(`integrations.${integration.id}.status.disabled`))
-                        : t(`integrations.${integration.id}.status.notConfigured`)}
+                    {getProviderStatusText(t, integration.id, providerConfig)}
                   </p>
                   <Button
                     variant="outline"

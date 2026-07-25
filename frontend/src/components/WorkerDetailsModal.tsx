@@ -200,13 +200,19 @@ export function WorkerDetailsModal({
 
   if (!isOpen) return null;
 
+  let dialogTitleText = t('workers.workerDetails');
+  if (worker?.name) {
+    dialogTitleText = `${t('workers.workerDetails')} - ${worker.name}`;
+  } else if (!worker && loading) {
+    dialogTitleText = t('workers.loadingWorkerDetails');
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-full max-w-2xl h-[90vh] max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            {worker ? (worker.name ? `${t('workers.workerDetails')} - ${worker.name}` : t('workers.workerDetails')) :
-              loading ? t('workers.loadingWorkerDetails') : t('workers.workerDetails')}
+            {dialogTitleText}
             {/* Background live-status refresh indicator - data below is already
                 visible from the DB, this just signals a recheck is in flight */}
             {worker && loading && (

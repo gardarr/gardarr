@@ -47,7 +47,7 @@ func InfoHashes(data []byte) ([]string, error) {
 
 		if string(key) == "info" {
 			info := data[valueStart:valueEnd]
-			v1Sum := sha1.Sum(info)
+			v1Sum := sha1.Sum(info) // NOSONAR go:S4790 -- BitTorrent v1 info-hash is defined by the protocol as SHA-1, not a sensitive-context digest
 			hashes := []string{hex.EncodeToString(v1Sum[:])}
 			if isV2Info(info) {
 				v2Sum := sha256.Sum256(info)

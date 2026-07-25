@@ -574,24 +574,28 @@ export default function ProfilePage() {
                         </div>
                         <div className="p-3 flex flex-wrap gap-2">
                           <button
+                            type="button"
                             className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
                             style={{ backgroundColor: palettes.palette1.primary, color: '#fff' }}
                           >
                             {t("profile.display.primary")}
                           </button>
                           <button
+                            type="button"
                             className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
                             style={{ backgroundColor: palettes.palette1.secondary, color: '#fff' }}
                           >
                             {t("profile.display.secondary")}
                           </button>
                           <button
+                            type="button"
                             className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
                             style={{ backgroundColor: palettes.palette1.accent, color: '#fff' }}
                           >
                             {t("profile.display.accent")}
                           </button>
                           <button
+                            type="button"
                             className="px-3 py-1.5 text-xs font-medium rounded-md border transition-opacity hover:opacity-80"
                             style={{ backgroundColor: palettes.palette1.muted + '20', color: palettes.palette1.muted, borderColor: palettes.palette1.muted }}
                           >
@@ -658,24 +662,28 @@ export default function ProfilePage() {
                         </div>
                         <div className="p-3 flex flex-wrap gap-2">
                           <button
+                            type="button"
                             className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
                             style={{ backgroundColor: palettes.palette2.primary, color: '#fff' }}
                           >
                             {t("profile.display.primary")}
                           </button>
                           <button
+                            type="button"
                             className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
                             style={{ backgroundColor: palettes.palette2.secondary, color: '#fff' }}
                           >
                             {t("profile.display.secondary")}
                           </button>
                           <button
+                            type="button"
                             className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
                             style={{ backgroundColor: palettes.palette2.accent, color: '#fff' }}
                           >
                             {t("profile.display.accent")}
                           </button>
                           <button
+                            type="button"
                             className="px-3 py-1.5 text-xs font-medium rounded-md border transition-opacity hover:opacity-80"
                             style={{ backgroundColor: palettes.palette2.muted + '20', color: palettes.palette2.muted, borderColor: palettes.palette2.muted }}
                           >
@@ -742,24 +750,28 @@ export default function ProfilePage() {
                         </div>
                         <div className="p-3 flex flex-wrap gap-2">
                           <button
+                            type="button"
                             className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
                             style={{ backgroundColor: palettes.palette3.primary, color: '#fff' }}
                           >
                             {t("profile.display.primary")}
                           </button>
                           <button
+                            type="button"
                             className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
                             style={{ backgroundColor: palettes.palette3.secondary, color: '#fff' }}
                           >
                             {t("profile.display.secondary")}
                           </button>
                           <button
+                            type="button"
                             className="px-3 py-1.5 text-xs font-medium rounded-md transition-opacity hover:opacity-80"
                             style={{ backgroundColor: palettes.palette3.accent, color: '#fff' }}
                           >
                             {t("profile.display.accent")}
                           </button>
                           <button
+                            type="button"
                             className="px-3 py-1.5 text-xs font-medium rounded-md border transition-opacity hover:opacity-80"
                             style={{ backgroundColor: palettes.palette3.muted + '20', color: palettes.palette3.muted, borderColor: palettes.palette3.muted }}
                           >

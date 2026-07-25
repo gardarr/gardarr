@@ -93,6 +93,7 @@ export function BulkActionBar({
             {categories.map((category) => (
               <button
                 key={category.id}
+                type="button"
                 className="w-full text-left px-3 py-2 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground"
                 onClick={() => {
                   setCategoryOpen(false);
@@ -103,6 +104,7 @@ export function BulkActionBar({
               </button>
             ))}
             <button
+              type="button"
               className="w-full text-left px-3 py-2 text-sm rounded-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               onClick={() => {
                 setCategoryOpen(false);

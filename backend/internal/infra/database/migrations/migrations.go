@@ -629,49 +629,71 @@ func backfillRemovedEventNames(db *gorm.DB) error {
 	}
 
 	for _, ev := range removed {
-		var src models.Event
-		err := db.Where("worker_id = ? AND task_hash = ? AND type <> ? AND metadata LIKE ?",
-			ev.WorkerID, ev.TaskHash, "torrent.removed", `%"name"%`).
-			Order("created_at DESC").
-			First(&src).Error
-		if err != nil {
-			// Sem evento de origem para este hash: mantém como está.
-			continue
-		}
-
-		var srcMeta, evMeta map[string]interface{}
-		if err := json.Unmarshal([]byte(src.Metadata), &srcMeta); err != nil {
-			continue
-		}
-		if ev.Metadata == "" {
-			evMeta = map[string]interface{}{}
-		} else if err := json.Unmarshal([]byte(ev.Metadata), &evMeta); err != nil {
-			continue
-		}
-
-		name, _ := srcMeta["name"].(string)
-		if name == "" {
-			continue
-		}
-		evMeta["name"] = name
-		for _, key := range []string{"category", "size"} {
-			if _, exists := evMeta[key]; !exists {
-				if v, ok := srcMeta[key]; ok {
-					evMeta[key] = v
-				}
-			}
-		}
-
-		merged, err := json.Marshal(evMeta)
-		if err != nil {
-			continue
-		}
-		if err := db.Model(&models.Event{}).
-			Where("uuid = ?", ev.UUID).
-			Update("metadata", string(merged)).Error; err != nil {
+		if err := backfillRemovedEvent(db, ev); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+// backfillRemovedEvent copies name/category/size from the most recent
+// non-removal event for the same task into ev's metadata, if one exists.
+// Any lookup/parse failure just leaves ev as-is rather than failing the
+// whole migration.
+func backfillRemovedEvent(db *gorm.DB, ev models.Event) error {
+	var src models.Event
+	err := db.Where("worker_id = ? AND task_hash = ? AND type <> ? AND metadata LIKE ?",
+		ev.WorkerID, ev.TaskHash, "torrent.removed", `%"name"%`).
+		Order("created_at DESC").
+		First(&src).Error
+	if err != nil {
+		return nil
+	}
+
+	var srcMeta map[string]interface{}
+	if err := json.Unmarshal([]byte(src.Metadata), &srcMeta); err != nil {
+		return nil
+	}
+
+	name, _ := srcMeta["name"].(string)
+	if name == "" {
+		return nil
+	}
+
+	evMeta, err := parseEventMetadata(ev.Metadata)
+	if err != nil {
+		return nil
+	}
+
+	evMeta["name"] = name
+	for _, key := range []string{"category", "size"} {
+		if _, exists := evMeta[key]; !exists {
+			if v, ok := srcMeta[key]; ok {
+				evMeta[key] = v
+			}
+		}
+	}
+
+	merged, err := json.Marshal(evMeta)
+	if err != nil {
+		return nil
+	}
+
+	return db.Model(&models.Event{}).
+		Where("uuid = ?", ev.UUID).
+		Update("metadata", string(merged)).Error
+}
+
+// parseEventMetadata parses an event's metadata JSON, treating an empty
+// string as an empty object rather than a parse error.
+func parseEventMetadata(raw string) (map[string]interface{}, error) {
+	if raw == "" {
+		return map[string]interface{}{}, nil
+	}
+	var meta map[string]interface{}
+	if err := json.Unmarshal([]byte(raw), &meta); err != nil {
+		return nil, err
+	}
+	return meta, nil
 }
