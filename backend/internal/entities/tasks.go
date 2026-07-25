@@ -13,6 +13,8 @@ type Task struct {
 	CompletedAt  *time.Time
 	Name         string
 	Hash         string
+	InfoHashV1   string
+	InfoHashV2   string
 	State        string
 	Category     string
 	Path         string

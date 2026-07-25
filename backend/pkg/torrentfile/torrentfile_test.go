@@ -2,6 +2,7 @@ package torrentfile
 
 import (
 	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"testing"
@@ -19,6 +20,28 @@ func TestInfoHash(t *testing.T) {
 	}
 	if hash != hex.EncodeToString(expected[:]) {
 		t.Errorf("expected %s, got %s", hex.EncodeToString(expected[:]), hash)
+	}
+}
+
+func TestInfoHashesIncludesV2Hash(t *testing.T) {
+	info := "d9:file treede4:name8:test.iso12:piece lengthi16384e12:meta versioni2ee"
+	torrent := []byte(fmt.Sprintf("d8:announce30:http://tracker.example.com/ann4:info%se", info))
+
+	expectedV1 := sha1.Sum([]byte(info))
+	expectedV2 := sha256.Sum256([]byte(info))
+
+	hashes, err := InfoHashes(torrent)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(hashes) != 2 {
+		t.Fatalf("expected v1 and v2 hashes, got %v", hashes)
+	}
+	if hashes[0] != hex.EncodeToString(expectedV1[:]) {
+		t.Errorf("expected v1 %s, got %s", hex.EncodeToString(expectedV1[:]), hashes[0])
+	}
+	if hashes[1] != hex.EncodeToString(expectedV2[:]) {
+		t.Errorf("expected v2 %s, got %s", hex.EncodeToString(expectedV2[:]), hashes[1])
 	}
 }
 

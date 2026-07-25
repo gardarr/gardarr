@@ -97,7 +97,7 @@ func (s *Repository) Add(schema schemas.TaskCreateSchema) (*entities.Task, error
 // magnet flow: the info-hash is parsed locally from the file so the created
 // task can be located for tag application and returned to the caller.
 func (s *Repository) AddFile(fileName string, fileData []byte, schema schemas.TaskCreateFromFileSchema) (*entities.Task, error) {
-	hash, err := torrentfile.InfoHash(fileData)
+	hashes, err := torrentfile.InfoHashes(fileData)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse torrent file")
 	}
@@ -119,7 +119,7 @@ func (s *Repository) AddFile(fileName string, fileData []byte, schema schemas.Ta
 	}
 
 	for _, item := range list {
-		if strings.EqualFold(item.Hash, hash) {
+		if torrentfile.MatchesInfoHash(hashes, item.InfoHashV1, item.InfoHashV2) {
 			if len(schema.Tags) > 0 {
 				if err := s.client.AddTorrentTags(item.Hash, schema.Tags); err != nil {
 					return nil, err
@@ -470,6 +470,8 @@ func toTask(item *qbt.TorrentResponse) *entities.Task {
 		ID:          item.Hash,
 		Name:        strings.TrimSpace(item.Name),
 		Hash:        item.Hash,
+		InfoHashV1:  item.InfoHashV1,
+		InfoHashV2:  item.InfoHashV2,
 		CreatedAt:   time.Unix(int64(item.AddedOn), 0),
 		CompletedAt: completedAt,
 		Category:    item.Category,

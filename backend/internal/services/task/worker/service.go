@@ -67,7 +67,7 @@ func (s *service) CreateTask(ctx context.Context, schema schemas.TaskCreateSchem
 // CreateTaskFromFile adds a torrent from an uploaded .torrent file. Dedupe by
 // info-hash mirrors CreateTask's magnet flow.
 func (s *service) CreateTaskFromFile(ctx context.Context, fileName string, fileData []byte, schema schemas.TaskCreateFromFileSchema) (*entities.Task, error) {
-	hash, err := torrentfile.InfoHash(fileData)
+	hashes, err := torrentfile.InfoHashes(fileData)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func (s *service) CreateTaskFromFile(ctx context.Context, fileName string, fileD
 	}
 
 	for _, item := range list {
-		if strings.EqualFold(item.Hash, hash) {
+		if torrentfile.MatchesInfoHash(hashes, item.InfoHashV1, item.InfoHashV2) {
 			return item, nil
 		}
 	}
