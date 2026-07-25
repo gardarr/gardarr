@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -86,19 +86,20 @@ export function TorrentImageEditor({
       : metadata,
   };
 
-  useEffect(() => {
-    METADATA_PROVIDERS.forEach((provider) => {
-      api.get<{ active: boolean }>(`/tasks/metadata/providers/${provider}/status`)
-        .then((response) => {
-          if (response.data) {
-            setActiveProviders((prev) => ({ ...prev, [provider]: response.data!.active }));
-          }
-        })
-        .catch((error) => {
-          console.error(`Failed to fetch ${provider} status`, error);
-        });
-    });
+  const fetchProviderStatus = useCallback(async (provider: MetadataProvider) => {
+    try {
+      const response = await api.get<{ active: boolean }>(`/tasks/metadata/providers/${provider}/status`);
+      if (response.data) {
+        setActiveProviders((prev) => ({ ...prev, [provider]: response.data!.active }));
+      }
+    } catch (error) {
+      console.error(`Failed to fetch ${provider} status`, error);
+    }
   }, []);
+
+  useEffect(() => {
+    METADATA_PROVIDERS.forEach((provider) => { void fetchProviderStatus(provider); });
+  }, [fetchProviderStatus]);
 
   useEffect(() => {
     if (categoryMetadataSource === "none") return;
@@ -157,16 +158,22 @@ export function TorrentImageEditor({
 
       const response = await api.post<TaskMetadata>(`/tasks/metadata/${taskHash}/image`, formData);
 
+      if (response.error) {
+        toast.error(response.error || t('torrentImageEditor.errors.uploadFailed'));
+        // Revert preview on error
+        setImagePreview(metadata?.image_url || null);
+        setSelectedFile(null);
+        input.value = ""; // Reset input
+        return;
+      }
+
       toast.success(t('torrentImageEditor.success.imageUploaded'));
 
       setSelectedFile(null);
       input.value = ""; // Reset input to allow re-selection
       onUpdate?.(response.data);
-    } catch (error: unknown) {
-      const errorMessage = error && typeof error === 'object' && 'response' in error
-        ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
-        : undefined;
-      toast.error(errorMessage || t('torrentImageEditor.errors.uploadFailed'));
+    } catch {
+      toast.error(t('torrentImageEditor.errors.uploadFailed'));
       // Revert preview on error
       setImagePreview(metadata?.image_url || null);
       setSelectedFile(null);
@@ -179,7 +186,12 @@ export function TorrentImageEditor({
   const handleDeleteImage = async () => {
     setIsDeleting(true);
     try {
-      await api.delete(`/tasks/metadata/${taskHash}/image`);
+      const response = await api.delete(`/tasks/metadata/${taskHash}/image`);
+
+      if (response.error) {
+        toast.error(response.error || t('torrentImageEditor.errors.deleteFailed'));
+        return;
+      }
 
       toast.success(t('torrentImageEditor.success.imageDeleted'));
 
@@ -194,11 +206,8 @@ export function TorrentImageEditor({
         image_position_y: undefined,
         image_brightness: undefined,
       } : undefined);
-    } catch (error: unknown) {
-      const errorMessage = error && typeof error === 'object' && 'response' in error
-        ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
-        : undefined;
-      toast.error(errorMessage || t('torrentImageEditor.errors.deleteFailed'));
+    } catch {
+      toast.error(t('torrentImageEditor.errors.deleteFailed'));
     } finally {
       setIsDeleting(false);
     }
@@ -260,13 +269,14 @@ export function TorrentImageEditor({
       const response = await api.put<TaskMetadata>(`/tasks/metadata/${taskHash}/position`, {
         image_position_y: imagePositionY,
       });
+      if (response.error) {
+        toast.error(response.error || t('torrentImageEditor.errors.savePositionFailed'));
+        return;
+      }
       toast.success(t('torrentImageEditor.success.positionUpdated'));
       onUpdate?.(response.data);
-    } catch (error: unknown) {
-      const errorMessage = error && typeof error === 'object' && 'response' in error
-        ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
-        : undefined;
-      toast.error(errorMessage || t('torrentImageEditor.errors.savePositionFailed'));
+    } catch {
+      toast.error(t('torrentImageEditor.errors.savePositionFailed'));
     }
   };
 
@@ -280,14 +290,20 @@ export function TorrentImageEditor({
       const response = await api.put<TaskMetadata>(`/tasks/metadata/${taskHash}/brightness`, {
         image_brightness: newBrightness,
       });
+      if (response.error) {
+        toast.error(response.error || t('torrentImageEditor.errors.saveBrightnessFailed'));
+        return;
+      }
       onUpdate?.(response.data);
-    } catch (error: unknown) {
-      const errorMessage = error && typeof error === 'object' && 'response' in error
-        ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
-        : undefined;
-      toast.error(errorMessage || t('torrentImageEditor.errors.saveBrightnessFailed'));
+    } catch {
+      toast.error(t('torrentImageEditor.errors.saveBrightnessFailed'));
     }
   };
+
+  let imageContainerCursorClass = "";
+  if (!selectedFile) {
+    imageContainerCursorClass = isDragging ? "cursor-grabbing" : "cursor-grab";
+  }
 
   return (
     <div className="space-y-6 py-4">
@@ -317,7 +333,7 @@ export function TorrentImageEditor({
             </Label>
             <div
               ref={imageContainerRef}
-              className={`relative group ${!selectedFile ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : ''}`}
+              className={`relative group ${imageContainerCursorClass}`}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}

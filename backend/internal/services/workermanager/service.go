@@ -633,22 +633,43 @@ func (s *Service) GetWorkerTasksStats(ctx context.Context, id string) (*entities
 // which its API supports natively), so N selected torrents cost one HTTP
 // round trip per worker instead of N. Workers are processed in parallel;
 // failures are reported per worker without aborting the others.
-func (s *Service) BulkTaskAction(ctx context.Context, schema schemas.BulkTaskActionSchema) (*entities.BulkTaskActionResult, error) {
+var validBulkTaskActions = map[string]struct{}{
+	"stop":             {},
+	"start":            {},
+	"force_resume":     {},
+	"force_recheck":    {},
+	"force_reannounce": {},
+	"set_category":     {},
+	"add_tags":         {},
+	"delete":           {},
+}
+
+// validateBulkTaskAction checks that schema.Action is a supported action and
+// carries whatever extra fields that action requires.
+func validateBulkTaskAction(schema schemas.BulkTaskActionSchema) error {
 	switch schema.Action {
 	case "set_category":
 		if schema.Category == nil {
-			return nil, fmt.Errorf("category is required for set_category action")
+			return fmt.Errorf("category is required for set_category action")
 		}
 	case "add_tags":
 		if len(schema.Tags) == 0 {
-			return nil, fmt.Errorf("tags are required for add_tags action")
+			return fmt.Errorf("tags are required for add_tags action")
+		}
+	default:
+		if _, ok := validBulkTaskActions[schema.Action]; !ok {
+			return fmt.Errorf("unsupported bulk action: %s", schema.Action)
 		}
 	}
+	return nil
+}
 
-	// Group hashes per worker, deduplicated, preserving request order
+// groupBulkTaskHashesByWorker groups hashes per worker, deduplicated,
+// preserving request order.
+func groupBulkTaskHashesByWorker(items []schemas.BulkTaskItemSchema) map[string][]string {
 	hashesByWorker := make(map[string][]string)
-	seen := make(map[string]struct{}, len(schema.Items))
-	for _, item := range schema.Items {
+	seen := make(map[string]struct{}, len(items))
+	for _, item := range items {
 		key := item.WorkerID + ":" + item.Hash
 		if _, exists := seen[key]; exists {
 			continue
@@ -656,6 +677,15 @@ func (s *Service) BulkTaskAction(ctx context.Context, schema schemas.BulkTaskAct
 		seen[key] = struct{}{}
 		hashesByWorker[item.WorkerID] = append(hashesByWorker[item.WorkerID], item.Hash)
 	}
+	return hashesByWorker
+}
+
+func (s *Service) BulkTaskAction(ctx context.Context, schema schemas.BulkTaskActionSchema) (*entities.BulkTaskActionResult, error) {
+	if err := validateBulkTaskAction(schema); err != nil {
+		return nil, err
+	}
+
+	hashesByWorker := groupBulkTaskHashesByWorker(schema.Items)
 
 	type workerOutcome struct {
 		workerID  string

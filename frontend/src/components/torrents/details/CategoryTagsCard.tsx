@@ -11,17 +11,17 @@ import { SelectTags } from "@/components/SelectTags";
 import { torrentService } from "@/services/torrents";
 import { categoryService } from "@/services/categories";
 import { getCategoryIcon, getCategoryColor } from "@/utils/categoryUtils";
-import type { Task, TaskMetadata } from "@/types/torrent";
+import type { Task } from "@/types/torrent";
 import type { Category } from "@/types/category";
 import { DetailCard } from "./DetailCard";
 
 interface CategoryTagsCardProps {
   torrent: Task;
-  onUpdate?: (metadata?: TaskMetadata) => Promise<void> | void;
   onCategoryDataChange?: (category: Category | null) => void;
+  onCategoryTagsUpdate?: (torrentId: string, patch: { category?: string; tags?: string[] }) => void;
 }
 
-export function CategoryTagsCard({ torrent, onUpdate, onCategoryDataChange }: CategoryTagsCardProps) {
+export function CategoryTagsCard({ torrent, onCategoryDataChange, onCategoryTagsUpdate }: CategoryTagsCardProps) {
   const { t } = useTranslation();
   const [isEditingCategory, setIsEditingCategory] = useState(false);
   const [isEditingTags, setIsEditingTags] = useState(false);
@@ -72,12 +72,6 @@ export function CategoryTagsCard({ torrent, onUpdate, onCategoryDataChange }: Ca
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [torrent.category]);
 
-  const refreshAfterMutation = async () => {
-    if (onUpdate) {
-      await onUpdate();
-    }
-  };
-
   const handleEditCategory = async () => {
     if (isEditingCategory) {
       if (torrent.worker?.uuid) {
@@ -88,10 +82,10 @@ export function CategoryTagsCard({ torrent, onUpdate, onCategoryDataChange }: Ca
             return;
           }
 
-          await refreshAfterMutation();
           setCurrentCategory(editedCategoryName.trim());
           setCurrentCategoryData(draftCategoryData);
           onCategoryDataChange?.(draftCategoryData);
+          onCategoryTagsUpdate?.(torrent.id, { category: editedCategoryName.trim() });
           toast.success(t("torrentDetails.toasts.categoryUpdateSuccess", { defaultValue: "Categoria atualizada com sucesso" }));
           setIsEditingCategory(false);
         } catch (error) {
@@ -125,8 +119,8 @@ export function CategoryTagsCard({ torrent, onUpdate, onCategoryDataChange }: Ca
       if (torrent.worker?.uuid) {
         try {
           await torrentService.updateTaskTags(torrent.worker.uuid, torrent.id, editedTags);
-          await refreshAfterMutation();
           setCurrentTags([...editedTags]);
+          onCategoryTagsUpdate?.(torrent.id, { tags: [...editedTags] });
           toast.success(t("torrentDetails.toasts.tagsUpdateSuccess", { defaultValue: "Tags atualizadas com sucesso" }));
           setIsEditingTags(false);
         } catch (error) {
@@ -253,7 +247,7 @@ export function CategoryTagsCard({ torrent, onUpdate, onCategoryDataChange }: Ca
         ) : (
           <div className="flex flex-wrap gap-1">
             {currentTags && currentTags.length > 0 ? (
-              currentTags.map((tag, index) => <TagBadge key={index} tag={tag} size="sm" />)
+              currentTags.map((tag) => <TagBadge key={tag} tag={tag} size="sm" />)
             ) : (
               <span className="text-xs text-muted-foreground">{t("torrentDetails.tags.empty", { defaultValue: "Sem tags" })}</span>
             )}

@@ -2,7 +2,7 @@ import { AlignLeft, FolderOpen } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { TorrentRatioWidget } from "@/components/widgets/TorrentRatioWidget";
 import { TorrentLifetimeWidget } from "@/components/widgets/TorrentLifetimeWidget";
-import type { Task, TaskMetadata } from "@/types/torrent";
+import type { Task } from "@/types/torrent";
 import type { Category } from "@/types/category";
 import { DetailCard } from "./DetailCard";
 import { InlineEditableText } from "./InlineEditableText";
@@ -12,11 +12,11 @@ import { CategoryTagsCard } from "./CategoryTagsCard";
 interface OverviewTabProps {
   torrent: Task;
   onSetLocation?: (torrentId: string, location: string) => void;
-  onUpdate?: (metadata?: TaskMetadata) => Promise<void> | void;
   onCategoryDataChange?: (category: Category | null) => void;
+  onCategoryTagsUpdate?: (torrentId: string, patch: { category?: string; tags?: string[] }) => void;
 }
 
-export function OverviewTab({ torrent, onSetLocation, onUpdate, onCategoryDataChange }: OverviewTabProps) {
+export function OverviewTab({ torrent, onSetLocation, onCategoryDataChange, onCategoryTagsUpdate }: OverviewTabProps) {
   const { t } = useTranslation();
 
   const handleSavePath = (path: string) => {
@@ -44,7 +44,7 @@ export function OverviewTab({ torrent, onSetLocation, onUpdate, onCategoryDataCh
 
       <TorrentLifetimeWidget task={torrent} />
 
-      <CategoryTagsCard torrent={torrent} onUpdate={onUpdate} onCategoryDataChange={onCategoryDataChange} />
+      <CategoryTagsCard torrent={torrent} onCategoryDataChange={onCategoryDataChange} onCategoryTagsUpdate={onCategoryTagsUpdate} />
 
       <div className="space-y-2">
         <h3 className="text-sm font-medium text-muted-foreground">{t("torrentDetails.path.title", { defaultValue: "Caminho" })}</h3>

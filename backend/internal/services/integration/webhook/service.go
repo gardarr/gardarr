@@ -95,24 +95,26 @@ func NewService(webhookID uuid.UUID, webhookURL string, insecureSkipVerify bool,
 
 // SendEventWithRetry delivers an event, retrying transient failures with
 // exponential backoff (baseBackoff, 2x baseBackoff, ...). Permanent failures
-// (4xx other than 429) abort immediately. Each attempt is recorded in
-// webhook history by SendEvent.
+// (4xx other than 429) abort immediately. Only the final attempt's outcome is
+// recorded in webhook history, so a retried delivery produces exactly one row.
 func (s *Service) SendEventWithRetry(ctx context.Context, event *entities.Event) error {
+	if !s.enabled {
+		return nil
+	}
+
 	maxAttempts := s.maxAttempts
 	if maxAttempts <= 0 {
 		maxAttempts = 1
 	}
 
-	var lastErr error
+	var result deliveryResult
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		lastErr = s.SendEvent(ctx, event)
-		if lastErr == nil {
+		result = s.deliver(ctx, event)
+		if result.err == nil {
+			s.saveHistory(ctx, event, result.statusCode, result.responseBody, result.requestBody, "")
 			return nil
 		}
-		if !isRetryable(lastErr) {
-			return lastErr
-		}
-		if attempt == maxAttempts {
+		if !isRetryable(result.err) || attempt == maxAttempts {
 			break
 		}
 
@@ -126,17 +128,50 @@ func (s *Service) SendEventWithRetry(ctx context.Context, event *entities.Event)
 		}
 	}
 
-	return fmt.Errorf("webhook delivery failed after %d attempts: %w", maxAttempts, lastErr)
+	s.saveHistory(ctx, event, result.statusCode, result.responseBody, result.requestBody, result.err.Error())
+
+	if !isRetryable(result.err) {
+		return result.err
+	}
+	return fmt.Errorf("webhook delivery failed after %d attempts: %w", maxAttempts, result.err)
 }
 
-// SendEvent sends an event to the configured webhook URL
+// SendEvent sends an event to the configured webhook URL, recording the
+// single attempt in webhook history.
 func (s *Service) SendEvent(ctx context.Context, event *entities.Event) error {
 	if !s.enabled {
 		return nil
 	}
 
+	result := s.deliver(ctx, event)
+	s.saveHistory(ctx, event, result.statusCode, result.responseBody, result.requestBody, errMsg(result.err))
+	return result.err
+}
+
+// deliveryResult carries the outcome of a single delivery attempt.
+type deliveryResult struct {
+	statusCode   int
+	responseBody string
+	requestBody  string
+	err          error
+}
+
+func errMsg(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
+}
+
+// deliver performs a single HTTP delivery attempt without touching webhook
+// history, so callers can decide when/whether to persist the outcome.
+func (s *Service) deliver(ctx context.Context, event *entities.Event) deliveryResult {
+	if !s.enabled {
+		return deliveryResult{}
+	}
+
 	if event == nil {
-		return fmt.Errorf("event is nil")
+		return deliveryResult{err: fmt.Errorf("event is nil")}
 	}
 
 	payload := s.buildPayload(event)
@@ -148,8 +183,7 @@ func (s *Service) SendEvent(ctx context.Context, event *entities.Event) error {
 			"event_id", event.UUID.String(),
 			"error", err,
 		)
-		s.saveHistory(ctx, event, 0, "", string(jsonData), err.Error())
-		return fmt.Errorf("failed to marshal payload: %w", err)
+		return deliveryResult{requestBody: string(jsonData), err: fmt.Errorf("failed to marshal payload: %w", err)}
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.webhookURL, bytes.NewBuffer(jsonData))
@@ -159,8 +193,7 @@ func (s *Service) SendEvent(ctx context.Context, event *entities.Event) error {
 			"event_id", event.UUID.String(),
 			"error", err,
 		)
-		s.saveHistory(ctx, event, 0, "", string(jsonData), err.Error())
-		return fmt.Errorf("failed to create request: %w", err)
+		return deliveryResult{requestBody: string(jsonData), err: fmt.Errorf("failed to create request: %w", err)}
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -174,8 +207,7 @@ func (s *Service) SendEvent(ctx context.Context, event *entities.Event) error {
 			"url", s.webhookURL,
 			"error", err,
 		)
-		s.saveHistory(ctx, event, 0, "", string(jsonData), err.Error())
-		return fmt.Errorf("failed to send webhook: %w", err)
+		return deliveryResult{requestBody: string(jsonData), err: fmt.Errorf("failed to send webhook: %w", err)}
 	}
 	defer resp.Body.Close()
 
@@ -202,12 +234,8 @@ func (s *Service) SendEvent(ctx context.Context, event *entities.Event) error {
 			"url", s.webhookURL,
 		)
 		deliveryErr := &deliveryError{statusCode: resp.StatusCode}
-		s.saveHistory(ctx, event, resp.StatusCode, respBodyStr, string(jsonData), deliveryErr.Error())
-		return deliveryErr
+		return deliveryResult{statusCode: resp.StatusCode, responseBody: respBodyStr, requestBody: string(jsonData), err: deliveryErr}
 	}
-
-	// Save successful webhook delivery
-	s.saveHistory(ctx, event, resp.StatusCode, respBodyStr, string(jsonData), "")
 
 	logger.Debug("Webhook sent successfully",
 		"service", "webhook",
@@ -216,7 +244,7 @@ func (s *Service) SendEvent(ctx context.Context, event *entities.Event) error {
 		"status_code", resp.StatusCode,
 	)
 
-	return nil
+	return deliveryResult{statusCode: resp.StatusCode, responseBody: respBodyStr, requestBody: string(jsonData)}
 }
 
 // buildPayload converts an Event entity to a webhook Payload

@@ -32,6 +32,7 @@ interface TorrentDetailsModalProps {
   onForceRecheck?: (torrentId: string) => void;
   onSetLocation?: (torrentId: string, location: string) => void;
   onUpdate?: (metadata?: TaskMetadata) => Promise<void> | void;
+  onCategoryTagsUpdate?: (torrentId: string, patch: { category?: string; tags?: string[] }) => void;
 }
 
 export function TorrentDetailsModal({
@@ -46,6 +47,7 @@ export function TorrentDetailsModal({
   onForceRecheck,
   onSetLocation,
   onUpdate,
+  onCategoryTagsUpdate,
 }: TorrentDetailsModalProps) {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
@@ -108,8 +110,8 @@ export function TorrentDetailsModal({
               <OverviewTab
                 torrent={torrent}
                 onSetLocation={onSetLocation}
-                onUpdate={onUpdate}
                 onCategoryDataChange={setCurrentCategoryData}
+                onCategoryTagsUpdate={onCategoryTagsUpdate}
               />
             </TabsContent>
 

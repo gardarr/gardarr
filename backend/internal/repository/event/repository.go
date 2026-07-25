@@ -311,6 +311,17 @@ func (r *Repository) DeleteTaskState(ctx context.Context, workerID uuid.UUID, ha
 		Delete(&models.TaskState{}).Error
 }
 
+// DeleteTaskStates removes multiple task states for a worker in a single
+// round trip, instead of one DELETE per hash.
+func (r *Repository) DeleteTaskStates(ctx context.Context, workerID uuid.UUID, hashes []string) error {
+	if len(hashes) == 0 {
+		return nil
+	}
+	return r.db.DB.WithContext(ctx).
+		Where("worker_id = ? AND hash IN ?", workerID, hashes).
+		Delete(&models.TaskState{}).Error
+}
+
 // DeleteOldTaskStates deletes task states older than the specified date
 func (r *Repository) DeleteOldTaskStates(ctx context.Context, olderThan time.Time) error {
 	return r.db.DB.WithContext(ctx).

@@ -546,14 +546,12 @@ func (s *Service) DetectRemovedTasks(ctx context.Context, currentTasks []*entiti
 	s.processEvents(ctx, eventsChan, workerID)
 
 	// Delete from database (no lock held)
-	for _, hash := range hashesToDelete {
-		if err := s.repo.DeleteTaskState(ctx, workerID, hash); err != nil {
-			slog.Error(logMsgFailedToDeleteTaskState,
-				"error", err,
-				"worker_id", workerID.String(),
-				"task_hash", hash,
-			)
-		}
+	if err := s.repo.DeleteTaskStates(ctx, workerID, hashesToDelete); err != nil {
+		slog.Error(logMsgFailedToDeleteTaskState,
+			"error", err,
+			"worker_id", workerID.String(),
+			"hashes", len(hashesToDelete),
+		)
 	}
 
 	return nil
