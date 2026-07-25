@@ -10,14 +10,14 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Calendar, Check, Image as ImageIcon, Loader2, Search, X } from "lucide-react";
 import type { Category } from "@/types/category";
-import type { MetadataProviderSearchResult, Task } from "@/types/torrent";
+import type { MetadataProviderSearchResult, Task, TaskMetadata } from "@/types/torrent";
 
 interface TaskMetadataSearchSheetProps {
   isOpen: boolean;
   onClose: () => void;
   task: Task | null;
   category: Category | null;
-  onApplied: () => Promise<void> | void;
+  onApplied: (metadata?: TaskMetadata) => Promise<void> | void;
 }
 
 const getReleaseDateTimestamp = (releaseDate?: string | null): number => {
@@ -51,12 +51,13 @@ export function TaskMetadataSearchSheet({
   const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
-  const [isTGDBActive, setIsTGDBActive] = useState(false);
+  const [isProviderActive, setIsProviderActive] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [searchError, setSearchError] = useState("");
   const [applyError, setApplyError] = useState("");
 
   const provider = category?.metadata_source || "none";
+  const isSupportedProvider = provider === "tgdb" || provider === "tmdb";
   const initialQuery = useMemo(
     () => task?.metadata?.name?.trim() || task?.name?.trim() || "",
     [task?.metadata?.name, task?.name]
@@ -77,7 +78,7 @@ export function TaskMetadataSearchSheet({
     setSelectedResultId(null);
     setIsSearching(false);
     setIsApplying(false);
-    setIsTGDBActive(false);
+    setIsProviderActive(false);
     setStatusMessage("");
     setSearchError("");
     setApplyError("");
@@ -86,7 +87,7 @@ export function TaskMetadataSearchSheet({
   const runSearch = useCallback(async (searchQuery: string) => {
     const trimmedQuery = searchQuery.trim();
 
-    if (provider !== "tgdb") {
+    if (!isSupportedProvider) {
       return;
     }
 
@@ -102,12 +103,12 @@ export function TaskMetadataSearchSheet({
     setApplyError("");
 
     try {
-      const response = await taskMetadataService.searchProvider("tgdb", trimmedQuery);
+      const response = await taskMetadataService.searchProvider(provider, trimmedQuery);
 
       if (response.error) {
         setResults([]);
         setSelectedResultId(null);
-        setSearchError(response.error || t("tgdb.errors.searchFailed"));
+        setSearchError(response.error || t(`${provider}.errors.searchFailed`));
         return;
       }
 
@@ -121,7 +122,7 @@ export function TaskMetadataSearchSheet({
     } catch (error) {
       const message = error instanceof Error
         ? error.message
-        : t("tgdb.errors.searchFailed");
+        : t(`${provider}.errors.searchFailed`);
       setResults([]);
       setSelectedResultId(null);
       setSearchError(message);
@@ -129,33 +130,28 @@ export function TaskMetadataSearchSheet({
     } finally {
       setIsSearching(false);
     }
-  }, [provider, t]);
+  }, [isSupportedProvider, provider, t]);
 
   useEffect(() => {
     if (!isOpen || !task) {
       return;
     }
 
-    if (provider === "none") {
+    if (!isSupportedProvider) {
       setStatusMessage(t("torrents.addModal.metadata.noProvider"));
-      return;
-    }
-
-    if (provider === "tmdb") {
-      setStatusMessage(t("torrents.addModal.metadata.tmdbUnavailable"));
       return;
     }
 
     let mounted = true;
 
     const loadProviderStatus = async () => {
-      const response = await taskMetadataService.getProviderStatus("tgdb");
+      const response = await taskMetadataService.getProviderStatus(provider);
       if (!mounted) {
         return;
       }
 
       if (response.data?.active) {
-        setIsTGDBActive(true);
+        setIsProviderActive(true);
         setStatusMessage("");
 
         if (initialQuery.trim().length >= 2) {
@@ -164,8 +160,8 @@ export function TaskMetadataSearchSheet({
         return;
       }
 
-      setIsTGDBActive(false);
-      setStatusMessage(response.error || t("torrents.addModal.metadata.tgdbInactive"));
+      setIsProviderActive(false);
+      setStatusMessage(response.error || t(`torrents.addModal.metadata.${provider}Inactive`));
     };
 
     void loadProviderStatus();
@@ -173,10 +169,10 @@ export function TaskMetadataSearchSheet({
     return () => {
       mounted = false;
     };
-  }, [initialQuery, isOpen, provider, runSearch, t, task]);
+  }, [initialQuery, isOpen, isSupportedProvider, provider, runSearch, t, task]);
 
   const handleApply = async () => {
-    if (!task || !selectedResult) {
+    if (!task || !selectedResult || !isSupportedProvider) {
       return;
     }
 
@@ -184,7 +180,7 @@ export function TaskMetadataSearchSheet({
     setApplyError("");
 
     try {
-      const response = await taskMetadataService.applyProvider(task.hash, "tgdb", {
+      const response = await taskMetadataService.applyProvider(task.hash, provider, {
         id: selectedResult.id,
         title: selectedResult.title,
         release_date: selectedResult.release_date,
@@ -193,17 +189,17 @@ export function TaskMetadataSearchSheet({
       });
 
       if (response.error) {
-        const message = response.error || t("tgdb.errors.applyFailed");
+        const message = response.error || t(`${provider}.errors.applyFailed`);
         setApplyError(message);
         toast.error(message);
         return;
       }
 
-      toast.success(t("tgdb.success.applied"));
-      await onApplied();
+      toast.success(t(`${provider}.success.applied`));
+      await onApplied(response.data);
       onClose();
     } catch (err) {
-      const message = err instanceof Error ? err.message : t("tgdb.errors.applyFailed");
+      const message = err instanceof Error ? err.message : t(`${provider}.errors.applyFailed`);
       setApplyError(message);
       toast.error(message);
       return;
@@ -249,7 +245,7 @@ export function TaskMetadataSearchSheet({
                     }}
                     placeholder={t("torrents.addModal.metadata.searchPlaceholder")}
                     className="pl-9"
-                    disabled={provider !== "tgdb" || !isTGDBActive || isBusy}
+                    disabled={!isSupportedProvider || !isProviderActive || isBusy}
                     onKeyDown={(event) => {
                       if (event.key === "Enter") {
                         void runSearch(query);
@@ -260,7 +256,7 @@ export function TaskMetadataSearchSheet({
                 <Button
                   type="button"
                   onClick={() => void runSearch(query)}
-                  disabled={provider !== "tgdb" || !isTGDBActive || isBusy}
+                  disabled={!isSupportedProvider || !isProviderActive || isBusy}
                   className="w-full sm:w-auto"
                 >
                   {isSearching ? (
@@ -284,7 +280,7 @@ export function TaskMetadataSearchSheet({
             {(searchError || applyError) && (
               <div className="space-y-1 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
                 <p className="text-sm text-destructive">{applyError || searchError}</p>
-                {provider === "tgdb" && (
+                {isSupportedProvider && (
                   <p className="text-xs text-muted-foreground">
                     {t("torrents.addModal.metadata.searchSuggestion")}
                   </p>
@@ -292,7 +288,7 @@ export function TaskMetadataSearchSheet({
               </div>
             )}
 
-            {provider === "tgdb" && results.length > 0 && (
+            {isSupportedProvider && results.length > 0 && (
               <div className="space-y-3">
                 <div>
                   <h3 className="font-medium">{t("torrents.addModal.metadata.resultsLabel")}</h3>
@@ -333,7 +329,7 @@ export function TaskMetadataSearchSheet({
                               <p className="truncate font-medium">{result.title}</p>
                               <p className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <Calendar className="h-3.5 w-3.5" />
-                                {result.release_date || t("tgdb.search.unknownDate")}
+                                {result.release_date || t(`${provider}.search.unknownDate`)}
                               </p>
                             </div>
                             {isSelected && <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />}
@@ -359,7 +355,7 @@ export function TaskMetadataSearchSheet({
           <Button
             type="button"
             onClick={() => void handleApply()}
-            disabled={!selectedResult || provider !== "tgdb" || !isTGDBActive || isBusy}
+            disabled={!selectedResult || !isSupportedProvider || !isProviderActive || isBusy}
             className="w-full sm:w-auto"
           >
             {isApplying ? (

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import type { ReactNode } from "react";
 import { authService } from "@/services/auth";
 import type { User } from "@/types/auth";
@@ -48,47 +48,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth();
   }, [checkAuth]);
 
-  const login = async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     const { user: loggedInUser, error } = await authService.login({ email, password });
-    
+
     if (error) {
       return { error };
     }
-    
+
     if (loggedInUser) {
       setUser(loggedInUser);
       // Load preferences after successful login
       await loadPreferences();
     }
-    
-    return {};
-  };
 
-  const register = async (email: string, password: string) => {
+    return {};
+  }, [loadPreferences]);
+
+  const register = useCallback(async (email: string, password: string) => {
     const { user: registeredUser, error } = await authService.register({ email, password });
-    
+
     if (error) {
       return { error };
     }
-    
+
     if (registeredUser) {
       setUser(registeredUser);
       // Load preferences after successful registration
       await loadPreferences();
     }
-    
-    return {};
-  };
 
-  const logout = async () => {
+    return {};
+  }, [loadPreferences]);
+
+  const logout = useCallback(async () => {
     await authService.logout();
     setUser(null);
     // Clear preferences from localStorage on logout
     preferencesService.clear();
-  };
+  }, []);
+
+  // AuthProvider wraps the whole authenticated app, so a fresh value object
+  // here would re-render every consumer of useAuth() on every AuthProvider
+  // render even when user/loading didn't logically change.
+  const value = useMemo(
+    () => ({ user, loading, login, register, logout, checkAuth }),
+    [user, loading, login, register, logout, checkAuth]
+  );
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, checkAuth }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

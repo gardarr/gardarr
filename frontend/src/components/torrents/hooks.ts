@@ -5,10 +5,19 @@ export function useTorrentBlurIntensity() {
   const [blurIntensity, setBlurIntensity] = useState(50);
 
   useEffect(() => {
-    const prefs = preferencesService.load();
-    if (typeof prefs?.background_image_blur_intensity === "number") {
-      setBlurIntensity(prefs.background_image_blur_intensity);
-    }
+    const load = () => {
+      const prefs = preferencesService.load();
+      const value = Number(prefs?.background_image_blur_intensity);
+      setBlurIntensity(isNaN(value) ? 50 : Math.max(0, Math.min(100, value)));
+    };
+
+    load();
+    window.addEventListener("storage", load);
+    window.addEventListener("preferencesUpdated", load);
+    return () => {
+      window.removeEventListener("storage", load);
+      window.removeEventListener("preferencesUpdated", load);
+    };
   }, []);
 
   return blurIntensity;

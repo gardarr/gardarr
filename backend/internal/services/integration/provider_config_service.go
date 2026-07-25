@@ -30,12 +30,20 @@ func NewProviderConfigService(db *database.Database, crypto *cryptoService.Crypt
 }
 
 func (s *ProviderConfigService) BootstrapTGDBFromEnv(ctx context.Context) error {
-	envKey := strings.TrimSpace(os.Getenv("TGDB_KEY"))
+	return s.bootstrapProviderFromEnv(ctx, MetadataSourceTGDB, "TGDB_KEY")
+}
+
+func (s *ProviderConfigService) BootstrapTMDBFromEnv(ctx context.Context) error {
+	return s.bootstrapProviderFromEnv(ctx, MetadataSourceTMDB, "TMDB_KEY")
+}
+
+func (s *ProviderConfigService) bootstrapProviderFromEnv(ctx context.Context, provider, envVarName string) error {
+	envKey := strings.TrimSpace(os.Getenv(envVarName))
 	if envKey == "" {
 		return nil
 	}
 
-	existing, err := s.repository.GetByProvider(ctx, MetadataSourceTGDB)
+	existing, err := s.repository.GetByProvider(ctx, provider)
 	if err == nil {
 		if existing.EncryptedAPIKey != "" || existing.Enabled {
 			return nil
@@ -50,7 +58,7 @@ func (s *ProviderConfigService) BootstrapTGDBFromEnv(ctx context.Context) error 
 	}
 
 	_, err = s.repository.Upsert(ctx, entities.IntegrationProviderConfig{
-		Provider:        MetadataSourceTGDB,
+		Provider:        provider,
 		Enabled:         true,
 		EncryptedAPIKey: encrypted,
 	})

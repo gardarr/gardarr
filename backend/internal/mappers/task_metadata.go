@@ -12,16 +12,16 @@ func ToTaskMetadataResponse(e *entities.TaskMetadata) *models.TaskMetadataRespon
 	}
 
 	return &models.TaskMetadataResponse{
-		UUID:           e.UUID,
-		TaskHash:       e.TaskHash,
-		ImageURL:       e.ImageURL,
-		ThumbnailURL:   e.ThumbnailURL,
-		Name:           e.Name,
-		ReleaseDate:    e.ReleaseDate,
-		Description:    e.Description,
-		ImagePositionY: e.ImagePositionY,
-		ImageOpacity:   e.ImageOpacity,
-		CreatedAt:      e.CreatedAt,
-		UpdatedAt:      e.UpdatedAt,
+		UUID:            e.UUID,
+		TaskHash:        e.TaskHash,
+		ImageURL:        e.ImageURL,
+		ThumbnailURL:    e.ThumbnailURL,
+		Name:            e.Name,
+		ReleaseDate:     e.ReleaseDate,
+		Description:     e.Description,
+		ImagePositionY:  e.ImagePositionY,
+		ImageBrightness: e.ImageBrightness,
+		CreatedAt:       e.CreatedAt,
+		UpdatedAt:       e.UpdatedAt,
 	}
 }

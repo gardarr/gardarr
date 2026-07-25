@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -23,21 +24,24 @@ const (
 
 // Service handles event tracking and state change detection
 type Service struct {
-	repo          *event.Repository
-	taskStates    map[uuid.UUID]map[string]*entities.TaskState // workerID -> taskHash -> state
-	mu            sync.RWMutex
-	retentionDays int
-	subscribers   []chan *entities.Event
+	repo             *event.Repository
+	taskStates       map[uuid.UUID]map[string]*entities.TaskState // workerID -> taskHash -> state
+	mu               sync.RWMutex
+	retentionDays    int
+	subscribers      []chan *entities.Event
+	subscriberBuffer int
+	droppedEvents    atomic.Int64
 }
 
 // NewService creates a new event service and loads existing state from database
 // Returns error if state loading fails to ensure consistent initialization
 func NewService(db *database.Database) (*Service, error) {
 	s := &Service{
-		repo:          event.NewRepository(db),
-		taskStates:    make(map[uuid.UUID]map[string]*entities.TaskState),
-		retentionDays: env.Get("EVENT_RETENTION_DAYS").Default(7).ValueInt(),
-		subscribers:   make([]chan *entities.Event, 0),
+		repo:             event.NewRepository(db),
+		taskStates:       make(map[uuid.UUID]map[string]*entities.TaskState),
+		retentionDays:    env.Get("EVENT_RETENTION_DAYS").Default(7).ValueInt(),
+		subscribers:      make([]chan *entities.Event, 0),
+		subscriberBuffer: env.Get("EVENT_SUBSCRIBER_BUFFER").Default(256).ValueInt(),
 	}
 
 	// Load existing task states from database - fail fast if this fails
@@ -84,9 +88,13 @@ func (s *Service) GetTaskStates() []*entities.TaskState {
 
 // Subscribe creates and returns a channel for real-time event emission.
 // This allows multiple consumers (like integration services and websockets) to receive events as they occur.
+// A bufferSize <= 0 uses the service default (EVENT_SUBSCRIBER_BUFFER, 256).
 func (s *Service) Subscribe(bufferSize int) <-chan *entities.Event {
 	if bufferSize <= 0 {
-		bufferSize = 100
+		bufferSize = s.subscriberBuffer
+	}
+	if bufferSize <= 0 {
+		bufferSize = 256
 	}
 	ch := make(chan *entities.Event, bufferSize)
 	s.mu.Lock()
@@ -103,7 +111,14 @@ func (s *Service) broadcastEvent(event *entities.Event) {
 		select {
 		case ch <- event:
 		default:
-			// Channel full - skip emission to prevent blocking
+			// Channel full - skip emission to prevent blocking, but make the
+			// drop observable instead of silently losing the event.
+			totalDropped := s.droppedEvents.Add(1)
+			slog.Warn("event subscriber channel full, dropping event",
+				"event_id", event.UUID.String(),
+				"event_type", event.Type,
+				"total_dropped", totalDropped,
+			)
 		}
 	}
 }
@@ -143,6 +158,9 @@ func isSignificantStateChange(oldState, newState string) bool {
 // stateUpdate represents a pending state update to be persisted
 type stateUpdate struct {
 	hash      string
+	name      string
+	category  string
+	size      int64
 	state     string
 	progress  float64
 	timestamp time.Time
@@ -194,6 +212,9 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, worker
 				s.taskStates[workerID][t.Hash] = &entities.TaskState{
 					WorkerID:  workerID,
 					Hash:      t.Hash,
+					Name:      t.Name,
+					Category:  t.Category,
+					Size:      int64(t.Size),
 					State:     t.State,
 					Progress:  t.Progress,
 					UpdatedAt: timestamp,
@@ -202,6 +223,9 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, worker
 				// Queue for persistence
 				updatesChan <- stateUpdate{
 					hash:      t.Hash,
+					name:      t.Name,
+					category:  t.Category,
+					size:      int64(t.Size),
 					state:     t.State,
 					progress:  t.Progress,
 					timestamp: timestamp,
@@ -229,11 +253,17 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, worker
 				// Update state in memory
 				lastState.State = t.State
 				lastState.Progress = t.Progress
+				lastState.Name = t.Name
+				lastState.Category = t.Category
+				lastState.Size = int64(t.Size)
 				lastState.UpdatedAt = timestamp
 
 				// Queue for persistence
 				updatesChan <- stateUpdate{
 					hash:      t.Hash,
+					name:      t.Name,
+					category:  t.Category,
+					size:      int64(t.Size),
 					state:     t.State,
 					progress:  t.Progress,
 					timestamp: timestamp,
@@ -281,11 +311,17 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, worker
 				wasCompleted := oldProgress >= 1.0
 
 				lastState.Progress = t.Progress
+				lastState.Name = t.Name
+				lastState.Category = t.Category
+				lastState.Size = int64(t.Size)
 				lastState.UpdatedAt = timestamp
 
 				// Queue for persistence
 				updatesChan <- stateUpdate{
 					hash:      t.Hash,
+					name:      t.Name,
+					category:  t.Category,
+					size:      int64(t.Size),
 					state:     t.State,
 					progress:  t.Progress,
 					timestamp: timestamp,
@@ -303,26 +339,30 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, worker
 	close(eventsChan)
 	close(completionChecksChan)
 
-	// Second pass: persist all updates to database (no lock held)
-	var wg sync.WaitGroup
-	numWorkers := 5
-
-	for i := 0; i < numWorkers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for u := range updatesChan {
-				if err := s.repo.SaveTaskState(ctx, workerID, u.hash, u.state, u.progress, u.timestamp); err != nil {
-					slog.Error(logMsgFailedToSaveTaskState,
-						"error", err,
-						"worker_id", workerID.String(),
-						"task_hash", u.hash,
-					)
-				}
-			}
-		}()
+	// Second pass: persist all updates to database in a single batched upsert
+	// instead of one round trip per task (the dominant DB cost per poll cycle
+	// when many torrents change progress at once).
+	updates := make([]*entities.TaskState, 0, len(updatesChan))
+	for u := range updatesChan {
+		updates = append(updates, &entities.TaskState{
+			WorkerID:  workerID,
+			Hash:      u.hash,
+			Name:      u.name,
+			Category:  u.category,
+			Size:      u.size,
+			State:     u.state,
+			Progress:  u.progress,
+			UpdatedAt: u.timestamp,
+		})
 	}
-	wg.Wait()
+
+	if err := s.repo.SaveTaskStates(ctx, updates); err != nil {
+		slog.Error(logMsgFailedToSaveTaskState,
+			"error", err,
+			"worker_id", workerID.String(),
+			"count", len(updates),
+		)
+	}
 
 	// Process events
 	s.processEvents(ctx, eventsChan, workerID)
@@ -457,82 +497,61 @@ func (s *Service) DetectRemovedTasks(ctx context.Context, currentTasks []*entiti
 		return nil
 	}
 
-	// Use buffered channel to collect events
-	eventsChan := make(chan *entities.Event, len(hashesToCheck))
-	removedHashes := make(chan string, len(hashesToCheck))
-	var wg sync.WaitGroup
-
-	// Process removed tasks concurrently
-	for _, hash := range hashesToCheck {
-		wg.Add(1)
-		go func(h string) {
-			defer wg.Done()
-
-			// Copy fields under lock to avoid data race
-			s.mu.RLock()
-			state, exists := s.taskStates[workerID][h]
-			var lastState string
-			var lastProgress float64
-			if exists {
-				lastState = state.State
-				lastProgress = state.Progress
-			}
-			s.mu.RUnlock()
-
-			if !exists {
-				return
-			}
-
-			// Task removed - create event (using copied values)
-			eventsChan <- &entities.Event{
-				UUID:     uuid.New(),
-				WorkerID: workerID,
-				Type:     constants.EventTypeTorrentRemoved,
-				TaskHash: h,
-				OldValue: lastState,
-				Metadata: map[string]interface{}{
-					"last_progress": lastProgress,
-				},
-				CreatedAt: timestamp,
-			}
-
-			// Mark for removal
-			removedHashes <- h
-		}(hash)
-	}
-
-	// Close channels when all goroutines complete
-	go func() {
-		wg.Wait()
-		close(eventsChan)
-		close(removedHashes)
-	}()
-
-	// Process events
-	s.processEvents(ctx, eventsChan, workerID)
-
-	// Remove from tracked states (under lock) and collect hashes for DB deletion
+	// Building one event per removed hash is cheap (a map copy + struct
+	// literal) - a goroutine per hash isn't earning its overhead and, on a
+	// worker outage/recovery or bulk delete, spawning thousands of them at
+	// once was a needless goroutine/lock-contention spike. Do it inline
+	// under a single lock acquisition instead.
+	events := make([]*entities.Event, 0, len(hashesToCheck))
 	var hashesToDelete []string
+
 	s.mu.Lock()
-	if workerTasks, exists := s.taskStates[workerID]; exists {
-		for hash := range removedHashes {
-			if _, taskExists := workerTasks[hash]; taskExists {
-				delete(workerTasks, hash)
-				hashesToDelete = append(hashesToDelete, hash)
-			}
+	workerTasks, workerExists := s.taskStates[workerID]
+	for _, hash := range hashesToCheck {
+		if !workerExists {
+			break
 		}
+		state, exists := workerTasks[hash]
+		if !exists {
+			continue
+		}
+
+		events = append(events, &entities.Event{
+			UUID:     uuid.New(),
+			WorkerID: workerID,
+			Type:     constants.EventTypeTorrentRemoved,
+			TaskHash: hash,
+			OldValue: state.State,
+			Metadata: map[string]interface{}{
+				"name":          state.Name,
+				"hash":          hash,
+				"category":      state.Category,
+				"size":          state.Size,
+				"last_progress": state.Progress,
+			},
+			CreatedAt: timestamp,
+		})
+
+		delete(workerTasks, hash)
+		hashesToDelete = append(hashesToDelete, hash)
 	}
 	s.mu.Unlock()
 
+	// Process events
+	eventsChan := make(chan *entities.Event, len(events))
+	for _, e := range events {
+		eventsChan <- e
+	}
+	close(eventsChan)
+	s.processEvents(ctx, eventsChan, workerID)
+
 	// Delete from database (no lock held)
-	for _, hash := range hashesToDelete {
-		if err := s.repo.DeleteTaskState(ctx, workerID, hash); err != nil {
-			slog.Error(logMsgFailedToDeleteTaskState,
-				"error", err,
-				"worker_id", workerID.String(),
-				"task_hash", hash,
-			)
-		}
+	if err := s.repo.DeleteTaskStates(ctx, workerID, hashesToDelete); err != nil {
+		slog.Error(logMsgFailedToDeleteTaskState,
+			"error", err,
+			"worker_id", workerID.String(),
+			"hashes", len(hashesToDelete),
+		)
 	}
 
 	return nil
@@ -546,6 +565,37 @@ func (s *Service) ListEvents(ctx context.Context, workerID *uuid.UUID, eventType
 // GetEventByUUID retrieves an event by its UUID
 func (s *Service) GetEventByUUID(ctx context.Context, uuid uuid.UUID) (*entities.Event, error) {
 	return s.repo.GetEventByUUID(ctx, uuid)
+}
+
+// StartCleanupJob starts a background job that enforces event retention and
+// prunes stale task states. Without it EVENT_RETENTION_DAYS is never applied
+// and the events/task_states tables grow unbounded.
+func (s *Service) StartCleanupJob(ctx context.Context) {
+	go func() {
+		interval := env.Get("EVENT_CLEANUP_INTERVAL").Default("24h").ValueDuration()
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+
+		// Run cleanup immediately on start
+		s.runCleanup(ctx)
+
+		for {
+			select {
+			case <-ticker.C:
+				s.runCleanup(ctx)
+			case <-ctx.Done():
+				slog.Info("event cleanup job stopped")
+				return
+			}
+		}
+	}()
+}
+
+func (s *Service) runCleanup(ctx context.Context) {
+	if err := s.PurgeOldEvents(ctx); err != nil {
+		slog.Error("failed to purge old events", "error", err)
+	}
+	s.CleanStaleStates(ctx)
 }
 
 // PurgeOldEvents deletes events older than retention period

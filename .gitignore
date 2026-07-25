@@ -1,2 +1,6 @@
 .version
 *.env
+*.db
+*.db-shm
+*.db-wal
+tests/qbittorrent/

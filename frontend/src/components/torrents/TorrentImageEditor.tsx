@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -10,14 +10,20 @@ import type { TaskMetadata } from "@/types/torrent";
 import type { Category, CategoryMetadataSource } from "@/types/category";
 import { ImageSourceSelector } from "@/components/ImageSourceSelector";
 import { TorrentCardPreview } from "./TorrentCardPreview";
-import { TGDBSearch } from "@/components/TGDBSearch";
+import { TorrentCardCompact } from "./TorrentCardCompact";
+import { ProviderSearch, type MetadataProvider } from "@/components/ProviderSearch";
+import type { MobileTorrent } from "./types";
+
+const noop = () => {};
+
+const METADATA_PROVIDERS: MetadataProvider[] = ["tgdb", "tmdb"];
 
 interface TorrentImageEditorProps {
   readonly taskHash: string;
   readonly taskName: string;
   readonly category?: Category | null;
   readonly metadata?: TaskMetadata | null;
-  readonly onUpdate?: () => void;
+  readonly onUpdate?: (metadata?: TaskMetadata) => void;
 }
 
 export function TorrentImageEditor({
@@ -37,56 +43,83 @@ export function TorrentImageEditor({
   const [imagePositionY, setImagePositionY] = useState(
     metadata?.image_position_y ?? 50
   );
-  const [imageOpacity, setImageOpacity] = useState(() => {
-    const rawOpacity = metadata?.image_opacity ?? 65;
-    return Math.max(15, Math.min(85, rawOpacity));
+  const [imageBrightness, setImageBrightness] = useState(() => {
+    const rawBrightness = metadata?.image_brightness ?? 65;
+    return Math.max(15, Math.min(85, rawBrightness));
   });
 
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartY, setDragStartY] = useState(0);
   const [imageSource, setImageSource] = useState<"Upload" | "TMDB" | "TGDB">("Upload");
-  const [isTGDBActive, setIsTGDBActive] = useState(false);
+  const [activeProviders, setActiveProviders] = useState<Record<MetadataProvider, boolean>>({
+    tgdb: false,
+    tmdb: false,
+  });
+  const isTGDBActive = activeProviders.tgdb;
+  const isTMDBActive = activeProviders.tmdb;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const categoryMetadataSource = (category?.metadata_source || "none") as CategoryMetadataSource;
 
-  useEffect(() => {
-    const fetchTGDBStatus = async () => {
-      try {
-        const response = await api.get<{ active: boolean }>('/tasks/metadata/providers/tgdb/status');
-        if (response.data) {
-          setIsTGDBActive(response.data.active);
-        }
-      } catch (error) {
-        console.error("Failed to fetch TGDB status", error);
+  // Mock torrent for the Card B preview: reuses the real TorrentCardCompact
+  // component so the preview never drifts from the actual card markup.
+  const mockCardBTorrent: MobileTorrent = {
+    id: "preview",
+    hash: "preview",
+    name: taskName,
+    totalSizeBytes: 0,
+    downloadRateBps: 10485760, // 10 MB/s
+    uploadRateBps: 5242880, // 5 MB/s
+    downloadedBytes: 0,
+    uploadedBytes: 0,
+    status: "DOWNLOADING",
+    createdAt: new Date().toISOString(),
+    progress: 45,
+    ratio: 1.5,
+    numSeeds: 25,
+    numLeechs: 10,
+    category: "",
+    canSearchMetadata: false,
+    tags: [],
+    metadata: metadata
+      ? { ...metadata, image_position_y: imagePositionY, image_brightness: imageBrightness }
+      : metadata,
+  };
+
+  const fetchProviderStatus = useCallback(async (provider: MetadataProvider) => {
+    try {
+      const response = await api.get<{ active: boolean }>(`/tasks/metadata/providers/${provider}/status`);
+      if (response.data) {
+        setActiveProviders((prev) => ({ ...prev, [provider]: response.data!.active }));
       }
-    };
-    fetchTGDBStatus();
+    } catch (error) {
+      console.error(`Failed to fetch ${provider} status`, error);
+    }
   }, []);
+
+  useEffect(() => {
+    METADATA_PROVIDERS.forEach((provider) => { void fetchProviderStatus(provider); });
+  }, [fetchProviderStatus]);
 
   useEffect(() => {
     if (categoryMetadataSource === "none") return;
 
-    if (categoryMetadataSource === "tgdb" && isTGDBActive) {
-      setImageSource((prev) => (prev === "TGDB" ? prev : "TGDB"));
-      return;
-    }
-
-    if (categoryMetadataSource === "tmdb") {
-      setImageSource((prev) => (prev === "TMDB" ? prev : "TMDB"));
+    if (activeProviders[categoryMetadataSource]) {
+      const source = categoryMetadataSource.toUpperCase() as "TGDB" | "TMDB";
+      setImageSource((prev) => (prev === source ? prev : source));
       return;
     }
 
     setImageSource((prev) => (prev ? prev : "Upload"));
-  }, [categoryMetadataSource, isTGDBActive]);
+  }, [categoryMetadataSource, activeProviders]);
 
   // Sincronizar estados quando metadata muda
   useEffect(() => {
     setImagePreview(metadata?.image_url || null);
     setSelectedFile(null);
     setImagePositionY(metadata?.image_position_y ?? 50);
-    const rawOpacity = metadata?.image_opacity ?? 65;
-    setImageOpacity(Math.max(15, Math.min(85, rawOpacity)));
+    const rawBrightness = metadata?.image_brightness ?? 65;
+    setImageBrightness(Math.max(15, Math.min(85, rawBrightness)));
   }, [metadata]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,18 +156,24 @@ export function TorrentImageEditor({
       const formData = new FormData();
       formData.append("image", file);
 
-      await api.post(`/tasks/metadata/${taskHash}/image`, formData);
+      const response = await api.post<TaskMetadata>(`/tasks/metadata/${taskHash}/image`, formData);
+
+      if (response.error) {
+        toast.error(response.error || t('torrentImageEditor.errors.uploadFailed'));
+        // Revert preview on error
+        setImagePreview(metadata?.image_url || null);
+        setSelectedFile(null);
+        input.value = ""; // Reset input
+        return;
+      }
 
       toast.success(t('torrentImageEditor.success.imageUploaded'));
 
       setSelectedFile(null);
       input.value = ""; // Reset input to allow re-selection
-      onUpdate?.();
-    } catch (error: unknown) {
-      const errorMessage = error && typeof error === 'object' && 'response' in error
-        ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
-        : undefined;
-      toast.error(errorMessage || t('torrentImageEditor.errors.uploadFailed'));
+      onUpdate?.(response.data);
+    } catch {
+      toast.error(t('torrentImageEditor.errors.uploadFailed'));
       // Revert preview on error
       setImagePreview(metadata?.image_url || null);
       setSelectedFile(null);
@@ -147,18 +186,28 @@ export function TorrentImageEditor({
   const handleDeleteImage = async () => {
     setIsDeleting(true);
     try {
-      await api.delete(`/tasks/metadata/${taskHash}/image`);
+      const response = await api.delete(`/tasks/metadata/${taskHash}/image`);
+
+      if (response.error) {
+        toast.error(response.error || t('torrentImageEditor.errors.deleteFailed'));
+        return;
+      }
 
       toast.success(t('torrentImageEditor.success.imageDeleted'));
 
       setImagePreview(null);
       setSelectedFile(null);
-      onUpdate?.();
-    } catch (error: unknown) {
-      const errorMessage = error && typeof error === 'object' && 'response' in error
-        ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
-        : undefined;
-      toast.error(errorMessage || t('torrentImageEditor.errors.deleteFailed'));
+      // DELETE returns 204 (no body); build the cleared metadata locally so
+      // callers can patch state without a stale image_url.
+      onUpdate?.(metadata ? {
+        ...metadata,
+        image_url: undefined,
+        thumbnail_url: undefined,
+        image_position_y: undefined,
+        image_brightness: undefined,
+      } : undefined);
+    } catch {
+      toast.error(t('torrentImageEditor.errors.deleteFailed'));
     } finally {
       setIsDeleting(false);
     }
@@ -217,37 +266,44 @@ export function TorrentImageEditor({
     if (!metadata?.image_url) return;
 
     try {
-      await api.put(`/tasks/metadata/${taskHash}/position`, {
+      const response = await api.put<TaskMetadata>(`/tasks/metadata/${taskHash}/position`, {
         image_position_y: imagePositionY,
       });
+      if (response.error) {
+        toast.error(response.error || t('torrentImageEditor.errors.savePositionFailed'));
+        return;
+      }
       toast.success(t('torrentImageEditor.success.positionUpdated'));
-      onUpdate?.();
-    } catch (error: unknown) {
-      const errorMessage = error && typeof error === 'object' && 'response' in error
-        ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
-        : undefined;
-      toast.error(errorMessage || t('torrentImageEditor.errors.savePositionFailed'));
+      onUpdate?.(response.data);
+    } catch {
+      toast.error(t('torrentImageEditor.errors.savePositionFailed'));
     }
   };
 
-  const handleOpacityChange = async (value: number[]) => {
-    const newOpacity = value[0];
-    setImageOpacity(newOpacity);
+  const handleBrightnessChange = async (value: number[]) => {
+    const newBrightness = value[0];
+    setImageBrightness(newBrightness);
 
     if (!metadata?.image_url) return;
 
     try {
-      await api.put(`/tasks/metadata/${taskHash}/opacity`, {
-        image_opacity: newOpacity,
+      const response = await api.put<TaskMetadata>(`/tasks/metadata/${taskHash}/brightness`, {
+        image_brightness: newBrightness,
       });
-      onUpdate?.();
-    } catch (error: unknown) {
-      const errorMessage = error && typeof error === 'object' && 'response' in error
-        ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
-        : undefined;
-      toast.error(errorMessage || t('torrentImageEditor.errors.saveOpacityFailed'));
+      if (response.error) {
+        toast.error(response.error || t('torrentImageEditor.errors.saveBrightnessFailed'));
+        return;
+      }
+      onUpdate?.(response.data);
+    } catch {
+      toast.error(t('torrentImageEditor.errors.saveBrightnessFailed'));
     }
   };
+
+  let imageContainerCursorClass = "";
+  if (!selectedFile) {
+    imageContainerCursorClass = isDragging ? "cursor-grabbing" : "cursor-grab";
+  }
 
   return (
     <div className="space-y-6 py-4">
@@ -261,6 +317,7 @@ export function TorrentImageEditor({
           onValueChange={setImageSource}
           categoryMetadataSource={categoryMetadataSource}
           isTGDBActive={isTGDBActive}
+          isTMDBActive={isTMDBActive}
         />
 
         {categoryMetadataSource !== "none" && (
@@ -269,34 +326,20 @@ export function TorrentImageEditor({
           </p>
         )}
 
-        {imageSource === "TGDB" ? (
-          <TGDBSearch
-            taskHash={taskHash}
-            initialQuery={taskName}
-            onSelect={() => {
-              setImageSource("Upload");
-              onUpdate?.();
-            }}
-            onCancel={() => setImageSource("Upload")}
-          />
-        ) : imageSource === "TMDB" ? (
-          <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-            {t("torrentImageEditor.sources.tmdbUnavailable")}
-          </div>
-        ) : imagePreview ? (
+        {imagePreview ? (
           <>
             <Label className="text-sm font-medium">
               {t('torrentImageEditor.imageAdjustments.label')}
             </Label>
             <div
               ref={imageContainerRef}
-              className="relative group"
+              className={`relative group ${imageContainerCursorClass}`}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseLeave}
             >
-            <div className={`w-full h-64 overflow-hidden rounded-lg border ${!selectedFile && metadata?.image_url ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : ''}`}>
+            <div className="relative w-full h-64 overflow-hidden rounded-lg border">
               <img
                 src={imagePreview}
                 alt={taskName}
@@ -307,6 +350,11 @@ export function TorrentImageEditor({
                 }}
                 draggable={false}
               />
+              <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none">
+                {Array.from({ length: 9 }).map((_, i) => (
+                  <div key={i} className="border border-white/50" />
+                ))}
+              </div>
             </div>
             {isUploading ? (
               <div className="absolute top-2 right-2 bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium shadow-md animate-pulse">
@@ -385,6 +433,17 @@ export function TorrentImageEditor({
             </div>
           </div>
           </>
+        ) : imageSource === "TGDB" || imageSource === "TMDB" ? (
+          <ProviderSearch
+            provider={imageSource === "TGDB" ? "tgdb" : "tmdb"}
+            taskHash={taskHash}
+            initialQuery={taskName}
+            onSelect={(updatedMetadata) => {
+              setImageSource("Upload");
+              onUpdate?.(updatedMetadata);
+            }}
+            onCancel={() => setImageSource("Upload")}
+          />
         ) : imageSource === "Upload" && (
           <div
             role="button"
@@ -440,29 +499,29 @@ export function TorrentImageEditor({
           </Button>
         )}
 
-        {/* Image Opacity Slider */}
+        {/* Image Brightness Slider */}
         {metadata?.image_url && !selectedFile && (
           <div className="space-y-2 pt-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="image-opacity" className="text-sm font-medium">
-                {t('torrentImageEditor.opacity.label')}
+              <Label htmlFor="image-brightness" className="text-sm font-medium">
+                {t('torrentImageEditor.brightness.label')}
               </Label>
               <span className="text-xs text-muted-foreground">
-                {imageOpacity}%
+                {imageBrightness}%
               </span>
             </div>
             <Slider
-              id="image-opacity"
+              id="image-brightness"
               min={15}
               max={85}
               step={5}
-              value={[imageOpacity]}
-              onValueChange={(value) => setImageOpacity(value[0])}
-              onValueCommit={handleOpacityChange}
+              value={[imageBrightness]}
+              onValueChange={(value) => setImageBrightness(value[0])}
+              onValueCommit={handleBrightnessChange}
               className="w-full"
             />
             <p className="text-xs text-muted-foreground">
-              {t('torrentImageEditor.opacity.hint')}
+              {t('torrentImageEditor.brightness.hint')}
             </p>
           </div>
         )}
@@ -484,7 +543,7 @@ export function TorrentImageEditor({
                 taskName={taskName}
                 metadata={metadata}
                 imagePositionY={imagePositionY}
-                imageOpacity={imageOpacity}
+                imageBrightness={imageBrightness}
                 compact={false}
               />
             </div>
@@ -497,9 +556,27 @@ export function TorrentImageEditor({
                 taskName={taskName}
                 metadata={metadata}
                 imagePositionY={imagePositionY}
-                imageOpacity={imageOpacity}
+                imageBrightness={imageBrightness}
                 compact={true}
               />
+            </div>
+
+            <div>
+              <p className="text-xs text-muted-foreground mb-2">
+                {t('torrentImageEditor.preview.cardB')}
+              </p>
+              <div className="pointer-events-none">
+                <TorrentCardCompact
+                  torrent={mockCardBTorrent}
+                  onShowDetails={noop}
+                  onStart={noop}
+                  onStop={noop}
+                  onRemove={noop}
+                  onForceDownload={noop}
+                  onForceReannounce={noop}
+                  onForceRecheck={noop}
+                />
+              </div>
             </div>
           </div>
         </div>

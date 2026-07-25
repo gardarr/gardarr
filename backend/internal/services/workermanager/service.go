@@ -144,6 +144,29 @@ func (s *Service) ListWorkers() ([]*entities.Worker, error) {
 	return result, nil
 }
 
+// ListWorkersBasic returns workers straight from the database, with no live
+// qBittorrent connectivity/instance check. Used by the /workers page for a
+// fast initial render and by background loops (event poller, websocket hub
+// stats) whose per-worker calls already fail cleanly on unreachable workers;
+// callers that need real status (Torrents page, worker-select dropdowns,
+// metrics) must keep using ListWorkers.
+func (s *Service) ListWorkersBasic() ([]*entities.Worker, error) {
+	workers, err := s.repository.ListWorkers()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, worker := range workers {
+		worker.Status = entities.WorkerStatusPending
+		worker.Instance = nil
+		worker.Error = ""
+		worker.ErrorCode = entities.WorkerErrorCodeNone
+		worker.Permanent = false
+	}
+
+	return workers, nil
+}
+
 // enrichTasksWithMetadata loads metadata for a list of tasks
 func (s *Service) enrichTasksWithMetadata(ctx context.Context, tasks []*entities.Task) error {
 	if len(tasks) == 0 {
@@ -205,6 +228,9 @@ func (s *Service) ListTasks(ctx context.Context, workers []*entities.Worker) (*e
 			}
 
 			tasks, err := s.repository.ListWorkerTasks(w)
+			for _, task := range tasks {
+				task.WorkerID = w.UUID
+			}
 			resultChan <- workerResult{
 				workerID: w.UUID.String(),
 				tasks:    tasks,
@@ -325,49 +351,26 @@ func (s *Service) UpdateWorker(ctx context.Context, id string, schema *schemas.W
 		updates["color"] = schema.Color
 	}
 
-	// Create a test worker with updated values to validate connectivity
-	testWorker := *currentWorker
-	if schema.Name != "" {
-		testWorker.Name = schema.Name
-	}
-	if schema.URL != "" {
-		testWorker.Address = schema.URL
-		testWorker.QBittorrentURL = schema.URL
-	}
-	if schema.Username != "" {
-		testWorker.QBittorrentUsername = schema.Username
-	}
-	if schema.Password != "" {
-		testWorker.QBittorrentPassword = schema.Password
-	}
-	if schema.Icon != "" {
-		testWorker.Icon = schema.Icon
-	}
-	if schema.Color != "" {
-		testWorker.Color = schema.Color
-	}
-
-	var instance *entities.Instance
-	// Validate instance connectivity BEFORE updating the database
-	if schema.URL != "" || schema.Username != "" || schema.Password != "" {
-		instance, err = s.repository.GetInstanceWithoutDecrypt(&testWorker)
-		if err != nil {
-			return nil, fmt.Errorf("não foi possível conectar com a instância: %s", err.Error())
-		}
-	} else {
-		instance, err = s.repository.GetInstance(&testWorker)
-		if err != nil {
-			return nil, fmt.Errorf("não foi possível conectar com a instância: %s", err.Error())
-		}
-	}
-
-	// If connection is successful, update the worker in the database
+	// Persist immediately - the update must not depend on the qBittorrent
+	// instance being reachable (e.g. fixing a wrong URL/credentials for a
+	// worker that is currently offline).
 	worker, err := s.repository.UpdateWorker(ctx, parsedID, updates)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update worker: %w", err)
 	}
 
-	// Set status and instance data
+	// Best-effort connectivity check purely to populate the response status.
+	// A failure here reflects the worker's reachability, it never rolls back
+	// or blocks the update that already landed in the database.
+	instance, err := s.repository.GetInstance(worker)
+	if err != nil {
+		worker.Instance = nil
+		worker.Error = err.Error()
+		worker.ErrorCode, worker.Permanent = extractWorkerError(err)
+		worker.Status = entities.WorkerStatusErrored
+		return worker, nil
+	}
+
 	worker.Status = entities.WorkerStatusActive
 	worker.Instance = instance
 
@@ -399,6 +402,20 @@ func (s *Service) CreateWorkerTask(ctx context.Context, id string, schema schema
 	return task, nil
 }
 
+func (s *Service) CreateWorkerTaskFromFile(ctx context.Context, id string, fileName string, fileData []byte, schema schemas.TaskCreateFromFileSchema) (*entities.Task, error) {
+	worker, err := s.fetchWorker(id)
+	if err != nil {
+		return nil, err
+	}
+
+	task, err := s.repository.CreateWorkerTaskFromFile(worker, fileName, fileData, schema)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create task from file: %w", err)
+	}
+
+	return task, nil
+}
+
 func (s *Service) GetPreferences(ctx context.Context, worker *entities.Worker) (*entities.InstancePreferences, error) {
 	preferences, err := s.repository.GetWorkerPreferences(worker)
 	if err != nil {
@@ -417,6 +434,9 @@ func (s *Service) ListWorkerTasks(ctx context.Context, id string) ([]*entities.T
 	tasks, err := s.repository.ListWorkerTasks(worker)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list tasks: %w", err)
+	}
+	for _, task := range tasks {
+		task.WorkerID = worker.UUID
 	}
 
 	// Enrich tasks with metadata
@@ -597,30 +617,146 @@ func (s *Service) GetWorkerTasksStats(ctx context.Context, id string) (*entities
 		return nil, err
 	}
 
+	// GetTasksStats already lists all tasks once and computes TotalTasksCount,
+	// TotalDiskSize and WordCloud from them; listing again here would double
+	// the /torrents/info load on the qBittorrent instance for no new data.
 	stats, err := s.repository.GetWorkerTasksStats(worker)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tasks stats: %w", err)
 	}
 
-	// Get total task count by listing all tasks
-	allTasks, err := s.repository.ListWorkerTasks(worker)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get total tasks count: %w", err)
-	}
-
-	stats.TotalTasksCount = len(allTasks)
-
-	// Calculate total disk size from all tasks
-	var totalDiskSize int64
-	for _, task := range allTasks {
-		totalDiskSize += int64(task.Size)
-	}
-	stats.TotalDiskSize = totalDiskSize
-
-	// Calculate word cloud from task names
-	stats.WordCloud = s.calculateWordCloud(allTasks)
-
 	return stats, nil
+}
+
+// BulkTaskAction applies one action to many tasks at once. Hashes are grouped
+// per worker and sent to qBittorrent as a single batched call ("h1|h2|...",
+// which its API supports natively), so N selected torrents cost one HTTP
+// round trip per worker instead of N. Workers are processed in parallel;
+// failures are reported per worker without aborting the others.
+var validBulkTaskActions = map[string]struct{}{
+	"stop":             {},
+	"start":            {},
+	"force_resume":     {},
+	"force_recheck":    {},
+	"force_reannounce": {},
+	"set_category":     {},
+	"add_tags":         {},
+	"delete":           {},
+}
+
+// validateBulkTaskAction checks that schema.Action is a supported action and
+// carries whatever extra fields that action requires.
+func validateBulkTaskAction(schema schemas.BulkTaskActionSchema) error {
+	switch schema.Action {
+	case "set_category":
+		if schema.Category == nil {
+			return fmt.Errorf("category is required for set_category action")
+		}
+	case "add_tags":
+		if len(schema.Tags) == 0 {
+			return fmt.Errorf("tags are required for add_tags action")
+		}
+	default:
+		if _, ok := validBulkTaskActions[schema.Action]; !ok {
+			return fmt.Errorf("unsupported bulk action: %s", schema.Action)
+		}
+	}
+	return nil
+}
+
+// groupBulkTaskHashesByWorker groups hashes per worker, deduplicated,
+// preserving request order.
+func groupBulkTaskHashesByWorker(items []schemas.BulkTaskItemSchema) map[string][]string {
+	hashesByWorker := make(map[string][]string)
+	seen := make(map[string]struct{}, len(items))
+	for _, item := range items {
+		key := item.WorkerID + ":" + item.Hash
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		hashesByWorker[item.WorkerID] = append(hashesByWorker[item.WorkerID], item.Hash)
+	}
+	return hashesByWorker
+}
+
+func (s *Service) BulkTaskAction(ctx context.Context, schema schemas.BulkTaskActionSchema) (*entities.BulkTaskActionResult, error) {
+	if err := validateBulkTaskAction(schema); err != nil {
+		return nil, err
+	}
+
+	hashesByWorker := groupBulkTaskHashesByWorker(schema.Items)
+
+	type workerOutcome struct {
+		workerID  string
+		succeeded int
+		err       error
+	}
+
+	resultChan := make(chan workerOutcome, len(hashesByWorker))
+	for workerID, hashes := range hashesByWorker {
+		go func(workerID string, hashes []string) {
+			err := s.runBulkAction(workerID, hashes, schema)
+			outcome := workerOutcome{workerID: workerID, err: err}
+			if err == nil {
+				outcome.succeeded = len(hashes)
+			}
+			resultChan <- outcome
+		}(workerID, hashes)
+	}
+
+	result := &entities.BulkTaskActionResult{Failed: make(map[string]string)}
+	for range len(hashesByWorker) {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case outcome := <-resultChan:
+			if outcome.err != nil {
+				result.Failed[outcome.workerID] = outcome.err.Error()
+				logger.Error("bulk task action failed for worker",
+					"worker_id", outcome.workerID,
+					"action", schema.Action,
+					"error", outcome.err.Error(),
+				)
+			} else {
+				result.Succeeded += outcome.succeeded
+			}
+		}
+	}
+
+	return result, nil
+}
+
+// runBulkAction executes one action against a single worker with all its
+// hashes joined into qBittorrent's native multi-hash form.
+func (s *Service) runBulkAction(workerID string, hashes []string, schema schemas.BulkTaskActionSchema) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	joined := strings.Join(hashes, "|")
+
+	switch schema.Action {
+	case "stop":
+		return s.repository.StopWorkerTask(worker, joined)
+	case "start":
+		return s.repository.StartWorkerTask(worker, joined)
+	case "force_resume":
+		return s.repository.ForceResumeWorkerTask(worker, joined)
+	case "force_recheck":
+		return s.repository.ForceRecheckWorkerTask(worker, joined)
+	case "force_reannounce":
+		return s.repository.ForceReannounceWorkerTask(worker, joined)
+	case "set_category":
+		return s.repository.SetWorkerTaskCategory(worker, joined, schemas.TaskSetCategorySchema{Category: *schema.Category})
+	case "add_tags":
+		return s.repository.AddWorkerTaskTags(worker, joined, schema.Tags)
+	case "delete":
+		return s.repository.DeleteWorkerTask(worker, joined, schema.Purge)
+	default:
+		return fmt.Errorf("unsupported bulk action: %s", schema.Action)
+	}
 }
 
 func (s *Service) GetWorkerVersion(ctx context.Context, id string) (*entities.WorkerVersion, error) {

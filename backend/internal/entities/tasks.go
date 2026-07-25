@@ -1,13 +1,20 @@
 package entities
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type Task struct {
 	ID           string
+	WorkerID     uuid.UUID
 	CreatedAt    time.Time
 	CompletedAt  *time.Time
 	Name         string
 	Hash         string
+	InfoHashV1   string
+	InfoHashV2   string
 	State        string
 	Category     string
 	Path         string
@@ -155,4 +162,11 @@ type TaskShareLimit struct {
 type TaskListResult struct {
 	Tasks  []*Task           `json:"tasks"`
 	Errors map[string]string `json:"errors"` // Map of WorkerUUID -> ErrorMessage
+}
+
+// BulkTaskActionResult summarizes a bulk action: how many tasks were
+// affected and, per failing worker, why its whole batch failed.
+type BulkTaskActionResult struct {
+	Succeeded int               `json:"succeeded"`
+	Failed    map[string]string `json:"failed"` // Map of WorkerUUID -> ErrorMessage
 }

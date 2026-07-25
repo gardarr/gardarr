@@ -320,6 +320,11 @@ export function EventList({
                               <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground cursor-help">
                                 <HelpCircle className="h-4 w-4 text-muted-foreground/70" />
                                 <span className="italic">{t("history.events.unknownTorrent")}</span>
+                                {event.task_hash && (
+                                  <span className="font-mono text-xs text-muted-foreground/70">
+                                    {event.task_hash.slice(0, 8)}
+                                  </span>
+                                )}
                               </div>
                             </TooltipTrigger>
                             <TooltipContent side="top" className="max-w-xs">

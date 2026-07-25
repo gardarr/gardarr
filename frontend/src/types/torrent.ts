@@ -3,6 +3,7 @@ import type { Worker } from "./worker";
 
 export interface Task {
   id: string;
+  worker_id?: string;
   worker?: Worker;
   name: string;
   hash: string;
@@ -124,7 +125,7 @@ export interface TaskMetadata {
   warning?: string;
   warning_reason?: string;
   image_position_y?: number; // Vertical position offset in percentage (0-100)
-  image_opacity?: number; // Image opacity in percentage (0-100)
+  image_brightness?: number; // Image opacity in percentage (0-100)
   created_at: string;
   updated_at: string;
 }

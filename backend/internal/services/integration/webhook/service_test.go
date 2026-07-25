@@ -269,3 +269,93 @@ func TestEnabled(t *testing.T) {
 	svc.SetEnabled(true)
 	assert.True(t, svc.Enabled())
 }
+
+func retryTestEvent() *entities.Event {
+	return &entities.Event{
+		UUID:      uuid.New(),
+		WorkerID:  uuid.New(),
+		Type:      constants.EventTypeTorrentCompleted,
+		TaskHash:  "retry-hash",
+		NewValue:  "seeding",
+		CreatedAt: time.Now(),
+	}
+}
+
+func TestSendEventWithRetrySucceedsAfterTransientFailures(t *testing.T) {
+	var attempts int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		if attempts < 3 {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	svc := NewService(uuid.New(), server.URL, false, 10, nil)
+	svc.maxAttempts = 3
+	svc.baseBackoff = time.Millisecond
+
+	err := svc.SendEventWithRetry(context.Background(), retryTestEvent())
+	assert.NoError(t, err)
+	assert.Equal(t, 3, attempts)
+}
+
+func TestSendEventWithRetryDoesNotRetryClientErrors(t *testing.T) {
+	var attempts int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer server.Close()
+
+	svc := NewService(uuid.New(), server.URL, false, 10, nil)
+	svc.maxAttempts = 3
+	svc.baseBackoff = time.Millisecond
+
+	err := svc.SendEventWithRetry(context.Background(), retryTestEvent())
+	assert.Error(t, err)
+	assert.Equal(t, 1, attempts)
+}
+
+func TestSendEventWithRetryRetriesTooManyRequests(t *testing.T) {
+	var attempts int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer server.Close()
+
+	svc := NewService(uuid.New(), server.URL, false, 10, nil)
+	svc.maxAttempts = 2
+	svc.baseBackoff = time.Millisecond
+
+	err := svc.SendEventWithRetry(context.Background(), retryTestEvent())
+	assert.Error(t, err)
+	assert.Equal(t, 2, attempts)
+}
+
+func TestSendEventWithRetryRespectsContextCancellation(t *testing.T) {
+	var attempts int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	svc := NewService(uuid.New(), server.URL, false, 10, nil)
+	svc.maxAttempts = 5
+	svc.baseBackoff = time.Hour // would block forever if cancellation were ignored
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		cancel()
+	}()
+
+	err := svc.SendEventWithRetry(ctx, retryTestEvent())
+	assert.ErrorIs(t, err, context.Canceled)
+	assert.Equal(t, 1, attempts)
+}

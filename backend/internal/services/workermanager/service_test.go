@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/jfxdev/gardarr/internal/entities"
+	"github.com/jfxdev/gardarr/internal/schemas"
 )
 
 func TestServiceListTasksEmptyWorkers(t *testing.T) {
@@ -59,5 +60,62 @@ func TestServiceListTasksErrorHandling(t *testing.T) {
 	}
 	if len(result.Tasks) != 0 {
 		t.Errorf("Expected 0 tasks for nil workers, got %d", len(result.Tasks))
+	}
+}
+
+func TestBulkTaskActionValidatesActionSpecificFields(t *testing.T) {
+	svc := &Service{}
+
+	tests := []struct {
+		name   string
+		schema schemas.BulkTaskActionSchema
+	}{
+		{
+			name: "set_category without category",
+			schema: schemas.BulkTaskActionSchema{
+				Action: "set_category",
+				Items:  []schemas.BulkTaskItemSchema{{WorkerID: "w1", Hash: "h1"}},
+			},
+		},
+		{
+			name: "add_tags without tags",
+			schema: schemas.BulkTaskActionSchema{
+				Action: "add_tags",
+				Items:  []schemas.BulkTaskItemSchema{{WorkerID: "w1", Hash: "h1"}},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := svc.BulkTaskAction(context.Background(), tt.schema); err == nil {
+				t.Error("expected validation error, got nil")
+			}
+		})
+	}
+}
+
+func TestBulkTaskActionReportsInvalidWorkerAsFailed(t *testing.T) {
+	svc := &Service{}
+
+	result, err := svc.BulkTaskAction(context.Background(), schemas.BulkTaskActionSchema{
+		Action: "stop",
+		Items: []schemas.BulkTaskItemSchema{
+			{WorkerID: "not-a-uuid", Hash: "h1"},
+			{WorkerID: "not-a-uuid", Hash: "h1"}, // duplicate must be deduped
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if result.Succeeded != 0 {
+		t.Errorf("expected 0 succeeded, got %d", result.Succeeded)
+	}
+	if len(result.Failed) != 1 {
+		t.Errorf("expected 1 failed worker, got %d", len(result.Failed))
+	}
+	if _, ok := result.Failed["not-a-uuid"]; !ok {
+		t.Error("expected failure entry for invalid worker id")
 	}
 }

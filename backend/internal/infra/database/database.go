@@ -71,13 +71,13 @@ func NewDatabase() (*Database, error) {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	// Configure connection pool for PostgreSQL
-	if config.driver == constants.DatabaseDriverPostgreSQL {
-		sqlDB, err := db.DB()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get underlying sql.DB: %w", err)
-		}
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get underlying sql.DB: %w", err)
+	}
 
+	switch config.driver {
+	case constants.DatabaseDriverPostgreSQL:
 		// Set connection pool settings from environment or use defaults
 		maxIdleConns := env.Get("DATABASE_MAX_IDLE_CONNS").Default(10).ValueInt()
 		maxOpenConns := env.Get("DATABASE_MAX_OPEN_CONNS").Default(100).ValueInt()
@@ -86,6 +86,26 @@ func NewDatabase() (*Database, error) {
 		sqlDB.SetMaxIdleConns(maxIdleConns)
 		sqlDB.SetMaxOpenConns(maxOpenConns)
 		sqlDB.SetConnMaxLifetime(connMaxLifetime)
+	case constants.DatabaseDriverSQLite:
+		// WAL lets readers proceed while the poller/websocket hub write, and
+		// busy_timeout makes concurrent writers wait instead of failing with
+		// "database is locked". A single writer connection removes lock
+		// contention entirely; WAL still serves concurrent reads through it
+		// fast enough for this workload.
+		pragmas := []string{
+			"PRAGMA journal_mode=WAL",
+			"PRAGMA busy_timeout=5000",
+			"PRAGMA synchronous=NORMAL",
+			"PRAGMA foreign_keys=ON",
+		}
+		for _, pragma := range pragmas {
+			if err := db.Exec(pragma).Error; err != nil {
+				return nil, fmt.Errorf("failed to apply %q: %w", pragma, err)
+			}
+		}
+
+		sqlDB.SetMaxOpenConns(1)
+		sqlDB.SetMaxIdleConns(1)
 	}
 
 	return &Database{DB: db, driver: config.driver}, nil

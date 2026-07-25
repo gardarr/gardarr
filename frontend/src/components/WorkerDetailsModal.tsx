@@ -200,14 +200,24 @@ export function WorkerDetailsModal({
 
   if (!isOpen) return null;
 
+  let dialogTitleText = t('workers.workerDetails');
+  if (worker?.name) {
+    dialogTitleText = `${t('workers.workerDetails')} - ${worker.name}`;
+  } else if (!worker && loading) {
+    dialogTitleText = t('workers.loadingWorkerDetails');
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-full max-w-2xl h-[90vh] max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
-          <DialogTitle>
-            {loading ? t('workers.loadingWorkerDetails') :
-              worker ? (worker.name ? `${t('workers.workerDetails')} - ${worker.name}` : t('workers.workerDetails')) :
-                t('workers.workerDetails')}
+          <DialogTitle className="flex items-center gap-2">
+            {dialogTitleText}
+            {/* Background live-status refresh indicator - data below is already
+                visible from the DB, this just signals a recheck is in flight */}
+            {worker && loading && (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            )}
           </DialogTitle>
         </DialogHeader>
 
@@ -222,19 +232,21 @@ export function WorkerDetailsModal({
           <CustomScrollArea className="w-full flex-1 min-h-0" variant="thin" mobileFallback>
             <TabsContent value="detalhes" className="mt-4">
               <div className="w-full">
-                {loading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                    <span className="ml-2 text-muted-foreground">{t('workers.loadingWorkerDetails')}</span>
-                  </div>
-                ) : !worker ? (
-                  <div className="flex flex-col items-center justify-center py-12">
-                    <Server className="h-12 w-12 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">{t('workers.workerNotFound')}</h3>
-                    <p className="text-muted-foreground text-center">
-                      {t('workers.workerNotFoundDescription')}
-                    </p>
-                  </div>
+                {!worker ? (
+                  loading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                      <span className="ml-2 text-muted-foreground">{t('workers.loadingWorkerDetails')}</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-12">
+                      <Server className="h-12 w-12 text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">{t('workers.workerNotFound')}</h3>
+                      <p className="text-muted-foreground text-center">
+                        {t('workers.workerNotFoundDescription')}
+                      </p>
+                    </div>
+                  )
                 ) : (
                   <div className="space-y-4">
                     <div className="flex items-center p-3 container-content-background/50 rounded-lg">
@@ -339,54 +351,8 @@ export function WorkerDetailsModal({
                     {worker?.status === 'ERRORED' && (
                       <div className="space-y-3">
                         <h4 className="font-semibold text-sm">{t('workers.instanceInformation')}</h4>
-
-                        <div className="grid gap-3 grid-cols-2">
-                          <div className="p-3 container-content-background/50 rounded-lg">
-                            <div className="space-y-2">
-                              <div className="h-3 bg-muted rounded animate-pulse"></div>
-                              <div className="h-4 bg-muted rounded animate-pulse w-3/4"></div>
-                              <div className="h-3 bg-muted rounded animate-pulse w-1/2"></div>
-                            </div>
-                          </div>
-
-                          <div className="p-3 container-content-background/50 rounded-lg">
-                            <div className="space-y-2">
-                              <div className="h-3 bg-muted rounded animate-pulse"></div>
-                              <div className="h-4 bg-muted rounded animate-pulse w-3/4"></div>
-                              <div className="h-3 bg-muted rounded animate-pulse w-1/2"></div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="p-3 container-content-background/50 rounded-lg">
-                          <div className="space-y-2">
-                            <div className="h-3 bg-muted rounded animate-pulse w-1/4"></div>
-                            <div className="h-4 bg-muted rounded animate-pulse w-1/2"></div>
-                            <div className="h-2 bg-muted rounded animate-pulse w-full"></div>
-                          </div>
-                        </div>
-
-                        <div className="grid gap-3 grid-cols-2">
-                          <div className="p-3 container-content-background/50 rounded-lg">
-                            <div className="space-y-2">
-                              <div className="h-3 bg-muted rounded animate-pulse w-1/3"></div>
-                              <div className="space-y-1">
-                                <div className="h-3 bg-muted rounded animate-pulse w-2/3"></div>
-                                <div className="h-3 bg-muted rounded animate-pulse w-1/2"></div>
-                                <div className="h-3 bg-muted rounded animate-pulse w-3/4"></div>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="p-3 container-content-background/50 rounded-lg">
-                            <div className="space-y-2">
-                              <div className="h-3 bg-muted rounded animate-pulse w-1/3"></div>
-                              <div className="space-y-1">
-                                <div className="h-3 bg-muted rounded animate-pulse w-2/3"></div>
-                                <div className="h-3 bg-muted rounded animate-pulse w-1/2"></div>
-                              </div>
-                            </div>
-                          </div>
+                        <div className="p-3 container-content-background/50 rounded-lg text-sm text-muted-foreground text-center">
+                          {t('workers.instanceInfoUnavailable', 'Instance information unavailable - worker connection failed')}
                         </div>
                       </div>
                     )}

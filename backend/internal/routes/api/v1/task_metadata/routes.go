@@ -59,7 +59,7 @@ func (m *Module) Register() {
 	protected.PUT("/:task_hash/description", m.updateTaskDescription)
 	protected.PUT("/:task_hash/name", m.updateTaskName)
 	protected.PUT("/:task_hash/position", m.updateImagePosition)
-	protected.PUT("/:task_hash/opacity", m.updateImageOpacity)
+	protected.PUT("/:task_hash/brightness", m.updateImageBrightness)
 
 	// Image management - write operations
 	protected.POST("/:task_hash/image", m.uploadTaskImage)
@@ -251,8 +251,8 @@ func (m *Module) updateImagePosition(c *gin.Context) {
 	c.JSON(http.StatusOK, mappers.ToTaskMetadataResponse(metadata))
 }
 
-// updateImageOpacity updates the opacity of the image
-func (m *Module) updateImageOpacity(c *gin.Context) {
+// updateImageBrightness updates the brightness of the image
+func (m *Module) updateImageBrightness(c *gin.Context) {
 	taskHash := c.Param("task_hash")
 	if taskHash == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -263,7 +263,7 @@ func (m *Module) updateImageOpacity(c *gin.Context) {
 
 	// Parse request body
 	var body struct {
-		ImageOpacity float64 `json:"image_opacity"`
+		ImageBrightness float64 `json:"image_brightness"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -272,8 +272,8 @@ func (m *Module) updateImageOpacity(c *gin.Context) {
 		return
 	}
 
-	// Update opacity
-	metadata, err := m.service.UpdateImageOpacity(c.Request.Context(), taskHash, body.ImageOpacity)
+	// Update brightness
+	metadata, err := m.service.UpdateImageBrightness(c.Request.Context(), taskHash, body.ImageBrightness)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),

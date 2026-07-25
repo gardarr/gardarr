@@ -1,5 +1,5 @@
 export interface UserPreferences {
-  torrent_display_mode: "table" | "card" | "list";
+  torrent_display_mode: "table" | "card" | "card_b" | "list";
   compact: boolean;
   background_image_blur_intensity: number;
   active_color_palette: number;

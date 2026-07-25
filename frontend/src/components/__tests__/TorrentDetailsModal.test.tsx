@@ -66,6 +66,10 @@ vi.mock("@/components/ui/tabs", () => ({
   TabsContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
+vi.mock("@/components/ui/custom-scroll-area", () => ({
+  CustomScrollArea: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+}));
+
 vi.mock("@/components/ui/tooltip", () => ({
   Tooltip: ({ children }: { children: ReactNode }) => <>{children}</>,
   TooltipTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
@@ -259,14 +263,14 @@ describe("TorrentDetailsModal", () => {
 
   it("refreshes after saving category", async () => {
     const user = userEvent.setup();
-    const onUpdate = vi.fn().mockResolvedValue(undefined);
+    const onCategoryTagsUpdate = vi.fn();
 
     render(
       <TorrentDetailsModal
         torrent={baseTask}
         isOpen={true}
         onClose={() => undefined}
-        onUpdate={onUpdate}
+        onCategoryTagsUpdate={onCategoryTagsUpdate}
       />
     );
 
@@ -276,14 +280,14 @@ describe("TorrentDetailsModal", () => {
 
     await waitFor(() => {
       expect(mockUpdateTaskCategory).toHaveBeenCalledWith("worker-1", "hash-1", "Series");
-      expect(onUpdate).toHaveBeenCalledTimes(1);
+      expect(onCategoryTagsUpdate).toHaveBeenCalledWith("hash-1", { category: "Series" });
       expect(mockToastSuccess).toHaveBeenCalled();
     });
   });
 
   it("does not refresh or close category edit when category update fails", async () => {
     const user = userEvent.setup();
-    const onUpdate = vi.fn().mockResolvedValue(undefined);
+    const onCategoryTagsUpdate = vi.fn();
     mockUpdateTaskCategory.mockResolvedValueOnce({ error: "worker rejected category" });
 
     render(
@@ -291,7 +295,7 @@ describe("TorrentDetailsModal", () => {
         torrent={baseTask}
         isOpen={true}
         onClose={() => undefined}
-        onUpdate={onUpdate}
+        onCategoryTagsUpdate={onCategoryTagsUpdate}
       />
     );
 
@@ -304,21 +308,21 @@ describe("TorrentDetailsModal", () => {
       expect(mockToastError).toHaveBeenCalledWith("worker rejected category");
     });
 
-    expect(onUpdate).not.toHaveBeenCalled();
+    expect(onCategoryTagsUpdate).not.toHaveBeenCalled();
     expect(mockToastSuccess).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Escolher categoria" })).toBeInTheDocument();
   });
 
   it("refreshes after replacing tags", async () => {
     const user = userEvent.setup();
-    const onUpdate = vi.fn().mockResolvedValue(undefined);
+    const onCategoryTagsUpdate = vi.fn();
 
     render(
       <TorrentDetailsModal
         torrent={baseTask}
         isOpen={true}
         onClose={() => undefined}
-        onUpdate={onUpdate}
+        onCategoryTagsUpdate={onCategoryTagsUpdate}
       />
     );
 
@@ -328,7 +332,7 @@ describe("TorrentDetailsModal", () => {
 
     await waitFor(() => {
       expect(mockUpdateTaskTags).toHaveBeenCalledWith("worker-1", "hash-1", ["b", "c"]);
-      expect(onUpdate).toHaveBeenCalledTimes(1);
+      expect(onCategoryTagsUpdate).toHaveBeenCalledWith("hash-1", { tags: ["b", "c"] });
       expect(mockToastSuccess).toHaveBeenCalled();
     });
   });

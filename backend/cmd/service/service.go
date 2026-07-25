@@ -41,6 +41,7 @@ import (
 	eventsService "github.com/jfxdev/gardarr/internal/services/events"
 	"github.com/jfxdev/gardarr/internal/services/integration"
 	tgdbintegration "github.com/jfxdev/gardarr/internal/services/integrations/tgdb"
+	tmdbintegration "github.com/jfxdev/gardarr/internal/services/integrations/tmdb"
 	settingsService "github.com/jfxdev/gardarr/internal/services/settings"
 	metadata "github.com/jfxdev/gardarr/internal/services/task_metadata"
 	websocketSvc "github.com/jfxdev/gardarr/internal/services/websocket"
@@ -127,6 +128,9 @@ func Run(cmd *cobra.Command, args []string) error {
 	if err := providerConfigSvc.BootstrapTGDBFromEnv(context.Background()); err != nil {
 		panic(fmt.Sprintf("erro ao inicializar integração TGDB: %v", err))
 	}
+	if err := providerConfigSvc.BootstrapTMDBFromEnv(context.Background()); err != nil {
+		panic(fmt.Sprintf("erro ao inicializar integração TMDB: %v", err))
+	}
 
 	// Get base URL for building image URLs
 	baseURL := getBaseURL()
@@ -144,13 +148,16 @@ func Run(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize events service: %w", err)
 	}
-	eventChan := eventSvc.Subscribe(100)
+	eventChan := eventSvc.Subscribe(0) // 0 = default buffer (EVENT_SUBSCRIBER_BUFFER)
 
 	// Event poller — polls workers for task state changes to feed events system
 	eventPollerSvc := eventpoller.NewService(workerSvc, eventSvc)
 	ctx, cancelPoller := context.WithCancel(context.Background())
 	defer cancelPoller()
 	eventPollerSvc.Start(ctx)
+
+	// Periodic cleanup — enforces EVENT_RETENTION_DAYS and prunes stale task states
+	eventSvc.StartCleanupJob(ctx)
 
 	// WebSocket Hub
 	wsHub := websocketSvc.NewHub(eventSvc, workerSvc)
@@ -166,6 +173,7 @@ func Run(cmd *cobra.Command, args []string) error {
 		mediaDirectory,
 		metadata.NewMetadataProviderRegistry(
 			tgdbintegration.NewMetadataProvider(providerConfigSvc),
+			tmdbintegration.NewMetadataProvider(providerConfigSvc),
 		),
 	)
 	if err != nil {
@@ -186,14 +194,27 @@ func Run(cmd *cobra.Command, args []string) error {
 		Handler: router,
 		// set timeout due CWE-400 - Potential Slowloris Attack
 		ReadHeaderTimeout: 5 * time.Second,
+		// Bound how long a client connection can stay open reading a request
+		// body, writing a response, or sitting idle between keep-alive
+		// requests, so a slow/stalled client can't hold a handler goroutine
+		// (and its file descriptor) open indefinitely.
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 60 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 
 	// Initializing the server in a goroutine so that
-	// it won't block the graceful shutdown handling below
+	// it won't block the graceful shutdown handling below. A listen error
+	// (e.g. port already in use) is reported back on a channel instead of
+	// calling log.Fatalf from inside the goroutine, so the deferred cleanup
+	// registered earlier in Run (e.g. cancelPoller) still runs.
+	serveErr := make(chan error, 1)
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen: %s\n", err)
+			serveErr <- err
+			return
 		}
+		serveErr <- nil
 	}()
 
 	// Wait for interrupt signal to gracefully shutdown the server with
@@ -203,7 +224,16 @@ func Run(cmd *cobra.Command, args []string) error {
 	// kill -2 is syscall.SIGINT
 	// kill -9 is syscall.SIGKILL but can't be catch, so don't need add it
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
+
+	select {
+	case err := <-serveErr:
+		if err != nil {
+			return errors.Wrap(err, "server failed to start: ")
+		}
+		return nil
+	case <-quit:
+	}
+
 	log.Println("Shutting down server...")
 
 	// The context is used to inform the server it has 5 seconds to finish

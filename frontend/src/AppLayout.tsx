@@ -1,18 +1,32 @@
 // AppLayout.tsx
 import { Button } from "@/components/ui/button";
-import { Settings, Users, ArrowDownUp, Menu, Sun, Moon, Info, LogOut, FolderOpen, UserCircle, Server, Plug, History } from "lucide-react";
+import { Settings, Users, ArrowDownUp, Menu, Sun, Moon, Info, LogOut, FolderOpen, UserCircle, Server, Plug, History, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import PageTransition from "@/components/PageTransition";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/auth-hooks";
+import { AddTorrentProvider } from "@/contexts/AddTorrentContext";
+import { useAddTorrent } from "@/contexts/add-torrent-hooks";
+import { AddTorrentModal } from "@/components/AddTorrentModal";
 import VariantColorSelectButton from "@/components/VariantColorSelectButton";
+import DisplaySettingsButton from "@/components/DisplaySettingsButton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import logoImage from "@/assets/img/logo/logo.png";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AddTorrentProvider>
+      <AppLayoutInner>{children}</AppLayoutInner>
+      <AddTorrentModal />
+    </AddTorrentProvider>
+  );
+}
+
+function AppLayoutInner({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
   const { user, logout } = useAuth();
+  const { openAddModal } = useAddTorrent();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isDark, setIsDark] = useState<boolean>(false);
@@ -109,6 +123,43 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Menu de Navegação */}
         <nav className="p-2 flex-1 overflow-auto">
+          {(() => {
+            const isCollapsed = !sidebarOpen && !isMobile;
+
+            const addButton = (
+              <button
+                type="button"
+                onClick={() => {
+                  openAddModal();
+                  if (isMobile) {
+                    setSidebarOpen(false);
+                  }
+                }}
+                className={`mb-2 flex w-full items-center rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90 ${isCollapsed ? 'justify-center' : 'gap-3'}`}
+              >
+                <Plus className="h-4 w-4 flex-shrink-0" />
+                <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
+                  }`}>
+                  {t("torrents.addTorrent")}
+                </span>
+              </button>
+            );
+
+            return isCollapsed ? (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    {addButton}
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <p>{t("torrents.addTorrent")}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : (
+              addButton
+            );
+          })()}
           <ul className="space-y-1">
             {menuItems.map((item) => {
               const IconComponent = item.icon;
@@ -181,6 +232,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
             const logoutItem = (
               <button
+                type="button"
                 onClick={() => {
                   handleLogout();
                   if (isMobile) {
@@ -290,6 +342,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
             <VariantColorSelectButton />
+            <DisplaySettingsButton />
             <Button variant="ghost" size="icon" aria-label={t("navigation.profile")} asChild className="h-8 w-8 flex items-center justify-center">
               <Link to="/profile">
                 <UserCircle className="h-4 w-4" />

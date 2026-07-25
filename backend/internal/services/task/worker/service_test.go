@@ -2,7 +2,10 @@ package task
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/jfxdev/gardarr/internal/entities"
@@ -60,6 +63,24 @@ func (m *mockRepository) Add(schema schemas.TaskCreateSchema) (*entities.Task, e
 	return task, nil
 }
 
+func (m *mockRepository) AddFile(fileName string, fileData []byte, schema schemas.TaskCreateFromFileSchema) (*entities.Task, error) {
+	if m.createError != nil {
+		return nil, m.createError
+	}
+
+	task := &entities.Task{
+		ID:       "test-file-hash",
+		Name:     fileName,
+		Hash:     "test-file-hash",
+		Category: schema.Category,
+		Path:     schema.Directory,
+		State:    "DOWNLOADING",
+	}
+
+	m.tasks[task.Hash] = task
+	return task, nil
+}
+
 func (m *mockRepository) Stop(hash string) error {
 	if m.stopError != nil {
 		return m.stopError
@@ -107,6 +128,14 @@ func (m *mockRepository) Delete(id string, deleteFiles bool) error {
 func (m *mockRepository) SetTags(hash string, tags []string) error {
 	if task, exists := m.tasks[hash]; exists {
 		task.Tags = tags
+		return nil
+	}
+	return errors.New("task not found")
+}
+
+func (m *mockRepository) AddTags(hash string, tags []string) error {
+	if task, exists := m.tasks[hash]; exists {
+		task.Tags = append(task.Tags, tags...)
 		return nil
 	}
 	return errors.New("task not found")
@@ -426,6 +455,29 @@ func TestServiceCreateTask(t *testing.T) {
 	_, err = service.CreateTask(ctx, schema)
 	if err == nil {
 		t.Error("Expected error, got nil")
+	}
+}
+
+func TestServiceCreateTaskFromFileDedupesV2InfoHash(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := newMockRepository()
+	service := &service{repository: mockRepo}
+
+	info := "d9:file treede4:name8:test.iso12:piece lengthi16384e12:meta versioni2ee"
+	torrent := []byte(fmt.Sprintf("d4:info%se", info))
+	v2Hash := sha256.Sum256([]byte(info))
+	existingHash := hex.EncodeToString(v2Hash[:])
+	existing := &entities.Task{ID: existingHash, Hash: existingHash[:40], InfoHashV2: existingHash, Name: "Existing v2 Task"}
+	mockRepo.tasks[existingHash] = existing
+
+	task, err := service.CreateTaskFromFile(ctx, "test.torrent", torrent, schemas.TaskCreateFromFileSchema{
+		Category: "movies",
+	})
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if task != existing {
+		t.Fatalf("expected existing v2 task, got %#v", task)
 	}
 }
 

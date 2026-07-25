@@ -312,3 +312,123 @@ func TestTrackTasks_InsignificantStateChange(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, constants.TaskStatusStalledUpload, states[taskHash].State)
 }
+
+func TestTrackTasks_PersistsLastKnownFields(t *testing.T) {
+	db := database.SetupTestDBWithMigrations(t)
+	svc, err := NewService(db)
+	require.NoError(t, err)
+	ctx := context.Background()
+
+	workerID := uuid.New()
+
+	tasks := []*entities.Task{
+		{
+			Hash:     "fields-hash",
+			Name:     "Ubuntu ISO",
+			Category: "linux",
+			Size:     4096,
+			State:    constants.TaskStatusDownloading,
+			Progress: 0.25,
+		},
+	}
+
+	err = svc.TrackTasks(ctx, tasks, workerID, time.Now())
+	require.NoError(t, err)
+
+	states, err := svc.repo.LoadTaskStates(ctx, workerID)
+	require.NoError(t, err)
+	require.Contains(t, states, "fields-hash")
+	assert.Equal(t, "Ubuntu ISO", states["fields-hash"].Name)
+	assert.Equal(t, "linux", states["fields-hash"].Category)
+	assert.Equal(t, int64(4096), states["fields-hash"].Size)
+}
+
+func TestTrackTasks_UpdatesNameOnRename(t *testing.T) {
+	db := database.SetupTestDBWithMigrations(t)
+	svc, err := NewService(db)
+	require.NoError(t, err)
+	ctx := context.Background()
+
+	workerID := uuid.New()
+	taskHash := "rename-hash"
+
+	err = svc.TrackTasks(ctx, []*entities.Task{
+		{
+			Hash:     taskHash,
+			Name:     "Old Name",
+			State:    constants.TaskStatusDownloading,
+			Progress: 0.5,
+		},
+	}, workerID, time.Now())
+	require.NoError(t, err)
+
+	// Same hash, new name, progress change triggers persistence
+	err = svc.TrackTasks(ctx, []*entities.Task{
+		{
+			Hash:     taskHash,
+			Name:     "New Name",
+			State:    constants.TaskStatusDownloading,
+			Progress: 0.6,
+		},
+	}, workerID, time.Now())
+	require.NoError(t, err)
+
+	svc.mu.RLock()
+	inMemory := svc.taskStates[workerID][taskHash].Name
+	svc.mu.RUnlock()
+	assert.Equal(t, "New Name", inMemory)
+
+	states, err := svc.repo.LoadTaskStates(ctx, workerID)
+	require.NoError(t, err)
+	assert.Equal(t, "New Name", states[taskHash].Name)
+}
+
+func TestDetectRemovedTasks_MetadataIncludesName(t *testing.T) {
+	tests := []struct {
+		name     string
+		taskName string
+	}{
+		{name: "with name", taskName: "Debian ISO"},
+		{name: "with empty name", taskName: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db := database.SetupTestDBWithMigrations(t)
+			svc, err := NewService(db)
+			require.NoError(t, err)
+			ctx := context.Background()
+
+			workerID := uuid.New()
+			taskHash := "removed-hash"
+
+			err = svc.TrackTasks(ctx, []*entities.Task{
+				{
+					Hash:     taskHash,
+					Name:     tt.taskName,
+					Category: "isos",
+					Size:     1024,
+					State:    constants.TaskStatusUploading,
+					Progress: 1.0,
+				},
+			}, workerID, time.Now())
+			require.NoError(t, err)
+
+			// Task no longer present in poll -> removal event
+			err = svc.DetectRemovedTasks(ctx, []*entities.Task{}, workerID, time.Now())
+			require.NoError(t, err)
+
+			removedType := constants.EventTypeTorrentRemoved
+			events, _, err := svc.repo.ListEvents(ctx, &workerID, &removedType, 10, 0)
+			require.NoError(t, err)
+			require.Len(t, events, 1)
+
+			ev := events[0]
+			assert.Equal(t, taskHash, ev.TaskHash)
+			assert.Equal(t, tt.taskName, ev.Metadata["name"])
+			assert.Equal(t, "isos", ev.Metadata["category"])
+			assert.Equal(t, taskHash, ev.Metadata["hash"])
+			assert.Equal(t, 1.0, ev.Metadata["last_progress"])
+		})
+	}
+}

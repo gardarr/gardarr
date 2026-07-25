@@ -286,8 +286,8 @@ func (s *Service) UpdateImagePosition(ctx context.Context, taskHash string, posi
 	return s.modelToEntity(existing), nil
 }
 
-// UpdateImageOpacity updates the opacity of the image
-func (s *Service) UpdateImageOpacity(ctx context.Context, taskHash string, opacity float64) (*entities.TaskMetadata, error) {
+// UpdateImageBrightness updates the brightness of the image
+func (s *Service) UpdateImageBrightness(ctx context.Context, taskHash string, brightness float64) (*entities.TaskMetadata, error) {
 	existing, err := s.repo.GetByTaskHash(ctx, taskHash)
 	if err != nil {
 		return nil, err
@@ -297,13 +297,13 @@ func (s *Service) UpdateImageOpacity(ctx context.Context, taskHash string, opaci
 		return nil, fmt.Errorf("metadata not found")
 	}
 
-	// Validate opacity range (15-85%)
-	if opacity < 15 || opacity > 85 {
-		return nil, fmt.Errorf("opacity must be between 15 and 85")
+	// Validate brightness range (15-85%)
+	if brightness < 15 || brightness > 85 {
+		return nil, fmt.Errorf("brightness must be between 15 and 85")
 	}
 
-	// Update opacity
-	existing.ImageOpacity = opacity
+	// Update brightness
+	existing.ImageBrightness = brightness
 	existing.UpdatedAt = time.Now()
 	if err := s.repo.Update(ctx, existing); err != nil {
 		return nil, err
@@ -832,16 +832,16 @@ func (s *Service) selectImageExtension(rawExt string, contentType string) string
 
 func (s *Service) modelToEntity(model *models.TaskMetadata) *entities.TaskMetadata {
 	entity := &entities.TaskMetadata{
-		UUID:           model.UUID,
-		TaskHash:       model.TaskHash,
-		ImagePath:      model.ImagePath,
-		Name:           model.Name,
-		ReleaseDate:    model.ReleaseDate,
-		Description:    model.Description,
-		ImagePositionY: model.ImagePositionY,
-		ImageOpacity:   model.ImageOpacity,
-		CreatedAt:      model.CreatedAt,
-		UpdatedAt:      model.UpdatedAt,
+		UUID:            model.UUID,
+		TaskHash:        model.TaskHash,
+		ImagePath:       model.ImagePath,
+		Name:            model.Name,
+		ReleaseDate:     model.ReleaseDate,
+		Description:     model.Description,
+		ImagePositionY:  model.ImagePositionY,
+		ImageBrightness: model.ImageBrightness,
+		CreatedAt:       model.CreatedAt,
+		UpdatedAt:       model.UpdatedAt,
 	}
 
 	// Generate URLs if image exists

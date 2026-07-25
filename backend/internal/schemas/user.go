@@ -20,7 +20,7 @@ type ChangePasswordRequest struct {
 
 // UpdatePreferencesRequest represents the request body for updating user preferences
 type UpdatePreferencesRequest struct {
-	TorrentDisplayMode           *string `json:"torrent_display_mode,omitempty" binding:"omitempty,oneof=table card list"`
+	TorrentDisplayMode           *string `json:"torrent_display_mode,omitempty" binding:"omitempty,oneof=table card card_b list"`
 	Compact                      *bool   `json:"compact,omitempty"`
 	BackgroundImageBlurIntensity *int    `json:"background_image_blur_intensity,omitempty" binding:"omitempty,min=0,max=100"`
 	ActiveColorPalette           *int    `json:"active_color_palette,omitempty" binding:"omitempty,min=1,max=3"`

@@ -22,6 +22,7 @@ type RepositoryInterface interface {
 	GetWorkerPreferences(worker *entities.Worker) (*entities.InstancePreferences, error)
 	ListWorkerTasks(worker *entities.Worker) ([]*entities.Task, error)
 	CreateWorkerTask(worker *entities.Worker, schema schemas.TaskCreateSchema) (*entities.Task, error)
+	CreateWorkerTaskFromFile(worker *entities.Worker, fileName string, fileData []byte, schema schemas.TaskCreateFromFileSchema) (*entities.Task, error)
 	StopWorkerTask(worker *entities.Worker, taskID string) error
 	StartWorkerTask(worker *entities.Worker, taskID string) error
 	ForceDownloadWorkerTask(worker *entities.Worker, taskID string) error
@@ -36,6 +37,7 @@ type RepositoryInterface interface {
 	SetWorkerTaskDownloadLimit(worker *entities.Worker, taskID string, schema schemas.TaskSetDownloadLimitSchema) error
 	SetWorkerTaskUploadLimit(worker *entities.Worker, taskID string, schema schemas.TaskSetUploadLimitSchema) error
 	SetWorkerTaskTags(worker *entities.Worker, taskID string, schema schemas.TaskSetTagsSchema) error
+	AddWorkerTaskTags(worker *entities.Worker, taskID string, tags []string) error
 	SetWorkerTaskCategory(worker *entities.Worker, taskID string, schema schemas.TaskSetCategorySchema) error
 	ListWorkerTaskFiles(worker *entities.Worker, taskID string) ([]*entities.TaskFile, error)
 	GetWorkerTasksStats(worker *entities.Worker) (*entities.TaskStats, error)

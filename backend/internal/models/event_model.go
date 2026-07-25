@@ -10,13 +10,13 @@ import (
 // Event represents a system event in the database
 type Event struct {
 	UUID      uuid.UUID `gorm:"type:uuid;primaryKey;uniqueIndex"`
-	WorkerID  uuid.UUID `gorm:"type:uuid;column:worker_id;index;not null"`
-	Type      string    `gorm:"size:100;index;not null"`
-	TaskHash  string    `gorm:"size:255;index"`
+	WorkerID  uuid.UUID `gorm:"type:uuid;column:worker_id;index;not null;index:idx_events_worker_created,priority:1;index:idx_events_worker_hash_type,priority:1"`
+	Type      string    `gorm:"size:100;index;not null;index:idx_events_worker_hash_type,priority:3"`
+	TaskHash  string    `gorm:"size:255;index;index:idx_events_worker_hash_type,priority:2"`
 	OldValue  string    `gorm:"size:255"`
 	NewValue  string    `gorm:"size:255"`
 	Metadata  string    `gorm:"type:text"` // JSON string
-	CreatedAt time.Time `gorm:"index;not null"`
+	CreatedAt time.Time `gorm:"index;not null;index:idx_events_worker_created,priority:2"`
 }
 
 func (e *Event) BeforeCreate(tx *gorm.DB) (err error) {

@@ -1,0 +1,137 @@
+import { FileText, Image } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
+import { ProgressBar } from "@/components/ui/ProgressBar";
+import { WorkerIcon } from "@/components/ui/WorkerIcon";
+import { getStatusIcon, getStatusColor, getStatusBackgroundColor, type TorrentStatus } from "../TorrentStatusIcon";
+import { getStatusTranslationKey } from "@/utils/statusUtils";
+import { useTorrentBlurIntensity, getBlurPixels } from "../hooks";
+import { formatBytes } from "@/utils/bytes";
+import { InlineEditableText } from "./InlineEditableText";
+import type { Task, TaskMetadata } from "@/types/torrent";
+import taskDefaultBg from "@/assets/img/common/task-default-background.png";
+
+interface TorrentHeroHeaderProps {
+  torrent: Task;
+  onUpdate?: (metadata?: TaskMetadata) => Promise<void> | void;
+}
+
+export function TorrentHeroHeader({ torrent, onUpdate }: TorrentHeroHeaderProps) {
+  const { t } = useTranslation();
+  const blurIntensity = useTorrentBlurIntensity();
+  const blurPixels = getBlurPixels(blurIntensity);
+  const hasImage = Boolean(torrent.metadata?.image_url);
+  const StatusIcon = getStatusIcon(torrent.state as TorrentStatus);
+
+  const handleSaveName = async (name: string) => {
+    try {
+      const response = await api.put<TaskMetadata>(`/tasks/metadata/${torrent.hash}/name`, { name });
+      if (onUpdate) {
+        await onUpdate(response.data);
+      }
+      toast.success(t("torrentDetails.toasts.nameUpdateSuccess", { defaultValue: "Nome atualizado com sucesso" }));
+    } catch {
+      toast.error(t("torrentDetails.toasts.nameUpdateError", { defaultValue: "Erro ao atualizar nome" }));
+      return false;
+    }
+  };
+
+  return (
+    <div className="relative rounded-lg border overflow-hidden">
+      {/* Cover background */}
+      {hasImage ? (
+        <>
+          <div
+            className="absolute inset-0 bg-cover pointer-events-none z-0"
+            style={{
+              backgroundImage: `url(${encodeURI(torrent.metadata!.image_url!)})`,
+              filter: `blur(${blurPixels}px)`,
+              backgroundPosition: `center ${torrent.metadata?.image_position_y ?? 50}%`,
+              opacity: Math.max(0.15, Math.min(0.85, (torrent.metadata?.image_brightness ?? 65) / 100)),
+            }}
+            aria-hidden
+          />
+          <div className="absolute inset-0 bg-white/60 dark:bg-black/40 z-0 pointer-events-none" aria-hidden />
+        </>
+      ) : (
+        <div
+          className="absolute inset-0 bg-cover pointer-events-none z-0 opacity-[0.12] dark:opacity-[0.03]"
+          style={{ backgroundImage: `url(${taskDefaultBg})` }}
+          aria-hidden
+        />
+      )}
+
+      <div className="relative z-10 p-3 sm:p-4 flex gap-3 sm:gap-4">
+        {/* Thumbnail */}
+        <div className="flex-shrink-0 hidden sm:block">
+          {torrent.metadata?.thumbnail_url ? (
+            <img
+              src={torrent.metadata.thumbnail_url}
+              alt={torrent.name}
+              className="w-24 h-24 rounded-lg border object-cover"
+            />
+          ) : (
+            <div className="w-24 h-24 rounded-lg border bg-muted flex items-center justify-center">
+              <Image className="h-10 w-10 text-muted-foreground" />
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0 space-y-2 sm:space-y-3">
+          {/* Editable display name */}
+          <InlineEditableText
+            icon={FileText}
+            value={torrent.metadata?.name || torrent.name}
+            editLabel={t("torrentDetails.name.edit", { defaultValue: "Editar nome" })}
+            saveLabel={t("torrentDetails.name.save", { defaultValue: "Salvar nome" })}
+            copyText={torrent.metadata?.name || torrent.name}
+            onSave={handleSaveName}
+            display={
+              <div>
+                <span className="text-xs sm:text-sm font-semibold break-words leading-relaxed">
+                  {torrent.metadata?.name || torrent.name}
+                  {torrent.metadata?.release_date && (
+                    <span className="text-muted-foreground font-normal ml-2">({torrent.metadata.release_date})</span>
+                  )}
+                </span>
+                {torrent.metadata?.name && (
+                  <div className="text-[10px] text-muted-foreground mt-1 truncate" title={torrent.name}>
+                    {t("torrentDetails.name.file", { defaultValue: "Arquivo" })}: {torrent.name}
+                  </div>
+                )}
+              </div>
+            }
+          />
+
+          {/* Status + worker */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs sm:text-sm font-medium border ${getStatusBackgroundColor(torrent.state as TorrentStatus)}`}>
+              <div className={`flex items-center gap-1.5 ${getStatusColor(torrent.state as TorrentStatus)}`}>
+                <StatusIcon className="h-3.5 w-3.5" />
+                <span>{t(getStatusTranslationKey(torrent.state as TorrentStatus))}</span>
+              </div>
+            </div>
+            {torrent.worker && (
+              <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md container-content-background/60 border">
+                <WorkerIcon iconName={torrent.worker.icon} color={torrent.worker.color} size="sm" />
+                <span className="text-xs sm:text-sm text-muted-foreground">{torrent.worker.name}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Progress */}
+          <div className="flex items-center gap-2">
+            <ProgressBar progress={torrent.progress} height="sm" className="flex-1" />
+            <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+              {torrent.progress.toFixed(1)}%
+            </span>
+            <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:inline">
+              {formatBytes(torrent.network?.download?.amount || (torrent.progress / 100) * torrent.size)} / {formatBytes(torrent.size)}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

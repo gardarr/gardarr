@@ -150,3 +150,46 @@ export function getStatusBackgroundColor(status: TaskStatus): string {
       return "bg-gray-50 dark:bg-gray-950/20";
   }
 }
+
+// Left-to-right gradient tinted by status, for strips/headers over a
+// thumbnail or background image where a flat bg-* fill would look wrong.
+export function getStatusGradientColor(status: TaskStatus): string {
+  switch (status) {
+    case "ERROR":
+    case "MISSING_FILES":
+      return "bg-gradient-to-r from-red-500/25 via-red-500/10 to-transparent";
+
+    case "DOWNLOADING":
+    case "METADATA_DOWNLOAD":
+    case "FORCED_METADATA_DOWNLOAD":
+    case "QUEUED_DOWNLOAD":
+    case "FORCED_DOWNLOAD":
+      return "bg-gradient-to-r from-green-500/25 via-green-500/10 to-transparent";
+
+    case "PAUSED_DOWNLOAD":
+    case "STOPPED_DOWNLOAD":
+    case "STALLED_DOWNLOAD":
+    case "PAUSED_UPLOAD":
+    case "STOPPED_UPLOAD":
+    case "STALLED_UPLOAD":
+      return "bg-gradient-to-r from-orange-500/25 via-orange-500/10 to-transparent";
+
+    case "CHECKING_DOWNLOAD":
+    case "CHECKING_RESUME_DATA":
+    case "CHECKING_UPLOAD":
+      return "bg-gradient-to-r from-cyan-500/25 via-cyan-500/10 to-transparent";
+
+    case "UPLOADING":
+    case "QUEUED_UPLOAD":
+    case "FORCED_UPLOAD":
+      return "bg-gradient-to-r from-purple-500/25 via-purple-500/10 to-transparent";
+
+    case "ALLOCATING":
+    case "MOVING":
+      return "bg-gradient-to-r from-indigo-500/25 via-indigo-500/10 to-transparent";
+
+    case "UNKNOWN":
+    default:
+      return "bg-gradient-to-r from-gray-500/20 via-gray-500/5 to-transparent";
+  }
+}

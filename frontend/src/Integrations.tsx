@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Webhook, Bell, Plug, Monitor, BookOpen, Joystick, Activity, Gamepad2 } from 'lucide-react';
+import { Webhook, Bell, Plug, Monitor, BookOpen, Joystick, Activity, Gamepad2, Clapperboard } from 'lucide-react';
 import { api } from '@/lib/api';
 import { EventList, type Event, type FilterType } from '@/components/EventList';
 import { toast } from 'sonner';
@@ -16,11 +16,33 @@ interface EventsResponse {
   total: number;
 }
 
-interface TGDBIntegrationResponse {
+interface ProviderIntegrationResponse {
   provider: string;
   enabled: boolean;
   api_key_configured: boolean;
   updated_at?: string;
+}
+
+type ProviderConfigStatus = {
+  isLoading: boolean;
+  configured: boolean;
+  enabled: boolean;
+};
+
+function getProviderStatusText(
+  t: (key: string) => string,
+  integrationId: string,
+  providerConfig: ProviderConfigStatus
+): string {
+  if (providerConfig.isLoading) {
+    return t('common.loading');
+  }
+  if (!providerConfig.configured) {
+    return t(`integrations.${integrationId}.status.notConfigured`);
+  }
+  return providerConfig.enabled
+    ? t(`integrations.${integrationId}.status.enabled`)
+    : t(`integrations.${integrationId}.status.disabled`);
 }
 
 export default function IntegrationsPage() {
@@ -40,6 +62,12 @@ export default function IntegrationsPage() {
   const [tgdbEnabled, setTGDBEnabled] = useState(false);
   const [tgdbConfigured, setTGDBConfigured] = useState(false);
   const [tgdbApiKey, setTGDBApiKey] = useState("");
+  const [showTMDBConfig, setShowTMDBConfig] = useState(false);
+  const [isLoadingTMDB, setIsLoadingTMDB] = useState(false);
+  const [isSavingTMDB, setIsSavingTMDB] = useState(false);
+  const [tmdbEnabled, setTMDBEnabled] = useState(false);
+  const [tmdbConfigured, setTMDBConfigured] = useState(false);
+  const [tmdbApiKey, setTMDBApiKey] = useState("");
 
   const loadEvents = useCallback(async () => {
     setIsLoading(true);
@@ -77,7 +105,7 @@ export default function IntegrationsPage() {
   const loadTGDBConfig = useCallback(async () => {
     setIsLoadingTGDB(true);
     try {
-      const response = await api.get<TGDBIntegrationResponse>("/integrations/tgdb");
+      const response = await api.get<ProviderIntegrationResponse>("/integrations/tgdb");
       if (response.data) {
         setTGDBEnabled(response.data.enabled);
         setTGDBConfigured(response.data.api_key_configured);
@@ -96,7 +124,7 @@ export default function IntegrationsPage() {
   const handleSaveTGDB = async () => {
     setIsSavingTGDB(true);
     try {
-      const response = await api.put<TGDBIntegrationResponse>("/integrations/tgdb", {
+      const response = await api.put<ProviderIntegrationResponse>("/integrations/tgdb", {
         enabled: tgdbEnabled,
         api_key: tgdbApiKey,
       });
@@ -112,6 +140,47 @@ export default function IntegrationsPage() {
       toast.error(t("integrations.tgdb.errors.saveFailed"));
     } finally {
       setIsSavingTGDB(false);
+    }
+  };
+
+  const loadTMDBConfig = useCallback(async () => {
+    setIsLoadingTMDB(true);
+    try {
+      const response = await api.get<ProviderIntegrationResponse>("/integrations/tmdb");
+      if (response.data) {
+        setTMDBEnabled(response.data.enabled);
+        setTMDBConfigured(response.data.api_key_configured);
+      }
+    } catch {
+      toast.error(t("integrations.tmdb.errors.loadFailed"));
+    } finally {
+      setIsLoadingTMDB(false);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    loadTMDBConfig();
+  }, [loadTMDBConfig]);
+
+  const handleSaveTMDB = async () => {
+    setIsSavingTMDB(true);
+    try {
+      const response = await api.put<ProviderIntegrationResponse>("/integrations/tmdb", {
+        enabled: tmdbEnabled,
+        api_key: tmdbApiKey,
+      });
+
+      if (response.data) {
+        setTMDBConfigured(response.data.api_key_configured);
+      }
+
+      setTMDBApiKey("");
+      toast.success(t("integrations.tmdb.success.saved"));
+      setShowTMDBConfig(false);
+    } catch {
+      toast.error(t("integrations.tmdb.errors.saveFailed"));
+    } finally {
+      setIsSavingTMDB(false);
     }
   };
 
@@ -164,8 +233,37 @@ export default function IntegrationsPage() {
       icon: Gamepad2,
       category: 'others',
       status: 'available'
+    },
+    {
+      id: 'tmdb',
+      name: t('integrations.tmdb.name'),
+      subtitle: t('integrations.tmdb.subtitle'),
+      description: t('integrations.tmdb.description'),
+      icon: Clapperboard,
+      category: 'others',
+      status: 'available'
     }
   ];
+
+  const providerConfigById: Record<string, {
+    isLoading: boolean;
+    configured: boolean;
+    enabled: boolean;
+    onConfigure: () => void;
+  }> = {
+    tgdb: {
+      isLoading: isLoadingTGDB,
+      configured: tgdbConfigured,
+      enabled: tgdbEnabled,
+      onConfigure: () => setShowTGDBConfig(true),
+    },
+    tmdb: {
+      isLoading: isLoadingTMDB,
+      configured: tmdbConfigured,
+      enabled: tmdbEnabled,
+      onConfigure: () => setShowTMDBConfig(true),
+    },
+  };
 
   const categories = {
     notifications: {
@@ -272,6 +370,7 @@ export default function IntegrationsPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {getIntegrationsByCategory('others').map((integration) => {
             const IconComponent = integration.icon;
+            const providerConfig = providerConfigById[integration.id];
             return (
               <Card key={integration.id} className="hover:shadow-md transition-shadow">
                 <CardHeader className="pb-3">
@@ -292,16 +391,12 @@ export default function IntegrationsPage() {
                     {integration.description}
                   </CardDescription>
                   <p className="mb-4 text-sm text-muted-foreground">
-                    {isLoadingTGDB
-                      ? t('common.loading')
-                      : tgdbConfigured
-                        ? (tgdbEnabled ? t('integrations.tgdb.status.enabled') : t('integrations.tgdb.status.disabled'))
-                        : t('integrations.tgdb.status.notConfigured')}
+                    {getProviderStatusText(t, integration.id, providerConfig)}
                   </p>
                   <Button
                     variant="outline"
                     className="w-full"
-                    onClick={() => setShowTGDBConfig(true)}
+                    onClick={providerConfig.onConfigure}
                   >
                     {t('integrations.configure')}
                   </Button>
@@ -428,6 +523,51 @@ export default function IntegrationsPage() {
 
             <Button className="w-full" onClick={handleSaveTGDB} disabled={isSavingTGDB}>
               {isSavingTGDB ? t("common.loading") : t("common.save")}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={showTMDBConfig} onOpenChange={setShowTMDBConfig}>
+        <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
+          <SheetHeader className="space-y-1">
+            <SheetTitle>{t("integrations.tmdb.sheetTitle")}</SheetTitle>
+            <p className="text-sm text-muted-foreground">{t("integrations.tmdb.subtitle")}</p>
+            <SheetDescription>{t("integrations.tmdb.sheetDescription")}</SheetDescription>
+          </SheetHeader>
+
+          <div className="space-y-6 py-6">
+            <div className="space-y-2">
+              <Label htmlFor="tmdb-enabled">{t("integrations.tmdb.enabledLabel")}</Label>
+              <Button
+                id="tmdb-enabled"
+                type="button"
+                variant={tmdbEnabled ? "default" : "outline"}
+                className="w-full"
+                onClick={() => setTMDBEnabled((value) => !value)}
+              >
+                {tmdbEnabled ? t("integrations.tmdb.enabled") : t("integrations.tmdb.disabled")}
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tmdb-api-key">{t("integrations.tmdb.apiKeyLabel")}</Label>
+              <Input
+                id="tmdb-api-key"
+                type="password"
+                value={tmdbApiKey}
+                onChange={(event) => setTMDBApiKey(event.target.value)}
+                placeholder={t("integrations.tmdb.apiKeyPlaceholder")}
+              />
+              <p className="text-xs text-muted-foreground">
+                {tmdbConfigured
+                  ? t("integrations.tmdb.apiKeyConfigured")
+                  : t("integrations.tmdb.apiKeyNotConfigured")}
+              </p>
+            </div>
+
+            <Button className="w-full" onClick={handleSaveTMDB} disabled={isSavingTMDB}>
+              {isSavingTMDB ? t("common.loading") : t("common.save")}
             </Button>
           </div>
         </SheetContent>

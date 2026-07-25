@@ -47,26 +47,18 @@ func (s *Service) Start(ctx context.Context) {
 }
 
 func (s *Service) pollOnce(ctx context.Context) {
-	workers, err := s.workers.ListWorkers()
+	// ListWorkersBasic skips the per-worker login/health-check ListWorkers
+	// performs; an unreachable worker simply fails ListTasks in pollWorker,
+	// so probing availability upfront on every poll cycle bought nothing.
+	workers, err := s.workers.ListWorkersBasic()
 	if err != nil || len(workers) == 0 {
 		return
 	}
 
 	now := time.Now().UTC()
 
-	var activeWorkers []*entities.Worker
-	for _, w := range workers {
-		if w.Status == entities.WorkerStatusActive {
-			activeWorkers = append(activeWorkers, w)
-		}
-	}
-
-	if len(activeWorkers) == 0 {
-		return
-	}
-
 	var wg sync.WaitGroup
-	for _, worker := range activeWorkers {
+	for _, worker := range workers {
 		wg.Add(1)
 		go func(w *entities.Worker) {
 			defer wg.Done()
@@ -86,16 +78,18 @@ func (s *Service) pollWorker(ctx context.Context, w *entities.Worker, now time.T
 		return
 	}
 	tasks := result.Tasks
-	if len(tasks) == 0 {
-		return
+	if len(tasks) > 0 {
+		if err := s.eventService.TrackTasks(ctx, tasks, w.UUID, now); err != nil {
+			logger.Debug("event poller: track tasks error",
+				"worker_id", w.UUID.String(),
+				"error", err.Error(),
+			)
+		}
 	}
 
-	if err := s.eventService.TrackTasks(ctx, tasks, w.UUID, now); err != nil {
-		logger.Debug("event poller: track tasks error",
-			"worker_id", w.UUID.String(),
-			"error", err.Error(),
-		)
-	}
+	// Always run removal detection, even when tasks is empty - that's exactly
+	// the case where the worker's last remaining torrent was deleted outside
+	// Gardarr and its stale state needs to be cleared.
 	if err := s.eventService.DetectRemovedTasks(ctx, tasks, w.UUID, now); err != nil {
 		logger.Debug("event poller: detect removed tasks error",
 			"worker_id", w.UUID.String(),

@@ -1,5 +1,31 @@
 import { api } from '../lib/api';
 import type { ApiResponse } from '../lib/api';
+
+export type BulkTaskAction =
+  | 'stop'
+  | 'start'
+  | 'force_resume'
+  | 'force_recheck'
+  | 'force_reannounce'
+  | 'set_category'
+  | 'add_tags'
+  | 'delete';
+
+export interface BulkTaskItem {
+  worker_id: string;
+  hash: string;
+}
+
+export interface BulkTaskActionResult {
+  succeeded: number;
+  failed: Record<string, string>; // workerUUID -> error message
+}
+
+export interface BulkTaskActionOptions {
+  category?: string;
+  tags?: string[];
+  purge?: boolean;
+}
 import type {
   Task,
   CreateTaskRequest,
@@ -34,6 +60,26 @@ export class TorrentService {
    */
   async createTask(workerId: string, taskData: CreateTaskRequest): Promise<ApiResponse<Task>> {
     return api.post<Task>(`/worker/${workerId}/task`, taskData);
+  }
+
+  /**
+   * Cria uma nova task/torrent a partir de um arquivo .torrent
+   */
+  async createTaskFromFile(
+    workerId: string,
+    file: File,
+    options: { category: string; directory?: string; tags?: string[] }
+  ): Promise<ApiResponse<Task>> {
+    const formData = new FormData();
+    formData.append('torrent', file);
+    formData.append('category', options.category);
+    if (options.directory) {
+      formData.append('directory', options.directory);
+    }
+    for (const tag of options.tags || []) {
+      formData.append('tags', tag);
+    }
+    return api.post<Task>(`/worker/${workerId}/task/file`, formData);
   }
 
   /**
@@ -119,6 +165,22 @@ export class TorrentService {
    */
   async updateTaskCategory(workerId: string, taskId: string, category: string): Promise<ApiResponse<null>> {
     return api.put<null>(`/worker/${workerId}/task/${taskId}/category`, { category });
+  }
+
+  /**
+   * Aplica uma ação em lote a várias tasks (possivelmente de vários workers).
+   * O backend agrupa os hashes por worker e usa o batch nativo do qBittorrent.
+   */
+  async bulkTaskAction(
+    action: BulkTaskAction,
+    items: BulkTaskItem[],
+    options: BulkTaskActionOptions = {}
+  ): Promise<ApiResponse<BulkTaskActionResult>> {
+    return api.post<BulkTaskActionResult>(`${this.baseEndpoint}/bulk`, {
+      action,
+      items,
+      ...options,
+    });
   }
 
   /**

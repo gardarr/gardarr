@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { getBlurPixels, useTorrentBlurIntensity, useTorrentOpenHandler } from "./hooks";
 import {
@@ -33,7 +34,9 @@ export function TorrentListCompact({
   const blurIntensity = useTorrentBlurIntensity();
   const pyClass = compact ? 'py-1.5' : 'py-2.5';
   const blurPx = getBlurPixels(blurIntensity);
-  const actions = {
+  // Memoized so TorrentCompactRow (React.memo) only sees a new
+  // actions/selection reference when one of these actually changes.
+  const actions = useMemo<TorrentActionHandlers>(() => ({
     onShowDetails,
     onStart,
     onStop,
@@ -43,8 +46,11 @@ export function TorrentListCompact({
     onForceRecheck,
     onSearchMetadata,
     onLimits,
-  };
-  const selection = { selectionMode, selectedIds, onToggleSelect, onRequestDelete };
+  }), [onShowDetails, onStart, onStop, onRemove, onForceDownload, onForceReannounce, onForceRecheck, onSearchMetadata, onLimits]);
+  const selection = useMemo<TorrentSelectionProps>(
+    () => ({ selectionMode, selectedIds, onToggleSelect, onRequestDelete }),
+    [selectionMode, selectedIds, onToggleSelect, onRequestDelete]
+  );
 
   return (
     <div className="w-full space-y-2">
@@ -65,7 +71,7 @@ export function TorrentListCompact({
 
 export default TorrentListCompact;
 
-function TorrentCompactRow({
+const TorrentCompactRow = memo(function TorrentCompactRow({
   torrent,
   actions,
   selection,
@@ -161,4 +167,4 @@ function TorrentCompactRow({
       </TorrentMetadataHoverCard>
     </TorrentContextMenuWrapper>
   );
-}
+});

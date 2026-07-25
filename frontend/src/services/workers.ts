@@ -25,6 +25,16 @@ export class WorkerService {
   }
 
   /**
+   * Lists all workers straight from the database, skipping the live
+   * qBittorrent connectivity/instance check (fast path for an initial
+   * render). Each worker's real status should be fetched separately per
+   * row via getWorker().
+   */
+  async listWorkersBasic(): Promise<ApiResponse<Worker[]>> {
+    return api.get<Worker[]>(`/workers/?live=false`);
+  }
+
+  /**
    * Gets a specific worker by ID
    */
   async getWorker(workerId: string): Promise<ApiResponse<Worker>> {

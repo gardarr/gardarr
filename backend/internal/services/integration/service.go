@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/jfxdev/gardarr/internal/entities"
@@ -10,32 +11,48 @@ import (
 	"github.com/jfxdev/gardarr/internal/repository/webhook"
 	"github.com/jfxdev/gardarr/internal/repository/webhook_history"
 	webhookService "github.com/jfxdev/gardarr/internal/services/integration/webhook"
+	"github.com/jfxdev/gardarr/pkg/env"
 	"github.com/jfxdev/gardarr/pkg/filters"
 	"github.com/jfxdev/gardarr/pkg/logger"
 )
 
+// webhookWorker owns a single webhook's delivery goroutine and job queue, so
+// a slow/unreachable endpoint only ever blocks its own queue.
+type webhookWorker struct {
+	svc     *webhookService.Service
+	filter  *entities.EventFilter
+	jobs    chan *entities.Event
+	stopCh  chan struct{}
+	dropped atomic.Int64
+}
+
 // Service manages integration events from the events system
 type Service struct {
-	enabled         bool
-	eventChan       <-chan *entities.Event
-	webhookRepo     *webhook.Repository
-	historyRepo     *webhook_history.Repository
-	webhookServices map[string]*webhookService.Service
-	webhookFilters  map[string]*entities.EventFilter // Maps webhook UUID to its filter
-	mu              sync.RWMutex
+	enabled          bool
+	eventChan        <-chan *entities.Event
+	webhookRepo      *webhook.Repository
+	historyRepo      *webhook_history.Repository
+	webhookWorkers   map[string]*webhookWorker
+	webhookQueueSize int
+	mu               sync.RWMutex
 }
 
 // NewService creates a new integration service that consumes events
 // from the provided channel and decides whether to forward them to webhooks
 // or other integrations based on configuration
 func NewService(eventChan <-chan *entities.Event, db *database.Database) *Service {
+	queueSize := env.Get("WEBHOOK_QUEUE_SIZE").Default(100).ValueInt()
+	if queueSize <= 0 {
+		queueSize = 100
+	}
+
 	return &Service{
-		enabled:         true,
-		eventChan:       eventChan,
-		webhookRepo:     webhook.NewRepository(db),
-		historyRepo:     webhook_history.NewRepository(db),
-		webhookServices: make(map[string]*webhookService.Service),
-		webhookFilters:  make(map[string]*entities.EventFilter),
+		enabled:          true,
+		eventChan:        eventChan,
+		webhookRepo:      webhook.NewRepository(db),
+		historyRepo:      webhook_history.NewRepository(db),
+		webhookWorkers:   make(map[string]*webhookWorker),
+		webhookQueueSize: queueSize,
 	}
 }
 
@@ -71,7 +88,8 @@ func (s *Service) Start(ctx context.Context) {
 	}()
 }
 
-// loadWebhooks loads all enabled webhooks from the database and creates webhook services
+// loadWebhooks loads all enabled webhooks from the database, stops any
+// previous workers, and starts one worker goroutine per webhook.
 func (s *Service) loadWebhooks(ctx context.Context) {
 	webhooks, err := s.webhookRepo.ListEnabledWebhooks(ctx)
 	if err != nil {
@@ -82,23 +100,28 @@ func (s *Service) loadWebhooks(ctx context.Context) {
 		return
 	}
 
-	// Clear existing services and filters
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.webhookServices = make(map[string]*webhookService.Service)
-	s.webhookFilters = make(map[string]*entities.EventFilter)
+	// Stop existing workers before replacing them
+	for _, w := range s.webhookWorkers {
+		close(w.stopCh)
+	}
 
-	// Create new services for each webhook
+	s.webhookWorkers = make(map[string]*webhookWorker)
+
 	for _, wh := range webhooks {
-		service := webhookService.NewService(wh.UUID, wh.URL, wh.InsecureSkipVerify, wh.TimeoutSeconds, s.historyRepo)
+		svc := webhookService.NewService(wh.UUID, wh.URL, wh.InsecureSkipVerify, wh.TimeoutSeconds, s.historyRepo)
 		webhookID := wh.UUID.String()
-		s.webhookServices[webhookID] = service
 
-		// Store filter if present
-		if wh.Filter != nil {
-			s.webhookFilters[webhookID] = wh.Filter
+		w := &webhookWorker{
+			svc:    svc,
+			filter: wh.Filter,
+			jobs:   make(chan *entities.Event, s.webhookQueueSize),
+			stopCh: make(chan struct{}),
 		}
+		s.webhookWorkers[webhookID] = w
+		go s.runWebhookWorker(ctx, webhookID, w)
 
 		logger.Debug("Loaded webhook",
 			"service", "integration",
@@ -115,17 +138,57 @@ func (s *Service) loadWebhooks(ctx context.Context) {
 	)
 }
 
+// runWebhookWorker drains a single webhook's job queue sequentially, so
+// delivery order to that endpoint is preserved without blocking any other
+// webhook or the event consumer loop.
+func (s *Service) runWebhookWorker(ctx context.Context, webhookID string, w *webhookWorker) {
+	for {
+		select {
+		case event := <-w.jobs:
+			s.deliverWebhookEvent(ctx, webhookID, w, event)
+		case <-w.stopCh:
+			// Drain any events still buffered in jobs before exiting, so a
+			// reload triggered by an unrelated webhook change never silently
+			// discards events already queued for this one.
+			for {
+				select {
+				case event := <-w.jobs:
+					s.deliverWebhookEvent(ctx, webhookID, w, event)
+				default:
+					return
+				}
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (s *Service) deliverWebhookEvent(ctx context.Context, webhookID string, w *webhookWorker, event *entities.Event) {
+	if err := w.svc.SendEventWithRetry(ctx, event); err != nil {
+		logger.Error("Failed to send event to webhook",
+			"service", "integration",
+			"event_id", event.UUID.String(),
+			"webhook_id", webhookID,
+			"error", err,
+		)
+	}
+}
+
 // ReloadWebhooks reloads all webhooks from the database
 // This should be called after creating, updating, or deleting webhooks
 func (s *Service) ReloadWebhooks(ctx context.Context) {
 	s.loadWebhooks(ctx)
 }
 
-// webhookTarget holds webhook service reference and its filter for event processing
+// webhookTarget is a snapshot of a webhook worker's routing info, used by
+// processEvent without holding the service lock during dispatch.
 type webhookTarget struct {
-	id     string
-	svc    *webhookService.Service
-	filter *entities.EventFilter
+	id      string
+	svc     *webhookService.Service
+	filter  *entities.EventFilter
+	jobs    chan<- *entities.Event
+	dropped *atomic.Int64
 }
 
 // eventMetadata holds extracted metadata from an event for logging purposes
@@ -157,53 +220,23 @@ func extractEventMetadata(event *entities.Event) eventMetadata {
 	return meta
 }
 
-// getWebhookTargets returns a snapshot of current webhook services and their filters
+// getWebhookTargets returns a snapshot of current webhook workers' routing
+// info, so processEvent can dispatch without holding the service lock.
 func (s *Service) getWebhookTargets() []webhookTarget {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	targets := make([]webhookTarget, 0, len(s.webhookServices))
-	for id, svc := range s.webhookServices {
+	targets := make([]webhookTarget, 0, len(s.webhookWorkers))
+	for id, w := range s.webhookWorkers {
 		targets = append(targets, webhookTarget{
-			id:     id,
-			svc:    svc,
-			filter: s.webhookFilters[id],
+			id:      id,
+			svc:     w.svc,
+			filter:  w.filter,
+			jobs:    w.jobs,
+			dropped: &w.dropped,
 		})
 	}
 	return targets
-}
-
-// sendEventToWebhook checks if event matches filter and sends it to the webhook
-func (s *Service) sendEventToWebhook(ctx context.Context, event *entities.Event, target webhookTarget) {
-	if target.svc == nil || !target.svc.Enabled() {
-		return
-	}
-
-	if !filters.MatchesEvent(target.filter, event) {
-		logger.Debug("Event filtered out for webhook",
-			"service", "integration",
-			"event_id", event.UUID.String(),
-			"webhook_id", target.id,
-			"event_type", event.Type,
-			"new_value", event.NewValue,
-		)
-		return
-	}
-
-	logger.Debug("Event matches filter, sending to webhook",
-		"service", "integration",
-		"event_id", event.UUID.String(),
-		"webhook_id", target.id,
-	)
-
-	if err := target.svc.SendEvent(ctx, event); err != nil {
-		logger.Error("Failed to send event to webhook",
-			"service", "integration",
-			"event_id", event.UUID.String(),
-			"webhook_id", target.id,
-			"error", err,
-		)
-	}
 }
 
 // processEvent evaluates an event and decides whether to forward
@@ -230,8 +263,36 @@ func (s *Service) processEvent(ctx context.Context, event *entities.Event) {
 	// Snapshot targets to avoid holding lock during network I/O
 	targets := s.getWebhookTargets()
 
+	// Enqueue onto each webhook's own worker instead of sending inline: one
+	// slow/unreachable webhook must not stall delivery to the others, nor
+	// block this goroutine from draining the next event off s.eventChan.
+	// Delivery order within a single webhook is preserved by its worker.
 	for _, target := range targets {
-		s.sendEventToWebhook(ctx, event, target)
+		if target.svc == nil || !target.svc.Enabled() {
+			continue
+		}
+		if !filters.MatchesEvent(target.filter, event) {
+			logger.Debug("Event filtered out for webhook",
+				"service", "integration",
+				"event_id", event.UUID.String(),
+				"webhook_id", target.id,
+				"event_type", event.Type,
+				"new_value", event.NewValue,
+			)
+			continue
+		}
+
+		select {
+		case target.jobs <- event:
+		default:
+			totalDropped := target.dropped.Add(1)
+			logger.Warn("webhook job queue full, dropping event",
+				"service", "integration",
+				"event_id", event.UUID.String(),
+				"webhook_id", target.id,
+				"total_dropped", totalDropped,
+			)
+		}
 	}
 }
 
