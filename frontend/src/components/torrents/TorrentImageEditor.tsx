@@ -11,11 +11,12 @@ import type { Category, CategoryMetadataSource } from "@/types/category";
 import { ImageSourceSelector } from "@/components/ImageSourceSelector";
 import { TorrentCardPreview } from "./TorrentCardPreview";
 import { TorrentCardCompact } from "./TorrentCardCompact";
-import { TGDBSearch } from "@/components/TGDBSearch";
-import { TMDBSearch } from "@/components/TMDBSearch";
+import { ProviderSearch, type MetadataProvider } from "@/components/ProviderSearch";
 import type { MobileTorrent } from "./types";
 
 const noop = () => {};
+
+const METADATA_PROVIDERS: MetadataProvider[] = ["tgdb", "tmdb"];
 
 interface TorrentImageEditorProps {
   readonly taskHash: string;
@@ -50,8 +51,12 @@ export function TorrentImageEditor({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartY, setDragStartY] = useState(0);
   const [imageSource, setImageSource] = useState<"Upload" | "TMDB" | "TGDB">("Upload");
-  const [isTGDBActive, setIsTGDBActive] = useState(false);
-  const [isTMDBActive, setIsTMDBActive] = useState(false);
+  const [activeProviders, setActiveProviders] = useState<Record<MetadataProvider, boolean>>({
+    tgdb: false,
+    tmdb: false,
+  });
+  const isTGDBActive = activeProviders.tgdb;
+  const isTMDBActive = activeProviders.tmdb;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const categoryMetadataSource = (category?.metadata_source || "none") as CategoryMetadataSource;
@@ -82,48 +87,30 @@ export function TorrentImageEditor({
   };
 
   useEffect(() => {
-    const fetchTGDBStatus = async () => {
-      try {
-        const response = await api.get<{ active: boolean }>('/tasks/metadata/providers/tgdb/status');
-        if (response.data) {
-          setIsTGDBActive(response.data.active);
-        }
-      } catch (error) {
-        console.error("Failed to fetch TGDB status", error);
-      }
-    };
-    fetchTGDBStatus();
-  }, []);
-
-  useEffect(() => {
-    const fetchTMDBStatus = async () => {
-      try {
-        const response = await api.get<{ active: boolean }>('/tasks/metadata/providers/tmdb/status');
-        if (response.data) {
-          setIsTMDBActive(response.data.active);
-        }
-      } catch (error) {
-        console.error("Failed to fetch TMDB status", error);
-      }
-    };
-    fetchTMDBStatus();
+    METADATA_PROVIDERS.forEach((provider) => {
+      api.get<{ active: boolean }>(`/tasks/metadata/providers/${provider}/status`)
+        .then((response) => {
+          if (response.data) {
+            setActiveProviders((prev) => ({ ...prev, [provider]: response.data!.active }));
+          }
+        })
+        .catch((error) => {
+          console.error(`Failed to fetch ${provider} status`, error);
+        });
+    });
   }, []);
 
   useEffect(() => {
     if (categoryMetadataSource === "none") return;
 
-    if (categoryMetadataSource === "tgdb" && isTGDBActive) {
-      setImageSource((prev) => (prev === "TGDB" ? prev : "TGDB"));
-      return;
-    }
-
-    if (categoryMetadataSource === "tmdb" && isTMDBActive) {
-      setImageSource((prev) => (prev === "TMDB" ? prev : "TMDB"));
+    if (activeProviders[categoryMetadataSource]) {
+      const source = categoryMetadataSource.toUpperCase() as "TGDB" | "TMDB";
+      setImageSource((prev) => (prev === source ? prev : source));
       return;
     }
 
     setImageSource((prev) => (prev ? prev : "Upload"));
-  }, [categoryMetadataSource, isTGDBActive, isTMDBActive]);
+  }, [categoryMetadataSource, activeProviders]);
 
   // Sincronizar estados quando metadata muda
   useEffect(() => {
@@ -430,18 +417,9 @@ export function TorrentImageEditor({
             </div>
           </div>
           </>
-        ) : imageSource === "TGDB" ? (
-          <TGDBSearch
-            taskHash={taskHash}
-            initialQuery={taskName}
-            onSelect={(updatedMetadata) => {
-              setImageSource("Upload");
-              onUpdate?.(updatedMetadata);
-            }}
-            onCancel={() => setImageSource("Upload")}
-          />
-        ) : imageSource === "TMDB" ? (
-          <TMDBSearch
+        ) : imageSource === "TGDB" || imageSource === "TMDB" ? (
+          <ProviderSearch
+            provider={imageSource === "TGDB" ? "tgdb" : "tmdb"}
             taskHash={taskHash}
             initialQuery={taskName}
             onSelect={(updatedMetadata) => {

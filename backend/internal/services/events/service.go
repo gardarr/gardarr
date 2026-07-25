@@ -12,7 +12,6 @@ import (
 	"github.com/jfxdev/gardarr/internal/constants"
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/infra/database"
-	"github.com/jfxdev/gardarr/internal/models"
 	"github.com/jfxdev/gardarr/internal/repository/event"
 	"github.com/jfxdev/gardarr/pkg/env"
 )
@@ -343,9 +342,9 @@ func (s *Service) TrackTasks(ctx context.Context, tasks []*entities.Task, worker
 	// Second pass: persist all updates to database in a single batched upsert
 	// instead of one round trip per task (the dominant DB cost per poll cycle
 	// when many torrents change progress at once).
-	updates := make([]*models.TaskState, 0, len(updatesChan))
+	updates := make([]*entities.TaskState, 0, len(updatesChan))
 	for u := range updatesChan {
-		updates = append(updates, &models.TaskState{
+		updates = append(updates, &entities.TaskState{
 			WorkerID:  workerID,
 			Hash:      u.hash,
 			Name:      u.name,

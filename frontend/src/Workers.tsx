@@ -177,7 +177,11 @@ function Workers() {
           setSelectedWorker(response.data!);
         }
 
-        toast.success(t('workers.success.updated'));
+        if (response.data.status === 'ERRORED') {
+          toast.error(response.data.error || t('workers.errors.savedButUnreachable'));
+        } else {
+          toast.success(t('workers.success.updated'));
+        }
         setShowEditModal(false);
         setShowDetailsModal(false);
         setWorkerToEdit(null);

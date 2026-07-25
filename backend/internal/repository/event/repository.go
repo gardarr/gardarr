@@ -185,11 +185,28 @@ func (r *Repository) SaveTaskState(ctx context.Context, workerID uuid.UUID, hash
 // SaveTaskStates upserts a batch of task states in a single round trip.
 // Used instead of N individual SaveTaskState calls when a poll cycle touches
 // many tasks at once, since that was the dominant DB cost per poll.
-func (r *Repository) SaveTaskStates(ctx context.Context, states []*models.TaskState) error {
+func (r *Repository) SaveTaskStates(ctx context.Context, states []*entities.TaskState) error {
 	if len(states) == 0 {
 		return nil
 	}
 
+	rows := make([]*models.TaskState, 0, len(states))
+	for _, s := range states {
+		rows = append(rows, &models.TaskState{
+			WorkerID:  s.WorkerID,
+			Hash:      s.Hash,
+			Name:      s.Name,
+			Category:  s.Category,
+			Size:      s.Size,
+			State:     s.State,
+			Progress:  s.Progress,
+			UpdatedAt: s.UpdatedAt,
+		})
+	}
+
+	// CreateInBatches keeps each INSERT within SQLite's default bind-variable
+	// limit and stops one oversized/bad batch from failing the entire poll
+	// cycle's persistence.
 	return r.db.DB.WithContext(ctx).
 		Clauses(clause.OnConflict{
 			Columns: []clause.Column{
@@ -198,7 +215,7 @@ func (r *Repository) SaveTaskStates(ctx context.Context, states []*models.TaskSt
 			},
 			DoUpdates: clause.AssignmentColumns([]string{"name", "category", "size", "state", "progress", "updated_at"}),
 		}).
-		Create(&states).Error
+		CreateInBatches(&rows, 100).Error
 }
 
 // LoadTaskStates loads all task states for a specific worker from the database

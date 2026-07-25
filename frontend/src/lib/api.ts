@@ -3,7 +3,12 @@ import type { ResponseError } from '../types/errors';
 import { isResponseError, getErrorMessage } from '../types/errors';
 
 const API_BASE_URL = '/v1';
-const DEFAULT_TIMEOUT_MS = 30_000;
+// Worker-backed endpoints can legitimately take much longer than a typical
+// API call: the backend retries qBittorrent logins up to 5x with exponential
+// backoff (each attempt itself bounded by its own request timeout), so a
+// single request can take 60-90s+ before failing. Keep this comfortably above
+// that worst case to avoid aborting requests the backend would have answered.
+const DEFAULT_TIMEOUT_MS = 120_000;
 
 export interface ApiResponse<T> {
   data?: T;

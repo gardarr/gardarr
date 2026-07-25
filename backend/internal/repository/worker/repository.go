@@ -45,6 +45,11 @@ type Repository struct {
 type cachedClient struct {
 	client      *qbt.Client
 	fingerprint string
+	// loginMu serializes explicit Login calls against this shared client,
+	// since qbt.Client's Login isn't safe to invoke concurrently (it writes
+	// lastLoginTime unlocked) and multiple callers (poller, manual
+	// availability/version checks) can race for the same worker.
+	loginMu sync.Mutex
 }
 
 const (
@@ -191,15 +196,19 @@ func (r *Repository) GetWorkerByUUID(uid uuid.UUID) (*entities.Worker, error) {
 }
 
 func (r *Repository) CheckWorkerAvailability(worker *entities.Worker) error {
-	client, err := r.getClient(worker)
+	entry, err := r.getClientEntry(worker)
 	if err != nil {
 		return err
 	}
+	client := entry.client
 
 	ctx, cancel := context.WithTimeout(context.Background(), r.timeout)
 	defer cancel()
 
-	if err := client.Login(ctx); err != nil {
+	entry.loginMu.Lock()
+	err = client.Login(ctx)
+	entry.loginMu.Unlock()
+	if err != nil {
 		workerErr := classifyWorkerError(err)
 		logger.Error("worker connection failed",
 			"worker", worker.Name,
@@ -259,15 +268,19 @@ func (r *Repository) GetInstanceWithoutDecrypt(worker *entities.Worker) (*entiti
 }
 
 func (r *Repository) GetWorkerVersion(worker *entities.Worker) (*entities.WorkerVersion, error) {
-	client, err := r.getClient(worker)
+	entry, err := r.getClientEntry(worker)
 	if err != nil {
 		return nil, err
 	}
+	client := entry.client
 
 	ctx, cancel := context.WithTimeout(context.Background(), r.timeout)
 	defer cancel()
 
-	if err := client.Login(ctx); err != nil {
+	entry.loginMu.Lock()
+	err = client.Login(ctx)
+	entry.loginMu.Unlock()
+	if err != nil {
 		return nil, classifyWorkerError(err)
 	}
 
@@ -597,6 +610,17 @@ func (r *Repository) SetWorkerGlobalActiveLimits(worker *entities.Worker, schema
 }
 
 func (r *Repository) getClient(worker *entities.Worker) (*qbt.Client, error) {
+	entry, err := r.getClientEntry(worker)
+	if err != nil {
+		return nil, err
+	}
+	return entry.client, nil
+}
+
+// getClientEntry returns the cached client entry for a worker, including its
+// per-client loginMu, so callers that invoke Login explicitly can serialize
+// against other concurrent callers sharing the same client.
+func (r *Repository) getClientEntry(worker *entities.Worker) (*cachedClient, error) {
 	urlValue, err := r.resolveWorkerURL(worker)
 	if err != nil {
 		return nil, err
@@ -619,7 +643,7 @@ func (r *Repository) getClient(worker *entities.Worker) (*qbt.Client, error) {
 
 	if cached, ok := r.clientCache[worker.UUID]; ok {
 		if cached.fingerprint == fingerprint {
-			return cached.client, nil
+			return cached, nil
 		}
 		// Credentials changed (or stale cache) - abort any in-flight
 		// requests still using the old creds immediately, then retire the
@@ -634,8 +658,9 @@ func (r *Repository) getClient(worker *entities.Worker) (*qbt.Client, error) {
 		return nil, err
 	}
 
-	r.clientCache[worker.UUID] = &cachedClient{client: client, fingerprint: fingerprint}
-	return client, nil
+	entry := &cachedClient{client: client, fingerprint: fingerprint}
+	r.clientCache[worker.UUID] = entry
+	return entry, nil
 }
 
 // evictClient removes and closes any cached client for the given worker. Call

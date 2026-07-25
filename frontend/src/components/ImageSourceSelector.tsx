@@ -1,10 +1,10 @@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { CategoryMetadataSource } from "@/types/category";
 
 type ImageSource = "Upload" | "TMDB" | "TGDB";
+type ProviderMetadataSource = Exclude<CategoryMetadataSource, "none">;
 
 interface ImageSourceSelectorProps {
   value: ImageSource;
@@ -24,33 +24,23 @@ export function ImageSourceSelector({
   categoryMetadataSource = "none",
 }: ImageSourceSelectorProps) {
   const { t } = useTranslation();
+
+  // One entry per provider-backed source; adding a provider means adding a
+  // row here instead of another branch in every place that consumes it.
+  const providerSources: Record<ProviderMetadataSource, { source: ImageSource; isActive: boolean }> = {
+    tgdb: { source: "TGDB", isActive: isTGDBActive },
+    tmdb: { source: "TMDB", isActive: isTMDBActive },
+  };
+
   // Category source (if any) sempre em primeiro, Upload em segundo.
-  const sources = useMemo<ImageSource[]>(() => {
-    if (categoryMetadataSource === "tgdb") {
-      return ["TGDB", "Upload"];
-    }
-
-    if (categoryMetadataSource === "tmdb") {
-      return ["TMDB", "Upload"];
-    }
-
-    return ["Upload"];
-  }, [categoryMetadataSource]);
+  const providerEntry = categoryMetadataSource !== "none" ? providerSources[categoryMetadataSource] : undefined;
+  const sources: ImageSource[] = providerEntry ? [providerEntry.source, "Upload"] : ["Upload"];
 
   const isSourceDisabled = (source: ImageSource): boolean => {
     if (source === "Upload") {
       return false;
     }
-
-    if (categoryMetadataSource === "tgdb") {
-      return !isTGDBActive;
-    }
-
-    if (categoryMetadataSource === "tmdb") {
-      return !isTMDBActive;
-    }
-
-    return false;
+    return providerEntry ? !providerEntry.isActive : false;
   };
 
   // Sem image source de categoria: só Upload existe, não exibir abas.

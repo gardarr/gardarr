@@ -78,16 +78,18 @@ func (s *Service) pollWorker(ctx context.Context, w *entities.Worker, now time.T
 		return
 	}
 	tasks := result.Tasks
-	if len(tasks) == 0 {
-		return
+	if len(tasks) > 0 {
+		if err := s.eventService.TrackTasks(ctx, tasks, w.UUID, now); err != nil {
+			logger.Debug("event poller: track tasks error",
+				"worker_id", w.UUID.String(),
+				"error", err.Error(),
+			)
+		}
 	}
 
-	if err := s.eventService.TrackTasks(ctx, tasks, w.UUID, now); err != nil {
-		logger.Debug("event poller: track tasks error",
-			"worker_id", w.UUID.String(),
-			"error", err.Error(),
-		)
-	}
+	// Always run removal detection, even when tasks is empty - that's exactly
+	// the case where the worker's last remaining torrent was deleted outside
+	// Gardarr and its stale state needs to be cleared.
 	if err := s.eventService.DetectRemovedTasks(ctx, tasks, w.UUID, now); err != nil {
 		logger.Debug("event poller: detect removed tasks error",
 			"worker_id", w.UUID.String(),

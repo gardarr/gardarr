@@ -145,19 +145,33 @@ func (s *Service) runWebhookWorker(ctx context.Context, webhookID string, w *web
 	for {
 		select {
 		case event := <-w.jobs:
-			if err := w.svc.SendEventWithRetry(ctx, event); err != nil {
-				logger.Error("Failed to send event to webhook",
-					"service", "integration",
-					"event_id", event.UUID.String(),
-					"webhook_id", webhookID,
-					"error", err,
-				)
-			}
+			s.deliverWebhookEvent(ctx, webhookID, w, event)
 		case <-w.stopCh:
-			return
+			// Drain any events still buffered in jobs before exiting, so a
+			// reload triggered by an unrelated webhook change never silently
+			// discards events already queued for this one.
+			for {
+				select {
+				case event := <-w.jobs:
+					s.deliverWebhookEvent(ctx, webhookID, w, event)
+				default:
+					return
+				}
+			}
 		case <-ctx.Done():
 			return
 		}
+	}
+}
+
+func (s *Service) deliverWebhookEvent(ctx context.Context, webhookID string, w *webhookWorker, event *entities.Event) {
+	if err := w.svc.SendEventWithRetry(ctx, event); err != nil {
+		logger.Error("Failed to send event to webhook",
+			"service", "integration",
+			"event_id", event.UUID.String(),
+			"webhook_id", webhookID,
+			"error", err,
+		)
 	}
 }
 

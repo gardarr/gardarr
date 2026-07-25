@@ -506,7 +506,8 @@
       "failedToDelete": "Failed to delete worker",
       "failedToCreate": "Failed to create worker",
       "failedToUpdate": "Failed to update worker",
-      "noChangesDetected": "No changes detected"
+      "noChangesDetected": "No changes detected",
+      "savedButUnreachable": "Worker updated, but it could not be reached with the new settings"
     },
     "errorCodes": {
       "AUTH_FAILURE": {
