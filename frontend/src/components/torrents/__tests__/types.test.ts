@@ -15,4 +15,13 @@ describe("getTorrentRenderKey", () => {
       "worker-b:same-hash"
     );
   });
+
+  it("uses the task identity when worker information is unavailable", () => {
+    const torrent = {
+      id: "task-identity",
+      hash: "shared-hash",
+    } as TorrentListItem;
+
+    expect(getTorrentRenderKey(torrent)).toBe("task:task-identity");
+  });
 });

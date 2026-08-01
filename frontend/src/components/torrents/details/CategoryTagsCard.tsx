@@ -55,7 +55,7 @@ export function CategoryTagsCard({ torrent, onCategoryDataChange, onCategoryTags
         if (!isCurrentRequest) return;
 
         const matchedCategory = response.data?.find(
-          (item) => item.name.localeCompare(requestCategory, undefined, { sensitivity: "accent" }) === 0
+          (item) => item.name.localeCompare(requestCategory, undefined, { sensitivity: "base" }) === 0
         ) ?? null;
         setCurrentCategoryData(matchedCategory);
         onCategoryDataChange?.(matchedCategory);

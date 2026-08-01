@@ -141,13 +141,49 @@ describe("useLazyLoadingObserver", () => {
       screen.getByRole("button", { name: "mount sentinel" }).click();
     });
 
+    const scrollContainer = screen.getByTestId("scroll-container");
+    const sentinel = screen.getByTestId("sentinel");
+    vi.spyOn(scrollContainer, "getBoundingClientRect").mockReturnValue({
+      top: 0,
+      bottom: 200,
+    } as DOMRect);
+    vi.spyOn(sentinel, "getBoundingClientRect").mockReturnValue({
+      top: 180,
+      bottom: 196,
+    } as DOMRect);
+
     act(() => {
-      vi.advanceTimersByTime(250);
-    });
-    act(() => {
-      vi.advanceTimersByTime(250);
+      vi.advanceTimersByTime(500);
     });
 
     expect(screen.getByTestId("count")).toHaveTextContent("75");
+    expect(observe).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not fallback-load repeated batches while the sentinel is off-screen", () => {
+    vi.useFakeTimers();
+    render(<LazyLoadingHarness totalItems={95} />);
+
+    act(() => {
+      screen.getByRole("button", { name: "mount sentinel" }).click();
+    });
+
+    const scrollContainer = screen.getByTestId("scroll-container");
+    const sentinel = screen.getByTestId("sentinel");
+    vi.spyOn(scrollContainer, "getBoundingClientRect").mockReturnValue({
+      top: 0,
+      bottom: 200,
+    } as DOMRect);
+    vi.spyOn(sentinel, "getBoundingClientRect").mockReturnValue({
+      top: 1000,
+      bottom: 1016,
+    } as DOMRect);
+
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(screen.getByTestId("count")).toHaveTextContent("30");
+    expect(observe).toHaveBeenCalledTimes(1);
   });
 });

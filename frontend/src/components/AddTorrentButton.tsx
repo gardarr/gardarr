@@ -23,7 +23,12 @@ function AddTorrentButton({ className, children, iconOnly = false, ...props }: A
         className="add-torrent-button-surface pointer-events-none absolute inset-px z-0 rounded-[inherit]"
         aria-hidden="true"
       />
-      <span className="relative z-10 inline-flex items-center">
+      <span
+        className={cn(
+          "add-torrent-button-label relative z-10 inline-flex items-center",
+          iconOnly ? "rounded-full p-1" : "rounded-md px-1.5 py-0.5",
+        )}
+      >
         <Plus className={cn("h-4 w-4", !iconOnly && "mr-2")} />
         {!iconOnly && children}
       </span>

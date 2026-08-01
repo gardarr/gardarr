@@ -101,7 +101,7 @@ export function ProviderSearch({ provider, taskHash, initialQuery, onSelect, onC
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">
         {t(`${provider}.search.sanitizedQuery`, {
-          defaultValue: "Nome sanitizado para busca: {{name}}",
+          defaultValue: "Sanitized search name: {{name}}",
           name: sanitizeProviderSearchQuery(query) || "-",
         })}
       </p>

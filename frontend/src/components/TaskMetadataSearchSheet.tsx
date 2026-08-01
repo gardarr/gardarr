@@ -237,7 +237,7 @@ export function TaskMetadataSearchSheet({
               <Label htmlFor="metadata-search-query">{t("torrents.addModal.metadata.fields.name")}</Label>
               <p className="text-xs text-muted-foreground">
                 {t("torrents.addModal.metadata.sanitizedQuery", {
-                  defaultValue: "Nome sanitizado para busca: {{name}}",
+                  defaultValue: "Sanitized search name: {{name}}",
                   name: sanitizeProviderSearchQuery(query) || "-",
                 })}
               </p>

@@ -1,4 +1,4 @@
-import { useEffect, useState, type Dispatch, type RefCallback, type SetStateAction } from "react";
+import { useEffect, useRef, useState, type Dispatch, type RefCallback, type SetStateAction } from "react";
 
 interface UseLazyLoadingObserverOptions {
   enabled: boolean;
@@ -31,17 +31,35 @@ export function useLazyLoadingObserver({
   itemsPerLoad,
 }: UseLazyLoadingObserverOptions): RefCallback<HTMLDivElement> {
   const [sentinel, setSentinel] = useState<HTMLDivElement | null>(null);
+  const displayedItemsCountRef = useRef(displayedItemsCount);
+  displayedItemsCountRef.current = displayedItemsCount;
 
   useEffect(() => {
-    if (!enabled || !sentinel || displayedItemsCount >= totalItems) {
+    if (!enabled || !sentinel || displayedItemsCountRef.current >= totalItems) {
       return;
     }
 
     const scrollContainer = findScrollContainer(sentinel);
     const loadMore = () => {
-      setDisplayedItemsCount((currentCount) =>
-        Math.min(currentCount + itemsPerLoad, totalItems)
-      );
+      setDisplayedItemsCount((currentCount) => {
+        const nextCount = Math.min(currentCount + itemsPerLoad, totalItems);
+        displayedItemsCountRef.current = nextCount;
+        return nextCount;
+      });
+    };
+    const isSentinelNearViewport = () => {
+      const sentinelRect = sentinel.getBoundingClientRect();
+      const preloadMargin = 200;
+
+      if (scrollContainer instanceof HTMLElement) {
+        const containerRect = scrollContainer.getBoundingClientRect();
+        return sentinelRect.bottom >= containerRect.top - preloadMargin
+          && sentinelRect.top <= containerRect.bottom + preloadMargin;
+      }
+
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+      return sentinelRect.bottom >= -preloadMargin
+        && sentinelRect.top <= viewportHeight + preloadMargin;
     };
 
     const observer = new IntersectionObserver(
@@ -74,19 +92,30 @@ export function useLazyLoadingObserver({
 
     scrollContainer?.addEventListener("scroll", handleScroll, { passive: true });
 
-    // Safety fallback: progressive rendering must never depend exclusively on
-    // browser intersection/scroll events. Some nested scrolling layouts do
-    // not dispatch those events consistently, which previously left the
-    // sentinel spinning forever with items still hidden.
-    const fallbackTimer = window.setTimeout(loadMore, 250);
+    // Safety fallback for nested scrolling layouts that do not reliably emit
+    // observer/scroll events. It advances only while the sentinel is actually
+    // visible (or inside the same preload margin as IntersectionObserver).
+    let fallbackTimer: number | undefined;
+    const scheduleFallback = () => {
+      fallbackTimer = window.setTimeout(() => {
+        if (!isSentinelNearViewport() || displayedItemsCountRef.current >= totalItems) {
+          return;
+        }
+
+        loadMore();
+        scheduleFallback();
+      }, 250);
+    };
+    scheduleFallback();
 
     return () => {
-      window.clearTimeout(fallbackTimer);
+      if (fallbackTimer !== undefined) {
+        window.clearTimeout(fallbackTimer);
+      }
       observer.disconnect();
       scrollContainer?.removeEventListener("scroll", handleScroll);
     };
   }, [
-    displayedItemsCount,
     enabled,
     itemsPerLoad,
     sentinel,

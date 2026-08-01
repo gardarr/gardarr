@@ -117,7 +117,7 @@ func TestNormalizeTaskCategory(t *testing.T) {
 
 func TestMatchCategoryNameIgnoresCase(t *testing.T) {
 	categories := map[string]qbt.Category{
-		"Movies": {Name: "Movies"},
+		"Movies": {},
 		"series": {Name: "series"},
 	}
 

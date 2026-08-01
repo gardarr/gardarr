@@ -850,7 +850,7 @@ export default function TorrentsPage() {
   // quando a lista chega depois do carregamento inicial, momento em que o
   // sentinel passa a existir no DOM.
   const sentinelRef = useLazyLoadingObserver({
-    enabled: useCardLazyLoading,
+    enabled: useCardLazyLoading && !isMobile,
     totalItems: filteredTorrents.length,
     displayedItemsCount,
     setDisplayedItemsCount,
