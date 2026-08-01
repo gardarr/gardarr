@@ -1,6 +1,7 @@
 const technicalReleasePatterns = [
   /\b(?:web[\s._-]*(?:dl|rip)|bluray|blu-ray|brrip|bdrip|dvdrip|hdtv|hdrip|telesync|telecine)\b/gi,
-  /\b(?:web|dl)\b(?=[\s._-]+(?:\d{3,4}\s*[pi]|x26[45]|h\.?26[45]|hevc|dual|multi))\b/gi,
+  /\b(?:web|dl)\b(?=[\s._-]+\d{3,4}\s*[pi]\b)/gi,
+  /\b(?:web|dl)\b(?=[\s._-]+(?:x26[45]|h\.?26[45]|hevc|dual|multi)\b)/gi,
   /\b(?:2160|1440|1080|720|576|480)\s*[pi]\b/gi,
   /\b(?:4k|8k|uhd|fhd|hd)\b/gi,
   /\b(?:x26[45]|h\.?26[45]|hevc|av1|avc|10bit|8bit)\b/gi,

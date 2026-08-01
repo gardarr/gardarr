@@ -128,33 +128,55 @@ export function TorrentProgressBar({
   );
 }
 
+type TorrentProgressState = "pending" | "downloading" | "complete";
+
+type TorrentProgressIndicatorProps = Readonly<{
+  progress: number;
+  precision?: number;
+  variant?: "default" | "opaque";
+  className?: string;
+  iconClassName?: string;
+}>;
+
+const torrentProgressStateConfig = {
+  pending: {
+    Icon: Clock3,
+    colorClass: "text-amber-600 dark:text-amber-400",
+  },
+  downloading: {
+    Icon: Download,
+    colorClass: "text-primary",
+  },
+  complete: {
+    Icon: Check,
+    colorClass: "text-green-600 dark:text-green-400",
+  },
+} satisfies Record<TorrentProgressState, { Icon: typeof Check; colorClass: string }>;
+
+function getTorrentProgressState(progress: number): TorrentProgressState {
+  if (progress >= 100) {
+    return "complete";
+  }
+  if (progress > 0) {
+    return "downloading";
+  }
+  return "pending";
+}
+
 export function TorrentProgressIndicator({
   progress,
   precision = 0,
   variant = "default",
   className,
   iconClassName = "h-3.5 w-3.5",
-}: {
-  progress: number;
-  precision?: number;
-  variant?: "default" | "opaque";
-  className?: string;
-  iconClassName?: string;
-}) {
+}: TorrentProgressIndicatorProps) {
   const normalizedProgress = Math.min(100, Math.max(0, progress));
-  const state = normalizedProgress >= 100
-    ? "complete"
-    : normalizedProgress > 0
-      ? "downloading"
-      : "pending";
-  const Icon = state === "complete" ? Check : state === "downloading" ? Download : Clock3;
-  const colorClass = variant === "opaque"
-    ? "text-muted-foreground"
-    : state === "complete"
-      ? "text-green-600 dark:text-green-400"
-      : state === "downloading"
-        ? "text-primary"
-        : "text-amber-600 dark:text-amber-400";
+  const state = getTorrentProgressState(normalizedProgress);
+  const { Icon, colorClass: stateColorClass } = torrentProgressStateConfig[state];
+  let colorClass = stateColorClass;
+  if (variant === "opaque") {
+    colorClass = "text-muted-foreground";
+  }
 
   return (
     <span
