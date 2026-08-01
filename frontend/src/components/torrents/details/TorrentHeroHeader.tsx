@@ -9,8 +9,8 @@ import { getStatusTranslationKey } from "@/utils/statusUtils";
 import { useTorrentBlurIntensity, getBlurPixels } from "../hooks";
 import { formatBytes } from "@/utils/bytes";
 import { InlineEditableText } from "./InlineEditableText";
+import { TorrentProgressIndicator } from "../shared";
 import type { Task, TaskMetadata } from "@/types/torrent";
-import taskDefaultBg from "@/assets/img/common/task-default-background.png";
 
 interface TorrentHeroHeaderProps {
   torrent: Task;
@@ -56,8 +56,7 @@ export function TorrentHeroHeader({ torrent, onUpdate }: TorrentHeroHeaderProps)
         </>
       ) : (
         <div
-          className="absolute inset-0 bg-cover pointer-events-none z-0 opacity-[0.12] dark:opacity-[0.03]"
-          style={{ backgroundImage: `url(${taskDefaultBg})` }}
+          className="absolute inset-0 pointer-events-none z-0 bg-neutral-200/50 dark:bg-neutral-900/60"
           aria-hidden
         />
       )}
@@ -72,8 +71,8 @@ export function TorrentHeroHeader({ torrent, onUpdate }: TorrentHeroHeaderProps)
               className="w-24 h-24 rounded-lg border object-cover"
             />
           ) : (
-            <div className="w-24 h-24 rounded-lg border bg-muted flex items-center justify-center">
-              <Image className="h-10 w-10 text-muted-foreground" />
+            <div className="w-24 h-24 rounded-lg border border-neutral-300 bg-neutral-200 flex items-center justify-center dark:border-neutral-700 dark:bg-neutral-800">
+              <Image className="h-10 w-10 text-neutral-500 dark:text-neutral-400" />
             </div>
           )}
         </div>
@@ -123,9 +122,11 @@ export function TorrentHeroHeader({ torrent, onUpdate }: TorrentHeroHeaderProps)
           {/* Progress */}
           <div className="flex items-center gap-2">
             <ProgressBar progress={torrent.progress} height="sm" className="flex-1" />
-            <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
-              {torrent.progress.toFixed(1)}%
-            </span>
+            <TorrentProgressIndicator
+              progress={torrent.progress}
+              precision={1}
+              className="text-xs sm:text-sm"
+            />
             <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:inline">
               {formatBytes(torrent.network?.download?.amount || (torrent.progress / 100) * torrent.size)} / {formatBytes(torrent.size)}
             </span>

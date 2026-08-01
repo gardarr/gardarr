@@ -16,13 +16,14 @@ import {
   TorrentSpeedStat,
   TorrentWorkerBadge,
 } from "./shared";
-import type {
-  SortType,
-  TorrentActionHandlers,
-  TorrentListDisplayProps,
-  TorrentListItem,
-  TorrentPaginationProps,
-  TorrentSelectionProps,
+import {
+  getTorrentRenderKey,
+  type SortType,
+  type TorrentActionHandlers,
+  type TorrentListDisplayProps,
+  type TorrentListItem,
+  type TorrentPaginationProps,
+  type TorrentSelectionProps,
 } from "./types";
 
 interface TorrentsTableProps extends TorrentListDisplayProps, TorrentActionHandlers, TorrentSelectionProps, TorrentPaginationProps {
@@ -294,7 +295,7 @@ export default function TorrentsTable({
             <tbody>
               {torrents.map((t) => (
                 <TorrentRow
-                  key={t.id}
+                  key={getTorrentRenderKey(t)}
                   torrent={t}
                   actions={actions}
                   selection={selection}

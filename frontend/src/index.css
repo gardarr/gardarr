@@ -381,6 +381,114 @@ html.dark[data-color-variant="custom"] {
   --container-content-background: oklch(0.269 0 0) !important;
 }
 
+/* Add Torrent button palettes. These are intentionally independent from the
+   generic primary/accent tokens so every theme keeps a curated gradient. */
+:root,
+html[data-color-variant="default"] {
+  --add-torrent-from: #2563eb;
+  --add-torrent-via: #7c3aed;
+  --add-torrent-to: #db2777;
+  --add-torrent-text: #ffffff;
+}
+
+html[data-color-variant="aura"] {
+  --add-torrent-from: #6d28d9;
+  --add-torrent-via: #c026d3;
+  --add-torrent-to: #ec4899;
+  --add-torrent-text: #ffffff;
+}
+
+html[data-color-variant="sunset"] {
+  --add-torrent-from: #f97316;
+  --add-torrent-via: #ef4444;
+  --add-torrent-to: #be123c;
+  --add-torrent-text: #ffffff;
+}
+
+html[data-color-variant="ocean"] {
+  --add-torrent-from: #0891b2;
+  --add-torrent-via: #2563eb;
+  --add-torrent-to: #4f46e5;
+  --add-torrent-text: #ffffff;
+}
+
+html[data-color-variant="forest"] {
+  --add-torrent-from: #15803d;
+  --add-torrent-via: #059669;
+  --add-torrent-to: #0f766e;
+  --add-torrent-text: #ffffff;
+}
+
+html[data-color-variant="lavender"] {
+  --add-torrent-from: #7c3aed;
+  --add-torrent-via: #a855f7;
+  --add-torrent-to: #d946ef;
+  --add-torrent-text: #ffffff;
+}
+
+html[data-color-variant="rose"] {
+  --add-torrent-from: #e11d48;
+  --add-torrent-via: #db2777;
+  --add-torrent-to: #9333ea;
+  --add-torrent-text: #ffffff;
+}
+
+html[data-color-variant="amber"] {
+  --add-torrent-from: #f59e0b;
+  --add-torrent-via: #fbbf24;
+  --add-torrent-to: #ea580c;
+  --add-torrent-text: #341a00;
+}
+
+html[data-color-variant="mint"] {
+  --add-torrent-from: #059669;
+  --add-torrent-via: #14b8a6;
+  --add-torrent-to: #0d9488;
+  --add-torrent-text: #ffffff;
+}
+
+html[data-color-variant="crimson"] {
+  --add-torrent-from: #991b1b;
+  --add-torrent-via: #dc2626;
+  --add-torrent-to: #be123c;
+  --add-torrent-text: #ffffff;
+}
+
+html[data-color-variant="cyberpunk"] {
+  --add-torrent-from: #06b6d4;
+  --add-torrent-via: #8b5cf6;
+  --add-torrent-to: #ec4899;
+  --add-torrent-text: #ffffff;
+}
+
+html[data-color-variant="golden"] {
+  --add-torrent-from: #ca8a04;
+  --add-torrent-via: #facc15;
+  --add-torrent-to: #d97706;
+  --add-torrent-text: #2b1900;
+}
+
+html[data-color-variant="earth"] {
+  --add-torrent-from: #78350f;
+  --add-torrent-via: #a16207;
+  --add-torrent-to: #4d7c0f;
+  --add-torrent-text: #ffffff;
+}
+
+html[data-color-variant="silver"] {
+  --add-torrent-from: #475569;
+  --add-torrent-via: #64748b;
+  --add-torrent-to: #334155;
+  --add-torrent-text: #ffffff;
+}
+
+html[data-color-variant="custom"] {
+  --add-torrent-from: var(--custom-primary);
+  --add-torrent-via: var(--custom-secondary);
+  --add-torrent-to: var(--custom-accent);
+  --add-torrent-text: #ffffff;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -620,6 +728,60 @@ html.dark[data-color-variant="custom"] {
 .animate-loading-bar {
   animation: loading-bar 1.5s ease-in-out infinite;
   width: 50%;
+}
+
+.torrent-progress-track {
+  overflow: hidden;
+  background: rgb(255 255 255 / 35%);
+  box-shadow: none;
+}
+
+.torrent-progress-fill {
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklch, var(--primary) 82%, black) 0%,
+    var(--primary) 58%,
+    color-mix(in oklch, var(--primary) 78%, white) 100%
+  );
+  box-shadow:
+    0 0 5px color-mix(in oklch, var(--primary) 68%, transparent),
+    0 0 11px color-mix(in oklch, var(--primary) 38%, transparent);
+}
+
+.dark .torrent-progress-track {
+  background: rgb(0 0 0 / 22%);
+  box-shadow: none;
+}
+
+.dark .torrent-progress-fill {
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklch, var(--primary) 72%, black) 0%,
+    var(--primary) 55%,
+    color-mix(in oklch, var(--primary) 68%, white) 100%
+  );
+  box-shadow:
+    0 0 6px color-mix(in oklch, var(--primary) 82%, transparent),
+    0 0 14px color-mix(in oklch, var(--primary) 48%, transparent);
+}
+
+.add-torrent-button {
+  color: var(--add-torrent-text) !important;
+  box-shadow: 0 7px 18px color-mix(in srgb, var(--add-torrent-via) 30%, transparent);
+  text-shadow: 0 1px 1px rgb(0 0 0 / 20%);
+}
+
+.add-torrent-button:hover {
+  box-shadow: 0 9px 24px color-mix(in srgb, var(--add-torrent-via) 42%, transparent);
+}
+
+.add-torrent-button-surface {
+  background: linear-gradient(
+    110deg,
+    var(--add-torrent-from) 0%,
+    var(--add-torrent-via) 52%,
+    var(--add-torrent-to) 100%
+  );
 }
 
 /* Toast icon-only colors */

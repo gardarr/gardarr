@@ -6,7 +6,8 @@ import { api } from "@/lib/api";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, fallback?: string) => fallback ?? key,
+    t: (key: string, options?: { defaultValue?: string; name?: string }) =>
+      options?.defaultValue?.replace("{{name}}", options.name ?? "") ?? key,
   }),
 }));
 
@@ -105,5 +106,18 @@ describe("TGDBSearch", () => {
         image_id: "front.jpg",
       })
     );
+  });
+
+  it("displays the sanitized initial torrent name in the search field", () => {
+    render(
+      <TGDBSearch
+        taskHash="task-1"
+        initialQuery="Super.Mario.Galaxy.O.Filme.2026.WEB-DL.1080p.x264.DUAL.5.1"
+        onSelect={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    expect(screen.getByDisplayValue("Super Mario Galaxy O Filme 2026")).toBeInTheDocument();
   });
 });

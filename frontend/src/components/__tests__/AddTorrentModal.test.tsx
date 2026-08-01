@@ -6,6 +6,7 @@ import type {
   TextareaHTMLAttributes,
 } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AddTorrentModal } from "@/components/AddTorrentModal";
 import { AddTorrentContext, type AddTorrentContextValue } from "@/contexts/add-torrent-context";
@@ -43,6 +44,7 @@ vi.mock("lucide-react", () => ({
   Database: () => <span aria-hidden="true" />,
   Download: () => <span aria-hidden="true" />,
   FileText: () => <span aria-hidden="true" />,
+  FileUp: () => <span aria-hidden="true" />,
   Folder: () => <span aria-hidden="true" />,
   Globe: () => <span aria-hidden="true" />,
   HardDrive: () => <span aria-hidden="true" />,
@@ -209,6 +211,7 @@ const baseTask: Task = {
 function buildContext(overrides: Partial<AddTorrentContextValue> = {}): AddTorrentContextValue {
   return {
     isAddModalOpen: true,
+    addModalMode: "magnet",
     openAddModal: vi.fn(),
     closeAddModal: vi.fn(),
     pendingTorrents: [],
@@ -241,14 +244,33 @@ describe("AddTorrentModal", () => {
     createTaskMock.mockResolvedValue({ data: baseTask });
   });
 
-  it("renders a single-page form without step navigation", async () => {
+  it("renders magnet and upload tabs without step navigation", async () => {
     renderModal(buildContext());
 
     await waitFor(() => expect(screen.getAllByText("Worker 1")[0]).toBeInTheDocument());
     expect(screen.queryByRole("button", { name: "torrents.next" })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "torrents.addModal.source.magnet" })).toHaveAttribute("data-state", "active");
     expect(screen.getByPlaceholderText("torrents.addModal.magnetUri.placeholder")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "torrents.addModal.actions.add" })).toBeInTheDocument();
     expect(screen.getByPlaceholderText("torrents.addModal.directory.placeholder")).toBeInTheDocument();
+  });
+
+  it("switches between magnet and torrent file upload", async () => {
+    const user = userEvent.setup();
+    renderModal(buildContext());
+
+    await user.click(screen.getByRole("tab", { name: "torrents.addModal.source.upload" }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/torrents.addModal.file.label/)).toBeInTheDocument();
+      expect(screen.queryByPlaceholderText("torrents.addModal.magnetUri.placeholder")).not.toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("tab", { name: "torrents.addModal.source.magnet" }));
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("torrents.addModal.magnetUri.placeholder")).toBeInTheDocument();
+    });
   });
 
   it("auto-fills directory and tags when a category is selected", async () => {

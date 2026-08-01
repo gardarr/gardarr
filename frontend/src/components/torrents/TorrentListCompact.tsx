@@ -12,7 +12,7 @@ import {
   TorrentWorkerBadge,
 } from "./shared";
 import { getTorrentImageUrl } from "./helpers";
-import type { TorrentActionHandlers, TorrentListProps, TorrentListItem, TorrentSelectionProps } from "./types";
+import { getTorrentRenderKey, type TorrentActionHandlers, type TorrentListProps, type TorrentListItem, type TorrentSelectionProps } from "./types";
 
 export function TorrentListCompact({
   torrents,
@@ -56,7 +56,7 @@ export function TorrentListCompact({
     <div className="w-full space-y-2">
       {torrents.map((torrent) => (
         <TorrentCompactRow
-          key={torrent.id}
+          key={getTorrentRenderKey(torrent)}
           torrent={torrent}
           actions={actions}
           selection={selection}
@@ -159,7 +159,7 @@ const TorrentCompactRow = memo(function TorrentCompactRow({
             <div className="mt-2">
               <TorrentProgressBar
                 progress={torrent.progress}
-                labelClassName="text-xs text-muted-foreground w-12 text-right font-medium"
+                labelClassName="text-xs w-12 justify-end font-medium"
               />
             </div>
           </div>

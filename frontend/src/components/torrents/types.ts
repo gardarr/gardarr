@@ -40,6 +40,12 @@ export type TorrentListItem = {
 
 export type MobileTorrent = TorrentListItem;
 
+// A torrent hash is unique only inside one qBittorrent worker. Combining
+// workers requires a composite React key so equal hashes remain distinct.
+export function getTorrentRenderKey(torrent: TorrentListItem): string {
+  return `${torrent.workerUUID || "unknown-worker"}:${torrent.hash || torrent.id}`;
+}
+
 export interface TorrentActionHandlers {
   onShowDetails: (id: string) => void;
   onStart: (id: string) => void;

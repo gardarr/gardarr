@@ -1,6 +1,6 @@
 // AppLayout.tsx
 import { Button } from "@/components/ui/button";
-import { Settings, Users, ArrowDownUp, Menu, Sun, Moon, Info, LogOut, FolderOpen, UserCircle, Server, Plug, History, Plus } from "lucide-react";
+import { Settings, Users, ArrowDownUp, Menu, Sun, Moon, Info, LogOut, FolderOpen, UserCircle, Server, Plug, History } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import PageTransition from "@/components/PageTransition";
@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/auth-hooks";
 import { AddTorrentProvider } from "@/contexts/AddTorrentContext";
 import { useAddTorrent } from "@/contexts/add-torrent-hooks";
 import { AddTorrentModal } from "@/components/AddTorrentModal";
+import { AddTorrentButton } from "@/components/AddTorrentButton";
 import VariantColorSelectButton from "@/components/VariantColorSelectButton";
 import DisplaySettingsButton from "@/components/DisplaySettingsButton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -75,17 +76,35 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
     navigate("/login");
   };
 
-  const menuItems = [
-    { href: "/torrents", icon: ArrowDownUp, label: t("navigation.torrents"), key: "torrents" },
-    { href: "/workers", icon: Server, label: t("navigation.workers"), key: "workers" },
-    { href: "/categories", icon: FolderOpen, label: t("navigation.categories"), key: "categories" },
-    // Only show Users menu item for admin users
-    ...(user?.role === 'admin' ? [{ href: "/users", icon: Users, label: t("navigation.users"), key: "users" }] : []),
-    // Only show Settings menu item for admin users
-    ...(user?.role === 'admin' ? [{ href: "/settings", icon: Settings, label: t("navigation.settings"), key: "settings" }] : []),
-    { href: "/history", icon: History, label: t("navigation.history"), key: "history" },
-    { href: "/integrations", icon: Plug, label: t("navigation.integrations"), key: "integrations" },
-  ];
+  const menuSections = [
+    {
+      key: "library",
+      label: t("navigation.sections.library"),
+      items: [
+        { href: "/torrents", icon: ArrowDownUp, label: t("navigation.torrents"), key: "torrents" },
+        { href: "/categories", icon: FolderOpen, label: t("navigation.categories"), key: "categories" },
+      ],
+    },
+    {
+      key: "system",
+      label: t("navigation.sections.system"),
+      items: [
+        { href: "/workers", icon: Server, label: t("navigation.workers"), key: "workers" },
+        { href: "/integrations", icon: Plug, label: t("navigation.integrations"), key: "integrations" },
+        { href: "/history", icon: History, label: t("navigation.history"), key: "history" },
+      ],
+    },
+    {
+      key: "administration",
+      label: t("navigation.sections.administration"),
+      items: user?.role === "admin"
+        ? [
+            { href: "/users", icon: Users, label: t("navigation.users"), key: "users" },
+            { href: "/settings", icon: Settings, label: t("navigation.settings"), key: "settings" },
+          ]
+        : [],
+    },
+  ].filter((section) => section.items.length > 0);
 
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden max-h-screen">
@@ -100,21 +119,21 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
       <div
         className={`bg-sidebar border-r border-border flex-col transition-all duration-300 ease-in-out overflow-hidden
           ${sidebarOpen
-            ? 'flex fixed inset-y-0 left-0 z-50 w-64 translate-x-0 md:relative md:z-auto md:w-64'
-            : 'fixed inset-y-0 left-0 z-50 w-64 -translate-x-full md:flex md:relative md:translate-x-0 md:w-16'
+            ? 'flex fixed inset-y-0 left-0 z-50 w-52 translate-x-0 md:relative md:z-auto md:w-52'
+            : 'fixed inset-y-0 left-0 z-50 w-52 -translate-x-full md:flex md:relative md:translate-x-0 md:w-14'
           }`}
       >
         {/* Header da Sidebar */}
-        <div className="border-b border-border p-4">
+        <div className="border-b border-border px-3 py-2.5">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
+            <div className="h-7 w-7 rounded-md overflow-hidden flex items-center justify-center flex-shrink-0">
               <img
                 src={logoImage}
                 alt="Gardarr Logo"
                 className="h-full w-full object-contain"
               />
             </div>
-            <span className={`font-semibold text-lg whitespace-nowrap transition-all duration-200 overflow-hidden ${sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
+            <span className={`font-semibold text-sm whitespace-nowrap transition-all duration-200 overflow-hidden ${sidebarOpen || isMobile ? 'opacity-100 max-w-[180px]' : 'opacity-0 max-w-0'
               }`}>
               Gardarr
             </span>
@@ -122,27 +141,25 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Menu de Navegação */}
-        <nav className="p-2 flex-1 overflow-auto">
+        <nav className="p-1.5 flex-1 overflow-auto">
           {(() => {
             const isCollapsed = !sidebarOpen && !isMobile;
 
             const addButton = (
-              <button
+              <AddTorrentButton
                 type="button"
+                iconOnly={isCollapsed}
+                aria-label={t("torrents.addTorrent")}
                 onClick={() => {
                   openAddModal();
                   if (isMobile) {
                     setSidebarOpen(false);
                   }
                 }}
-                className={`mb-2 flex w-full items-center rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90 ${isCollapsed ? 'justify-center' : 'gap-3'}`}
+                className="mb-1.5 h-8 w-full text-xs"
               >
-                <Plus className="h-4 w-4 flex-shrink-0" />
-                <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
-                  }`}>
-                  {t("torrents.addTorrent")}
-                </span>
-              </button>
+                {t("torrents.addTorrent")}
+              </AddTorrentButton>
             );
 
             return isCollapsed ? (
@@ -160,56 +177,69 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
               addButton
             );
           })()}
-          <ul className="space-y-1">
-            {menuItems.map((item) => {
-              const IconComponent = item.icon;
-              // Special handling for dashboard - should be active on "/" or "/worker/:uuid" paths
-              const isActive = item.href === "/"
-                ? (location.pathname === "/" || location.pathname.startsWith("/worker/"))
-                : location.pathname === item.href || location.pathname.startsWith(item.href + "/");
+          <div className="space-y-4">
+            {menuSections.map((section) => {
               const isCollapsed = !sidebarOpen && !isMobile;
 
-              const menuItem = (
-                <Link
-                  to={item.href}
-                  onClick={() => isMobile && setSidebarOpen(false)}
-                  className={`flex items-center px-3 py-2 rounded-md transition-all ${isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "text-sidebar-foreground hover:bg-primary/90 hover:text-primary-foreground"
-                    } ${isCollapsed ? 'justify-center' : 'gap-3'}`}
-                >
-                  <IconComponent className="h-4 w-4 flex-shrink-0" />
-                  <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
-                    }`}>
-                    {item.label}
-                  </span>
-                </Link>
-              );
-
               return (
-                <li key={item.key}>
-                  {isCollapsed ? (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          {menuItem}
-                        </TooltipTrigger>
-                        <TooltipContent side="right">
-                          <p>{item.label}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  ) : (
-                    menuItem
-                  )}
-                </li>
+                <section key={section.key} aria-label={section.label}>
+                  <h2
+                    className={`px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/45 transition-all duration-200 ${
+                      isCollapsed ? "h-0 overflow-hidden p-0 opacity-0" : "opacity-100"
+                    }`}
+                  >
+                    {section.label}
+                  </h2>
+                  <ul className="space-y-0.5">
+                    {section.items.map((item) => {
+                      const IconComponent = item.icon;
+                      const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + "/");
+
+                      const menuItem = (
+                        <Link
+                          to={item.href}
+                          onClick={() => isMobile && setSidebarOpen(false)}
+                          className={`flex items-center px-2 py-1.5 text-xs rounded-md transition-all ${isActive
+                            ? "bg-primary text-primary-foreground"
+                            : "text-sidebar-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                            } ${isCollapsed ? 'justify-center' : 'gap-2'}`}
+                        >
+                          <IconComponent className="h-3.5 w-3.5 flex-shrink-0" />
+                          <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${sidebarOpen || isMobile ? 'opacity-100 max-w-[180px]' : 'opacity-0 max-w-0'
+                            }`}>
+                            {item.label}
+                          </span>
+                        </Link>
+                      );
+
+                      return (
+                        <li key={item.key}>
+                          {isCollapsed ? (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  {menuItem}
+                                </TooltipTrigger>
+                                <TooltipContent side="right">
+                                  <p>{item.label}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ) : (
+                            menuItem
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
               );
             })}
-          </ul>
+          </div>
         </nav>
 
         {/* Footer da Sidebar */}
-        <div className="border-t border-border p-2 mt-auto space-y-1">
+        <div className="border-t border-border p-1.5 mt-auto space-y-0.5">
           {(() => {
             const isCollapsed = !sidebarOpen && !isMobile;
 
@@ -217,13 +247,13 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
               <Link
                 to="/about"
                 onClick={() => isMobile && setSidebarOpen(false)}
-                className={`flex items-center px-3 py-2 rounded-md transition-all ${location.pathname === "/about"
+                className={`flex items-center px-2 py-1.5 text-xs rounded-md transition-all ${location.pathname === "/about"
                   ? "bg-primary text-primary-foreground"
                   : "text-sidebar-foreground hover:bg-primary/90 hover:text-primary-foreground"
-                  } ${isCollapsed ? 'justify-center' : 'gap-3'}`}
+                  } ${isCollapsed ? 'justify-center' : 'gap-2'}`}
               >
-                <Info className="h-4 w-4 flex-shrink-0" />
-                <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
+                <Info className="h-3.5 w-3.5 flex-shrink-0" />
+                <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${sidebarOpen || isMobile ? 'opacity-100 max-w-[180px]' : 'opacity-0 max-w-0'
                   }`}>
                   {t("navigation.about")}
                 </span>
@@ -239,10 +269,10 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
                     setSidebarOpen(false);
                   }
                 }}
-                className={`flex items-center px-3 py-2 rounded-md transition-all text-sidebar-foreground hover:bg-primary/90 hover:text-primary-foreground w-full ${isCollapsed ? 'justify-center' : 'gap-3'}`}
+                className={`flex items-center px-2 py-1.5 text-xs rounded-md transition-all text-sidebar-foreground hover:bg-primary/90 hover:text-primary-foreground w-full ${isCollapsed ? 'justify-center' : 'gap-2'}`}
               >
-                <LogOut className="h-4 w-4 flex-shrink-0" />
-                <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${sidebarOpen || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'
+                <LogOut className="h-3.5 w-3.5 flex-shrink-0" />
+                <span className={`whitespace-nowrap transition-all duration-200 overflow-hidden ${sidebarOpen || isMobile ? 'opacity-100 max-w-[180px]' : 'opacity-0 max-w-0'
                   }`}>
                   {t("auth.logout")}
                 </span>
@@ -287,57 +317,22 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Conteúdo Principal - Ocupa todo o espaço restante */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-0 w-full overflow-hidden max-h-screen">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden max-h-screen">
         {/* Header */}
-        <header className="h-16 min-h-[4rem] max-h-16 border-b border-border bg-card flex items-center justify-between px-4 md:px-6 flex-shrink-0">
-          <div className="flex items-center gap-4">
+        <header className="h-12 min-h-12 max-h-12 border-b border-border bg-card flex items-center justify-between px-3 md:px-4 flex-shrink-0">
+          <div className="flex items-center">
             <Button
               variant="ghost"
               size="icon"
+              aria-label={t("navigation.toggleSidebar")}
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="h-8 w-8 md:flex hidden items-center justify-center"
+              className="h-8 w-8 flex items-center justify-center"
             >
               <Menu className="h-4 w-4" />
             </Button>
-            {/* Mobile menu button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="h-8 w-8 md:hidden flex items-center justify-center"
-            >
-              <Menu className="h-4 w-4" />
-            </Button>
-            {/* Desktop: Show page title */}
-            <h1 className="text-xl font-semibold hidden md:block">
-              {location.pathname === "/torrents" && t("navigation.torrents")}
-              {location.pathname === "/instances" && "Instances"}
-              {location.pathname === "/workers" && t("navigation.workers")}
-              {location.pathname === "/categories" && t("navigation.categories")}
-              {location.pathname === "/users" && t("navigation.users")}
-              {location.pathname === "/history" && t("navigation.history")}
-              {location.pathname === "/integrations" && t("navigation.integrations")}
-              {location.pathname === "/settings" && t("navigation.settings")}
-              {location.pathname === "/profile" && t("navigation.profile")}
-              {location.pathname === "/about" && t("navigation.about")}
-            </h1>
-
-            {/* Mobile: Show site icon and name */}
-            <div className="flex items-center gap-2 md:hidden">
-              <div className="h-6 w-6 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
-                <img
-                  src={logoImage}
-                  alt="Gardarr Logo"
-                  className="h-full w-full object-contain"
-                />
-              </div>
-              <span className="text-xl font-semibold">
-                Gardarr
-              </span>
-            </div>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-4">
+          <div className="flex items-center gap-1 md:gap-2">
             <Button variant="ghost" size="icon" aria-label={t("theme.toggle")} onClick={toggleTheme} className="h-8 w-8 flex items-center justify-center">
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
@@ -348,15 +343,14 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
                 <UserCircle className="h-4 w-4" />
               </Link>
             </Button>
-            <Button variant="ghost" size="sm" className="hidden sm:flex" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-2" />
-              {t("auth.logout")}
+            <Button variant="ghost" size="icon" aria-label={t("auth.logout")} className="h-8 w-8" onClick={handleLogout}>
+              <LogOut className="h-4 w-4" />
             </Button>
           </div>
         </header>
 
         {/* Conteúdo da Rota */}
-        <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden" style={{ maxHeight: 'calc(100vh - 4rem)' }}>
+        <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden" style={{ maxHeight: 'calc(100vh - 3rem)' }}>
           <div className="w-full max-w-7xl mx-auto p-4 md:p-6">
             <PageTransition>
               {children}

@@ -24,16 +24,16 @@ export default defineConfig({
     dedupe: ['react', 'react-dom'],
   },
   server: {
-    port: 5173,
+    port: 5000,
     proxy: {
       '/v1': {
-        target: 'http://localhost:3200',
+        target: 'http://localhost:5001',
         changeOrigin: true,
         secure: false,
         ws: true,
       },
       '/media': {
-        target: 'http://localhost:3200',
+        target: 'http://localhost:5001',
         changeOrigin: true,
         secure: false,
       },

@@ -1,6 +1,6 @@
 import { TorrentCard } from "./TorrentCard";
 import { TorrentCardCompact } from "./TorrentCardCompact";
-import type { MobileTorrent, TorrentListProps } from "./types";
+import { getTorrentRenderKey, type MobileTorrent, type TorrentListProps } from "./types";
 
 // Re-export for backwards compatibility
 export type { MobileTorrent };
@@ -33,7 +33,7 @@ export default function TorrentListMobile({
       <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-2">
         {torrents.map((t) => (
           <TorrentCardCompact
-            key={t.id}
+            key={getTorrentRenderKey(t)}
             torrent={t}
             onShowDetails={onShowDetails}
             onStart={onStart}
@@ -60,7 +60,7 @@ export default function TorrentListMobile({
     <div className={`w-full grid grid-cols-1 md:grid-cols-3 ${compact ? 'gap-2' : 'gap-4'}`}>
       {torrents.map((t) => (
         <TorrentCard
-          key={t.id}
+          key={getTorrentRenderKey(t)}
           torrent={t}
           onShowDetails={onShowDetails}
           onStart={onStart}

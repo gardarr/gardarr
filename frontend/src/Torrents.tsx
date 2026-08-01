@@ -1,10 +1,11 @@
 
 import { Button } from "@/components/ui/button";
+import { AddTorrentButton } from "@/components/AddTorrentButton";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { LoadingBar } from "@/components/ui/LoadingBar";
-import { ChevronDown, SortAsc, SortDesc, Plus, Download, Server, Activity, Folder, Tag, FileUp, AlertTriangle, Star, Search } from "lucide-react";
+import { SortAsc, SortDesc, Plus, Download, Server, Activity, Folder, Tag, AlertTriangle, Star, Search } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -47,6 +48,7 @@ import { LazyLoadingSentinel } from "@/components/LazyLoadingSentinel";
 import { toast } from "sonner";
 import { normalizeTaskStatus } from "@/utils/statusUtils";
 import { getRatioGrade } from "@/utils/ratioUtils";
+import { useLazyLoadingObserver } from "@/hooks/useLazyLoadingObserver";
 
 
 // Helper function to convert sort type to translation key
@@ -160,7 +162,6 @@ export default function TorrentsPage() {
   const [limitsTaskName, setLimitsTaskName] = useState<string>("");
   const [limitsTaskStatus, setLimitsTaskStatus] = useState<string>("");
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false);
-  const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
   const [compact, setCompact] = useState(false);
   const [displayMode, setDisplayMode] = useState<"table" | "card" | "card_b" | "list">("card");
   const [selectionMode, setSelectionMode] = useState(false);
@@ -177,8 +178,6 @@ export default function TorrentsPage() {
 
   // Lazy loading states for card view
   const [displayedItemsCount, setDisplayedItemsCount] = useState(30); // Initial load: 30 items (3x10 rows)
-  const sentinelRef = useRef<HTMLDivElement>(null);
-  const mobileSentinelRef = useRef<HTMLDivElement>(null);
   const ITEMS_PER_LOAD = 30; // Load 30 more items each time
 
   // Detect mobile viewport
@@ -203,7 +202,6 @@ export default function TorrentsPage() {
     });
   }, []);
 
-  const addDropdownRef = useRef<HTMLDivElement | null>(null);
 
   const mapTasksToTorrents = useCallback((tasks: Task[]) => {
     return tasks.map((task) => mapTaskToTorrent(task, categories));
@@ -300,13 +298,12 @@ export default function TorrentsPage() {
     }, [t]),
     onTaskUpdated: useCallback((updatedTask: Partial<Task> & { hash: string, worker_id: string }) => {
       setOriginalTasks(prev => {
-        // Match by hash only: the backend's task payload never carries a
-        // `worker` field, so `t.worker?.uuid` is always undefined here and
-        // comparing it against `updatedTask.worker_id` never matched,
-        // causing every state-change/added/completed event to fall into the
-        // "new task" branch below and duplicate the card instead of
-        // updating the existing one.
-        const index = prev.findIndex(t => t.hash === updatedTask.hash);
+        // Hashes are unique only inside a worker. Match both values so an
+        // update cannot overwrite the same torrent hosted by another worker.
+        const index = prev.findIndex(t =>
+          t.hash === updatedTask.hash &&
+          (t.worker_id === updatedTask.worker_id || t.worker?.uuid === updatedTask.worker_id)
+        );
         if (index >= 0) {
           const next = [...prev];
           const worker = next[index].worker ?? workersRef.current.find(w => w.uuid === updatedTask.worker_id);
@@ -321,8 +318,10 @@ export default function TorrentsPage() {
         return [...prev, { ...updatedTask, worker } as Task];
       });
     }, []),
-    onTaskRemoved: useCallback((hash: string) => {
-      setOriginalTasks(prev => prev.filter(t => t.hash !== hash));
+    onTaskRemoved: useCallback((hash: string, workerId: string) => {
+      setOriginalTasks(prev => prev.filter(t =>
+        !(t.hash === hash && (t.worker_id === workerId || t.worker?.uuid === workerId))
+      ));
     }, []),
     onWorkerStats: useCallback(() => {
       // Optional: Update worker stats in UI if needed
@@ -787,29 +786,6 @@ export default function TorrentsPage() {
 
   // O WebSocket gerencia o estado e as atualizações em tempo real!
 
-  // Handle clicking outside the add dropdown
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (addDropdownRef.current && !addDropdownRef.current.contains(event.target as Node)) {
-        setIsAddDropdownOpen(false);
-      }
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setIsAddDropdownOpen(false);
-    }
-
-    if (isAddDropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("keydown", handleKeyDown);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isAddDropdownOpen]);
-
   // Filtrar e ordenar torrents usando hook customizado
   const filteredTorrents = useTorrentFilters({
     torrents,
@@ -870,43 +846,23 @@ export default function TorrentsPage() {
     setDisplayedItemsCount(30); // Reset lazy loading counter
   }, [searchTerm, itemsPerPage, sortType, sortDirection, displayMode, isMobile]);
 
-  // Intersection Observer para lazy loading (card view desktop)
-  useEffect(() => {
-    if (!useCardLazyLoading || !sentinelRef.current) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const target = entries[0];
-        if (target.isIntersecting) {
-          setDisplayedItemsCount(prev => prev + ITEMS_PER_LOAD);
-        }
-      },
-      { threshold: 0.1, rootMargin: '200px' }
-    );
-
-    observer.observe(sentinelRef.current);
-
-    return () => observer.disconnect();
-  }, [useCardLazyLoading]);
-
-  // Intersection Observer para lazy loading (mobile)
-  useEffect(() => {
-    if (!isMobile || !mobileSentinelRef.current) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const target = entries[0];
-        if (target.isIntersecting) {
-          setDisplayedItemsCount(prev => prev + ITEMS_PER_LOAD);
-        }
-      },
-      { threshold: 0.1, rootMargin: '200px' }
-    );
-
-    observer.observe(mobileSentinelRef.current);
-
-    return () => observer.disconnect();
-  }, [isMobile]);
+  // Intersection Observer para lazy loading. O observer também é reavaliado
+  // quando a lista chega depois do carregamento inicial, momento em que o
+  // sentinel passa a existir no DOM.
+  const sentinelRef = useLazyLoadingObserver({
+    enabled: useCardLazyLoading,
+    totalItems: filteredTorrents.length,
+    displayedItemsCount,
+    setDisplayedItemsCount,
+    itemsPerLoad: ITEMS_PER_LOAD,
+  });
+  const mobileSentinelRef = useLazyLoadingObserver({
+    enabled: isMobile,
+    totalItems: filteredTorrents.length,
+    displayedItemsCount,
+    setDisplayedItemsCount,
+    itemsPerLoad: ITEMS_PER_LOAD,
+  });
 
   // Função para lidar com mudança de itens por página
   const handleItemsPerPageChange = (newItemsPerPage: number) => {
@@ -939,7 +895,7 @@ export default function TorrentsPage() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-3xl font-bold tracking-tight">{t('torrents.title')}</h1>
+              <h1 className="text-2xl font-bold tracking-tight">{t('torrents.title')}</h1>
               {!isWsConnected && initialLoadComplete && (
                 <span
                   className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400"
@@ -950,55 +906,19 @@ export default function TorrentsPage() {
                 </span>
               )}
             </div>
-            <p className="text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               {t('torrents.subtitle')}
             </p>
           </div>
         </div>
         {/* Controles de adicionar - sempre mostrar, mas desabilitar durante loading */}
         {(isInitialLoading || (workers.length > 0 && workers.some(worker => worker.status !== 'ERRORED'))) && (
-          <div className="relative" ref={addDropdownRef}>
-            <div className="flex">
-              <Button
-                onClick={() => openAddModal()}
-                disabled={isInitialLoading || workers.length === 0}
-                className="rounded-r-none border-r-0"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                {t('torrents.addTorrent')}
-              </Button>
-              <Button
-                onClick={() => setIsAddDropdownOpen(!isAddDropdownOpen)}
-                disabled={isInitialLoading || workers.length === 0}
-                className="rounded-l-none px-2 border-l-0"
-                aria-haspopup="listbox"
-                aria-expanded={isAddDropdownOpen}
-              >
-                <ChevronDown className={`h-4 w-4 transition-transform ${isAddDropdownOpen ? 'rotate-180' : ''}`} />
-              </Button>
-            </div>
-
-            {isAddDropdownOpen && (
-              <div
-                className="absolute right-0 mt-1 w-48 rounded-md border bg-card text-card-foreground shadow-md z-[100] py-1"
-                role="listbox"
-                aria-label={t('torrents.addTorrent')}
-              >
-                <button
-                  type="button"
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground"
-                  onClick={() => {
-                    setIsAddDropdownOpen(false);
-                    openAddModal('file');
-                  }}
-                  role="option"
-                >
-                  <FileUp className="h-4 w-4" />
-                  {t('torrents.addFile')}
-                </button>
-              </div>
-            )}
-          </div>
+          <AddTorrentButton
+            onClick={() => openAddModal()}
+            disabled={isInitialLoading || workers.length === 0}
+          >
+            {t('torrents.addTorrent')}
+          </AddTorrentButton>
         )}
       </div>
 

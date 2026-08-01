@@ -377,8 +377,8 @@ function Users() {
             <UsersIcon className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold">Users</h1>
-            <p className="text-muted-foreground">Manage user accounts and permissions</p>
+            <h1 className="text-2xl font-bold">Users</h1>
+            <p className="text-sm text-muted-foreground">Manage user accounts and permissions</p>
           </div>
         </div>
         <div className="flex gap-2 w-full sm:w-auto justify-between sm:justify-end">
@@ -1267,4 +1267,3 @@ function Users() {
 }
 
 export default Users;
-

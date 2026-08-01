@@ -3,6 +3,8 @@ package task
 import (
 	"reflect"
 	"testing"
+
+	"github.com/jfxdev/go-qbt"
 )
 
 func TestDiffTaskTags(t *testing.T) {
@@ -110,5 +112,26 @@ func TestNormalizeTaskCategory(t *testing.T) {
 				t.Fatalf("unexpected shouldClear: got %v want %v", gotShouldClear, tt.wantShouldClear)
 			}
 		})
+	}
+}
+
+func TestMatchCategoryNameIgnoresCase(t *testing.T) {
+	categories := map[string]qbt.Category{
+		"Movies": {Name: "Movies"},
+		"series": {Name: "series"},
+	}
+
+	if got := matchCategoryName(categories, "movies"); got != "Movies" {
+		t.Fatalf("expected qBittorrent spelling %q, got %q", "Movies", got)
+	}
+}
+
+func TestMatchCategoryNameKeepsUnknownCategory(t *testing.T) {
+	categories := map[string]qbt.Category{
+		"Movies": {Name: "Movies"},
+	}
+
+	if got := matchCategoryName(categories, "documentaries"); got != "documentaries" {
+		t.Fatalf("expected unknown category to remain unchanged, got %q", got)
 	}
 }

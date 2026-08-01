@@ -279,7 +279,7 @@ func originsFromBaseURL(baseURL string) []string {
 	// Allow common development origins for localhost
 	host := u.Hostname()
 	if host == "localhost" || host == "127.0.0.1" {
-		origins = append(origins, "http://localhost:3200", "http://localhost:5173")
+		origins = append(origins, "http://localhost:5000")
 	}
 
 	return origins
