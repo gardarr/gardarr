@@ -56,7 +56,13 @@
     "integrations": "Integrações",
     "settings": "Configurações",
     "profile": "Perfil",
-    "about": "Sobre"
+    "about": "Sobre",
+    "toggleSidebar": "Alternar barra lateral",
+    "sections": {
+      "library": "Biblioteca",
+      "system": "Sistema",
+      "administration": "Administração"
+    }
   },
   "profile": {
     "title": "Perfil",
@@ -685,6 +691,10 @@
       "reconnecting": "Reconectando…"
     },
     "addModal": {
+      "source": {
+        "magnet": "Magnet",
+        "upload": "Upload"
+      },
       "stepCounter": "Etapa {{current}} de {{total}}",
       "steps": {
         "magnet": "Magnet",
@@ -734,6 +744,7 @@
         "optionalDescription": "Você pode enriquecer metadata e imagem opcionalmente agora, ou fechar o modal se preferir.",
         "searchButton": "Search Metadata",
         "searchPlaceholder": "Busque pelo nome da mídia",
+        "sanitizedQuery": "Nome sanitizado para busca: {{name}}",
         "queryRequired": "Digite um termo para buscar metadata",
         "searchFailed": "Falha ao buscar metadata",
         "searching": "Buscando resultados no provider...",
@@ -793,7 +804,7 @@
         "createOrFinalizeFailed": "Não foi possível concluir a adição do torrent. Você pode tentar novamente.",
         "taskHashMissing": "A task foi criada, mas o hash retornado está ausente."
       },
-      "subtitle": "Cole um link magnet, escolha uma categoria e adicione na hora"
+      "subtitle": "Adicione um link magnet ou envie um arquivo .torrent"
     },
     "search": "Buscar torrents...",
     "itemsPerPage": "Itens por página",
@@ -1117,7 +1128,8 @@
       "placeholder": "Busque um jogo...",
       "noImage": "Sem imagem",
       "unknownDate": "Data desconhecida",
-      "noResults": "Nenhum resultado encontrado"
+      "noResults": "Nenhum resultado encontrado",
+      "sanitizedQuery": "Nome sanitizado para busca: {{name}}"
     },
     "errors": {
       "searchFailed": "Falha ao buscar no TGDB",
@@ -1645,7 +1657,8 @@
       "placeholder": "Busque um filme ou série...",
       "noImage": "Sem imagem",
       "unknownDate": "Data desconhecida",
-      "noResults": "Nenhum resultado encontrado"
+      "noResults": "Nenhum resultado encontrado",
+      "sanitizedQuery": "Nome sanitizado para busca: {{name}}"
     },
     "errors": {
       "searchFailed": "Falha ao buscar no TMDB",

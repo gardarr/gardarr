@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
-import { ArrowDown, ArrowUp, Image as ImageIcon } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, Clock3, Download, Image as ImageIcon } from "lucide-react";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { WorkerIcon } from "@/components/ui/WorkerIcon";
+import { cn } from "@/lib/utils";
 import { formatBytes, formatBytesPerSecond } from "@/utils/bytes";
 import { truncateText, isTextTruncated } from "@/utils/textUtils";
 import TorrentContextMenu from "./TorrentContextMenu";
@@ -102,7 +103,7 @@ export function TorrentProgressBar({
   progress,
   compact,
   showLabel = true,
-  labelClassName = "text-xs text-muted-foreground",
+  labelClassName = "text-xs",
 }: {
   progress: number;
   compact?: boolean;
@@ -114,16 +115,78 @@ export function TorrentProgressBar({
 
   return (
     <div className="flex items-center gap-2">
-      <div className={`bg-secondary rounded-full ${heightClass} flex-1`}>
+      <div className={`torrent-progress-track rounded-full ${heightClass} flex-1`}>
         <div
-          className={`bg-primary ${heightClass} rounded-full transition-all duration-300`}
+          className={`torrent-progress-fill ${heightClass} rounded-full transition-all duration-300`}
           style={{ width: `${normalizedProgress}%` }}
         />
       </div>
       {showLabel && (
-        <span className={labelClassName}>{normalizedProgress.toFixed(0)}%</span>
+        <TorrentProgressIndicator progress={normalizedProgress} className={labelClassName} />
       )}
     </div>
+  );
+}
+
+type TorrentProgressState = "pending" | "downloading" | "complete";
+
+type TorrentProgressIndicatorProps = Readonly<{
+  progress: number;
+  precision?: number;
+  variant?: "default" | "opaque";
+  className?: string;
+  iconClassName?: string;
+}>;
+
+const torrentProgressStateConfig = {
+  pending: {
+    Icon: Clock3,
+    colorClass: "text-amber-600 dark:text-amber-400",
+  },
+  downloading: {
+    Icon: Download,
+    colorClass: "text-primary",
+  },
+  complete: {
+    Icon: Check,
+    colorClass: "text-green-600 dark:text-green-400",
+  },
+} satisfies Record<TorrentProgressState, { Icon: typeof Check; colorClass: string }>;
+
+function getTorrentProgressState(progress: number): TorrentProgressState {
+  if (progress >= 100) {
+    return "complete";
+  }
+  if (progress > 0) {
+    return "downloading";
+  }
+  return "pending";
+}
+
+export function TorrentProgressIndicator({
+  progress,
+  precision = 0,
+  variant = "default",
+  className,
+  iconClassName = "h-3.5 w-3.5",
+}: TorrentProgressIndicatorProps) {
+  const normalizedProgress = Math.min(100, Math.max(0, progress));
+  const state = getTorrentProgressState(normalizedProgress);
+  const { Icon, colorClass: stateColorClass } = torrentProgressStateConfig[state];
+  let colorClass = stateColorClass;
+  if (variant === "opaque") {
+    colorClass = "text-muted-foreground";
+  }
+
+  return (
+    <span
+      className={cn("torrent-progress-indicator inline-flex items-center gap-1 whitespace-nowrap", className, colorClass)}
+      data-progress-state={state}
+      data-progress-variant={variant}
+    >
+      <Icon className={cn("shrink-0", iconClassName)} aria-hidden="true" />
+      <span>{normalizedProgress.toFixed(precision)}%</span>
+    </span>
   );
 }
 
@@ -206,7 +269,7 @@ export function TorrentThumbnail({
   const imageUrl = getTorrentImageUrl(torrent);
 
   return (
-    <div className={`flex-shrink-0 ${sizeClassName} ${roundedClassName} overflow-hidden bg-muted flex items-center justify-center`}>
+    <div className={`flex-shrink-0 ${sizeClassName} ${roundedClassName} overflow-hidden bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center`}>
       {imageUrl ? (
         <img
           src={imageUrl}
@@ -215,7 +278,7 @@ export function TorrentThumbnail({
           loading="lazy"
         />
       ) : (
-        <ImageIcon className={iconClassName} />
+        <ImageIcon className={`${iconClassName} !text-neutral-500 dark:!text-neutral-400`} />
       )}
     </div>
   );

@@ -5,7 +5,7 @@ interface ProgressBarProps {
     className?: string;
     variant?: "primary" | "gray";
   }
-  
+
   export function ProgressBar({ 
     progress, 
     showLabel = false, 
@@ -26,9 +26,9 @@ interface ProgressBarProps {
   
     return (
       <div className={className}>
-        <div className={`w-full bg-secondary rounded-full ${heightClasses[height]}`}>
+        <div className={`w-full rounded-full ${heightClasses[height]} ${variant === "primary" ? "torrent-progress-track" : "bg-secondary"}`}>
           <div 
-            className={`${colorClasses[variant]} ${heightClasses[height]} rounded-full transition-all duration-300`}
+            className={`${variant === "primary" ? "torrent-progress-fill" : colorClasses[variant]} ${heightClasses[height]} rounded-full transition-all duration-300`}
             style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
           ></div>
         </div>
@@ -40,4 +40,3 @@ interface ProgressBarProps {
       </div>
     );
   }
-  

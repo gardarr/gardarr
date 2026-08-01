@@ -68,7 +68,7 @@ export default function HistoryPage() {
             <Activity className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
               {t('history.title')}
             </h1>
             <p className="text-muted-foreground text-sm mt-1">

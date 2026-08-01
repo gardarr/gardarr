@@ -4,10 +4,10 @@ import { RatioBadge } from "@/components/RatioBadge";
 import { getStatusBackgroundColor } from "./TorrentStatusIcon";
 import { formatBytesPerSecond } from "@/utils/bytes";
 import { truncateText } from "@/utils/textUtils";
-import taskDefaultBg from "@/assets/img/common/task-default-background.png";
-import { Download, Upload } from "lucide-react";
+import { Download, Image, Upload } from "lucide-react";
 import SeedersAndPeersBadge from "@/components/SeedersAndPeersBadge";
 import type { TaskMetadata } from "@/types/torrent";
+import { TorrentProgressIndicator } from "./shared";
 
 interface TorrentCardPreviewProps {
   taskName: string;
@@ -56,8 +56,7 @@ export function TorrentCardPreview({
         />
       ) : (
         <div
-          className="absolute inset-0 bg-cover pointer-events-none z-0 opacity-[0.12] dark:opacity-[0.03]"
-          style={{ backgroundImage: `url(${taskDefaultBg})` }}
+          className="absolute inset-0 pointer-events-none z-0 bg-neutral-200/50 dark:bg-neutral-900/60"
           aria-hidden
         />
       )}
@@ -78,15 +77,17 @@ export function TorrentCardPreview({
           </CardHeader>
           <CardContent className="px-3 pt-0 pb-3 relative z-10">
             <div className="flex gap-2 items-center">
-              {hasImage && (
-                <div className="flex-shrink-0">
+              <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-md bg-neutral-200 dark:bg-neutral-800">
+                {hasImage ? (
                   <img
                     src={encodedImageUrl!}
                     alt={mockTorrent.name}
-                    className="w-16 h-16 object-cover rounded-md"
+                    className="h-full w-full object-cover"
                   />
-                </div>
-              )}
+                ) : (
+                  <Image className="h-8 w-8 text-neutral-500 dark:text-neutral-400" />
+                )}
+              </div>
               <div className="flex-1 flex flex-col gap-1.5 text-[11px] text-muted-foreground">
                 <StatBadge
                   icon={Upload}
@@ -130,15 +131,17 @@ export function TorrentCardPreview({
           </CardHeader>
           <CardContent className="px-4 pt-1 pb-6 relative z-10">
             <div className="flex gap-3 items-center">
-              {hasImage && (
-                <div className="flex-shrink-0">
+              <div className="flex h-24 w-24 flex-shrink-0 items-center justify-center overflow-hidden rounded-md bg-neutral-200 dark:bg-neutral-800">
+                {hasImage ? (
                   <img
                     src={encodedImageUrl!}
                     alt={mockTorrent.name}
-                    className="w-24 h-24 object-cover rounded-md"
+                    className="h-full w-full object-cover"
                   />
-                </div>
-              )}
+                ) : (
+                  <Image className="h-12 w-12 text-neutral-500 dark:text-neutral-400" />
+                )}
+              </div>
               <div className="flex-1 flex flex-col gap-2 text-xs text-muted-foreground">
                 <StatBadge
                   icon={Upload}
@@ -199,9 +202,9 @@ function StatBadge({ icon: Icon, rate, colorClass, hasImage, blurPx, compact = f
 
 function ProgressBadge({ progress, hasImage, blurPx, size }: { progress: number, hasImage: boolean, blurPx: number, size: string }) {
   return (
-    <span className={`${size} text-muted-foreground relative px-2 py-1`}>
+    <span className={`${size} relative px-2 py-1`}>
       <BlurOverlay hasImage={hasImage} blurPx={blurPx} rounded />
-      {progress.toFixed(0)}%
+      <TorrentProgressIndicator progress={progress} iconClassName="h-4 w-4" />
     </span>
   );
 }

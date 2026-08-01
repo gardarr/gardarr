@@ -4,13 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RatioBadge } from "@/components/RatioBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatBytes, formatBytesPerSecond } from "@/utils/bytes";
-import taskDefaultBg from "@/assets/img/common/task-default-background.png";
-import { Download, Upload, Check, Hourglass } from "lucide-react";
+import { Download, Upload } from "lucide-react";
 import SeedersAndPeersBadge from "@/components/SeedersAndPeersBadge";
 import { getBlurPixels, useTorrentBlurIntensity, useTorrentOpenHandler } from "./hooks";
 import {
   TorrentContextMenuWrapper,
   TorrentDisplayName,
+  TorrentProgressIndicator,
   TorrentSelectionCheckbox,
   TorrentThumbnail,
   TorrentWorkerBadge,
@@ -97,8 +97,7 @@ export const TorrentCard = memo(function TorrentCard({
           />
         ) : (
           <div
-            className="absolute inset-0 bg-cover pointer-events-none z-0 opacity-[0.12] dark:opacity-[0.03]"
-            style={{ backgroundImage: `url(${taskDefaultBg})` }}
+            className="absolute inset-0 pointer-events-none z-0 bg-neutral-200/50 dark:bg-neutral-900/60"
             aria-hidden
           />
         )}
@@ -128,9 +127,9 @@ export const TorrentCard = memo(function TorrentCard({
               )}
               {/* Progress bar at bottom of header - hidden when complete */}
               {torrent.progress < 100 && (
-                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-muted/40 overflow-hidden">
+                <div className="torrent-progress-track absolute bottom-0 left-0 right-0 h-[3px] overflow-hidden">
                   <div
-                    className="h-full bg-primary/70 transition-all duration-300 ease-out"
+                    className="torrent-progress-fill h-full transition-all duration-300 ease-out"
                     style={{ width: `${Math.min(100, Math.max(0, torrent.progress))}%` }}
                   />
                 </div>
@@ -199,9 +198,9 @@ export const TorrentCard = memo(function TorrentCard({
               )}
               {/* Progress bar at bottom of header - hidden when complete */}
               {torrent.progress < 100 && (
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-muted/40 overflow-hidden">
+                <div className="torrent-progress-track absolute bottom-0 left-0 right-0 h-1 overflow-hidden">
                   <div
-                    className="h-full bg-primary/70 transition-all duration-300 ease-out"
+                    className="torrent-progress-fill h-full transition-all duration-300 ease-out"
                     style={{ width: `${Math.min(100, Math.max(0, torrent.progress))}%` }}
                   />
                 </div>
@@ -288,16 +287,10 @@ function StatBadge({ icon: Icon, rate, total, colorClass, hasImage, blurPx, comp
 }
 
 function ProgressBadge({ progress, hasImage, blurPx, size }: { progress: number, hasImage: boolean, blurPx: number, size: string }) {
-  const isComplete = progress >= 100;
   return (
-    <span className={`${size} text-muted-foreground relative px-2 py-1 flex items-center gap-1`}>
+    <span className={`${size} relative px-2 py-1`}>
       <BlurOverlay hasImage={hasImage} blurPx={blurPx} rounded />
-      {isComplete ? (
-        <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
-      ) : (
-        <Hourglass className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-      )}
-      {progress.toFixed(0)}%
+      <TorrentProgressIndicator progress={progress} iconClassName="h-4 w-4" />
     </span>
   );
 }

@@ -3,14 +3,14 @@ import { memo, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { RatioBadge } from "@/components/RatioBadge";
 import { StatusBadge } from "@/components/StatusBadge";
-import taskDefaultBg from "@/assets/img/common/task-default-background.png";
-import { Check, Upload, Download } from "lucide-react";
+import { Upload, Download } from "lucide-react";
 import SeedersAndPeersBadge from "@/components/SeedersAndPeersBadge";
 import { formatBytes, formatBytesPerSecond } from "@/utils/bytes";
 import { getBlurPixels, useTorrentBlurIntensity, useTorrentOpenHandler } from "./hooks";
 import {
   TorrentContextMenuWrapper,
   TorrentDisplayName,
+  TorrentProgressIndicator,
   TorrentSelectionCheckbox,
   TorrentThumbnail,
   TorrentWorkerBadge,
@@ -58,7 +58,6 @@ export const TorrentCardCompact = memo(function TorrentCardCompact({
   const blurPx = getBlurPixels(blurIntensity);
   const hasImage = !!torrent.metadata?.image_url;
   const encodedImageUrl = getTorrentImageUrl(torrent);
-  const isComplete = torrent.progress >= 100;
 
   const actions = useMemo(() => ({
     onShowDetails,
@@ -80,7 +79,7 @@ export const TorrentCardCompact = memo(function TorrentCardCompact({
   return (
     <TorrentContextMenuWrapper torrent={torrent} actions={actions} selection={selection}>
       <Card
-        className="hover:shadow-lg transition-shadow overflow-hidden p-0 cursor-pointer relative"
+        className="hover:shadow-lg transition-shadow overflow-hidden p-0 cursor-pointer relative dark:border-black/80"
         onClick={handleCardClick}
       >
         {hasImage ? (
@@ -96,8 +95,7 @@ export const TorrentCardCompact = memo(function TorrentCardCompact({
           />
         ) : (
           <div
-            className="absolute inset-0 bg-cover pointer-events-none z-0 opacity-[0.12] dark:opacity-[0.03]"
-            style={{ backgroundImage: `url(${taskDefaultBg})` }}
+            className="absolute inset-0 pointer-events-none z-0 bg-neutral-200/50 dark:bg-neutral-900/60"
             aria-hidden
           />
         )}
@@ -105,8 +103,7 @@ export const TorrentCardCompact = memo(function TorrentCardCompact({
           <div className="absolute inset-0 bg-background/70 dark:bg-background/80 z-0" aria-hidden />
         )}
 
-        {/* Thumbnail fills the entire left side of the card, including the
-            progress bar strip - the progress bar renders on top of it (z-20). */}
+        {/* Thumbnail fills the entire left side of the card. */}
         <TorrentThumbnail
           torrent={torrent}
           alt={torrent.name}
@@ -142,6 +139,15 @@ export const TorrentCardCompact = memo(function TorrentCardCompact({
 
               <TorrentWorkerBadge torrent={torrent} className="flex-shrink-0 inline-flex items-center justify-center rounded-full border p-0.5 bg-background/50" />
             </div>
+
+            {torrent.progress < 100 && (
+              <div className="torrent-progress-track absolute inset-x-0 bottom-0 z-20 h-[3px] overflow-hidden">
+                <div
+                  className="torrent-progress-fill h-full transition-all duration-300 ease-out"
+                  style={{ width: `${Math.min(100, Math.max(0, torrent.progress))}%` }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Line 2: speeds + totals transferred - icon always shown so idle
@@ -157,21 +163,15 @@ export const TorrentCardCompact = memo(function TorrentCardCompact({
 
             <RatioBadge ratio={torrent.ratio} showValue={false} showIcon={true} />
 
-            <span className="flex items-center gap-1 flex-shrink-0 ml-auto">
-              {isComplete && <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />}
-              {torrent.progress.toFixed(0)}%
-            </span>
+            <TorrentProgressIndicator
+              progress={torrent.progress}
+              variant="opaque"
+              className="flex-shrink-0 ml-auto"
+              iconClassName="h-3.5 w-3.5"
+            />
           </div>
         </div>
 
-        {torrent.progress < 100 && (
-          <div className="absolute inset-x-0 bottom-0 z-20 h-[2px] bg-muted/40 overflow-hidden">
-            <div
-              className="h-full bg-primary/70 transition-all duration-300 ease-out"
-              style={{ width: `${Math.min(100, Math.max(0, torrent.progress))}%` }}
-            />
-          </div>
-        )}
       </Card>
     </TorrentContextMenuWrapper>
   );

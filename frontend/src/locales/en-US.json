@@ -56,7 +56,13 @@
     "integrations": "Integrations",
     "settings": "Settings",
     "profile": "Profile",
-    "about": "About"
+    "about": "About",
+    "toggleSidebar": "Toggle sidebar",
+    "sections": {
+      "library": "Library",
+      "system": "System",
+      "administration": "Administration"
+    }
   },
   "profile": {
     "title": "Profile",
@@ -659,6 +665,10 @@
       "reconnecting": "Reconnecting…"
     },
     "addModal": {
+      "source": {
+        "magnet": "Magnet",
+        "upload": "Upload"
+      },
       "stepCounter": "Step {{current}} of {{total}}",
       "steps": {
         "magnet": "Magnet",
@@ -708,6 +718,7 @@
         "optionalDescription": "You can optionally enrich the metadata and image now, or close the modal if you prefer.",
         "searchButton": "Search Metadata",
         "searchPlaceholder": "Search by media name",
+        "sanitizedQuery": "Sanitized search name: {{name}}",
         "queryRequired": "Enter a search term for metadata",
         "searchFailed": "Failed to search metadata",
         "searching": "Searching provider results...",
@@ -767,7 +778,7 @@
         "createOrFinalizeFailed": "Failed to finish adding the torrent. You can try again.",
         "taskHashMissing": "The task was created, but the returned hash is missing."
       },
-      "subtitle": "Paste a magnet link, pick a category and add it instantly"
+      "subtitle": "Add a magnet link or upload a .torrent file"
     },
     "search": "Search torrents...",
     "itemsPerPage": "Items per page",
@@ -1091,7 +1102,8 @@
       "placeholder": "Search for a game...",
       "noImage": "No image",
       "unknownDate": "Unknown date",
-      "noResults": "No results found"
+      "noResults": "No results found",
+      "sanitizedQuery": "Sanitized search name: {{name}}"
     },
     "errors": {
       "searchFailed": "Failed to search TGDB",
@@ -1589,7 +1601,8 @@
       "placeholder": "Search for a movie or TV show...",
       "noImage": "No image",
       "unknownDate": "Unknown date",
-      "noResults": "No results found"
+      "noResults": "No results found",
+      "sanitizedQuery": "Sanitized search name: {{name}}"
     },
     "errors": {
       "searchFailed": "Failed to search TMDB",

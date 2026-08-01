@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useTranslation } from "react-i18next";
 import type { TaskMetadata } from "@/types/torrent";
+import { sanitizeProviderSearchQuery } from "@/utils/providerSearch";
 
 export type MetadataProvider = "tgdb" | "tmdb";
 
@@ -28,18 +29,29 @@ interface ProviderSearchProps {
 
 export function ProviderSearch({ provider, taskHash, initialQuery, onSelect, onCancel }: ProviderSearchProps) {
   const { t } = useTranslation();
-  const [query, setQuery] = useState(initialQuery);
+  const sanitizedInitialQuery = sanitizeProviderSearchQuery(initialQuery);
+  const [query, setQuery] = useState(sanitizedInitialQuery);
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<ProviderSearchResult[]>([]);
   const [isApplying, setIsApplying] = useState(false);
   const [applyingResultId, setApplyingResultId] = useState<string | null>(null);
 
+  useEffect(() => {
+    setQuery((currentQuery) =>
+      currentQuery === sanitizedInitialQuery ? currentQuery : sanitizedInitialQuery
+    );
+  }, [sanitizedInitialQuery]);
+
   const handleSearch = useCallback(async (searchQuery: string) => {
-    if (!searchQuery.trim()) return;
+    const sanitizedQuery = sanitizeProviderSearchQuery(searchQuery);
+    if (!sanitizedQuery) return;
 
     setIsSearching(true);
+    setQuery((currentQuery) =>
+      currentQuery === sanitizedQuery ? currentQuery : sanitizedQuery
+    );
     try {
-      const response = await api.get<ProviderSearchResult[]>(`/tasks/metadata/${taskHash}/providers/${provider}/search?q=${encodeURIComponent(searchQuery)}`);
+      const response = await api.get<ProviderSearchResult[]>(`/tasks/metadata/${taskHash}/providers/${provider}/search?q=${encodeURIComponent(sanitizedQuery)}`);
       setResults(response.data || []);
     } catch {
       toast.error(t(`${provider}.errors.searchFailed`));
@@ -51,7 +63,7 @@ export function ProviderSearch({ provider, taskHash, initialQuery, onSelect, onC
   // Auto-search on open using the torrent's own name, so the tab isn't a
   // blank results grid behind a pre-filled input the user has to re-submit.
   useEffect(() => {
-    handleSearch(initialQuery);
+    handleSearch(sanitizedInitialQuery);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -87,6 +99,12 @@ export function ProviderSearch({ provider, taskHash, initialQuery, onSelect, onC
 
   return (
     <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        {t(`${provider}.search.sanitizedQuery`, {
+          defaultValue: "Sanitized search name: {{name}}",
+          name: sanitizeProviderSearchQuery(query) || "-",
+        })}
+      </p>
       <div className="flex gap-2">
         <Input
           value={query}

@@ -146,7 +146,7 @@ export function TorrentMetadataHoverCard({
             style={{ top: position.top, left: position.left }}
           >
             <div className="flex gap-3 p-3">
-              <div className="flex h-24 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted">
+              <div className="flex h-24 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-neutral-300 bg-neutral-200 dark:border-neutral-700 dark:bg-neutral-800">
                 {imageUrl ? (
                   <img
                     src={imageUrl}
@@ -155,8 +155,8 @@ export function TorrentMetadataHoverCard({
                     loading="lazy"
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted via-muted/80 to-muted-foreground/10">
-                    <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                  <div className="flex h-full w-full items-center justify-center bg-neutral-200 dark:bg-neutral-800">
+                    <ImageIcon className="h-6 w-6 text-neutral-500 dark:text-neutral-400" />
                   </div>
                 )}
               </div>

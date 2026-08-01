@@ -292,10 +292,41 @@ func (s *Repository) SetCategory(hash string, category string) error {
 		return nil
 	}
 
-	if err := s.client.SetCategory(hash, normalizedCategory); err != nil {
+	qbitCategory, err := s.matchExistingCategory(normalizedCategory)
+	if err != nil {
+		return errors.Wrap(err, "failed to resolve torrent category")
+	}
+
+	if err := s.client.SetCategory(hash, qbitCategory); err != nil {
 		return errors.Wrap(err, "failed to set torrent category")
 	}
 	return nil
+}
+
+// matchExistingCategory returns the qBittorrent category spelling for a name.
+// qBittorrent treats category names as case-sensitive when updating torrents,
+// while the application matches category names case-insensitively.
+func (s *Repository) matchExistingCategory(category string) (string, error) {
+	categories, err := s.client.GetCategories()
+	if err != nil {
+		return "", err
+	}
+
+	return matchCategoryName(categories, category), nil
+}
+
+func matchCategoryName(categories map[string]qbt.Category, category string) string {
+	for mapName, qbitCategory := range categories {
+		candidate := qbitCategory.Name
+		if candidate == "" {
+			candidate = mapName
+		}
+		if strings.EqualFold(candidate, category) {
+			return candidate
+		}
+	}
+
+	return category
 }
 
 func normalizeTaskCategory(category string) (string, bool) {

@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Calendar, Check, Image as ImageIcon, Loader2, Search, X } from "lucide-react";
 import type { Category } from "@/types/category";
 import type { MetadataProviderSearchResult, Task, TaskMetadata } from "@/types/torrent";
+import { sanitizeProviderSearchQuery } from "@/utils/providerSearch";
 
 interface TaskMetadataSearchSheetProps {
   isOpen: boolean;
@@ -59,7 +60,7 @@ export function TaskMetadataSearchSheet({
   const provider = category?.metadata_source || "none";
   const isSupportedProvider = provider === "tgdb" || provider === "tmdb";
   const initialQuery = useMemo(
-    () => task?.metadata?.name?.trim() || task?.name?.trim() || "",
+    () => sanitizeProviderSearchQuery(task?.metadata?.name?.trim() || task?.name?.trim() || ""),
     [task?.metadata?.name, task?.name]
   );
   const selectedResult = useMemo(
@@ -85,7 +86,7 @@ export function TaskMetadataSearchSheet({
   }, [initialQuery, isOpen, task?.id]);
 
   const runSearch = useCallback(async (searchQuery: string) => {
-    const trimmedQuery = searchQuery.trim();
+    const trimmedQuery = sanitizeProviderSearchQuery(searchQuery);
 
     if (!isSupportedProvider) {
       return;
@@ -99,6 +100,7 @@ export function TaskMetadataSearchSheet({
     }
 
     setIsSearching(true);
+    setQuery(trimmedQuery);
     setSearchError("");
     setApplyError("");
 
@@ -233,6 +235,12 @@ export function TaskMetadataSearchSheet({
           <div className="space-y-6 p-4 sm:p-6">
             <div className="space-y-2">
               <Label htmlFor="metadata-search-query">{t("torrents.addModal.metadata.fields.name")}</Label>
+              <p className="text-xs text-muted-foreground">
+                {t("torrents.addModal.metadata.sanitizedQuery", {
+                  defaultValue: "Sanitized search name: {{name}}",
+                  name: sanitizeProviderSearchQuery(query) || "-",
+                })}
+              </p>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <div className="relative flex-1">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

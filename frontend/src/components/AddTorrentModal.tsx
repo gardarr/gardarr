@@ -23,12 +23,14 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WorkerIcon } from "@/components/ui/WorkerIcon";
 import { SelectCategory } from "@/components/SelectCategory";
 import { SelectTags } from "@/components/SelectTags";
 import { convertMagnetUriToTaskMagnetLink, torrentService } from "@/services/torrents";
 import { workerService } from "@/services/workers";
 import { useAddTorrent } from "@/contexts/add-torrent-hooks";
+import type { AddTorrentMode } from "@/contexts/add-torrent-context";
 import { useIsPortraitMobileOrTablet } from "@/hooks/use-portrait-mobile-tablet";
 import { formatBytes } from "@/utils/bytes";
 import { useTranslation } from "react-i18next";
@@ -45,9 +47,9 @@ export function AddTorrentModal() {
   const location = useLocation();
   const isPortraitMobileOrTablet = useIsPortraitMobileOrTablet();
   const { isAddModalOpen, addModalMode, closeAddModal, addPendingTorrent, removePendingTorrent } = useAddTorrent();
-  const isFileMode = addModalMode === "file";
 
   const [workers, setWorkers] = useState<Worker[]>([]);
+  const [mode, setMode] = useState<AddTorrentMode>("magnet");
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState("");
   const [selectedWorkerId, setSelectedWorkerId] = useState<string>("");
@@ -62,6 +64,7 @@ export function AddTorrentModal() {
   const [parsedMagnetLink, setParsedMagnetLink] = useState<TaskMagnetLink | null>(null);
   const workerDropdownRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isFileMode = mode === "file";
 
   const activeWorkers = useMemo(() => workers.filter((worker) => worker.status === "ACTIVE"), [workers]);
   const selectedWorker = useMemo(
@@ -76,6 +79,7 @@ export function AddTorrentModal() {
     }
 
     setSelectedWorkerId("");
+    setMode(addModalMode);
     setSelectedCategoryId("");
     setMagnetUri("");
     setTorrentFile(null);
@@ -103,7 +107,7 @@ export function AddTorrentModal() {
     return () => {
       cancelled = true;
     };
-  }, [isAddModalOpen]);
+  }, [isAddModalOpen, addModalMode]);
 
   useEffect(() => {
     if (!isAddModalOpen || selectedWorkerId !== "") {
@@ -198,6 +202,11 @@ export function AddTorrentModal() {
     setSelectedWorkerId(workerId);
     setErrors((current) => ({ ...current, worker: "" }));
     setWorkerDropdownOpen(false);
+  };
+
+  const handleModeChange = (nextMode: string) => {
+    setMode(nextMode as AddTorrentMode);
+    setErrors((current) => ({ ...current, magnetUri: "" }));
   };
 
   const handleSubmitFile = async () => {
@@ -358,8 +367,19 @@ export function AddTorrentModal() {
             </p>
           )}
 
-          {isFileMode ? (
-            <div className="space-y-2">
+          <Tabs value={mode} onValueChange={handleModeChange}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="magnet" className="gap-2">
+                <Link className="h-4 w-4" />
+                {t("torrents.addModal.source.magnet")}
+              </TabsTrigger>
+              <TabsTrigger value="file" className="gap-2">
+                <FileUp className="h-4 w-4" />
+                {t("torrents.addModal.source.upload")}
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="file" className="mt-5 space-y-2">
               <Label htmlFor="torrentFile" className="flex items-center gap-2">
                 <FileUp className="h-4 w-4" />
                 {t("torrents.addModal.file.label")} <span className="text-destructive">*</span>
@@ -389,38 +409,38 @@ export function AddTorrentModal() {
                 </span>
               </Button>
               {errors.magnetUri && <p className="text-sm text-destructive">{errors.magnetUri}</p>}
-            </div>
-          ) : (
-          <div className="space-y-2">
-            <Label htmlFor="magnetUri" className="flex items-center gap-2">
-              <Link className="h-4 w-4" />
-              {t("torrents.addModal.magnetUri.label")} <span className="text-destructive">*</span>
-            </Label>
-            <Textarea
-              id="magnetUri"
-              placeholder={t("torrents.addModal.magnetUri.placeholder")}
-              value={magnetUri}
-              onChange={(event) => {
-                setMagnetUri(event.target.value);
-                setErrors((current) => ({ ...current, magnetUri: "" }));
-              }}
-              onKeyDown={(event) => {
-                if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-                  event.preventDefault();
-                  void handleSubmit();
-                }
-              }}
-              className={`min-h-28 resize-y whitespace-pre-wrap break-all font-mono text-sm ${errors.magnetUri ? "border-destructive" : ""}`}
-              disabled={isBusy}
-            />
-            {errors.magnetUri && <p className="text-sm text-destructive">{errors.magnetUri}</p>}
+            </TabsContent>
 
-            {parsedMagnetLink && (
-              <div className="mt-3 min-w-0 space-y-3 overflow-hidden rounded-lg border bg-muted/50 p-4">
-                <div className="mb-2 flex items-center gap-2">
-                  <Database className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium text-foreground">{t("torrents.addModal.magnetInfo.title")}</span>
-                </div>
+            <TabsContent value="magnet" className="mt-5 space-y-2">
+              <Label htmlFor="magnetUri" className="flex items-center gap-2">
+                <Link className="h-4 w-4" />
+                {t("torrents.addModal.magnetUri.label")} <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                id="magnetUri"
+                placeholder={t("torrents.addModal.magnetUri.placeholder")}
+                value={magnetUri}
+                onChange={(event) => {
+                  setMagnetUri(event.target.value);
+                  setErrors((current) => ({ ...current, magnetUri: "" }));
+                }}
+                onKeyDown={(event) => {
+                  if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+                    event.preventDefault();
+                    void handleSubmit();
+                  }
+                }}
+                className={`min-h-28 resize-y whitespace-pre-wrap break-all font-mono text-sm ${errors.magnetUri ? "border-destructive" : ""}`}
+                disabled={isBusy}
+              />
+              {errors.magnetUri && <p className="text-sm text-destructive">{errors.magnetUri}</p>}
+
+              {parsedMagnetLink && (
+                <div className="mt-3 min-w-0 space-y-3 overflow-hidden rounded-lg border bg-muted/50 p-4">
+                  <div className="mb-2 flex items-center gap-2">
+                    <Database className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium text-foreground">{t("torrents.addModal.magnetInfo.title")}</span>
+                  </div>
 
                 {parsedMagnetLink.display_name && (
                   <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-2 text-xs">
@@ -465,10 +485,10 @@ export function AddTorrentModal() {
                     </div>
                   </div>
                 )}
-              </div>
-            )}
-          </div>
-          )}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
 
           <SelectCategory
             selectedCategoryId={selectedCategoryId}

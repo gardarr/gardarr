@@ -367,8 +367,8 @@ export default function SettingsPage() {
             <SettingsIcon className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{t("settings.title")}</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl font-bold tracking-tight">{t("settings.title")}</h1>
+            <p className="text-sm text-muted-foreground">
               {t("settings.subtitle")}
             </p>
           </div>

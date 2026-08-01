@@ -292,7 +292,7 @@ export default function IntegrationsPage() {
           <div className="p-2 rounded-lg bg-primary/10">
             <Plug className="h-6 w-6 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">{t('integrations.title')}</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t('integrations.title')}</h1>
           </div>
           <Button 
             onClick={() => setShowEvents(true)}
@@ -301,7 +301,7 @@ export default function IntegrationsPage() {
             {t('history.showEvents')}
           </Button>
         </div>
-        <p className="text-muted-foreground mt-2">
+        <p className="mt-2 text-sm text-muted-foreground">
           {t('integrations.subtitle')}
         </p>
       </div>

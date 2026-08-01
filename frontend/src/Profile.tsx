@@ -404,8 +404,8 @@ export default function ProfilePage() {
           <User className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t("profile.title")}</h1>
-          <p className="text-muted-foreground">{t("profile.subtitle")}</p>
+          <h1 className="text-2xl font-bold tracking-tight">{t("profile.title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("profile.subtitle")}</p>
         </div>
       </div>
 
@@ -929,4 +929,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-

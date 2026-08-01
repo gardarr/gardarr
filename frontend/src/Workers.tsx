@@ -210,8 +210,8 @@ function Workers() {
             <Server className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold">{t('workers.title')}</h1>
-            <p className="text-muted-foreground">{t('workers.subtitle')}</p>
+            <h1 className="text-2xl font-bold">{t('workers.title')}</h1>
+            <p className="text-sm text-muted-foreground">{t('workers.subtitle')}</p>
           </div>
         </div>
         <div className="flex gap-2 w-full sm:w-auto justify-between sm:justify-end">
