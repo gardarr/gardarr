@@ -1,10 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { normalizeTaskStatus } from "@/utils/statusUtils";
 import { type EventType, EVENT_TYPES } from "@/constants/eventTypes";
 import {
@@ -29,7 +28,6 @@ import {
   XCircle,
   PlusCircle,
   ArrowRightLeft,
-  RefreshCw,
   Filter,
   Search,
   HelpCircle
@@ -64,7 +62,6 @@ interface EventListProps {
   searchQuery?: string;
   onFilterChange: (value: FilterType) => void;
   onPageChange: (page: number) => void;
-  onRefresh: () => void;
   onSearchChange?: (query: string) => void;
 }
 
@@ -78,7 +75,6 @@ export function EventList({
   searchQuery = "",
   onFilterChange,
   onPageChange,
-  onRefresh,
   onSearchChange,
 }: EventListProps) {
   const { t, i18n } = useTranslation();
@@ -124,23 +120,13 @@ export function EventList({
   const getEventColor = (type: EventType) => {
     switch (type) {
       case "torrent.state_change":
-        return "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20";
+        return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20";
       case "torrent.added":
-        return "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20";
+        return "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20";
       case "torrent.removed":
         return "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20";
       case "torrent.completed":
         return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
-    }
-  };
-
-  const getEventDescription = (event: Event) => {
-    switch (event.type) {
-      case "torrent.state_change":
-      case "torrent.added":
-      case "torrent.removed":
-      case "torrent.completed":
-        return null;
     }
   };
 
@@ -170,12 +156,16 @@ export function EventList({
     return typeMap[type];
   };
 
+  const sortedEventTypes = [...EVENT_TYPES].sort((a, b) =>
+    getEventBadge(a).localeCompare(getEventBadge(b), i18n.language)
+  );
+
   // Use server-provided pagination and total (search filtering is handled by backend)
   const totalPages = Math.ceil(total / limit);
 
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
-    const maxVisible = 7;
+    const maxVisible = 5;
 
     if (totalPages <= maxVisible) {
       for (let i = 0; i < totalPages; i++) {
@@ -187,12 +177,12 @@ export function EventList({
       let start = Math.max(1, page - 1);
       let end = Math.min(totalPages - 2, page + 1);
 
-      if (page < 3) {
-        end = 4;
+      if (page < 2) {
+        end = 2;
       }
 
-      if (page > totalPages - 4) {
-        start = totalPages - 5;
+      if (page > totalPages - 3) {
+        start = totalPages - 3;
       }
 
       if (start > 1) {
@@ -241,18 +231,13 @@ export function EventList({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("history.filter.all")}</SelectItem>
-            {EVENT_TYPES.map((eventType) => (
+            {sortedEventTypes.map((eventType) => (
               <SelectItem key={eventType} value={eventType}>
                 {getEventBadge(eventType)}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-
-        <Button variant="outline" size="sm" onClick={onRefresh}>
-          <RefreshCw className="h-4 w-4 sm:mr-2" />
-          <span className="hidden sm:inline">{t("history.refresh")}</span>
-        </Button>
       </div>
 
       {/* Events List */}
@@ -281,87 +266,92 @@ export function EventList({
         </Card>
       ) : (
         <>
-          <div className="divide-y divide-border border rounded-md shadow-sm bg-card overflow-hidden">
-            {events.map((event) => (
-              <div key={event.uuid} className="p-4 hover:bg-muted/30 transition-colors">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                  {/* Icon and Timestamp */}
-                  <div className="flex items-center sm:flex-col gap-3 sm:gap-1 shrink-0 sm:w-24">
-                    <div className={`h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center border ${getEventColor(event.type)}`}>
-                      {getEventIcon(event.type)}
-                    </div>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <p className="text-xs text-muted-foreground cursor-help whitespace-nowrap">
-                          {formatRelativeTime(event.created_at)}
-                        </p>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{formatDate(event.created_at)}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-
-                  {/* Vertical Separator (Only Desktop) */}
-                  <div className="hidden sm:block h-10 w-px bg-border shrink-0" />
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0 flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
-                    {/* Torrent Name */}
-                    <div className="flex-1 min-w-0">
+          <div className="border rounded-md shadow-sm bg-card overflow-hidden overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/40 text-xs text-muted-foreground uppercase">
+                  <th className="text-left font-semibold px-3 py-2 w-9"></th>
+                  <th className="text-left font-semibold px-3 py-2">{t("history.table.torrent") || "Torrent"}</th>
+                  <th className="text-left font-semibold px-3 py-2 hidden md:table-cell">{t("history.table.change") || "Change"}</th>
+                  <th className="text-right font-semibold px-3 py-2 whitespace-nowrap">{t("history.table.time") || "Time"}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {events.map((event) => (
+                  <tr key={event.uuid} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-3 py-2">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button type="button" className={`h-6 w-6 rounded-full flex items-center justify-center border cursor-pointer ${getEventColor(event.type)}`}>
+                            {getEventIcon(event.type)}
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-2 text-xs" sideOffset={4}>
+                          {getEventBadge(event.type)}
+                        </PopoverContent>
+                      </Popover>
+                    </td>
+                    <td className="px-3 py-2 max-w-[220px]">
                       {event.metadata?.name ? (
-                        <p className="text-sm font-medium text-foreground truncate" title={event.metadata.name}>
+                        <p className="font-medium text-foreground truncate" title={event.metadata.name}>
                           {event.metadata.name}
                         </p>
                       ) : (
-                        <div className="flex items-center gap-1.5">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground cursor-help">
-                                <HelpCircle className="h-4 w-4 text-muted-foreground/70" />
-                                <span className="italic">{t("history.events.unknownTorrent")}</span>
-                                {event.task_hash && (
-                                  <span className="font-mono text-xs text-muted-foreground/70">
-                                    {event.task_hash.slice(0, 8)}
-                                  </span>
-                                )}
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="max-w-xs">
-                              <p className="text-xs">
-                                <span className="font-semibold">Hash:</span>{" "}
-                                <span className="font-mono break-all">{event.task_hash}</span>
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Description / State Change */}
-                    {(event.type === "torrent.state_change" || getEventDescription(event)) && (
-                      <div className="shrink-0 flex items-center md:min-w-[160px]">
-                        {event.type === "torrent.state_change" ? (
-                          renderStateChange(event.old_value, event.new_value)
-                        ) : (
-                          getEventDescription(event) && (
-                            <p className="text-xs text-muted-foreground font-mono truncate max-w-[200px]" title={getEventDescription(event) || undefined}>
-                              {getEventDescription(event)}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex items-center gap-1.5 text-muted-foreground cursor-help">
+                              <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
+                              <span className="italic truncate">{t("history.events.unknownTorrent")}</span>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-xs">
+                            <p className="text-xs">
+                              <span className="font-semibold">Hash:</span>{" "}
+                              <span className="font-mono break-all">{event.task_hash}</span>
                             </p>
-                          )
-                        )}
-                      </div>
-                    )}
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 hidden md:table-cell">
+                      {event.type === "torrent.state_change"
+                        ? renderStateChange(event.old_value, event.new_value)
+                        : <span className="text-xs text-muted-foreground">—</span>}
+                    </td>
+                    <td className="px-3 py-2 text-right whitespace-nowrap">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-xs text-muted-foreground cursor-help">
+                            {formatRelativeTime(event.created_at)}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{formatDate(event.created_at)}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-                    {/* Badge */}
-                    <div className="shrink-0 flex md:items-end md:justify-end md:min-w-[100px]">
-                      <Badge variant="outline" className="text-[10px] uppercase font-semibold">
-                        {getEventBadge(event.type)}
-                      </Badge>
+          {/* Legend */}
+          <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-2 justify-center text-xs text-muted-foreground">
+            {sortedEventTypes.map((eventType) => (
+              <Popover key={eventType}>
+                <PopoverTrigger asChild>
+                  <button type="button" className="flex items-center gap-1.5 cursor-pointer sm:cursor-default">
+                    <div className={`h-6 w-6 rounded-full flex items-center justify-center border shrink-0 ${getEventColor(eventType)}`}>
+                      {getEventIcon(eventType)}
                     </div>
-                  </div>
-                </div>
-              </div>
+                    <span className="hidden sm:inline">{getEventBadge(eventType)}</span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-2 text-xs sm:hidden" sideOffset={4}>
+                  {getEventBadge(eventType)}
+                </PopoverContent>
+              </Popover>
             ))}
           </div>
 

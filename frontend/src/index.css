@@ -389,7 +389,6 @@ html[data-color-variant="default"] {
   --add-torrent-via: #7c3aed;
   --add-torrent-to: #db2777;
   --add-torrent-text: #ffffff;
-  --add-torrent-label-bg: rgb(0 0 0 / 65%);
 }
 
 html[data-color-variant="aura"] {
@@ -439,7 +438,6 @@ html[data-color-variant="amber"] {
   --add-torrent-via: #fbbf24;
   --add-torrent-to: #ea580c;
   --add-torrent-text: #341a00;
-  --add-torrent-label-bg: rgb(255 255 255 / 78%);
 }
 
 html[data-color-variant="mint"] {
@@ -468,7 +466,6 @@ html[data-color-variant="golden"] {
   --add-torrent-via: #facc15;
   --add-torrent-to: #d97706;
   --add-torrent-text: #2b1900;
-  --add-torrent-label-bg: rgb(255 255 255 / 78%);
 }
 
 html[data-color-variant="earth"] {
@@ -784,10 +781,16 @@ html[data-color-variant="custom"] {
     var(--add-torrent-via) 52%,
     var(--add-torrent-to) 100%
   );
+  filter: brightness(1);
+  transition: filter 0.15s ease;
+}
+
+.add-torrent-button:hover .add-torrent-button-surface {
+  filter: brightness(1.15);
 }
 
 .add-torrent-button-label {
-  background: var(--add-torrent-label-bg);
+  text-shadow: 0 1px 2px rgb(0 0 0 / 35%);
 }
 
 /* Toast icon-only colors */

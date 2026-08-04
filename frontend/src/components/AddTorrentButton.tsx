@@ -14,7 +14,7 @@ function AddTorrentButton({ className, children, iconOnly = false, ...props }: A
     <Button
       {...props}
       className={cn(
-        "add-torrent-button group relative isolate overflow-hidden border-transparent !bg-transparent transition-shadow",
+        "add-torrent-button group relative isolate overflow-hidden border-transparent !bg-transparent cursor-pointer transition-shadow",
         iconOnly && "px-0",
         className,
       )}

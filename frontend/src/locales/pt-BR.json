@@ -1431,6 +1431,11 @@
       "showing": "Mostrando {{from}}-{{to}} de {{total}}",
       "previous": "Anterior",
       "next": "Próximo"
+    },
+    "table": {
+      "torrent": "Torrent",
+      "change": "Mudança",
+      "time": "Hora"
     }
   },
   "forgotPassword": {

@@ -1375,6 +1375,11 @@
       "showing": "Showing {{from}}-{{to}} of {{total}}",
       "previous": "Previous",
       "next": "Next"
+    },
+    "table": {
+      "torrent": "Torrent",
+      "change": "Change",
+      "time": "Time"
     }
   },
   "forgotPassword": {
