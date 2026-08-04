@@ -477,7 +477,6 @@ export default function IntegrationsPage() {
               searchQuery={searchQuery}
               onFilterChange={setFilterType}
               onPageChange={setPage}
-              onRefresh={loadEvents}
               onSearchChange={setSearchQuery}
             />
         </SheetContent>

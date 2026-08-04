@@ -17,7 +17,7 @@ export default function HistoryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
-  const [limit] = useState(50);
+  const [limit] = useState(10);
   const [filterType, setFilterType] = useState<FilterType>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>("");
@@ -95,7 +95,6 @@ export default function HistoryPage() {
             searchQuery={searchQuery}
             onFilterChange={setFilterType}
             onPageChange={setPage}
-            onRefresh={loadEvents}
             onSearchChange={setSearchQuery}
           />
         </CardContent>
