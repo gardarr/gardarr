@@ -11,7 +11,7 @@ interface TorrentRatioWidgetProps {
   onShare?: () => void;
 }
 
-export function TorrentRatioWidget({ ratio, popularity, totalUploaded, onShare }: TorrentRatioWidgetProps) {
+export function TorrentRatioWidget({ ratio, popularity, totalUploaded, onShare }: Readonly<TorrentRatioWidgetProps>) {
   const { t } = useTranslation();
   const grade = getRatioGrade(ratio);
   const colorClass = getGradeColor(grade);
@@ -20,20 +20,8 @@ export function TorrentRatioWidget({ ratio, popularity, totalUploaded, onShare }
   const baseGrade = grade.replace(/\+/g, "");
   const plusCount = grade.length - baseGrade.length;
   const message = getGradeMessage(grade);
-  return (
-    <div
-      className={`p-3 rounded-lg border ${colorClass} ${onShare ? "cursor-pointer transition-[filter,transform] hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.995]" : ""}`}
-      role={onShare ? "button" : undefined}
-      tabIndex={onShare ? 0 : undefined}
-      aria-label={onShare ? t("torrentDetails.shareCard.openFromRatio") : undefined}
-      onClick={onShare}
-      onKeyDown={onShare ? (event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onShare();
-        }
-      } : undefined}
-    >
+  const content = (
+    <>
       <div className="flex items-center justify-between gap-2 mb-0">
         <div className="flex items-center gap-2">
           <ArrowUpDown className="h-4 w-4" />
@@ -105,7 +93,20 @@ export function TorrentRatioWidget({ ratio, popularity, totalUploaded, onShare }
           </div>
         </div>
       </div>
-    </div>
+    </>
+  );
+
+  const className = `p-3 rounded-lg border ${colorClass}`;
+  if (!onShare) return <div className={className}>{content}</div>;
+
+  return (
+    <button
+      type="button"
+      className={`${className} w-full cursor-pointer bg-transparent text-left transition-[filter,transform] hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.995]`}
+      aria-label={t("torrentDetails.shareCard.openFromRatio")}
+      onClick={onShare}
+    >
+      {content}
+    </button>
   );
 }
-

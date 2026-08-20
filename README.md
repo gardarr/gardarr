@@ -94,7 +94,7 @@ Gardarr is a **modern, lightweight management and analytics platform for qBittor
 - [🚀 Getting Started](#-getting-started)
   - [Standalone Mode](#-standalone-mode)
 - [🏗️ Architecture](#-architecture)
-- [⏱️ Bandwidth Schedules](#-bandwidth-schedules)
+- [⏱️ Bandwidth Schedules](#️-bandwidth-schedules)
 - [🏆 Ratio Grading System](#-ratio-grading-system)
 - [🔌 Integrations & Events](#-integrations--events)
 - [📊 Metrics & Analytics](#-metrics--analytics)
@@ -117,7 +117,7 @@ Gardarr is a **modern, lightweight management and analytics platform for qBittor
   - Real-time download/upload speed monitoring.
   - Historical data analysis.
   - **Ratio Grading**: Gamification system (E to S++) for ratio tracking.
-- **⏱️ Bandwidth Schedules**: Automatically apply download and upload limits to each worker at the times you choose, with a clear weekly calendar and automatic restoration of the normal limits afterwards.
+- **⏱️ Bandwidth Schedules**: Automatically apply download and upload limits to each worker at the times you choose, with a clear weekly calendar and automatic restoration of the normal limits afterward.
 - **📝 Event System**: Comprehensive event tracking for state changes, completions, and errors, persisted in the database.
 - **🔐 Secure Authentication**: 
   - Argon2id password hashing.

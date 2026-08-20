@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { Task } from "@/types/torrent";
 import { cn } from "@/lib/utils";
@@ -30,10 +30,11 @@ export function ShareableTorrentCard({
   username,
   onImagePositionChange,
   className,
-}: ShareableTorrentCardProps) {
+}: Readonly<ShareableTorrentCardProps>) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dragRef = useRef<{ pointerId: number; startY: number; startPosition: number } | null>(null);
   const hasRenderedRef = useRef(false);
+  const latestRequestRef = useRef(0);
   const [isRendering, setIsRendering] = useState(true);
   const [hasError, setHasError] = useState(false);
   const { t } = useTranslation();
@@ -42,23 +43,25 @@ export function ShareableTorrentCard({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    let active = true;
+    const request = ++latestRequestRef.current;
+    const controller = new AbortController();
+    const isLatest = () => latestRequestRef.current === request;
     if (!hasRenderedRef.current) setIsRendering(true);
     setHasError(false);
 
-    renderShareCard(canvas, torrent, { format, theme, imagePositionY, includeDescription, titleColor, username })
+    renderShareCard(canvas, torrent, { format, theme, imagePositionY, includeDescription, titleColor, username, signal: controller.signal })
       .catch(() => {
-        if (active) setHasError(true);
+        if (isLatest() && !controller.signal.aborted) setHasError(true);
       })
       .finally(() => {
-        if (active) {
+        if (isLatest() && !controller.signal.aborted) {
           hasRenderedRef.current = true;
           setIsRendering(false);
         }
       });
 
     return () => {
-      active = false;
+      controller.abort();
     };
   }, [format, imagePositionY, includeDescription, theme, titleColor, torrent, username]);
 
@@ -80,6 +83,13 @@ export function ShareableTorrentCard({
     onImagePositionChange(Math.min(100, Math.max(0, nextPosition)));
   };
 
+  const handleKeyDown = (event: KeyboardEvent<HTMLCanvasElement>) => {
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+    event.preventDefault();
+    const delta = event.key === "ArrowUp" ? 5 : -5;
+    onImagePositionChange(Math.min(100, Math.max(0, imagePositionY + delta)));
+  };
+
   const finishDragging = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (dragRef.current?.pointerId !== event.pointerId) return;
     dragRef.current = null;
@@ -92,12 +102,13 @@ export function ShareableTorrentCard({
     <div className={cn("relative flex h-full w-full items-center justify-center", className)}>
       <canvas
         ref={canvasRef}
+        tabIndex={0}
         className="block h-full w-full cursor-grab touch-none rounded-md object-contain shadow-2xl active:cursor-grabbing lg:h-auto lg:w-auto lg:max-h-full lg:max-w-full"
-        role="img"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={finishDragging}
         onPointerCancel={finishDragging}
+        onKeyDown={handleKeyDown}
         aria-label={t("torrentDetails.shareCard.previewAria", {
           title: torrent.metadata?.name || torrent.name,
         })}

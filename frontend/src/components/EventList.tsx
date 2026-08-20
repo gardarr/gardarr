@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { normalizeTaskStatus } from "@/utils/statusUtils";
+import { formatBytesPerSecond } from "@/utils/bytes";
 import { type EventType, EVENT_TYPES } from "@/constants/eventTypes";
 import {
   Select,
@@ -48,6 +49,9 @@ export interface Event {
     old_progress?: number;
     new_progress?: number;
     last_progress?: number;
+    schedule_name?: string;
+    download_limit?: number;
+    upload_limit?: number;
   };
   created_at: string;
 }
@@ -145,6 +149,16 @@ export function EventList({
         <StatusBadge status={oldStatus} size="sm" showTooltip={false} showLabel={true} />
         <span className="text-xs text-muted-foreground">→</span>
         <StatusBadge status={newStatus} size="sm" showTooltip={false} showLabel={true} />
+      </div>
+    );
+  };
+
+  const renderScheduleApplied = (event: Event) => {
+    const { download_limit: downloadLimit, upload_limit: uploadLimit } = event.metadata ?? {};
+    return (
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+        <span>{formatBytesPerSecond(downloadLimit ?? 0)} ↓</span>
+        <span>{formatBytesPerSecond(uploadLimit ?? 0)} ↑</span>
       </div>
     );
   };
@@ -297,7 +311,11 @@ export function EventList({
                       </Popover>
                     </td>
                     <td className="px-3 py-2 max-w-[220px]">
-                      {event.metadata?.name ? (
+                      {event.type === "bandwidth.schedule_applied" ? (
+                        <p className="font-medium text-foreground truncate" title={event.metadata?.schedule_name}>
+                          {event.metadata?.schedule_name ?? t("history.badge.bandwidthScheduleApplied", "Bandwidth schedule applied")}
+                        </p>
+                      ) : event.metadata?.name ? (
                         <p className="font-medium text-foreground truncate" title={event.metadata.name}>
                           {event.metadata.name}
                         </p>
@@ -321,7 +339,9 @@ export function EventList({
                     <td className="px-3 py-2 hidden md:table-cell">
                       {event.type === "torrent.state_change"
                         ? renderStateChange(event.old_value, event.new_value)
-                        : <span className="text-xs text-muted-foreground">—</span>}
+                        : event.type === "bandwidth.schedule_applied"
+                          ? renderScheduleApplied(event)
+                          : <span className="text-xs text-muted-foreground">—</span>}
                     </td>
                     <td className="px-3 py-2 text-right whitespace-nowrap">
                       <Tooltip>

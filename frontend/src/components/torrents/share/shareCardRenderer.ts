@@ -19,6 +19,7 @@ export interface ShareCardOptions {
   includeDescription?: boolean;
   titleColor?: string;
   username?: string;
+  signal?: AbortSignal;
 }
 
 export const SHARE_CARD_FORMATS: Record<ShareCardFormat, { width: number; height: number }> = {
@@ -36,6 +37,48 @@ interface CardPalette {
   imageOverlay: string;
   imageFadeEnd: string;
 }
+
+interface RatioPanelOptions {
+  context: CanvasRenderingContext2D;
+  torrent: Task;
+  palette: CardPalette;
+  accent: string;
+  grade: string;
+  banner: HTMLImageElement | null;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  layout: ShareCardLayout;
+}
+
+interface ShareCardLayout {
+  panelHeight: number;
+  defaultImageHeight: number;
+  regularContentY: number;
+  descriptionLineLimit: number;
+  titleLineHeight: number;
+  originalNameLineHeight: number;
+  titleFontSize: number;
+  originalNameFontSize: number;
+  descriptionFontSize: number;
+  descriptionLineHeight: number;
+  gradeColumnWidth: number;
+  bannerWidth: number;
+  ratioFontSize: number;
+  statOffset: number;
+  statSpacing: number;
+  gradeFontSize: number;
+  starsFontSize: number;
+  gradeDescriptionFontSize: number;
+  gradeMessageLineLimit: number;
+}
+
+const FORMAT_LAYOUT: Record<ShareCardFormat, ShareCardLayout> = {
+  portrait: { panelHeight: 420, defaultImageHeight: 710, regularContentY: 610, descriptionLineLimit: 4, titleLineHeight: 64, originalNameLineHeight: 40, titleFontSize: 54, originalNameFontSize: 25, descriptionFontSize: 27, descriptionLineHeight: 38, gradeColumnWidth: 286, bannerWidth: 220, ratioFontSize: 66, statOffset: 140, statSpacing: 94, gradeFontSize: 124, starsFontSize: 30, gradeDescriptionFontSize: 25, gradeMessageLineLimit: 2 },
+  square: { panelHeight: 400, defaultImageHeight: 600, regularContentY: 420, descriptionLineLimit: 3, titleLineHeight: 64, originalNameLineHeight: 40, titleFontSize: 54, originalNameFontSize: 25, descriptionFontSize: 27, descriptionLineHeight: 38, gradeColumnWidth: 286, bannerWidth: 220, ratioFontSize: 66, statOffset: 140, statSpacing: 94, gradeFontSize: 124, starsFontSize: 30, gradeDescriptionFontSize: 25, gradeMessageLineLimit: 2 },
+  story: { panelHeight: 470, defaultImageHeight: 1000, regularContentY: 950, descriptionLineLimit: 7, titleLineHeight: 72, originalNameLineHeight: 44, titleFontSize: 62, originalNameFontSize: 28, descriptionFontSize: 30, descriptionLineHeight: 42, gradeColumnWidth: 330, bannerWidth: 250, ratioFontSize: 74, statOffset: 156, statSpacing: 104, gradeFontSize: 142, starsFontSize: 34, gradeDescriptionFontSize: 28, gradeMessageLineLimit: 3 },
+};
 
 export function getShareCardImageSource(torrent: Task): string | undefined {
   return torrent.metadata?.image_url;
@@ -273,7 +316,7 @@ function drawUsernameBadge(
 async function loadCardImage(url?: string): Promise<HTMLImageElement | null> {
   if (!url) return null;
 
-  const resolvedUrl = encodeURI(resolveShareCardImageUrl(url));
+  const resolvedUrl = resolveShareCardImageUrl(url);
   const cached = shareCardImageCache.get(resolvedUrl);
   if (cached) return cached;
 
@@ -297,19 +340,7 @@ async function loadCardImage(url?: string): Promise<HTMLImageElement | null> {
   return request;
 }
 
-function drawRatioPanel(
-  context: CanvasRenderingContext2D,
-  torrent: Task,
-  palette: CardPalette,
-  accent: string,
-  grade: string,
-  banner: HTMLImageElement | null,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  format: ShareCardFormat,
-) {
+function drawRatioPanel({ context, torrent, palette, accent, grade, banner, x, y, width, height, layout }: RatioPanelOptions) {
   context.save();
   roundedRect(context, x, y, width, height, 42);
   context.fillStyle = palette.surface;
@@ -320,12 +351,12 @@ function drawRatioPanel(
 
   const left = x + 46;
   const top = y + 42;
-  const gradeColumnWidth = format === "story" ? 330 : 286;
+  const { gradeColumnWidth } = layout;
   const dividerX = x + width - gradeColumnWidth;
 
   context.save();
   if (banner) {
-    const bannerWidth = format === "story" ? 250 : 220;
+    const { bannerWidth } = layout;
     const bannerHeight = bannerWidth * (banner.naturalHeight / banner.naturalWidth);
     const logoAreaCenterX = dividerX - 190;
     const bannerX = logoAreaCenterX - bannerWidth / 2;
@@ -350,11 +381,11 @@ function drawRatioPanel(
   context.fillText(i18n.t("torrentDetails.shareCard.card.ratio").toUpperCase(), left, top + 20);
 
   context.fillStyle = palette.text;
-  context.font = `800 ${format === "story" ? 74 : 66}px system-ui, -apple-system, sans-serif`;
+  context.font = `800 ${layout.ratioFontSize}px system-ui, -apple-system, sans-serif`;
   context.fillText(`${Number(torrent.ratio || 0).toFixed(2)}x`, left, top + 94);
 
-  const statY = top + (format === "story" ? 156 : 140);
-  const secondStatY = statY + (format === "story" ? 104 : 94);
+  const statY = top + layout.statOffset;
+  const secondStatY = statY + layout.statSpacing;
   context.fillStyle = palette.muted;
   context.font = "700 20px system-ui, -apple-system, sans-serif";
   context.fillText(i18n.t("torrentDetails.shareCard.card.uploaded").toUpperCase(), left, statY);
@@ -388,15 +419,15 @@ function drawRatioPanel(
   context.fillStyle = accent;
   context.shadowColor = accent;
   context.shadowBlur = 28;
-  context.font = `900 ${format === "story" ? 142 : 124}px system-ui, -apple-system, sans-serif`;
+  context.font = `900 ${layout.gradeFontSize}px system-ui, -apple-system, sans-serif`;
   context.fillText(grade, gradeCenterX, gradeCenterY - 48);
   context.shadowBlur = 0;
 
   const stars = getGradeStars(grade);
-  context.font = `700 ${format === "story" ? 34 : 30}px system-ui, -apple-system, sans-serif`;
+  context.font = `700 ${layout.starsFontSize}px system-ui, -apple-system, sans-serif`;
   context.fillText(`${"★".repeat(stars)}${"☆".repeat(5 - stars)}`, gradeCenterX, gradeCenterY + 45);
   context.fillStyle = palette.muted;
-  context.font = `800 ${format === "story" ? 28 : 25}px system-ui, -apple-system, sans-serif`;
+  context.font = `800 ${layout.gradeDescriptionFontSize}px system-ui, -apple-system, sans-serif`;
   context.fillText(getGradeDescription(grade), gradeCenterX, gradeCenterY + 88);
 
   context.textAlign = "left";
@@ -404,7 +435,7 @@ function drawRatioPanel(
   context.fillStyle = palette.muted;
   context.font = "500 22px system-ui, -apple-system, sans-serif";
   const messageMaxWidth = dividerX - left - 28;
-  const messageLines = splitTextLines(context, getGradeMessage(grade), messageMaxWidth, format === "story" ? 3 : 2);
+  const messageLines = splitTextLines(context, getGradeMessage(grade), messageMaxWidth, layout.gradeMessageLineLimit);
   drawLines(context, messageLines, left, y + height - 38 - (messageLines.length - 1) * 30, 30);
   context.restore();
 }
@@ -419,6 +450,7 @@ export async function renderShareCard(
     loadCardImage(getShareCardImageSource(torrent)),
     loadCardImage(gardarrBannerUrl),
   ]);
+  if (options.signal?.aborted) return;
   canvas.width = dimensions.width;
   canvas.height = dimensions.height;
 
@@ -431,9 +463,9 @@ export async function renderShareCard(
   const accent = GRADE_ACCENTS[grade] ?? GRADE_ACCENTS.E;
   const margin = 64;
   const hasDescription = options.includeDescription !== false && Boolean(torrent.metadata?.description);
-  const panelHeight = options.format === "story" ? 470 : options.format === "square" ? 400 : 420;
+  const layout = FORMAT_LAYOUT[options.format];
+  const { panelHeight, defaultImageHeight, regularContentY, descriptionLineLimit } = layout;
   const panelY = height - panelHeight - margin;
-  const defaultImageHeight = options.format === "story" ? 1000 : options.format === "square" ? 600 : 710;
   const imageHeight = hasDescription ? defaultImageHeight : panelY + 40;
 
   context.fillStyle = palette.background;
@@ -462,14 +494,12 @@ export async function renderShareCard(
 
   const { title, originalName } = getShareCardNames(torrent);
   const releaseDate = torrent.metadata?.release_date;
-  const titleLineHeight = options.format === "story" ? 72 : 64;
-  const originalNameLineHeight = options.format === "story" ? 44 : 40;
+  const { titleLineHeight, originalNameLineHeight } = layout;
 
   context.fillStyle = options.titleColor ?? palette.text;
-  context.font = `800 ${options.format === "story" ? 62 : 54}px system-ui, -apple-system, sans-serif`;
+  context.font = `800 ${layout.titleFontSize}px system-ui, -apple-system, sans-serif`;
   context.textBaseline = "alphabetic";
   const titleLines = splitTextLines(context, title, width - margin * 2, 2);
-  const regularContentY = options.format === "story" ? 950 : options.format === "square" ? 420 : 610;
   const compactContentHeight = titleLines.length * titleLineHeight
     + (originalName ? originalNameLineHeight : 0)
     + (releaseDate ? 46 : 0);
@@ -481,7 +511,7 @@ export async function renderShareCard(
   let cursorY = contentY + titleLines.length * titleLineHeight + 4;
   if (originalName) {
     context.fillStyle = palette.muted;
-    context.font = `500 ${options.format === "story" ? 28 : 25}px system-ui, -apple-system, sans-serif`;
+    context.font = `500 ${layout.originalNameFontSize}px system-ui, -apple-system, sans-serif`;
     context.fillText(
       fitSingleLine(context, originalName, width - margin * 2),
       margin,
@@ -498,33 +528,32 @@ export async function renderShareCard(
 
   if (hasDescription && torrent.metadata?.description) {
     context.fillStyle = palette.muted;
-    context.font = `450 ${options.format === "story" ? 30 : 27}px system-ui, -apple-system, sans-serif`;
+    context.font = `450 ${layout.descriptionFontSize}px system-ui, -apple-system, sans-serif`;
     const availableHeight = panelY - cursorY - 34;
-    const lineHeight = options.format === "story" ? 42 : 38;
+    const lineHeight = layout.descriptionLineHeight;
     const maxLinesBySpace = Math.max(0, Math.floor(availableHeight / lineHeight));
-    const formatLimit = options.format === "story" ? 7 : options.format === "portrait" ? 4 : 3;
     if (maxLinesBySpace > 0) {
       const descriptionLines = splitTextLines(
         context,
         torrent.metadata.description,
         width - margin * 2,
-        Math.min(formatLimit, maxLinesBySpace),
+        Math.min(descriptionLineLimit, maxLinesBySpace),
       );
       drawLines(context, descriptionLines, margin, cursorY, lineHeight);
     }
   }
 
-  drawRatioPanel(
+  drawRatioPanel({
     context,
     torrent,
     palette,
     accent,
     grade,
-    gardarrBanner,
-    margin,
-    panelY,
-    width - margin * 2,
-    panelHeight,
-    options.format,
-  );
+    banner: gardarrBanner,
+    x: margin,
+    y: panelY,
+    width: width - margin * 2,
+    height: panelHeight,
+    layout,
+  });
 }

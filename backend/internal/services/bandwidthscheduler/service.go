@@ -25,9 +25,11 @@ import (
 	"gorm.io/gorm"
 )
 
+const allDaysMask uint8 = 0x7f
+
 const (
-	allDaysMask           uint8 = 0x7f
-	maxSchedulesPerWorker       = 5
+	maxSchedulesPerWorker = 5
+	uuidCondition         = "uuid = ?"
 )
 
 var neutralScheduleColors = []string{"#64748b", "#78716c", "#6b7280", "#71717a", "#475569", "#57534e", "#4b5563"}
@@ -101,19 +103,19 @@ type workerService interface {
 	SetWorkerGlobalSpeedLimits(context.Context, *entities.Worker, schemas.InstanceSetSpeedLimitSchema) error
 }
 
-type settingsService interface {
+type timezoneProvider interface {
 	GetTimezone(context.Context) (string, error)
 }
 
-type eventService interface {
+type eventRecorder interface {
 	Record(context.Context, *entities.Event) error
 }
 
 type Service struct {
 	db          *database.Database
 	workers     workerService
-	settings    settingsService
-	events      eventService
+	settings    timezoneProvider
+	events      eventRecorder
 	interval    time.Duration
 	mu          sync.Mutex
 	lastApplied map[uuid.UUID]applied
@@ -280,7 +282,7 @@ func (s *Service) Create(ctx context.Context, worker *entities.Worker, input Inp
 		return nil, err
 	}
 	out := toSchedule(row)
-	go s.ReconcileWorker(context.Background(), worker)
+	go s.ReconcileWorker(ctx, worker)
 	return &out, nil
 }
 
@@ -312,7 +314,7 @@ func (s *Service) Update(ctx context.Context, worker *entities.Worker, id uuid.U
 	row.UpdatedAt = time.Now()
 	current = row
 	out := toSchedule(current)
-	go s.ReconcileWorker(context.Background(), worker)
+	go s.ReconcileWorker(ctx, worker)
 	return &out, nil
 }
 
@@ -327,7 +329,7 @@ func (s *Service) Delete(ctx context.Context, worker *entities.Worker, id uuid.U
 	if result.RowsAffected == 0 {
 		return ErrScheduleNotFound
 	}
-	go s.ReconcileWorker(context.Background(), worker)
+	go s.ReconcileWorker(ctx, worker)
 	return nil
 }
 
@@ -377,7 +379,7 @@ func (s *Service) Reorder(ctx context.Context, worker *entities.Worker, input Or
 	if err != nil {
 		return nil, err
 	}
-	go s.ReconcileWorker(context.Background(), worker)
+	go s.ReconcileWorker(ctx, worker)
 	return items, nil
 }
 
@@ -392,7 +394,7 @@ func (s *Service) ApplyManualDefault(ctx context.Context, worker *entities.Worke
 	if err := s.workers.SetWorkerGlobalSpeedLimits(ctx, worker, schemas.InstanceSetSpeedLimitSchema{DownloadLimit: &d, UploadLimit: &u}); err != nil {
 		return err
 	}
-	return s.db.DB.WithContext(ctx).Model(&models.Worker{}).Where("uuid = ?", worker.UUID).Updates(map[string]interface{}{"default_download_speed_limit": d, "default_upload_speed_limit": u}).Error
+	return s.db.DB.WithContext(ctx).Model(&models.Worker{}).Where(uuidCondition, worker.UUID).Updates(map[string]interface{}{"default_download_speed_limit": d, "default_upload_speed_limit": u}).Error
 }
 
 func (s *Service) Preview(ctx context.Context, workerID uuid.UUID) (*Preview, error) {
@@ -400,12 +402,59 @@ func (s *Service) Preview(ctx context.Context, workerID uuid.UUID) (*Preview, er
 }
 func (s *Service) Statuses(ctx context.Context, workerIDs []uuid.UUID) (map[uuid.UUID]Status, error) {
 	result := make(map[uuid.UUID]Status, len(workerIDs))
+	if len(workerIDs) == 0 {
+		return result, nil
+	}
+
+	tz, err := s.settings.GetTimezone(ctx)
+	if err != nil {
+		return nil, err
+	}
+	loc, err := time.LoadLocation(tz)
+	if err != nil {
+		return nil, err
+	}
+
+	var workers []models.Worker
+	if err := s.db.DB.WithContext(ctx).
+		Select("uuid", "default_download_speed_limit", "default_upload_speed_limit").
+		Where("uuid IN ?", workerIDs).
+		Find(&workers).Error; err != nil {
+		return nil, err
+	}
+	workersByID := make(map[uuid.UUID]models.Worker, len(workers))
+	for _, worker := range workers {
+		workersByID[worker.UUID] = worker
+	}
+
+	var rows []models.BandwidthSchedule
+	if err := s.db.DB.WithContext(ctx).
+		Where("worker_uuid IN ?", workerIDs).
+		Order("priority DESC, created_at ASC").
+		Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	schedulesByWorker := make(map[uuid.UUID][]Schedule, len(workerIDs))
+	for _, row := range rows {
+		schedulesByWorker[row.WorkerUUID] = append(schedulesByWorker[row.WorkerUUID], toSchedule(row))
+	}
+
+	now := time.Now().In(loc)
 	for _, id := range workerIDs {
-		p, err := s.preview(ctx, id, time.Now())
-		if err != nil {
-			return nil, err
+		worker, ok := workersByID[id]
+		if !ok {
+			return nil, gorm.ErrRecordNotFound
 		}
-		result[id] = Status{Active: p.Schedule != nil, Schedule: p.Schedule, Limits: p.Limits}
+		active := Resolve(schedulesByWorker[id], now)
+		if active != nil {
+			result[id] = Status{Active: true, Schedule: active, Limits: &Limits{active.DownloadLimit, active.UploadLimit}}
+			continue
+		}
+		if worker.DefaultDownloadSpeedLimit != nil && worker.DefaultUploadSpeedLimit != nil {
+			result[id] = Status{Limits: &Limits{*worker.DefaultDownloadSpeedLimit, *worker.DefaultUploadSpeedLimit}}
+			continue
+		}
+		result[id] = Status{}
 	}
 	return result, nil
 }
@@ -420,7 +469,7 @@ func (s *Service) preview(ctx context.Context, workerID uuid.UUID, now time.Time
 		return nil, err
 	}
 	var worker models.Worker
-	if err := s.db.DB.WithContext(ctx).Select("uuid", "default_download_speed_limit", "default_upload_speed_limit").Where("uuid = ?", workerID).First(&worker).Error; err != nil {
+	if err := s.db.DB.WithContext(ctx).Select("uuid", "default_download_speed_limit", "default_upload_speed_limit").Where(uuidCondition, workerID).First(&worker).Error; err != nil {
 		return nil, err
 	}
 	rows, err := s.List(ctx, workerID)
@@ -439,7 +488,7 @@ func (s *Service) preview(ctx context.Context, workerID uuid.UUID, now time.Time
 
 func (s *Service) captureBaseline(ctx context.Context, worker *entities.Worker) error {
 	var row models.Worker
-	if err := s.db.DB.WithContext(ctx).Select("uuid", "default_download_speed_limit", "default_upload_speed_limit").Where("uuid = ?", worker.UUID).First(&row).Error; err != nil {
+	if err := s.db.DB.WithContext(ctx).Select("uuid", "default_download_speed_limit", "default_upload_speed_limit").Where(uuidCondition, worker.UUID).First(&row).Error; err != nil {
 		return err
 	}
 	if row.DefaultDownloadSpeedLimit != nil && row.DefaultUploadSpeedLimit != nil {
@@ -450,7 +499,7 @@ func (s *Service) captureBaseline(ctx context.Context, worker *entities.Worker) 
 		return fmt.Errorf("capture worker baseline: %w", err)
 	}
 	d, u := prefs.GlobalRateLimits.DownloadSpeedLimit, prefs.GlobalRateLimits.UploadSpeedLimit
-	return s.db.DB.WithContext(ctx).Model(&models.Worker{}).Where("uuid = ?", worker.UUID).Updates(map[string]interface{}{"default_download_speed_limit": d, "default_upload_speed_limit": u}).Error
+	return s.db.DB.WithContext(ctx).Model(&models.Worker{}).Where(uuidCondition, worker.UUID).Updates(map[string]interface{}{"default_download_speed_limit": d, "default_upload_speed_limit": u}).Error
 }
 
 func (s *Service) checkPriorityConflict(ctx context.Context, candidate models.BandwidthSchedule, excluding uuid.UUID) error {
@@ -502,15 +551,40 @@ func scheduleMatches(s Schedule, now time.Time) bool {
 	return minute < end && mask&(1<<previous) != 0
 }
 func windowsOverlap(a, b models.BandwidthSchedule) bool {
-	for day := 0; day < 7; day++ {
-		for minute := 0; minute < 1440; minute++ {
-			t := time.Date(2024, 1, 7+day, minute/60, minute%60, 0, 0, time.UTC)
-			if modelMatches(a, t) && modelMatches(b, t) {
+	for _, aRange := range dayRanges(a) {
+		for _, bRange := range dayRanges(b) {
+			if aRange.day == bRange.day && aRange.start < bRange.end && bRange.start < aRange.end {
 				return true
 			}
 		}
 	}
 	return false
+}
+
+type scheduleDayRange struct {
+	day        int
+	start, end int
+}
+
+func dayRanges(schedule models.BandwidthSchedule) []scheduleDayRange {
+	ranges := make([]scheduleDayRange, 0, 14)
+	for day := 0; day < 7; day++ {
+		if schedule.DaysOfWeek&(1<<day) == 0 {
+			continue
+		}
+		switch {
+		case schedule.StartMinute == schedule.EndMinute:
+			ranges = append(ranges, scheduleDayRange{day: day, start: 0, end: 1440})
+		case schedule.StartMinute < schedule.EndMinute:
+			ranges = append(ranges, scheduleDayRange{day: day, start: schedule.StartMinute, end: schedule.EndMinute})
+		default:
+			ranges = append(ranges,
+				scheduleDayRange{day: day, start: schedule.StartMinute, end: 1440},
+				scheduleDayRange{day: (day + 1) % 7, start: 0, end: schedule.EndMinute},
+			)
+		}
+	}
+	return ranges
 }
 func modelMatches(m models.BandwidthSchedule, t time.Time) bool {
 	return scheduleMatches(toSchedule(m), t)

@@ -20,11 +20,7 @@ interface OverviewTabProps {
 export function OverviewTab({ torrent, onSetLocation, onCategoryDataChange, onCategoryTagsUpdate, onShare }: OverviewTabProps) {
   const { t } = useTranslation();
 
-  const handleSavePath = (path: string) => {
-    if (onSetLocation) {
-      onSetLocation(torrent.id, path);
-    }
-  };
+  const handleSavePath = (path: string) => onSetLocation?.(torrent.id, path);
 
   return (
     <div className="space-y-3 sm:space-y-4">
@@ -50,13 +46,20 @@ export function OverviewTab({ torrent, onSetLocation, onCategoryDataChange, onCa
 
       <div className="space-y-2">
         <h3 className="text-sm font-medium text-muted-foreground">{t("torrentDetails.path.title", { defaultValue: "Caminho" })}</h3>
-        <AutoSaveField
-          icon={FolderOpen}
-          value={torrent.path}
-          ariaLabel={t("torrentDetails.path.edit", { defaultValue: "Editar caminho" })}
-          copyText={torrent.path}
-          onSave={handleSavePath}
-        />
+        {onSetLocation ? (
+          <AutoSaveField
+            icon={FolderOpen}
+            value={torrent.path}
+            ariaLabel={t("torrentDetails.path.edit", { defaultValue: "Editar caminho" })}
+            copyText={torrent.path}
+            onSave={handleSavePath}
+          />
+        ) : (
+          <div className="flex min-h-7 items-center gap-2 text-xs sm:text-sm">
+            <FolderOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 break-all text-muted-foreground">{torrent.path}</span>
+          </div>
+        )}
       </div>
     </div>
   );

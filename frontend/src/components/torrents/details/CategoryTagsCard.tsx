@@ -24,6 +24,9 @@ export function CategoryTagsCard({ torrent, onCategoryDataChange, onCategoryTags
   const [tags, setTags] = useState<string[]>([]);
   const [state, setState] = useState<SaveState>("idle");
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const categoryOperation = useRef(0);
+  const tagsOperation = useRef(0);
+  const currentCategory = useRef<Category | null>(null);
 
   useEffect(() => {
     setTags([...(torrent.tags || [])]);
@@ -48,10 +51,12 @@ export function CategoryTagsCard({ torrent, onCategoryDataChange, onCategoryTags
             (item) => item.name.localeCompare(torrent.category!, undefined, { sensitivity: "base" }) === 0,
           ) ?? null;
         setCategoryId(matched?.id ?? "");
+        currentCategory.current = matched;
         onCategoryDataChange?.(matched);
       } catch {
         if (!alive) return;
         setCategoryId("");
+        currentCategory.current = null;
         onCategoryDataChange?.(null);
       }
     };
@@ -76,15 +81,25 @@ export function CategoryTagsCard({ torrent, onCategoryDataChange, onCategoryTags
   const handleCategoryChange = async (id: string, category?: Category) => {
     if (!torrent.worker?.uuid) return;
     const name = category?.name ?? "";
+    const operation = ++categoryOperation.current;
+    const previousCategoryID = categoryId;
+    const previousCategory = currentCategory.current;
+    const previousCategoryName = torrent.category ?? "";
 
     // Optimistic UI
     setCategoryId(id);
+    currentCategory.current = category ?? null;
     onCategoryDataChange?.(category ?? null);
     setState("saving");
 
     try {
       const response = await torrentService.updateTaskCategory(torrent.worker.uuid, torrent.id, name.trim());
+      if (operation !== categoryOperation.current) return;
       if (response.error) {
+        setCategoryId(previousCategoryID);
+        currentCategory.current = previousCategory;
+        onCategoryDataChange?.(previousCategory);
+        onCategoryTagsUpdate?.(torrent.id, { category: previousCategoryName });
         setState("error");
         toast.error(response.error);
         return;
@@ -92,20 +107,32 @@ export function CategoryTagsCard({ torrent, onCategoryDataChange, onCategoryTags
       onCategoryTagsUpdate?.(torrent.id, { category: name.trim() });
       flashSaved();
     } catch {
+      if (operation !== categoryOperation.current) return;
+      setCategoryId(previousCategoryID);
+      currentCategory.current = previousCategory;
+      onCategoryDataChange?.(previousCategory);
+      onCategoryTagsUpdate?.(torrent.id, { category: previousCategoryName });
       setState("error");
       toast.error(t("torrentDetails.toasts.categoryUpdateError", { defaultValue: "Falha ao atualizar categoria" }));
     }
   };
 
   const handleTagsChange = async (next: string[]) => {
+    const operation = ++tagsOperation.current;
+    const previousTags = [...tags];
+    const previousParentTags = [...(torrent.tags ?? [])];
     setTags(next); // optimistic
     if (!torrent.worker?.uuid) return;
     setState("saving");
     try {
       await torrentService.updateTaskTags(torrent.worker.uuid, torrent.id, next);
+      if (operation !== tagsOperation.current) return;
       onCategoryTagsUpdate?.(torrent.id, { tags: [...next] });
       flashSaved();
     } catch {
+      if (operation !== tagsOperation.current) return;
+      setTags(previousTags);
+      onCategoryTagsUpdate?.(torrent.id, { tags: previousParentTags });
       setState("error");
       toast.error(t("torrentDetails.toasts.tagsUpdateError", { defaultValue: "Falha ao atualizar tags" }));
     }

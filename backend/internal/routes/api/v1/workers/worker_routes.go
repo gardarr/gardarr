@@ -17,7 +17,10 @@ import (
 	"github.com/jfxdev/gardarr/internal/services/bandwidthscheduler"
 	"github.com/jfxdev/gardarr/internal/services/workermanager"
 	"github.com/jfxdev/gardarr/pkg/errors"
+	"github.com/jfxdev/gardarr/pkg/logger"
 )
+
+const invalidScheduleIDError = "Invalid schedule ID"
 
 // Module holds worker routes configuration
 type Module struct {
@@ -125,6 +128,8 @@ func (m *Module) listWorkers(c *gin.Context) {
 	if m.bandwidthScheduler != nil {
 		if resolved, statusErr := m.bandwidthScheduler.Statuses(c.Request.Context(), ids); statusErr == nil {
 			statuses = resolved
+		} else {
+			logger.Debug("bandwidth scheduler: status lookup failed", "error", statusErr.Error())
 		}
 	}
 	for i, item := range result {
@@ -650,6 +655,9 @@ func (m *Module) setWorkerSpeedLimits(c *gin.Context) {
 }
 
 func (m *Module) listSchedules(c *gin.Context) {
+	if !m.requireBandwidthScheduler(c) {
+		return
+	}
 	worker, err := m.service.GetWorker(c.Request.Context(), c.Param("id"))
 	if err != nil {
 		errors.HandleError(c, err)
@@ -664,6 +672,9 @@ func (m *Module) listSchedules(c *gin.Context) {
 }
 
 func (m *Module) createSchedule(c *gin.Context) {
+	if !m.requireBandwidthScheduler(c) {
+		return
+	}
 	var input bandwidthscheduler.Input
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
@@ -683,14 +694,16 @@ func (m *Module) createSchedule(c *gin.Context) {
 }
 
 func (m *Module) getSchedule(c *gin.Context) {
+	if !m.requireBandwidthScheduler(c) {
+		return
+	}
 	worker, err := m.service.GetWorker(c.Request.Context(), c.Param("id"))
 	if err != nil {
 		errors.HandleError(c, err)
 		return
 	}
-	id, err := uuid.Parse(c.Param("schedule_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid schedule ID"})
+	id, ok := m.scheduleID(c)
+	if !ok {
 		return
 	}
 	item, err := m.bandwidthScheduler.Get(c.Request.Context(), worker.UUID, id)
@@ -702,6 +715,9 @@ func (m *Module) getSchedule(c *gin.Context) {
 }
 
 func (m *Module) updateSchedule(c *gin.Context) {
+	if !m.requireBandwidthScheduler(c) {
+		return
+	}
 	var input bandwidthscheduler.Input
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
@@ -712,9 +728,8 @@ func (m *Module) updateSchedule(c *gin.Context) {
 		errors.HandleError(c, err)
 		return
 	}
-	id, err := uuid.Parse(c.Param("schedule_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid schedule ID"})
+	id, ok := m.scheduleID(c)
+	if !ok {
 		return
 	}
 	item, err := m.bandwidthScheduler.Update(c.Request.Context(), worker, id, input)
@@ -726,14 +741,16 @@ func (m *Module) updateSchedule(c *gin.Context) {
 }
 
 func (m *Module) deleteSchedule(c *gin.Context) {
+	if !m.requireBandwidthScheduler(c) {
+		return
+	}
 	worker, err := m.service.GetWorker(c.Request.Context(), c.Param("id"))
 	if err != nil {
 		errors.HandleError(c, err)
 		return
 	}
-	id, err := uuid.Parse(c.Param("schedule_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid schedule ID"})
+	id, ok := m.scheduleID(c)
+	if !ok {
 		return
 	}
 	if err := m.bandwidthScheduler.Delete(c.Request.Context(), worker, id); err != nil {
@@ -744,6 +761,9 @@ func (m *Module) deleteSchedule(c *gin.Context) {
 }
 
 func (m *Module) reorderSchedules(c *gin.Context) {
+	if !m.requireBandwidthScheduler(c) {
+		return
+	}
 	var input bandwidthscheduler.OrderInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
@@ -763,6 +783,9 @@ func (m *Module) reorderSchedules(c *gin.Context) {
 }
 
 func (m *Module) previewSchedule(c *gin.Context) {
+	if !m.requireBandwidthScheduler(c) {
+		return
+	}
 	worker, err := m.service.GetWorker(c.Request.Context(), c.Param("id"))
 	if err != nil {
 		errors.HandleError(c, err)
@@ -774,6 +797,24 @@ func (m *Module) previewSchedule(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, preview)
+}
+
+func (m *Module) requireBandwidthScheduler(c *gin.Context) bool {
+	if m.bandwidthScheduler != nil {
+		return true
+	}
+	respErr := errors.NewServiceUnavailableError("Bandwidth scheduler is unavailable", nil)
+	c.JSON(respErr.StatusCode, respErr)
+	return false
+}
+
+func (m *Module) scheduleID(c *gin.Context) (uuid.UUID, bool) {
+	id, err := uuid.Parse(c.Param("schedule_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": invalidScheduleIDError})
+		return uuid.Nil, false
+	}
+	return id, true
 }
 
 func (m *Module) handleScheduleError(c *gin.Context, err error) {

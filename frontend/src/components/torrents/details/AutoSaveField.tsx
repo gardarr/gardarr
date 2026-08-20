@@ -42,7 +42,7 @@ export function AutoSaveField({
   display,
   className,
   inputClassName,
-}: AutoSaveFieldProps) {
+}: Readonly<AutoSaveFieldProps>) {
   const clickToEdit = display !== undefined;
   const [draft, setDraft] = useState(value);
   const [isEditing, setIsEditing] = useState(!clickToEdit);

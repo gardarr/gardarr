@@ -38,20 +38,33 @@ func (f *fakeWorkers) SetWorkerGlobalSpeedLimits(_ context.Context, _ *entities.
 	return nil
 }
 
-type fakeSettings struct{ timezone string }
+type fakeSettings struct {
+	timezone string
+	entered  chan<- struct{}
+	err      error
+}
 
-func (f fakeSettings) GetTimezone(context.Context) (string, error) { return f.timezone, nil }
+func (f fakeSettings) GetTimezone(context.Context) (string, error) {
+	if f.entered != nil {
+		select {
+		case f.entered <- struct{}{}:
+		default:
+		}
+	}
+	return f.timezone, f.err
+}
 
 type fakeEvents struct {
 	mu     sync.Mutex
 	events []*entities.Event
+	err    error
 }
 
 func (f *fakeEvents) Record(_ context.Context, event *entities.Event) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.events = append(f.events, event)
-	return nil
+	return f.err
 }
 
 func setupService(t *testing.T) (*Service, *entities.Worker, *fakeWorkers, *fakeEvents) {
@@ -129,17 +142,30 @@ func TestResolveDSTUsesWallClock(t *testing.T) {
 func TestScheduleCRUDCapturesBaselineAndPreservesColor(t *testing.T) {
 	service, worker, workers, _ := setupService(t)
 	enabled := false
+	reconciled := make(chan struct{}, 1)
+	service.settings = fakeSettings{timezone: "UTC", entered: reconciled}
 	input := Input{Name: "weekday", DaysOfWeek: []int{1, 2}, StartTime: "08:00", EndTime: "18:00", DownloadLimit: 300, UploadLimit: 30, Enabled: &enabled}
 	created, err := service.Create(context.Background(), worker, input)
 	if err != nil {
 		t.Fatal(err)
 	}
+	select {
+	case <-reconciled:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for the schedule reconciliation")
+	}
+	lock := service.lockFor(worker.UUID)
+	lock.Lock()
+	lock.Unlock()
 	if created.Color == "" {
 		t.Fatal("expected a neutral schedule color")
 	}
+	workers.mu.Lock()
 	if len(workers.applied) != 0 {
+		workers.mu.Unlock()
 		t.Fatal("disabled schedule should not apply a limit")
 	}
+	workers.mu.Unlock()
 
 	var storedWorker models.Worker
 	if err := service.db.DB.First(&storedWorker, "uuid = ?", worker.UUID).Error; err != nil {
@@ -262,6 +288,15 @@ func TestNewServiceAndOverlapDetection(t *testing.T) {
 	if windowsOverlap(a, b) {
 		t.Fatal("expected distinct windows")
 	}
+	overnight := models.BandwidthSchedule{DaysOfWeek: 1 << 1, StartMinute: 22 * 60, EndMinute: 2 * 60}
+	followingDay := models.BandwidthSchedule{DaysOfWeek: 1 << 2, StartMinute: 60, EndMinute: 3 * 60}
+	if !windowsOverlap(overnight, followingDay) {
+		t.Fatal("expected overnight window to overlap the following day")
+	}
+	followingDay.StartMinute = 2 * 60
+	if windowsOverlap(overnight, followingDay) {
+		t.Fatal("expected adjacent overnight windows not to overlap")
+	}
 }
 
 func TestScheduleLimitAndReorder(t *testing.T) {
@@ -306,5 +341,123 @@ func TestScheduleLimitAndReorder(t *testing.T) {
 	}
 	if _, err := service.Reorder(context.Background(), worker, OrderInput{ScheduleIDs: orderedIDs[:4]}); !errors.Is(err, ErrInvalidScheduleOrder) {
 		t.Fatalf("expected incomplete order to be rejected, got %v", err)
+	}
+}
+
+func TestStatusesHandlesEveryResultType(t *testing.T) {
+	service, worker, _, _ := setupService(t)
+	if statuses, err := service.Statuses(context.Background(), nil); err != nil || len(statuses) != 0 {
+		t.Fatalf("expected empty result for no workers, got %v / %#v", err, statuses)
+	}
+
+	withoutDefaults := uuid.New()
+	if err := service.db.DB.Create(&models.Worker{UUID: withoutDefaults, Name: "unmanaged", Address: "http://unmanaged"}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	day := int(time.Now().UTC().Weekday())
+	active := models.BandwidthSchedule{
+		UUID: uuid.New(), WorkerUUID: worker.UUID, Name: "active", DaysOfWeek: uint8(1 << day),
+		StartMinute: 0, EndMinute: 0, DownloadLimit: 500, UploadLimit: 50, Priority: 1, Enabled: true,
+	}
+	if err := service.db.DB.Create(&active).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	statuses, err := service.Statuses(context.Background(), []uuid.UUID{worker.UUID, withoutDefaults})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := statuses[worker.UUID]; !got.Active || got.Schedule == nil || got.Limits == nil || got.Limits.DownloadLimit != 500 {
+		t.Fatalf("expected active schedule status, got %#v", got)
+	}
+	if got := statuses[withoutDefaults]; got.Active || got.Limits != nil || got.Schedule != nil {
+		t.Fatalf("expected unmanaged status, got %#v", got)
+	}
+
+	if _, err := service.Statuses(context.Background(), []uuid.UUID{uuid.New()}); !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatalf("expected missing worker error, got %v", err)
+	}
+}
+
+func TestSchedulerValidationAndFailurePaths(t *testing.T) {
+	service, worker, workers, events := setupService(t)
+
+	service.settings = fakeSettings{err: errors.New("settings unavailable")}
+	if _, err := service.Preview(context.Background(), worker.UUID); err == nil {
+		t.Fatal("expected timezone lookup failure")
+	}
+	service.settings = fakeSettings{timezone: "not/a-timezone"}
+	if _, err := service.Statuses(context.Background(), []uuid.UUID{worker.UUID}); err == nil {
+		t.Fatal("expected invalid timezone failure")
+	}
+	service.settings = fakeSettings{timezone: "UTC"}
+
+	for _, input := range []Input{
+		{Name: "rule", DaysOfWeek: []int{1}, StartTime: "25:00", EndTime: "01:00"},
+		{Name: "rule", DaysOfWeek: []int{1}, StartTime: "01:00", EndTime: "01:60"},
+		{Name: "   ", DaysOfWeek: []int{1}, StartTime: "01:00", EndTime: "02:00"},
+		{Name: "rule", DaysOfWeek: []int{7}, StartTime: "01:00", EndTime: "02:00"},
+		{Name: "rule", DaysOfWeek: nil, StartTime: "01:00", EndTime: "02:00"},
+	} {
+		if _, err := inputToModel(worker.UUID, input); err == nil {
+			t.Fatalf("expected invalid input to be rejected: %#v", input)
+		}
+	}
+
+	if _, err := service.Get(context.Background(), worker.UUID, uuid.New()); !errors.Is(err, ErrScheduleNotFound) {
+		t.Fatalf("expected missing schedule error, got %v", err)
+	}
+	if err := service.Delete(context.Background(), worker, uuid.New()); !errors.Is(err, ErrScheduleNotFound) {
+		t.Fatalf("expected missing delete error, got %v", err)
+	}
+	if _, err := service.Update(context.Background(), worker, uuid.New(), Input{Name: "rule", DaysOfWeek: []int{1}, StartTime: "01:00", EndTime: "02:00"}); !errors.Is(err, ErrScheduleNotFound) {
+		t.Fatalf("expected missing update error, got %v", err)
+	}
+	if _, err := service.Reorder(context.Background(), worker, OrderInput{ScheduleIDs: []uuid.UUID{uuid.Nil}}); !errors.Is(err, ErrInvalidScheduleOrder) {
+		t.Fatalf("expected nil UUID order to be rejected, got %v", err)
+	}
+	duplicate := uuid.New()
+	if _, err := service.Reorder(context.Background(), worker, OrderInput{ScheduleIDs: []uuid.UUID{duplicate, duplicate}}); !errors.Is(err, ErrInvalidScheduleOrder) {
+		t.Fatalf("expected duplicate UUID order to be rejected, got %v", err)
+	}
+
+	workers.err = errors.New("worker unavailable")
+	if err := service.ApplyManualDefault(context.Background(), worker, Limits{DownloadLimit: 1, UploadLimit: 2}); err == nil {
+		t.Fatal("expected manual default failure")
+	}
+	workers.err = nil
+	events.err = errors.New("event unavailable")
+	target := applied{limits: Limits{DownloadLimit: 1, UploadLimit: 2}, source: "schedule"}
+	if err := service.apply(context.Background(), worker, target, applied{}, false, nil); err != nil {
+		t.Fatalf("event errors must not prevent applying limits: %v", err)
+	}
+}
+
+func TestDayRangesAndPriorityConflicts(t *testing.T) {
+	allDay := models.BandwidthSchedule{DaysOfWeek: 1 << 3, StartMinute: 120, EndMinute: 120}
+	ranges := dayRanges(allDay)
+	if len(ranges) != 1 || ranges[0] != (scheduleDayRange{day: 3, start: 0, end: 1440}) {
+		t.Fatalf("expected a full-day range, got %#v", ranges)
+	}
+	if got := dayRanges(models.BandwidthSchedule{}); len(got) != 0 {
+		t.Fatalf("expected no ranges, got %#v", got)
+	}
+	if !modelMatches(allDay, time.Date(2024, 1, 10, 12, 0, 0, 0, time.UTC)) {
+		t.Fatal("expected the model matcher to use schedule conversion")
+	}
+
+	service, worker, _, _ := setupService(t)
+	existing := models.BandwidthSchedule{UUID: uuid.New(), WorkerUUID: worker.UUID, DaysOfWeek: 1 << 1, StartMinute: 60, EndMinute: 120, Priority: 1, Enabled: true}
+	if err := service.db.DB.Create(&existing).Error; err != nil {
+		t.Fatal(err)
+	}
+	candidate := existing
+	candidate.UUID = uuid.New()
+	if err := service.checkPriorityConflict(context.Background(), candidate, uuid.Nil); !errors.Is(err, ErrPriorityConflict) {
+		t.Fatalf("expected overlap conflict, got %v", err)
+	}
+	if err := service.checkPriorityConflict(context.Background(), candidate, existing.UUID); err != nil {
+		t.Fatalf("expected excluded rule not to conflict, got %v", err)
 	}
 }

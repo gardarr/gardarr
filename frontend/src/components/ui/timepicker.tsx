@@ -28,7 +28,7 @@ function parseTime(value: string) {
 
 // A controlled, 24-hour picker composed from the project's shadcn-style
 // primitives. The value remains the API's HH:MM representation.
-export function TimePicker({ value, onValueChange, minuteStep = 1, disabled, className, "aria-label": ariaLabel }: TimePickerProps) {
+export function TimePicker({ value, onValueChange, minuteStep = 1, disabled, className, "aria-label": ariaLabel }: Readonly<TimePickerProps>) {
   const { hour, minute } = parseTime(value);
   const safeMinuteStep = Math.max(1, Math.min(60, Math.floor(minuteStep)));
   const minutes = Array.from({ length: Math.ceil(60 / safeMinuteStep) }, (_, index) => String(index * safeMinuteStep).padStart(2, "0"));

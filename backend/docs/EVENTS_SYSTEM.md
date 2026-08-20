@@ -13,8 +13,8 @@ const (
     EventTypeTorrentStateChange = "torrent.state_change"
     EventTypeTorrentAdded       = "torrent.added"
     EventTypeTorrentRemoved     = "torrent.removed"
-    EventTypeTorrentCompleted   = "torrent.completed"
-	EventTypeBandwidthScheduleApplied = "bandwidth.schedule_applied"
+    EventTypeTorrentCompleted             = "torrent.completed"
+    EventTypeBandwidthScheduleApplied     = "bandwidth.schedule_applied"
 )
 ```
 
@@ -37,6 +37,11 @@ Disparado quando um torrent não é mais encontrado
 Disparado quando um torrent atinge 100% de progresso
 - **Campos**: `new_value` (estado atual), `task_hash`
 - **Metadata**: `name`
+
+### `bandwidth.schedule_applied`
+Disparado quando Gardarr aplica um limite de banda programado ou restaura o limite padrão do worker.
+- **Campos**: `old_value`, `new_value`
+- **Metadata**: `source`, `download_limit`, `upload_limit`, `old_limits`; quando a origem for uma programação, também `schedule_uuid`, `schedule_name`
 
 ## Estrutura de Dados
 

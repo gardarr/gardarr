@@ -14,7 +14,8 @@ import {
   Search, 
   Loader2, 
   RefreshCw,
-  FolderOpen
+  FolderOpen,
+  Pencil,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { categoryService } from "./services/categories";
@@ -216,8 +217,7 @@ function Categories() {
                     {filteredCategories.map((category) => (
                       <tr
                         key={category.id}
-                        className="cursor-pointer hover:bg-accent/50 transition-colors border-b last:border-b-0"
-                        onClick={() => startEditCategory(category)}
+                        className="hover:bg-accent/50 transition-colors border-b last:border-b-0"
                       >
                         <td className="p-3">
                           <div className="flex items-center gap-3">
@@ -231,6 +231,16 @@ function Categories() {
                               })()}
                             </div>
                             <h3 className="font-medium text-sm truncate">{category.name}</h3>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 shrink-0"
+                              onClick={() => startEditCategory(category)}
+                              aria-label={t("categories.editCategory", { defaultValue: "Edit {{name}}", name: category.name })}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
                           </div>
                         </td>
                         <td className="p-3">
@@ -246,9 +256,9 @@ function Categories() {
                         <td className="p-3">
                           {category.default_tags && category.default_tags.length > 0 && (
                             <div className="flex gap-1 flex-wrap items-center">
-                              {category.default_tags.slice(0, 3).map((tag, index) => (
+                              {category.default_tags.slice(0, 3).map((tag) => (
                                 <TagBadge
-                                  key={index}
+                                  key={tag}
                                   tag={tag}
                                   size="sm"
                                   showIcon={false}
@@ -282,8 +292,7 @@ function Categories() {
             {filteredCategories.map((category) => (
               <Card
                 key={category.id}
-                className="group relative py-0 cursor-pointer transition-[filter] duration-200 saturate-100 hover:saturate-[2] overflow-hidden"
-                onClick={() => startEditCategory(category)}
+                className="group relative py-0 transition-[filter] duration-200 saturate-100 hover:saturate-[2] overflow-hidden"
               >
                 <div
                   className="absolute inset-0 pointer-events-none"
@@ -307,6 +316,16 @@ function Categories() {
                         {t(`categories.metadataSource.options.${category.metadata_source}`)}
                       </span>
                     )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      onClick={() => startEditCategory(category)}
+                      aria-label={t("categories.editCategory", { defaultValue: "Edit {{name}}", name: category.name })}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                   </div>
 
                   {category.default_directory && (
@@ -320,9 +339,9 @@ function Categories() {
 
                   {category.default_tags && category.default_tags.length > 0 && (
                     <div className="flex gap-1 flex-wrap items-center">
-                      {category.default_tags.slice(0, 3).map((tag, index) => (
+                      {category.default_tags.slice(0, 3).map((tag) => (
                         <TagBadge
-                          key={index}
+                          key={tag}
                           tag={tag}
                           size="sm"
                           showIcon={false}

@@ -93,6 +93,12 @@ describe("ShareableTorrentCardDialog", () => {
     expect(await screen.findByRole("button", { name: "torrentDetails.shareCard.nativeShare" })).toBeInTheDocument();
   });
 
+  it("hides native sharing when the browser does not support image files", () => {
+    render(<ShareableTorrentCardDialog torrent={torrent} open onOpenChange={() => undefined} />);
+
+    expect(screen.queryByRole("button", { name: "torrentDetails.shareCard.nativeShare" })).not.toBeInTheDocument();
+  });
+
   it("omits the torrent description by default", async () => {
     const user = userEvent.setup();
     render(<ShareableTorrentCardDialog torrent={torrent} open onOpenChange={() => undefined} />);

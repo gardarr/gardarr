@@ -1,75 +1,34 @@
-# Categories UI Revamp: compact list + standardized dialog
+# Categories UI Revamp: compact list and standardized dialog
 
-## Context
+## Delivered changes
 
-`Categories.tsx` (`frontend/src/Categories.tsx`) renders categories in a
-`sm:grid-cols-2 lg:grid-cols-4` grid of large cards (64px icon, generous
-padding, several stacked content lines) — high vertical footprint for
-little information density.
+The Categories view now presents categories as a compact, responsive list. The
+desktop table and mobile cards retain the category icon, color, default
+directory, tags, and metadata-source information while using less vertical
+space. Each category provides a focused edit control that opens the existing
+editing flow without making an entire row or card an implicit action.
 
-The create/update dialog (`frontend/src/components/AddCategoryModal.tsx`)
-is a custom modal built from a fixed `div` + manual backdrop, while the
-rest of the app — including the delete-confirmation dialog on the same
-page (`Categories.tsx:270-323`) — uses the shared `Dialog`/`DialogContent`
-component from `@/components/ui/dialog` (Radix-based).
+`Categories` continues to use `getCategoryIcon` and `TagBadge` so the compact
+layouts match the rest of the application.
 
-Goal: replace the card grid with a compact horizontal list, and rebuild
-the create/update modal on top of the standard `Dialog` component.
+`AddCategoryModal` now uses the shared `Dialog` primitives. `DialogContent`
+contains the existing form controls, `Dialog` manages open and close behavior,
+and `DialogFooter` provides the cancel and save actions. The existing create,
+update, tag, directory, metadata-source, icon, and color behaviors were
+preserved.
 
-## 1. Cards → compact horizontal list
+## Components
 
-In `Categories.tsx`, replace the card grid (lines 202-266) with a
-vertical list of compact rows:
-
-- Container: a single `Card` wrapping a `divide-y` list (or bordered rows)
-  instead of a grid of separate `Card` elements.
-- Each row: small icon (~32-36px, down from 64px) + name on the left,
-  tags (`TagBadge`) and directory inline to the side, all on one line via
-  `flex items-center justify-between gap-3`, with `truncate` where needed.
-- Keep `onClick={() => startEditCategory(category)}` to open editing, and
-  the existing hover state (`hover:bg-accent/50`).
-- Keep the loading/empty states as-is unless they need minor adjustment.
-- Reuse `getCategoryIcon` (`utils/categoryUtils.ts`) and `TagBadge`
-  (`components/ui/TagBadge.tsx`) — already used today.
-- `metadata_source` can become a small inline icon/label instead of its
-  own line.
-
-## 2. Dialog create/update → standard `Dialog` component
-
-Rewrite `AddCategoryModal.tsx` using `Dialog`, `DialogContent`,
-`DialogHeader`, `DialogTitle`, `DialogFooter` from
-`@/components/ui/dialog`, matching the delete modal in
-`Categories.tsx:270-323` and other app modals (e.g.
-`EditIntegrationWebhookModal.tsx`).
-
-Changes:
-
-- Remove the manual structure (`fixed inset-0`, backdrop `div`,
-  click-to-close handler) — `Dialog` handles this via `open`/`onOpenChange`.
-- Use `DialogHeader`/`DialogTitle` for the header (title + icon/color +
-  name when editing).
-- Keep all existing state/handlers (`createForm`, `tagInput`,
-  `handleSubmit`, `addTag`, `removeTag`, `handleDirectoryChange`,
-  `handleMetadataSourceChange`) — only the visual wrapper changes.
-- Use `DialogFooter` (`components/ui/dialog.tsx:70-82`) for the
-  Cancel/Save buttons.
-- `DialogContent` accepts `className` (merged via `cn`) — use
-  `className="max-w-2xl max-h-[90vh] overflow-y-auto"` like the current
-  modal. It already renders its own close (X) button, so drop the manual
-  X button from the custom header.
-- Keep the icon/color picker grid as-is (no tabs — only the wrapper
-  component changes).
-
-## Affected files
-
-- `frontend/src/Categories.tsx` — card grid → compact list
-- `frontend/src/components/AddCategoryModal.tsx` — rewritten with `Dialog`
+- `Categories` renders the compact category list and opens editing through an
+  accessible edit button for each category.
+- `AddCategoryModal` uses `Dialog`, `DialogContent`, and `DialogFooter` for a
+  consistent create/update experience.
 
 ## Verification
 
-- `cd frontend && npm run lint`
-- `cd frontend && npx vitest run` (no dedicated `AddCategoryModal`/`Categories`
-  tests exist today, but run the full suite to check nothing else regresses)
-- `make dev`, open `/categories`, test: list, search, create category, edit
-  (name must stay locked while editing, same rule as today), delete,
-  mobile/desktop responsiveness.
+- Frontend linting and unit tests cover the updated components without
+  regressions.
+- The Categories page supports loading, searching, creating, editing, and
+  deleting categories on desktop and mobile layouts.
+- The standardized dialog retains the editing rule that keeps the category
+  name locked where required.

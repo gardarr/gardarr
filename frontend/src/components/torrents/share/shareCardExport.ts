@@ -17,7 +17,8 @@ export function getShareCardFileName(torrent: Task): string {
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
+    .replace(/^-+/, "")
+    .replace(/-+$/, "")
     .slice(0, 72);
 
   return `gardarr-${safeTitle || "torrent"}-ratio.png`;
@@ -46,7 +47,7 @@ export function downloadShareCardImage(blob: Blob, torrent: Task): void {
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 export function canShareCardFiles(): boolean {

@@ -28,7 +28,7 @@ type Worker struct {
 // is a Sunday-first bitmask (bit 0 = Sunday).
 type BandwidthSchedule struct {
 	UUID          uuid.UUID `gorm:"type:uuid;primaryKey;uniqueIndex"`
-	WorkerUUID    uuid.UUID `gorm:"type:uuid;not null;index;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	WorkerUUID    uuid.UUID `gorm:"type:uuid;not null;index"`
 	Worker        Worker    `gorm:"foreignKey:WorkerUUID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 	Name          string    `gorm:"size:100;not null"`
 	DaysOfWeek    uint8     `gorm:"not null"`

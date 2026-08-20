@@ -2,12 +2,15 @@ package migrations
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/jfxdev/gardarr/internal/infra/migration"
 	"github.com/jfxdev/gardarr/internal/models"
 
 	"gorm.io/gorm"
 )
+
+const uuidCondition = "uuid = ?"
 
 func legacyWorkerTokenColumns() []string {
 	return []string{
@@ -357,7 +360,7 @@ func Register(m *migration.Migrator) {
 			Version:     "024_remove_standalone_worker",
 			Description: "Remove worker standalone do banco de dados (se existir)",
 			Up: func(db *gorm.DB) error {
-				return db.Where("uuid = ?", "00000000-0000-0000-0000-000000000000").Delete(&models.Worker{}).Error
+				return db.Where(uuidCondition, "00000000-0000-0000-0000-000000000000").Delete(&models.Worker{}).Error
 			},
 			Down: func(db *gorm.DB) error {
 				// No-op: não queremos recriar o worker se fizer rollback
@@ -632,7 +635,7 @@ func Register(m *migration.Migrator) {
 				for name, tags := range defaultTags {
 					var category models.Category
 					err := db.Where("name = ?", name).First(&category).Error
-					if err == gorm.ErrRecordNotFound {
+					if errors.Is(err, gorm.ErrRecordNotFound) {
 						continue
 					}
 					if err != nil {
@@ -677,6 +680,7 @@ func Register(m *migration.Migrator) {
 						return err
 					}
 				}
+				// No-op: os limites padrão do worker são mantidos para evitar perda de configuração.
 				return nil
 			},
 		},
@@ -699,7 +703,7 @@ func Register(m *migration.Migrator) {
 				for _, schedule := range schedules {
 					workerID := schedule.WorkerUUID.String()
 					index := indexes[workerID]
-					if err := db.Model(&models.BandwidthSchedule{}).Where("uuid = ?", schedule.UUID).Update("color", colors[index%len(colors)]).Error; err != nil {
+					if err := db.Model(&models.BandwidthSchedule{}).Where(uuidCondition, schedule.UUID).Update("color", colors[index%len(colors)]).Error; err != nil {
 						return err
 					}
 					indexes[workerID]++
@@ -779,7 +783,7 @@ func backfillRemovedEvent(db *gorm.DB, ev models.Event) error {
 	}
 
 	return db.Model(&models.Event{}).
-		Where("uuid = ?", ev.UUID).
+		Where(uuidCondition, ev.UUID).
 		Update("metadata", string(merged)).Error
 }
 

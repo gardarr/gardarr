@@ -58,7 +58,7 @@ export function ShareableTorrentCardDialog({
   torrent,
   open,
   onOpenChange,
-}: ShareableTorrentCardDialogProps) {
+}: Readonly<ShareableTorrentCardDialogProps>) {
   const { t } = useTranslation();
   const [format, setFormat] = useState<ShareCardFormat>("portrait");
   const [theme, setTheme] = useState<ShareCardTheme>("dark");
@@ -120,11 +120,14 @@ export function ShareableTorrentCardDialog({
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
 
-      const key = action === "copy"
-        ? "torrentDetails.shareCard.toasts.copyError"
-        : action === "download"
-          ? "torrentDetails.shareCard.toasts.downloadError"
-          : "torrentDetails.shareCard.toasts.shareError";
+      let key: string;
+      if (action === "copy") {
+        key = "torrentDetails.shareCard.toasts.copyError";
+      } else if (action === "download") {
+        key = "torrentDetails.shareCard.toasts.downloadError";
+      } else {
+        key = "torrentDetails.shareCard.toasts.shareError";
+      }
       toast.error(t(key));
     } finally {
       setBusyAction(null);
