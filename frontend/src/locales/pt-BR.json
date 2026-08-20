@@ -624,6 +624,8 @@
       "uploadLimit": "Limite de Upload",
       "saveSpeedLimits": "Salvar Limites de Velocidade",
       "speedToastTitle": "Limites de velocidade atualizados",
+      "scheduleActiveTitle": "Uma programação de velocidade está ativa",
+      "scheduleActiveDescription": "“{{name}}” está controlando os limites agora. As alterações salvas aqui são aplicadas imediatamente, mas são temporárias até a próxima transição da programação. Elas também atualizam os limites padrão usados fora das programações.",
       "instanceActiveLimits": "Limites de Torrents Ativos da Instância",
       "maxActiveDownloads": "Máx. Downloads Ativos",
       "maxActiveUploads": "Máx. Uploads Ativos",
@@ -632,7 +634,41 @@
       "saveActiveLimits": "Salvar Limites de Atividade",
       "activeToastTitle": "Limites de atividade atualizados"
     },
-    "schedules": "Programações",
+    "schedules": {
+      "title": "Programações",
+      "loading": "Carregando programações...",
+      "active": "Ativa agora: {{name}}",
+      "noActive": "Nenhuma programação está ativa",
+      "unmanaged": "Salve os limites ou crie uma programação para definir o limite padrão.",
+      "add": "Adicionar regra",
+      "empty": "Ainda não há programações.",
+      "new": "Nova programação",
+      "edit": "Editar programação",
+      "formDescription": "Defina os horários e limites da regra.",
+      "projectTimezone": "Fuso horário do projeto: {{timezone}}",
+      "name": "Nome",
+      "start": "Início",
+      "end": "Fim",
+      "days": "Dias",
+      "priority": "Prioridade",
+      "priorityOrder": "Prioridade {{position}}",
+      "ruleColor": "Cor da regra",
+      "enabled": "Ativa",
+      "activeBadge": "Limite programado",
+      "activeRule": "Ativa",
+      "validation": "Escolha um nome e pelo menos um dia.",
+      "deleteConfirm": "Excluir esta programação?",
+      "deleteDialogTitle": "Excluir programação?",
+      "deleteDialogDescription": "Isso removerá “{{name}}” permanentemente.",
+      "deleting": "Excluindo...",
+      "gridHelp": "Prévia semanal. O horário final é exclusivo; início e fim iguais representam o dia inteiro.",
+      "maxReached": "Máximo de 5 programações por worker.",
+      "reorderHint": "Arraste as regras para reordenar a prioridade.",
+      "createdToast": "Programação criada",
+      "updatedToast": "Programação atualizada",
+      "deletedToast": "Programação excluída",
+      "reorderedToast": "Prioridade das programações atualizada"
+    },
     "logs": {
       "noLogs": "Nenhum log encontrado para os filtros selecionados"
     }
@@ -1228,7 +1264,53 @@
     "actions": {
       "forceDownload": "Forçar Download",
       "forceReannounce": "Forçar Reannounce",
-      "forceRecheck": "Forçar Recheck"
+      "forceRecheck": "Forçar Recheck",
+      "share": "Compartilhar card"
+    },
+    "shareCard": {
+      "title": "Compartilhar card de ratio",
+      "description": "Escolha o formato e o tema antes de copiar, baixar ou compartilhar a imagem.",
+      "formatLabel": "Formato",
+      "themeLabel": "Tema",
+      "titleColor": "Cor do título",
+      "username": "Username (opcional)",
+      "usernamePlaceholder": "@seu_username",
+      "usernameHint": "Preencha para exibir sua identificação no canto superior direito.",
+      "dragHint": "Arraste a imagem para ajustar na vertical",
+      "includeDescription": "Exibir descrição",
+      "includeDescriptionHint": "Desative para gerar um card mais limpo.",
+      "openFromRatio": "Abrir opções de compartilhamento do ratio",
+      "formats": {
+        "portrait": "Retrato",
+        "square": "Quadrado",
+        "story": "Story"
+      },
+      "themes": {
+        "light": "Claro",
+        "dark": "Escuro"
+      },
+      "copyImage": "Copiar imagem",
+      "download": "Baixar PNG",
+      "nativeShare": "Compartilhar",
+      "rendering": "Gerando prévia…",
+      "previewError": "Não foi possível gerar a prévia do card.",
+      "previewAria": "Prévia do card compartilhável de {{title}}",
+      "privacyNote": "O card não inclui hash, magnet link, caminho ou worker.",
+      "shareText": "Meu ratio em {{title}} chegou a {{ratio}}x. Compartilhar mantém a comunidade viva!",
+      "card": {
+        "ratio": "Ratio",
+        "uploaded": "Enviado",
+        "popularity": "Popularidade",
+        "sharingTime": "Tempo compartilhando",
+        "size": "Tamanho"
+      },
+      "toasts": {
+        "copied": "Imagem copiada para a área de transferência",
+        "downloaded": "Card baixado com sucesso",
+        "copyError": "Este navegador não conseguiu copiar a imagem. Tente baixar o PNG.",
+        "downloadError": "Não foi possível baixar o card",
+        "shareError": "Não foi possível compartilhar o card"
+      }
     },
     "ratio": {
       "widget": {
@@ -1354,6 +1436,14 @@
     },
     "description": {
       "label": "Descrição"
+    },
+    "autosave": {
+      "saving": "Salvando…",
+      "saved": "Salvo",
+      "error": "Falha ao salvar"
+    },
+    "editSection": {
+      "title": "Detalhes"
     }
   },
   "torrent": {

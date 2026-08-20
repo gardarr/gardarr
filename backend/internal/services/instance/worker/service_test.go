@@ -178,9 +178,8 @@ func TestServiceSetDownloadSpeedLimit(t *testing.T) {
 	mockRepo := newMockInstanceRepository()
 	service := &service{repository: mockRepo}
 
-	schema := schemas.InstanceSetSpeedLimitSchema{
-		DownloadLimit: 2000000,
-	}
+	download, upload := 2000000, 0
+	schema := schemas.InstanceSetSpeedLimitSchema{DownloadLimit: &download, UploadLimit: &upload}
 
 	// Test successful download speed limit setting
 	err := service.SetSpeedLimit(ctx, schema)
@@ -206,9 +205,8 @@ func TestServiceSetUploadSpeedLimit(t *testing.T) {
 	mockRepo := newMockInstanceRepository()
 	service := &service{repository: mockRepo}
 
-	schema := schemas.InstanceSetSpeedLimitSchema{
-		UploadLimit: 1000000,
-	}
+	download, upload := 0, 1000000
+	schema := schemas.InstanceSetSpeedLimitSchema{DownloadLimit: &download, UploadLimit: &upload}
 
 	// Test successful upload speed limit setting
 	err := service.SetSpeedLimit(ctx, schema)

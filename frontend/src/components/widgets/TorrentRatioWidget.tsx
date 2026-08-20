@@ -1,4 +1,4 @@
-import { ArrowUpDown, Activity, TrendingUp, Upload } from "lucide-react";
+import { ArrowUpDown, Activity, Share2, TrendingUp, Upload } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getRatioGrade, getGradeColor, getGradeStars, getGradeGlowClass, getGradeDescription, getGradeMessage } from "@/utils/ratioUtils";
 import { useTranslation } from "react-i18next";
@@ -8,9 +8,10 @@ interface TorrentRatioWidgetProps {
   ratio: number;
   popularity: number;
   totalUploaded?: number;
+  onShare?: () => void;
 }
 
-export function TorrentRatioWidget({ ratio, popularity, totalUploaded }: TorrentRatioWidgetProps) {
+export function TorrentRatioWidget({ ratio, popularity, totalUploaded, onShare }: Readonly<TorrentRatioWidgetProps>) {
   const { t } = useTranslation();
   const grade = getRatioGrade(ratio);
   const colorClass = getGradeColor(grade);
@@ -19,11 +20,14 @@ export function TorrentRatioWidget({ ratio, popularity, totalUploaded }: Torrent
   const baseGrade = grade.replace(/\+/g, "");
   const plusCount = grade.length - baseGrade.length;
   const message = getGradeMessage(grade);
-  return (
-    <div className={`p-3 rounded-lg border ${colorClass}`}>
-      <div className="flex items-center gap-2 mb-0">
-        <ArrowUpDown className="h-4 w-4" />
-        <h4 className="text-xs font-medium uppercase tracking-wide">{t("ratio.widget.title", { defaultValue: "Ratio" })}</h4>
+  const content = (
+    <>
+      <div className="flex items-center justify-between gap-2 mb-0">
+        <div className="flex items-center gap-2">
+          <ArrowUpDown className="h-4 w-4" />
+          <h4 className="text-xs font-medium uppercase tracking-wide">{t("ratio.widget.title", { defaultValue: "Ratio" })}</h4>
+        </div>
+        {onShare && <Share2 className="h-3.5 w-3.5 opacity-70" aria-hidden="true" />}
       </div>
       <div className="flex items-center justify-between gap-3">
         <div className="space-y-2">
@@ -89,8 +93,20 @@ export function TorrentRatioWidget({ ratio, popularity, totalUploaded }: Torrent
           </div>
         </div>
       </div>
-    </div>
+    </>
+  );
+
+  const className = `p-3 rounded-lg border ${colorClass}`;
+  if (!onShare) return <div className={className}>{content}</div>;
+
+  return (
+    <button
+      type="button"
+      className={`${className} w-full cursor-pointer bg-transparent text-left transition-[filter,transform] hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.995]`}
+      aria-label={t("torrentDetails.shareCard.openFromRatio")}
+      onClick={onShare}
+    >
+      {content}
+    </button>
   );
 }
-
-

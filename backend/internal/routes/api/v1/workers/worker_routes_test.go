@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jfxdev/gardarr/internal/schemas"
 	"github.com/stretchr/testify/assert"
 )
-
 
 func TestSetWorkerTaskTags_InvalidJSON(t *testing.T) {
 	// Setup
@@ -35,6 +35,73 @@ func TestSetWorkerTaskTags_InvalidJSON(t *testing.T) {
 	// Assertions
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Contains(t, w.Body.String(), "Invalid request body")
+}
+
+func TestSetWorkerSpeedLimitsAcceptsZeroButRequiresBothFields(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	module := &Module{}
+	tests := []struct {
+		name       string
+		body       string
+		assertCode func(*testing.T, int)
+	}{
+		{
+			name: "zero is a valid unlimited limit",
+			body: `{"download_limit":0,"upload_limit":0}`,
+			assertCode: func(t *testing.T, code int) {
+				assert.NotEqual(t, http.StatusBadRequest, code)
+			},
+		},
+		{
+			name: "missing field is rejected",
+			body: `{"download_limit":0}`,
+			assertCode: func(t *testing.T, code int) {
+				assert.Equal(t, http.StatusBadRequest, code)
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			router := gin.New()
+			router.POST("/worker/:id/speed/limits", module.setWorkerSpeedLimits)
+			req := httptest.NewRequest(http.MethodPost, "/worker/worker-id/speed/limits", bytes.NewBufferString(test.body))
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+			test.assertCode(t, w.Code)
+		})
+	}
+}
+
+func TestScheduleHandlersRequireBandwidthScheduler(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	module := &Module{}
+	tests := []struct {
+		method  string
+		path    string
+		handler gin.HandlerFunc
+	}{
+		{http.MethodGet, "/worker/:id/schedules", module.listSchedules},
+		{http.MethodPost, "/worker/:id/schedules", module.createSchedule},
+		{http.MethodGet, "/worker/:id/schedules/preview", module.previewSchedule},
+		{http.MethodPut, "/worker/:id/schedules/order", module.reorderSchedules},
+		{http.MethodGet, "/worker/:id/schedules/:schedule_id", module.getSchedule},
+		{http.MethodPut, "/worker/:id/schedules/:schedule_id", module.updateSchedule},
+		{http.MethodDelete, "/worker/:id/schedules/:schedule_id", module.deleteSchedule},
+	}
+
+	for _, test := range tests {
+		t.Run(test.method+" "+test.path, func(t *testing.T) {
+			router := gin.New()
+			router.Handle(test.method, test.path, test.handler)
+			path := strings.ReplaceAll(strings.ReplaceAll(test.path, ":schedule_id", "schedule-id"), ":id", "worker-id")
+			request := httptest.NewRequest(test.method, path, nil)
+			response := httptest.NewRecorder()
+			router.ServeHTTP(response, request)
+			assert.Equal(t, http.StatusServiceUnavailable, response.Code)
+		})
+	}
 }
 
 func TestSetWorkerTaskTags_ValidJSON(t *testing.T) {

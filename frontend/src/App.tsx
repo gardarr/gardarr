@@ -1,6 +1,6 @@
 import { Suspense, lazy } from 'react'
 import { Loader2 } from 'lucide-react'
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from 'react-router'
 import { AuthProvider } from './contexts/AuthContext'
 import { SetupProvider } from './contexts/SetupContext'
 import ProtectedRoute from './components/ProtectedRoute'

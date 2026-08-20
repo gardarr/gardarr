@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Save, Download, Upload } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertTriangle, Loader2, Save, Download, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { workerService } from "../services/workers";
 import type { SpeedLimitsSchema, ActiveLimitsSchema } from "../types/worker";
@@ -61,6 +62,7 @@ export function WorkerLimits({ workerId, disableScroll = false }: WorkerLimitsPr
     const [loading, setLoading] = useState(true);
     const [savingSpeedLimits, setSavingSpeedLimits] = useState(false);
     const [savingActiveLimits, setSavingActiveLimits] = useState(false);
+    const [activeScheduleName, setActiveScheduleName] = useState<string | null>(null);
 
     // Speed limits state (0 = unlimited)
     const [downloadLimit, setDownloadLimit] = useState<number>(0);
@@ -77,7 +79,11 @@ export function WorkerLimits({ workerId, disableScroll = false }: WorkerLimitsPr
         const loadPreferences = async () => {
             try {
                 setLoading(true);
-                const response = await workerService.getWorkerPreferences(workerId);
+                setActiveScheduleName(null);
+                const [response, schedulePreview] = await Promise.all([
+                    workerService.getWorkerPreferences(workerId),
+                    workerService.getSchedulePreview(workerId),
+                ]);
 
                 if (response.error) {
                     toast.error(response.error);
@@ -93,6 +99,8 @@ export function WorkerLimits({ workerId, disableScroll = false }: WorkerLimitsPr
                     setMaxActiveTorrents(Math.max(1, prefs.active_torrent_limits.max_active_torrents));
                     setMaxActiveCheckingTorrents(Math.max(1, prefs.active_torrent_limits.max_active_checking_torrents));
                 }
+
+                setActiveScheduleName(schedulePreview.data?.source === "schedule" ? schedulePreview.data.schedule?.name ?? null : null);
             } catch (err) {
                 console.error('Failed to load preferences:', err);
                 toast.error(String(err));
@@ -179,6 +187,15 @@ export function WorkerLimits({ workerId, disableScroll = false }: WorkerLimitsPr
 
     const content = (
         <div className="space-y-6 p-4 pb-8">
+            {activeScheduleName && (
+                <Alert className="border-amber-500/50 bg-amber-50/80 text-amber-950 dark:bg-amber-950/40 dark:text-amber-100 [&>svg]:text-amber-600 dark:[&>svg]:text-amber-400">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>{t('workers.limits.scheduleActiveTitle', 'A speed schedule is active')}</AlertTitle>
+                    <AlertDescription>
+                        {t('workers.limits.scheduleActiveDescription', '“{{name}}” is currently controlling the limits. Changes saved here apply immediately, but are temporary until the next schedule transition. They also update the default limits used outside schedules.', { name: activeScheduleName })}
+                    </AlertDescription>
+                </Alert>
+            )}
             {/* Speed Limits Section */}
             <div className="space-y-4">
                 <div className="flex items-center gap-2">

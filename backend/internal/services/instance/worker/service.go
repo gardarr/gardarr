@@ -55,19 +55,18 @@ func (s *service) SetSpeedLimit(ctx context.Context, schema schemas.InstanceSetS
 	// Currently unused: kept to satisfy InstanceService and for future propagation to the repository/client.
 	_ = ctx
 
-	if schema.DownloadLimit < -1 {
-		return errors.New("download limit must be greater than or equal to -1")
+	if schema.DownloadLimit == nil || schema.UploadLimit == nil {
+		return errors.New("download and upload limits are required")
+	}
+	if *schema.DownloadLimit < 0 || *schema.UploadLimit < 0 {
+		return errors.New("speed limits must be greater than or equal to 0")
 	}
 
-	if schema.UploadLimit < -1 {
-		return errors.New("upload limit must be greater than or equal to -1")
-	}
-
-	if err := s.repository.SetDownloadSpeedLimit(schema.DownloadLimit); err != nil {
+	if err := s.repository.SetDownloadSpeedLimit(*schema.DownloadLimit); err != nil {
 		return err
 	}
 
-	if err := s.repository.SetUploadSpeedLimit(schema.UploadLimit); err != nil {
+	if err := s.repository.SetUploadSpeedLimit(*schema.UploadLimit); err != nil {
 		return err
 	}
 

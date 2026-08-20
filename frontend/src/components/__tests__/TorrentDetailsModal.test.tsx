@@ -93,7 +93,9 @@ vi.mock("@/components/torrents/TorrentFilesList", () => ({
 }));
 
 vi.mock("@/components/widgets/TorrentRatioWidget", () => ({
-  TorrentRatioWidget: () => null,
+  TorrentRatioWidget: ({ onShare }: { onShare?: () => void }) => (
+    <button type="button" onClick={onShare}>Abrir compartilhamento pelo ratio</button>
+  ),
 }));
 
 vi.mock("@/components/widgets/TorrentLifetimeWidget", () => ({
@@ -102,6 +104,10 @@ vi.mock("@/components/widgets/TorrentLifetimeWidget", () => ({
 
 vi.mock("@/components/torrents/TorrentImageEditor", () => ({
   TorrentImageEditor: () => null,
+}));
+
+vi.mock("@/components/torrents/share/ShareableTorrentCardDialog", () => ({
+  ShareableTorrentCardDialog: ({ open }: { open: boolean }) => open ? <div>Dialog de compartilhamento aberto</div> : null,
 }));
 
 vi.mock("@/components/ui/WorkerIcon", () => ({
@@ -250,7 +256,8 @@ describe("TorrentDetailsModal", () => {
     const input = screen.getByDisplayValue("Friendly Name");
     await user.clear(input);
     await user.type(input, "Updated Friendly Name");
-    await user.click(screen.getByLabelText("Salvar nome"));
+    // Autosaves on blur (Enter blurs the field)
+    await user.keyboard("{Enter}");
 
     await waitFor(() => {
       expect(mockApiPut).toHaveBeenCalledWith("/tasks/metadata/hash-1/name", {
@@ -274,14 +281,12 @@ describe("TorrentDetailsModal", () => {
       />
     );
 
-    await user.click(screen.getByLabelText("Editar categoria"));
+    // Category select is always open; picking a value autosaves immediately.
     await user.click(screen.getByRole("button", { name: "Escolher categoria" }));
-    await user.click(screen.getByLabelText("Salvar"));
 
     await waitFor(() => {
       expect(mockUpdateTaskCategory).toHaveBeenCalledWith("worker-1", "hash-1", "Series");
       expect(onCategoryTagsUpdate).toHaveBeenCalledWith("hash-1", { category: "Series" });
-      expect(mockToastSuccess).toHaveBeenCalled();
     });
   });
 
@@ -299,9 +304,7 @@ describe("TorrentDetailsModal", () => {
       />
     );
 
-    await user.click(screen.getByLabelText("Editar categoria"));
     await user.click(screen.getByRole("button", { name: "Escolher categoria" }));
-    await user.click(screen.getByLabelText("Salvar"));
 
     await waitFor(() => {
       expect(mockUpdateTaskCategory).toHaveBeenCalledWith("worker-1", "hash-1", "Series");
@@ -326,14 +329,28 @@ describe("TorrentDetailsModal", () => {
       />
     );
 
-    await user.click(screen.getByLabelText("Editar tags"));
+    // Tags editor is always open; changing tags autosaves immediately.
     await user.click(screen.getByRole("button", { name: "Trocar tags" }));
-    await user.click(screen.getByLabelText("Salvar"));
 
     await waitFor(() => {
       expect(mockUpdateTaskTags).toHaveBeenCalledWith("worker-1", "hash-1", ["b", "c"]);
       expect(onCategoryTagsUpdate).toHaveBeenCalledWith("hash-1", { tags: ["b", "c"] });
-      expect(mockToastSuccess).toHaveBeenCalled();
     });
+  });
+
+  it("opens the share dialog from the ratio card", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <TorrentDetailsModal
+        torrent={baseTask}
+        isOpen={true}
+        onClose={() => undefined}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "Abrir compartilhamento pelo ratio" }));
+
+    expect(screen.getByText("Dialog de compartilhamento aberto")).toBeInTheDocument();
   });
 });

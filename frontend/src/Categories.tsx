@@ -14,7 +14,8 @@ import {
   Search, 
   Loader2, 
   RefreshCw,
-  FolderOpen
+  FolderOpen,
+  Pencil,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { categoryService } from "./services/categories";
@@ -199,67 +200,160 @@ function Categories() {
         </Card>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {filteredCategories.map((category) => (
-              <Card 
-                key={category.id} 
-                className="relative cursor-pointer hover:bg-accent/50 transition-colors"
-                onClick={() => startEditCategory(category)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex flex-col gap-3 items-center text-center">
-                    {/* Icon */}
-                    <div
-                      className="w-16 h-16 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: category.color || "#3b82f6" }}
-                    >
-                      {(() => {
-                        const IconComponent = getCategoryIcon(category.icon);
-                        return <IconComponent className="h-8 w-8 text-white" />;
-                      })()}
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 min-w-0 space-y-1.5 w-full">
-                      <div>
-                        <h3 className="font-semibold text-base truncate">{category.name}</h3>
-                      </div>
-
-                      {category.default_tags && category.default_tags.length > 0 && (
-                        <div className="flex gap-1 flex-wrap items-center justify-center">
-                          {category.default_tags.slice(0, 3).map((tag, index) => (
-                            <TagBadge
-                              key={index}
-                              tag={tag}
-                              size="sm"
-                              showIcon={false}
-                            />
-                          ))}
-                          {category.default_tags.length > 3 && (
+          {/* Desktop Table View */}
+          <div className="hidden md:block">
+            <Card className="py-0 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-3 font-medium text-muted-foreground text-sm">{t('categories.fields.name')}</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground text-sm">{t('categories.fields.defaultDirectory')}</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground text-sm">{t('categories.fields.defaultTags')}</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground text-sm">{t('categories.fields.metadataSource')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredCategories.map((category) => (
+                      <tr
+                        key={category.id}
+                        className="hover:bg-accent/50 transition-colors border-b last:border-b-0"
+                      >
+                        <td className="p-3">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0"
+                              style={{ backgroundColor: category.color || "#3b82f6" }}
+                            >
+                              {(() => {
+                                const IconComponent = getCategoryIcon(category.icon);
+                                return <IconComponent className="h-4.5 w-4.5 text-white" />;
+                              })()}
+                            </div>
+                            <h3 className="font-medium text-sm truncate">{category.name}</h3>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 shrink-0"
+                              onClick={() => startEditCategory(category)}
+                              aria-label={t("categories.editCategory", { defaultValue: "Edit {{name}}", name: category.name })}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          {category.default_directory && (
+                            <div className="flex items-center gap-1 min-w-0">
+                              <Folder className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                              <span className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono truncate max-w-[240px]">
+                                {category.default_directory}
+                              </span>
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          {category.default_tags && category.default_tags.length > 0 && (
+                            <div className="flex gap-1 flex-wrap items-center">
+                              {category.default_tags.slice(0, 3).map((tag) => (
+                                <TagBadge
+                                  key={tag}
+                                  tag={tag}
+                                  size="sm"
+                                  showIcon={false}
+                                />
+                              ))}
+                              {category.default_tags.length > 3 && (
+                                <span className="text-xs text-muted-foreground">
+                                  +{category.default_tags.length - 3}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          {category.metadata_source && category.metadata_source !== "none" && (
                             <span className="text-xs text-muted-foreground">
-                              +{category.default_tags.length - 3}
+                              {t(`categories.metadataSource.options.${category.metadata_source}`)}
                             </span>
                           )}
-                        </div>
-                      )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </div>
 
-                      {category.default_directory && (
-                        <div className="flex gap-1 flex-wrap items-center justify-center">
-                          <Folder className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                          <span className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono truncate max-w-[200px]">
-                            {category.default_directory}
-                          </span>
-                        </div>
-                      )}
+          {/* Mobile Card View */}
+          <div className="md:hidden grid gap-2">
+            {filteredCategories.map((category) => (
+              <Card
+                key={category.id}
+                className="group relative py-0 transition-[filter] duration-200 saturate-100 hover:saturate-[2] overflow-hidden"
+              >
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{ background: `linear-gradient(to left, ${category.color || "#3b82f6"}40, transparent 60%)` }}
+                />
+                <div
+                  className="absolute inset-y-0 left-0 w-14 flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: category.color || "#3b82f6" }}
+                >
+                  {(() => {
+                    const IconComponent = getCategoryIcon(category.icon);
+                    return <IconComponent className="h-6 w-6 text-white" />;
+                  })()}
+                </div>
+                <div className="absolute inset-0 bg-black/20 dark:bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                <CardContent className="relative pl-[4.5rem] pr-3 py-3 space-y-2">
+                  <div className="flex items-center gap-2.5">
+                    <h3 className="font-medium text-sm truncate flex-1 min-w-0">{category.name}</h3>
+                    {category.metadata_source && category.metadata_source !== "none" && (
+                      <span className="text-xs text-muted-foreground flex-shrink-0">
+                        {t(`categories.metadataSource.options.${category.metadata_source}`)}
+                      </span>
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      onClick={() => startEditCategory(category)}
+                      aria-label={t("categories.editCategory", { defaultValue: "Edit {{name}}", name: category.name })}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </div>
 
-                      {category.metadata_source && category.metadata_source !== "none" && (
-                        <div className="text-xs text-muted-foreground">
-                          {t(`categories.metadataSource.options.${category.metadata_source}`)}
-                        </div>
+                  {category.default_directory && (
+                    <div className="flex items-center gap-1 min-w-0">
+                      <Folder className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                      <span className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono truncate">
+                        {category.default_directory}
+                      </span>
+                    </div>
+                  )}
+
+                  {category.default_tags && category.default_tags.length > 0 && (
+                    <div className="flex gap-1 flex-wrap items-center">
+                      {category.default_tags.slice(0, 3).map((tag) => (
+                        <TagBadge
+                          key={tag}
+                          tag={tag}
+                          size="sm"
+                          showIcon={false}
+                        />
+                      ))}
+                      {category.default_tags.length > 3 && (
+                        <span className="text-xs text-muted-foreground">
+                          +{category.default_tags.length - 3}
+                        </span>
                       )}
                     </div>
-
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             ))}

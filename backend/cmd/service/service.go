@@ -36,6 +36,7 @@ import (
 	wsRoutes "github.com/jfxdev/gardarr/internal/routes/api/v1/ws"
 	metricsRoutes "github.com/jfxdev/gardarr/internal/routes/metrics"
 	"github.com/jfxdev/gardarr/internal/schemas"
+	"github.com/jfxdev/gardarr/internal/services/bandwidthscheduler"
 	"github.com/jfxdev/gardarr/internal/services/crypto"
 	"github.com/jfxdev/gardarr/internal/services/eventpoller"
 	eventsService "github.com/jfxdev/gardarr/internal/services/events"
@@ -57,6 +58,16 @@ import (
 var (
 	router *gin.Engine
 )
+
+type routeDependencies struct {
+	db                *database.Database
+	workers           *workermanager.Service
+	bandwidthSchedule *bandwidthscheduler.Service
+	metadata          *metadata.Service
+	integrations      *integration.Service
+	providerConfig    *integration.ProviderConfigService
+	websocket         *websocketSvc.Hub
+}
 
 // getBaseURL returns the base URL from APP_URL env var or constructs it from APP_PORT
 // Falls back to BASE_URL for backward compatibility
@@ -156,6 +167,11 @@ func Run(cmd *cobra.Command, args []string) error {
 	defer cancelPoller()
 	eventPollerSvc.Start(ctx)
 
+	// Bandwidth scheduler — applies configured global rate limits in the
+	// Gardarr settings timezone.
+	bandwidthSchedulerSvc := bandwidthscheduler.NewService(db, workerSvc, settingsSvc, eventSvc)
+	bandwidthSchedulerSvc.Start(ctx)
+
 	// Periodic cleanup — enforces EVENT_RETENTION_DAYS and prunes stale task states
 	eventSvc.StartCleanupJob(ctx)
 
@@ -180,7 +196,15 @@ func Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err = setRoutes(db, workerSvc, metaSvc, integrationSvc, providerConfigSvc, wsHub, allowedOrigins); err != nil {
+	if err = setRoutes(routeDependencies{
+		db:                db,
+		workers:           workerSvc,
+		bandwidthSchedule: bandwidthSchedulerSvc,
+		metadata:          metaSvc,
+		integrations:      integrationSvc,
+		providerConfig:    providerConfigSvc,
+		websocket:         wsHub,
+	}, allowedOrigins); err != nil {
 		return err
 	}
 
@@ -279,7 +303,7 @@ func originsFromBaseURL(baseURL string) []string {
 	// Allow common development origins for localhost
 	host := u.Hostname()
 	if host == "localhost" || host == "127.0.0.1" {
-		origins = append(origins, "http://localhost:5000")
+		origins = append(origins, "http://localhost:3500")
 	}
 
 	return origins
@@ -482,15 +506,7 @@ func spaFallbackHandler(c *gin.Context) {
 	}
 }
 
-func setRoutes(
-	db *database.Database,
-	a *workermanager.Service,
-	metaSvc *metadata.Service,
-	integrationSvc *integration.Service,
-	providerConfigSvc *integration.ProviderConfigService,
-	wsHub *websocketSvc.Hub,
-	allowedOrigins []string,
-) error {
+func setRoutes(dependencies routeDependencies, allowedOrigins []string) error {
 	// Get current working directory
 	wd, _ := os.Getwd()
 	webPath := filepath.Join(wd, "web")
@@ -506,28 +522,28 @@ func setRoutes(
 	if err != nil {
 		return fmt.Errorf("failed to resolve media directory path: %w", err)
 	}
-	router.GET("/media/*filepath", middlewares.SessionMiddleware(db), createMediaHandler(absMediaPath))
+	router.GET("/media/*filepath", middlewares.SessionMiddleware(dependencies.db), createMediaHandler(absMediaPath))
 
 	// API routes
 	v1 := router.Group("/v1")
-	health.NewModule(v1, db).Register()
-	auth.NewModule(v1, db, wsHub).Register()
-	workers.NewModule(v1, a).Register()
-	category.NewModule(v1, db).Register()
-	users.NewModule(v1, db).Register()
-	profile.NewModule(v1, db).Register()
-	signup.NewModule(v1, db).Register()
-	setup.NewModule(v1, db).Register()
-	settings.NewModule(v1, db, metaSvc).Register()
-	version.NewModule(v1, db).Register()
-	eventsModule, err := eventsRoutes.NewModule(v1, db)
+	health.NewModule(v1, dependencies.db).Register()
+	auth.NewModule(v1, dependencies.db, dependencies.websocket).Register()
+	workers.NewModule(v1, dependencies.workers, dependencies.bandwidthSchedule).Register()
+	category.NewModule(v1, dependencies.db).Register()
+	users.NewModule(v1, dependencies.db).Register()
+	profile.NewModule(v1, dependencies.db).Register()
+	signup.NewModule(v1, dependencies.db).Register()
+	setup.NewModule(v1, dependencies.db).Register()
+	settings.NewModule(v1, dependencies.db, dependencies.metadata).Register()
+	version.NewModule(v1, dependencies.db).Register()
+	eventsModule, err := eventsRoutes.NewModule(v1, dependencies.db)
 	if err != nil {
 		return fmt.Errorf("failed to initialize events module: %w", err)
 	}
 	eventsModule.Register()
-	wsRoutes.NewModule(v1, db, wsHub, allowedOrigins).Register()
-	task_metadata.NewModule(v1, db, metaSvc).Register()
-	integrations.NewModule(v1, db, integrationSvc, providerConfigSvc).Register()
+	wsRoutes.NewModule(v1, dependencies.db, dependencies.websocket, allowedOrigins).Register()
+	task_metadata.NewModule(v1, dependencies.db, dependencies.metadata).Register()
+	integrations.NewModule(v1, dependencies.db, dependencies.integrations, dependencies.providerConfig).Register()
 
 	// Serve the main index.html for all non-API routes (SPA fallback)
 	router.NoRoute(spaFallbackHandler)

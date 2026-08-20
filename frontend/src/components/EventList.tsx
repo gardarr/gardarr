@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { normalizeTaskStatus } from "@/utils/statusUtils";
+import { formatBytesPerSecond } from "@/utils/bytes";
 import { type EventType, EVENT_TYPES } from "@/constants/eventTypes";
 import {
   Select,
@@ -48,6 +49,9 @@ export interface Event {
     old_progress?: number;
     new_progress?: number;
     last_progress?: number;
+    schedule_name?: string;
+    download_limit?: number;
+    upload_limit?: number;
   };
   created_at: string;
 }
@@ -114,6 +118,8 @@ export function EventList({
         return <XCircle className="h-5 w-5" />;
       case "torrent.completed":
         return <CheckCircle className="h-5 w-5" />;
+      case "bandwidth.schedule_applied":
+        return <ArrowRightLeft className="h-5 w-5" />;
     }
   };
 
@@ -127,6 +133,8 @@ export function EventList({
         return "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20";
       case "torrent.completed":
         return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
+      case "bandwidth.schedule_applied":
+        return "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20";
     }
   };
 
@@ -145,12 +153,23 @@ export function EventList({
     );
   };
 
+  const renderScheduleApplied = (event: Event) => {
+    const { download_limit: downloadLimit, upload_limit: uploadLimit } = event.metadata ?? {};
+    return (
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+        <span>{formatBytesPerSecond(downloadLimit ?? 0)} ↓</span>
+        <span>{formatBytesPerSecond(uploadLimit ?? 0)} ↑</span>
+      </div>
+    );
+  };
+
   const getEventBadge = (type: EventType) => {
     const typeMap: Record<EventType, string> = {
       "torrent.state_change": t("history.badge.stateChange"),
       "torrent.added": t("history.badge.added"),
       "torrent.removed": t("history.badge.removed"),
       "torrent.completed": t("history.badge.completed"),
+      "bandwidth.schedule_applied": t("history.badge.bandwidthScheduleApplied", "Bandwidth schedule applied"),
     };
 
     return typeMap[type];
@@ -292,7 +311,11 @@ export function EventList({
                       </Popover>
                     </td>
                     <td className="px-3 py-2 max-w-[220px]">
-                      {event.metadata?.name ? (
+                      {event.type === "bandwidth.schedule_applied" ? (
+                        <p className="font-medium text-foreground truncate" title={event.metadata?.schedule_name}>
+                          {event.metadata?.schedule_name ?? t("history.badge.bandwidthScheduleApplied", "Bandwidth schedule applied")}
+                        </p>
+                      ) : event.metadata?.name ? (
                         <p className="font-medium text-foreground truncate" title={event.metadata.name}>
                           {event.metadata.name}
                         </p>
@@ -316,7 +339,9 @@ export function EventList({
                     <td className="px-3 py-2 hidden md:table-cell">
                       {event.type === "torrent.state_change"
                         ? renderStateChange(event.old_value, event.new_value)
-                        : <span className="text-xs text-muted-foreground">—</span>}
+                        : event.type === "bandwidth.schedule_applied"
+                          ? renderScheduleApplied(event)
+                          : <span className="text-xs text-muted-foreground">—</span>}
                     </td>
                     <td className="px-3 py-2 text-right whitespace-nowrap">
                       <Tooltip>
@@ -405,4 +430,3 @@ export function EventList({
     </div>
   );
 }
-

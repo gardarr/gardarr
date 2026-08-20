@@ -14,6 +14,8 @@ interface SelectTagsProps {
   disabled?: boolean;
   showHelp?: boolean;
   helpText?: string;
+  /** Compact height for dense layouts. */
+  dense?: boolean;
 }
 
 export function SelectTags({
@@ -26,7 +28,8 @@ export function SelectTags({
   placeholder = "Digite uma tag e pressione Enter",
   disabled = false,
   showHelp = false,
-  helpText
+  helpText,
+  dense = false
 }: SelectTagsProps) {
   const [tagInput, setTagInput] = useState("");
 
@@ -69,13 +72,15 @@ export function SelectTags({
 
   return (
     <div className={`space-y-2 ${className}`}>
-      <Label className="flex items-center gap-2">
-        <Hash className="h-4 w-4" />
-        {label} {required && <span className="text-destructive">*</span>}
-      </Label>
-      
-      <div 
-        className={`min-h-[40px] w-full px-3 py-2 border rounded-md bg-background text-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-primary flex flex-wrap gap-1 items-center ${
+      {label !== "" && (
+        <Label className="flex items-center gap-2">
+          <Hash className="h-4 w-4" />
+          {label} {required && <span className="text-destructive">*</span>}
+        </Label>
+      )}
+
+      <div
+        className={`${dense ? "min-h-[36px] py-1.5" : "min-h-[40px] py-2"} w-full px-3 border rounded-md bg-background text-foreground shadow-xs dark:bg-input/30 dark:border-input focus-within:outline-none focus-within:ring-2 focus-within:ring-primary flex flex-wrap gap-1 items-center ${
           error && tags.length === 0 ? "border-destructive" : ""
         } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
         onClick={() => !disabled && document.getElementById('tagInput')?.focus()}

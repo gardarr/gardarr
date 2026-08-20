@@ -24,7 +24,13 @@ This document lists all environment variables used by Gardarr backend.
 - **Invalid examples**:
   - `APP_URL=https://gardarr.example.com/` (trailing slash)
   - `APP_URL=https://gardarr.example.com/app` (path included)
-- **Note**: When `APP_URL=http://localhost:3200`, the backend also allows `http://localhost:5173` for the Vite dev server.
+- **Note**: When `APP_URL=http://localhost:3200`, the backend also allows `http://localhost:3500` for the Vite dev server.
+
+### `BANDWIDTH_SCHEDULE_INTERVAL`
+- **Description**: Frequency for evaluating worker bandwidth schedules.
+- **Default**: `1m`
+- **Example**: `BANDWIDTH_SCHEDULE_INTERVAL=30s`
+- **Note**: schedules use Gardarr's configured timezone. Do not enable qBittorrent's alternative-rate scheduler for the same worker.
 
 ### `GIN_MODE`
 - **Description**: Gin framework mode

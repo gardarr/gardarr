@@ -2,12 +2,15 @@ package migrations
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/jfxdev/gardarr/internal/infra/migration"
 	"github.com/jfxdev/gardarr/internal/models"
 
 	"gorm.io/gorm"
 )
+
+const uuidCondition = "uuid = ?"
 
 func legacyWorkerTokenColumns() []string {
 	return []string{
@@ -357,7 +360,7 @@ func Register(m *migration.Migrator) {
 			Version:     "024_remove_standalone_worker",
 			Description: "Remove worker standalone do banco de dados (se existir)",
 			Up: func(db *gorm.DB) error {
-				return db.Where("uuid = ?", "00000000-0000-0000-0000-000000000000").Delete(&models.Worker{}).Error
+				return db.Where(uuidCondition, "00000000-0000-0000-0000-000000000000").Delete(&models.Worker{}).Error
 			},
 			Down: func(db *gorm.DB) error {
 				// No-op: não queremos recriar o worker se fizer rollback
@@ -431,13 +434,13 @@ func Register(m *migration.Migrator) {
 			Description: "Popula categorias padrão do sistema sem sobrescrever categorias existentes",
 			Up: func(db *gorm.DB) error {
 				defaultCategories := []models.Category{
-					{Name: "Movies", Color: "#ef4444", Icon: "Film"},
-					{Name: "Shows", Color: "#3b82f6", Icon: "Tv"},
-					{Name: "Games", Color: "#10b981", Icon: "Gamepad2"},
-					{Name: "Other", Color: "#6b7280", Icon: "Folder"},
-					{Name: "Books", Color: "#f59e0b", Icon: "BookOpen"},
-					{Name: "Anime", Color: "#ec4899", Icon: "Star"},
-					{Name: "Music", Color: "#14b8a6", Icon: "Music"},
+					{Name: "Movies", Color: "#ef4444", Icon: "Film", DefaultTags: models.StringArray{"movie", "1080p"}},
+					{Name: "Shows", Color: "#3b82f6", Icon: "Tv", DefaultTags: models.StringArray{"tv", "episode"}},
+					{Name: "Games", Color: "#10b981", Icon: "Gamepad2", DefaultTags: models.StringArray{"game", "pc"}},
+					{Name: "Other", Color: "#6b7280", Icon: "Folder", DefaultTags: models.StringArray{"misc"}},
+					{Name: "Books", Color: "#f59e0b", Icon: "BookOpen", DefaultTags: models.StringArray{"book", "ebook"}},
+					{Name: "Anime", Color: "#ec4899", Icon: "Star", DefaultTags: models.StringArray{"anime", "sub"}},
+					{Name: "Music", Color: "#14b8a6", Icon: "Music", DefaultTags: models.StringArray{"music", "flac"}},
 				}
 
 				for _, category := range defaultCategories {
@@ -615,6 +618,105 @@ func Register(m *migration.Migrator) {
 				return nil
 			},
 		},
+		{
+			Version:     "035_backfill_default_category_tags",
+			Description: "Popula default_tags das categorias padrão que ainda estão sem tags",
+			Up: func(db *gorm.DB) error {
+				defaultTags := map[string]models.StringArray{
+					"Movies": {"movie", "1080p"},
+					"Shows":  {"tv", "episode"},
+					"Games":  {"game", "pc"},
+					"Other":  {"misc"},
+					"Books":  {"book", "ebook"},
+					"Anime":  {"anime", "sub"},
+					"Music":  {"music", "flac"},
+				}
+
+				for name, tags := range defaultTags {
+					var category models.Category
+					err := db.Where("name = ?", name).First(&category).Error
+					if errors.Is(err, gorm.ErrRecordNotFound) {
+						continue
+					}
+					if err != nil {
+						return err
+					}
+
+					if len(category.DefaultTags) > 0 {
+						continue
+					}
+
+					if err := db.Model(&category).Update("default_tags", tags).Error; err != nil {
+						return err
+					}
+				}
+
+				return nil
+			},
+			Down: func(db *gorm.DB) error {
+				// No-op: rollback não deve remover tags que podem já estar em uso.
+				return nil
+			},
+		},
+		{
+			Version:     "036_create_bandwidth_schedules",
+			Description: "Cria programações de limite de banda e baseline por worker",
+			Up: func(db *gorm.DB) error {
+				if !db.Migrator().HasColumn(&models.Worker{}, "DefaultDownloadSpeedLimit") {
+					if err := db.Migrator().AddColumn(&models.Worker{}, "DefaultDownloadSpeedLimit"); err != nil {
+						return err
+					}
+				}
+				if !db.Migrator().HasColumn(&models.Worker{}, "DefaultUploadSpeedLimit") {
+					if err := db.Migrator().AddColumn(&models.Worker{}, "DefaultUploadSpeedLimit"); err != nil {
+						return err
+					}
+				}
+				return db.AutoMigrate(&models.BandwidthSchedule{})
+			},
+			Down: func(db *gorm.DB) error {
+				if db.Migrator().HasTable(&models.BandwidthSchedule{}) {
+					if err := db.Migrator().DropTable(&models.BandwidthSchedule{}); err != nil {
+						return err
+					}
+				}
+				// No-op: os limites padrão do worker são mantidos para evitar perda de configuração.
+				return nil
+			},
+		},
+		{
+			Version:     "037_add_bandwidth_schedule_colors",
+			Description: "Adiciona cores neutras por índice às programações de banda",
+			Up: func(db *gorm.DB) error {
+				if !db.Migrator().HasColumn(&models.BandwidthSchedule{}, "Color") {
+					if err := db.Migrator().AddColumn(&models.BandwidthSchedule{}, "Color"); err != nil {
+						return err
+					}
+				}
+
+				var schedules []models.BandwidthSchedule
+				if err := db.Order("worker_uuid, created_at, uuid").Find(&schedules).Error; err != nil {
+					return err
+				}
+				colors := []string{"#64748b", "#78716c", "#6b7280", "#71717a", "#475569", "#57534e", "#4b5563"}
+				indexes := map[string]int{}
+				for _, schedule := range schedules {
+					workerID := schedule.WorkerUUID.String()
+					index := indexes[workerID]
+					if err := db.Model(&models.BandwidthSchedule{}).Where(uuidCondition, schedule.UUID).Update("color", colors[index%len(colors)]).Error; err != nil {
+						return err
+					}
+					indexes[workerID]++
+				}
+				return nil
+			},
+			Down: func(db *gorm.DB) error {
+				if db.Migrator().HasColumn(&models.BandwidthSchedule{}, "Color") {
+					return db.Migrator().DropColumn(&models.BandwidthSchedule{}, "Color")
+				}
+				return nil
+			},
+		},
 	})
 }
 
@@ -681,7 +783,7 @@ func backfillRemovedEvent(db *gorm.DB, ev models.Event) error {
 	}
 
 	return db.Model(&models.Event{}).
-		Where("uuid = ?", ev.UUID).
+		Where(uuidCondition, ev.UUID).
 		Update("metadata", string(merged)).Error
 }
 

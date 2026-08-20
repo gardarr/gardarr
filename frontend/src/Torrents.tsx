@@ -8,7 +8,7 @@ import { LoadingBar } from "@/components/ui/LoadingBar";
 import { SortAsc, SortDesc, Plus, Download, Server, Activity, Folder, Tag, AlertTriangle, Star, Search } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { torrentService, type BulkTaskAction } from "./services/torrents";
 import { BulkActionBar } from "@/components/torrents/BulkActionBar";
 import { workerService } from "./services/workers";

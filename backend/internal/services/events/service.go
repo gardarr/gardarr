@@ -103,6 +103,22 @@ func (s *Service) Subscribe(bufferSize int) <-chan *entities.Event {
 	return ch
 }
 
+// Record persists an application-level event and broadcasts it to real-time
+// consumers. It is used for events that do not originate from torrent polling.
+func (s *Service) Record(ctx context.Context, event *entities.Event) error {
+	if event.UUID == uuid.Nil {
+		event.UUID = uuid.New()
+	}
+	if event.CreatedAt.IsZero() {
+		event.CreatedAt = time.Now().UTC()
+	}
+	if err := s.repo.CreateEvent(ctx, event); err != nil {
+		return err
+	}
+	s.broadcastEvent(event)
+	return nil
+}
+
 // broadcastEvent sends an event to all subscribers non-blocking
 func (s *Service) broadcastEvent(event *entities.Event) {
 	s.mu.RLock()

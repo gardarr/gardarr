@@ -19,6 +19,7 @@ import { TorrentHeroHeader } from "./details/TorrentHeroHeader";
 import { TorrentActionBar } from "./details/TorrentActionBar";
 import { OverviewTab } from "./details/OverviewTab";
 import { TrackersTab } from "./details/TrackersTab";
+import { ShareableTorrentCardDialog } from "./share/ShareableTorrentCardDialog";
 
 interface TorrentDetailsModalProps {
   torrent: Task | null;
@@ -50,6 +51,7 @@ export function TorrentDetailsModal({
   onCategoryTagsUpdate,
 }: TorrentDetailsModalProps) {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [currentCategoryData, setCurrentCategoryData] = useState<Category | null>(null);
   const { t } = useTranslation();
@@ -80,6 +82,7 @@ export function TorrentDetailsModal({
             onForceDownload={onForceDownload}
             onForceReannounce={onForceReannounce}
             onForceRecheck={onForceRecheck}
+            onShare={() => setIsShareModalOpen(true)}
             onDelete={onDelete ? () => setIsDeleteModalOpen(true) : undefined}
           />
         </div>
@@ -112,6 +115,7 @@ export function TorrentDetailsModal({
                 onSetLocation={onSetLocation}
                 onCategoryDataChange={setCurrentCategoryData}
                 onCategoryTagsUpdate={onCategoryTagsUpdate}
+                onShare={() => setIsShareModalOpen(true)}
               />
             </TabsContent>
 
@@ -146,6 +150,12 @@ export function TorrentDetailsModal({
         torrentName={torrent.name}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleDeleteConfirm}
+      />
+
+      <ShareableTorrentCardDialog
+        torrent={torrent}
+        open={isShareModalOpen}
+        onOpenChange={setIsShareModalOpen}
       />
     </Dialog>
   );

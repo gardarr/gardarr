@@ -1,6 +1,7 @@
-import { ArrowDown, ArrowUp, Users, Wifi, ArrowDownUp } from "lucide-react";
+import { ArrowDownUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { DetailCard } from "./DetailCard";
+import { Separator } from "@/components/ui/separator";
 import { formatBytes, formatBytesPerSecond } from "@/utils/bytes";
 import type { Task } from "@/types/torrent";
 
@@ -8,65 +9,87 @@ interface TransferStatsCardProps {
   torrent: Task;
 }
 
+interface StatBarProps {
+  label: string;
+  value: string;
+  /** Secondary muted value (e.g. speed) */
+  sub?: string;
+  /** Fill fraction 0..1 */
+  fraction: number;
+  barClass: string;
+}
+
+function StatBar({ label, value, sub, fraction, barClass }: StatBarProps) {
+  const pct = Math.max(0, Math.min(100, fraction * 100));
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className="w-16 flex-shrink-0 text-xs font-medium text-muted-foreground">{label}</span>
+      <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+        <div
+          className={`h-full rounded-full ${barClass} transition-[width] duration-500`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className="flex w-24 flex-shrink-0 items-baseline justify-end gap-1 text-right">
+        <span className="font-mono text-xs font-semibold tabular-nums">{value}</span>
+        {sub && <span className="font-mono text-[10px] tabular-nums text-muted-foreground">{sub}</span>}
+      </span>
+    </div>
+  );
+}
+
 export function TransferStatsCard({ torrent }: TransferStatsCardProps) {
   const { t } = useTranslation();
 
-  const groups = [
-    {
-      icon: ArrowDown,
-      title: t("torrentDetails.download.title", { defaultValue: "Download" }),
-      iconClass: "text-blue-600 dark:text-blue-400",
-      rows: [
-        { label: t("torrentDetails.download.speed", { defaultValue: "Velocidade:" }), value: formatBytesPerSecond(torrent.network?.download?.speed || 0) },
-        { label: t("torrentDetails.download.total", { defaultValue: "Total:" }), value: formatBytes(torrent.network?.download?.amount || 0) },
-      ],
-    },
-    {
-      icon: ArrowUp,
-      title: t("torrentDetails.upload.title", { defaultValue: "Upload" }),
-      iconClass: "text-green-600 dark:text-green-400",
-      rows: [
-        { label: t("torrentDetails.upload.speed", { defaultValue: "Velocidade:" }), value: formatBytesPerSecond(torrent.network?.upload?.speed || 0) },
-        { label: t("torrentDetails.upload.total", { defaultValue: "Total:" }), value: formatBytes(torrent.network?.upload?.amount || 0) },
-      ],
-    },
-    {
-      icon: Users,
-      title: t("torrentDetails.swarm.title", { defaultValue: "Swarm" }),
-      iconClass: "text-purple-600 dark:text-purple-400",
-      rows: [
-        { label: t("torrentDetails.swarm.seeders", { defaultValue: "Seeders:" }), value: String(torrent.pairs?.swarm_seeders ?? 0) },
-        { label: t("torrentDetails.swarm.leechers", { defaultValue: "Leechers:" }), value: String(torrent.pairs?.swarm_leechers ?? 0) },
-      ],
-    },
-    {
-      icon: Wifi,
-      title: t("torrentDetails.connected.title", { defaultValue: "Conectados" }),
-      iconClass: "text-orange-600 dark:text-orange-400",
-      rows: [
-        { label: t("torrentDetails.connected.seeders", { defaultValue: "Seeders:" }), value: String(torrent.pairs?.seeders ?? 0) },
-        { label: t("torrentDetails.connected.leechers", { defaultValue: "Leechers:" }), value: String(torrent.pairs?.leechers ?? 0) },
-      ],
-    },
-  ];
+  const downAmount = torrent.network?.download?.amount || 0;
+  const upAmount = torrent.network?.upload?.amount || 0;
+  const transferMax = Math.max(downAmount, upAmount, 1);
+
+  const seeders = torrent.pairs?.swarm_seeders ?? 0;
+  const leechers = torrent.pairs?.swarm_leechers ?? 0;
+  const peersMax = Math.max(seeders, leechers, 1);
+
+  const connSeeders = torrent.pairs?.seeders ?? 0;
+  const connLeechers = torrent.pairs?.leechers ?? 0;
 
   return (
     <DetailCard icon={ArrowDownUp} title={t("torrentDetails.network.title", { defaultValue: "Rede e Pares" })}>
-      <div className="grid grid-cols-2 gap-3 h-full content-center">
-        {groups.map(({ icon: Icon, title, iconClass, rows }) => (
-          <div key={title} className="space-y-1">
-            <div className="flex items-center gap-1.5">
-              <Icon className={`h-3.5 w-3.5 ${iconClass}`} />
-              <span className="text-xs font-medium">{title}</span>
-            </div>
-            {rows.map(({ label, value }) => (
-              <div key={label} className="flex items-center justify-between gap-2 text-xs">
-                <span className="text-muted-foreground">{label}</span>
-                <span className="font-mono">{value}</span>
-              </div>
-            ))}
-          </div>
-        ))}
+      <div className="flex h-full flex-col justify-center gap-3">
+        <div className="space-y-2">
+          <StatBar
+            label={t("torrentDetails.download.title", { defaultValue: "Download" })}
+            value={formatBytes(downAmount)}
+            sub={formatBytesPerSecond(torrent.network?.download?.speed || 0)}
+            fraction={downAmount / transferMax}
+            barClass="bg-blue-500"
+          />
+          <StatBar
+            label={t("torrentDetails.upload.title", { defaultValue: "Upload" })}
+            value={formatBytes(upAmount)}
+            sub={formatBytesPerSecond(torrent.network?.upload?.speed || 0)}
+            fraction={upAmount / transferMax}
+            barClass="bg-green-500"
+          />
+        </div>
+
+        <Separator />
+
+        <div className="space-y-2">
+          <StatBar
+            label={t("torrentDetails.swarm.seeders", { defaultValue: "Seeders" }).replace(":", "")}
+            value={String(seeders)}
+            sub={connSeeders ? `(${connSeeders})` : undefined}
+            fraction={seeders / peersMax}
+            barClass="bg-emerald-500"
+          />
+          <StatBar
+            label={t("torrentDetails.swarm.leechers", { defaultValue: "Leechers" }).replace(":", "")}
+            value={String(leechers)}
+            sub={connLeechers ? `(${connLeechers})` : undefined}
+            fraction={leechers / peersMax}
+            barClass="bg-amber-500"
+          />
+        </div>
       </div>
     </DetailCard>
   );

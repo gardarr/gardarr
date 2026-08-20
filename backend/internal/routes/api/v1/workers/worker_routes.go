@@ -1,6 +1,7 @@
 package workers
 
 import (
+	stdErrors "errors"
 	"io"
 	"net/http"
 	"path/filepath"
@@ -8,26 +9,33 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/mappers"
 	"github.com/jfxdev/gardarr/internal/models"
 	"github.com/jfxdev/gardarr/internal/schemas"
+	"github.com/jfxdev/gardarr/internal/services/bandwidthscheduler"
 	"github.com/jfxdev/gardarr/internal/services/workermanager"
 	"github.com/jfxdev/gardarr/pkg/errors"
+	"github.com/jfxdev/gardarr/pkg/logger"
 )
+
+const invalidScheduleIDError = "Invalid schedule ID"
 
 // Module holds worker routes configuration
 type Module struct {
-	service       *workermanager.Service
-	workersRouter *gin.RouterGroup
-	workerRouter  *gin.RouterGroup
+	service            *workermanager.Service
+	bandwidthScheduler *bandwidthscheduler.Service
+	workersRouter      *gin.RouterGroup
+	workerRouter       *gin.RouterGroup
 }
 
-func NewModule(router *gin.RouterGroup, svc *workermanager.Service) *Module {
+func NewModule(router *gin.RouterGroup, svc *workermanager.Service, bandwidthScheduler *bandwidthscheduler.Service) *Module {
 	return &Module{
-		service:       svc,
-		workersRouter: router.Group("/workers"),
-		workerRouter:  router.Group("/worker"),
+		service:            svc,
+		bandwidthScheduler: bandwidthScheduler,
+		workersRouter:      router.Group("/workers"),
+		workerRouter:       router.Group("/worker"),
 	}
 }
 
@@ -40,6 +48,13 @@ func (m Module) Register() {
 	m.workerRouter.PUT("/:id", m.updateWorker)
 
 	m.workerRouter.POST("/:id/speed/limits", m.setWorkerSpeedLimits)
+	m.workerRouter.GET("/:id/schedules", m.listSchedules)
+	m.workerRouter.POST("/:id/schedules", m.createSchedule)
+	m.workerRouter.GET("/:id/schedules/preview", m.previewSchedule)
+	m.workerRouter.PUT("/:id/schedules/order", m.reorderSchedules)
+	m.workerRouter.GET("/:id/schedules/:schedule_id", m.getSchedule)
+	m.workerRouter.PUT("/:id/schedules/:schedule_id", m.updateSchedule)
+	m.workerRouter.DELETE("/:id/schedules/:schedule_id", m.deleteSchedule)
 	m.workerRouter.POST("/:id/active/limits", m.setWorkerMaxActiveTorrents)
 
 	m.workerRouter.GET("/:id/version", m.getWorkerVersion)
@@ -105,8 +120,24 @@ func (m *Module) listWorkers(c *gin.Context) {
 	}
 
 	resp := make([]*models.WorkerResponse, len(result))
+	ids := make([]uuid.UUID, 0, len(result))
+	for _, item := range result {
+		ids = append(ids, item.UUID)
+	}
+	statuses := map[uuid.UUID]bandwidthscheduler.Status{}
+	if m.bandwidthScheduler != nil {
+		if resolved, statusErr := m.bandwidthScheduler.Statuses(c.Request.Context(), ids); statusErr == nil {
+			statuses = resolved
+		} else {
+			logger.Debug("bandwidth scheduler: status lookup failed", "error", statusErr.Error())
+		}
+	}
 	for i, item := range result {
 		resp[i] = mappers.ToWorkerResponse(item)
+		if status, ok := statuses[item.UUID]; ok && status.Active && status.Schedule != nil && status.Limits != nil {
+			d, u := status.Limits.DownloadLimit, status.Limits.UploadLimit
+			resp[i].BandwidthScheduleStatus = &models.BandwidthScheduleStatusResponse{Active: true, Name: status.Schedule.Name, DownloadLimit: &d, UploadLimit: &u}
+		}
 	}
 
 	c.JSON(http.StatusOK, resp)
@@ -173,8 +204,6 @@ func (m *Module) deleteWorker(c *gin.Context) {
 
 	c.JSON(http.StatusNoContent, nil)
 }
-
-
 
 // bulkWorkerTaskAction applies one action to many tasks, possibly spanning
 // multiple workers. Returns 200 with per-worker partial failures in the body.
@@ -543,8 +572,6 @@ func (m *Module) setWorkerTaskCategory(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Task category updated successfully"})
 }
 
-
-
 func (m *Module) getWorkerVersion(c *gin.Context) {
 	workerID := c.Param("id")
 
@@ -614,12 +641,195 @@ func (m *Module) setWorkerSpeedLimits(c *gin.Context) {
 		return
 	}
 
-	if err := m.service.SetWorkerGlobalSpeedLimits(c.Request.Context(), worker, body); err != nil {
+	if m.bandwidthScheduler != nil {
+		err = m.bandwidthScheduler.ApplyManualDefault(c.Request.Context(), worker, bandwidthscheduler.Limits{DownloadLimit: *body.DownloadLimit, UploadLimit: *body.UploadLimit})
+	} else {
+		err = m.service.SetWorkerGlobalSpeedLimits(c.Request.Context(), worker, body)
+	}
+	if err != nil {
 		errors.HandleError(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Instance speed limits set successfully"})
+}
+
+func (m *Module) listSchedules(c *gin.Context) {
+	if !m.requireBandwidthScheduler(c) {
+		return
+	}
+	worker, err := m.service.GetWorker(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+	items, err := m.bandwidthScheduler.List(c.Request.Context(), worker.UUID)
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, items)
+}
+
+func (m *Module) createSchedule(c *gin.Context) {
+	if !m.requireBandwidthScheduler(c) {
+		return
+	}
+	var input bandwidthscheduler.Input
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+	worker, err := m.service.GetWorker(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+	item, err := m.bandwidthScheduler.Create(c.Request.Context(), worker, input)
+	if err != nil {
+		m.handleScheduleError(c, err)
+		return
+	}
+	c.JSON(http.StatusCreated, item)
+}
+
+func (m *Module) getSchedule(c *gin.Context) {
+	if !m.requireBandwidthScheduler(c) {
+		return
+	}
+	worker, err := m.service.GetWorker(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+	id, ok := m.scheduleID(c)
+	if !ok {
+		return
+	}
+	item, err := m.bandwidthScheduler.Get(c.Request.Context(), worker.UUID, id)
+	if err != nil {
+		m.handleScheduleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
+
+func (m *Module) updateSchedule(c *gin.Context) {
+	if !m.requireBandwidthScheduler(c) {
+		return
+	}
+	var input bandwidthscheduler.Input
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+	worker, err := m.service.GetWorker(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+	id, ok := m.scheduleID(c)
+	if !ok {
+		return
+	}
+	item, err := m.bandwidthScheduler.Update(c.Request.Context(), worker, id, input)
+	if err != nil {
+		m.handleScheduleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
+
+func (m *Module) deleteSchedule(c *gin.Context) {
+	if !m.requireBandwidthScheduler(c) {
+		return
+	}
+	worker, err := m.service.GetWorker(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+	id, ok := m.scheduleID(c)
+	if !ok {
+		return
+	}
+	if err := m.bandwidthScheduler.Delete(c.Request.Context(), worker, id); err != nil {
+		m.handleScheduleError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func (m *Module) reorderSchedules(c *gin.Context) {
+	if !m.requireBandwidthScheduler(c) {
+		return
+	}
+	var input bandwidthscheduler.OrderInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+	worker, err := m.service.GetWorker(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+	items, err := m.bandwidthScheduler.Reorder(c.Request.Context(), worker, input)
+	if err != nil {
+		m.handleScheduleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, items)
+}
+
+func (m *Module) previewSchedule(c *gin.Context) {
+	if !m.requireBandwidthScheduler(c) {
+		return
+	}
+	worker, err := m.service.GetWorker(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+	preview, err := m.bandwidthScheduler.Preview(c.Request.Context(), worker.UUID)
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, preview)
+}
+
+func (m *Module) requireBandwidthScheduler(c *gin.Context) bool {
+	if m.bandwidthScheduler != nil {
+		return true
+	}
+	respErr := errors.NewServiceUnavailableError("Bandwidth scheduler is unavailable", nil)
+	c.JSON(respErr.StatusCode, respErr)
+	return false
+}
+
+func (m *Module) scheduleID(c *gin.Context) (uuid.UUID, bool) {
+	id, err := uuid.Parse(c.Param("schedule_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": invalidScheduleIDError})
+		return uuid.Nil, false
+	}
+	return id, true
+}
+
+func (m *Module) handleScheduleError(c *gin.Context, err error) {
+	switch {
+	case stdErrors.Is(err, bandwidthscheduler.ErrScheduleNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+	case stdErrors.Is(err, bandwidthscheduler.ErrPriorityConflict):
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+	case stdErrors.Is(err, bandwidthscheduler.ErrScheduleLimit):
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+	case stdErrors.Is(err, bandwidthscheduler.ErrInvalidScheduleOrder):
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	default:
+		errors.HandleError(c, err)
+	}
 }
 
 func (m *Module) getWorkerLogs(c *gin.Context) {

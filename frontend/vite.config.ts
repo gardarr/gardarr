@@ -24,17 +24,17 @@ export default defineConfig({
     dedupe: ['react', 'react-dom'],
   },
   server: {
-    port: 5000,
+    port: 3500,
     strictPort: true,
     proxy: {
       '/v1': {
-        target: 'http://localhost:5001',
+        target: 'http://localhost:3501',
         changeOrigin: true,
         secure: false,
         ws: true,
       },
       '/media': {
-        target: 'http://localhost:5001',
+        target: 'http://localhost:3501',
         changeOrigin: true,
         secure: false,
       },
@@ -49,7 +49,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
-          router: ['react-router-dom'],
+          router: ['react-router'],
         },
       },
     },

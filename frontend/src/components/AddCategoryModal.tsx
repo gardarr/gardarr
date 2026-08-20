@@ -3,10 +3,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TagBadge } from "@/components/ui/TagBadge";
-import { 
-  X,
-  Check
-} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Check } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { Category, CategoryMetadataSource, CreateCategoryRequest, UpdateCategoryRequest } from "../types/category";
 import { toast } from "sonner";
@@ -155,23 +159,13 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
     onOpenChange(false);
   };
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={handleClose}
-      />
-      
-      {/* Modal */}
-      <div className="relative bg-card border rounded-lg shadow-lg w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
+    <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(next) : handleClose())}>
+      <DialogContent className="w-[calc(100%-2rem)] sm:w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
           <div className="flex items-center gap-3">
-            <div 
-              className="h-10 w-10 rounded-lg flex items-center justify-center"
+            <div
+              className="h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0"
               style={{ backgroundColor: createForm.color || "#3b82f6" }}
             >
               {(() => {
@@ -180,26 +174,18 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
               })()}
             </div>
             <div>
-              <h2 className="text-2xl font-bold">
+              <DialogTitle className="text-2xl font-bold">
                 {editingCategory ? t('categories.edit') : t('categories.createNew')}
-              </h2>
+              </DialogTitle>
               {editingCategory && (
                 <p className="text-sm text-muted-foreground">{editingCategory.name}</p>
               )}
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleClose}
-            className="h-8 w-8"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+        </DialogHeader>
 
         {/* Form Content */}
-        <div className="p-6 space-y-6">
+        <div className="space-y-6">
           {!editingCategory && (
             <div className="space-y-1.5">
               <Label htmlFor="name" className="text-sm">{t('categories.fields.name')} *</Label>
@@ -322,23 +308,22 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
               </div>
             </div>
           </div>
-
-          {/* Footer */}
-          <div className="flex gap-3 justify-end pt-4 border-t">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-            >
-              {t('common.cancel')}
-            </Button>
-            <Button onClick={handleSubmit}>
-              <Check className="h-4 w-4 mr-2" />
-              {editingCategory ? t('common.save') : t('categories.create')}
-            </Button>
-          </div>
         </div>
-      </div>
-    </div>
+
+        <DialogFooter className="pt-4 border-t">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleClose}
+          >
+            {t('common.cancel')}
+          </Button>
+          <Button onClick={handleSubmit}>
+            <Check className="h-4 w-4 mr-2" />
+            {editingCategory ? t('common.save') : t('categories.create')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -35,7 +35,7 @@ import {
   User
 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { userService } from "./services/users";
 import { signupService } from "./services/signup";
 import { authService } from "./services/auth";
