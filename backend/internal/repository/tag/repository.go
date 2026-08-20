@@ -115,6 +115,30 @@ func (r *Repository) DeleteTag(ctx context.Context, id string) error {
 	return nil
 }
 
+// DeleteTagByName removes the local (kind, name) row if one exists.
+// Deleting a name with no local row - e.g. a tag only ever observed live
+// on a worker - is not an error: the row's absence was already the
+// correct managed state.
+func (r *Repository) DeleteTagByName(ctx context.Context, kind entities.TagKind, name string) error {
+	return r.db.DB.WithContext(ctx).
+		Where("kind = ? AND name = ?", string(kind), name).
+		Delete(&models.Tag{}).Error
+}
+
+// ReconcileMergedTags deletes the local "tag" rows for every source name
+// after a rename/merge. It never touches the target's row: if target
+// already had one, its color/icon wins; if not, the caller sets one
+// explicitly via CreateTag/UpdateTag.
+func (r *Repository) ReconcileMergedTags(ctx context.Context, sources []string) error {
+	if len(sources) == 0 {
+		return nil
+	}
+
+	return r.db.DB.WithContext(ctx).
+		Where("kind = ? AND name IN ?", string(entities.TagKindTag), sources).
+		Delete(&models.Tag{}).Error
+}
+
 // toTag converts a models.Tag to entities.Tag.
 func toTag(model models.Tag) *entities.Tag {
 	return &entities.Tag{

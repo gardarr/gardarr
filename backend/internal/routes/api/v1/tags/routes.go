@@ -1,7 +1,9 @@
 package tags
 
 import (
+	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jfxdev/gardarr/internal/entities"
@@ -36,6 +38,9 @@ func (m *Module) Register() {
 	m.group.POST("", m.createTag)
 	m.group.GET("", m.listTags)
 	m.group.PUT("/:id", m.updateTag)
+	m.group.DELETE("", m.deleteTag)
+	m.group.POST("/rename", m.renameTag)
+	m.group.POST("/merge", m.mergeTags)
 }
 
 // createTag creates a new tag
@@ -135,6 +140,80 @@ func (m *Module) updateTag(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, m.toResponse(result, 0))
+}
+
+// deleteTag removes a tag from every worker (unless it's a scope row,
+// which has no counterpart on qBittorrent) and, unless every worker
+// failed, its local row.
+func (m *Module) deleteTag(c *gin.Context) {
+	name := strings.TrimSpace(c.Query("name"))
+	if name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
+		return
+	}
+
+	kindParam := c.Query("kind")
+	if kindParam != "" && kindParam != string(entities.TagKindTag) && kindParam != string(entities.TagKindScope) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "kind must be 'tag' or 'scope'"})
+		return
+	}
+
+	failed, err := m.service.DeleteTag(c.Request.Context(), entities.TagKind(kindParam), name)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"failed_workers": failed})
+}
+
+// renameTag is a merge with a single source (see mergeTags).
+func (m *Module) renameTag(c *gin.Context) {
+	var body schemas.TagRenameRequest
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Validation failed",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	failed, err := m.service.RenameTag(c.Request.Context(), body.From, body.To)
+	if err != nil {
+		statusCode := http.StatusInternalServerError
+		if errors.Is(err, tag.ErrMergeTargetInSources) {
+			statusCode = http.StatusBadRequest
+		}
+		c.JSON(statusCode, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"failed_workers": failed})
+}
+
+// mergeTags applies target to every torrent (on every worker) that
+// currently holds any of sources, then deregisters sources.
+func (m *Module) mergeTags(c *gin.Context) {
+	var body schemas.TagMergeRequest
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Validation failed",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	failed, err := m.service.MergeTags(c.Request.Context(), body.Sources, body.Target)
+	if err != nil {
+		statusCode := http.StatusInternalServerError
+		if errors.Is(err, tag.ErrMergeTargetInSources) {
+			statusCode = http.StatusBadRequest
+		}
+		c.JSON(statusCode, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"failed_workers": failed})
 }
 
 // toResponse converts an entity to a response model

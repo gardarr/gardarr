@@ -27,6 +27,9 @@ func setupTestRouter(t *testing.T) *gin.Engine {
 	tagsGroup.POST("", module.createTag)
 	tagsGroup.GET("", module.listTags)
 	tagsGroup.PUT("/:id", module.updateTag)
+	tagsGroup.DELETE("", module.deleteTag)
+	tagsGroup.POST("/rename", module.renameTag)
+	tagsGroup.POST("/merge", module.mergeTags)
 
 	return router
 }
@@ -195,5 +198,123 @@ func TestRoutes_UpdateTag_NotFound(t *testing.T) {
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
+	}
+}
+
+func TestRoutes_DeleteTag_RequiresName(t *testing.T) {
+	router := setupTestRouter(t)
+
+	w := sendJSONRequest(router, "DELETE", "/api/v1/tags", nil)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestRoutes_DeleteTag_RejectsInvalidKind(t *testing.T) {
+	router := setupTestRouter(t)
+
+	w := sendJSONRequest(router, "DELETE", "/api/v1/tags?name=movies&kind=bogus", nil)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestRoutes_DeleteTag_Success(t *testing.T) {
+	router := setupTestRouter(t)
+
+	sendJSONRequest(router, "POST", "/api/v1/tags", map[string]interface{}{"name": "movies"})
+
+	w := sendJSONRequest(router, "DELETE", "/api/v1/tags?name=movies", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	listResp := sendJSONRequest(router, "GET", "/api/v1/tags", nil)
+	var list []models.TagResponse
+	if err := json.Unmarshal(listResp.Body.Bytes(), &list); err != nil {
+		t.Fatalf("failed to unmarshal response: %v", err)
+	}
+	if len(list) != 0 {
+		t.Errorf("expected tag to be deleted, got %d remaining", len(list))
+	}
+}
+
+func TestRoutes_RenameTag_InvalidBody(t *testing.T) {
+	router := setupTestRouter(t)
+
+	w := sendJSONRequest(router, "POST", "/api/v1/tags/rename", map[string]interface{}{"from": "movies"})
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestRoutes_RenameTag_SameNameRejected(t *testing.T) {
+	router := setupTestRouter(t)
+
+	w := sendJSONRequest(router, "POST", "/api/v1/tags/rename", map[string]interface{}{"from": "movies", "to": "movies"})
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestRoutes_RenameTag_Success(t *testing.T) {
+	router := setupTestRouter(t)
+
+	sendJSONRequest(router, "POST", "/api/v1/tags", map[string]interface{}{"name": "movies", "color": "#FF5733"})
+
+	w := sendJSONRequest(router, "POST", "/api/v1/tags/rename", map[string]interface{}{"from": "movies", "to": "films"})
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	listResp := sendJSONRequest(router, "GET", "/api/v1/tags", nil)
+	var list []models.TagResponse
+	if err := json.Unmarshal(listResp.Body.Bytes(), &list); err != nil {
+		t.Fatalf("failed to unmarshal response: %v", err)
+	}
+	if len(list) != 0 {
+		t.Errorf("expected source row to be dropped, got %d remaining", len(list))
+	}
+}
+
+func TestRoutes_MergeTags_TargetInSourcesRejected(t *testing.T) {
+	router := setupTestRouter(t)
+
+	w := sendJSONRequest(router, "POST", "/api/v1/tags/merge", map[string]interface{}{
+		"sources": []string{"movies", "films"},
+		"target":  "movies",
+	})
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestRoutes_MergeTags_Success(t *testing.T) {
+	router := setupTestRouter(t)
+
+	sendJSONRequest(router, "POST", "/api/v1/tags", map[string]interface{}{"name": "movies"})
+	sendJSONRequest(router, "POST", "/api/v1/tags", map[string]interface{}{"name": "films"})
+	sendJSONRequest(router, "POST", "/api/v1/tags", map[string]interface{}{"name": "cinema"})
+
+	w := sendJSONRequest(router, "POST", "/api/v1/tags/merge", map[string]interface{}{
+		"sources": []string{"movies", "films"},
+		"target":  "cinema",
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	listResp := sendJSONRequest(router, "GET", "/api/v1/tags", nil)
+	var list []models.TagResponse
+	if err := json.Unmarshal(listResp.Body.Bytes(), &list); err != nil {
+		t.Fatalf("failed to unmarshal response: %v", err)
+	}
+	if len(list) != 1 || list[0].Name != "cinema" {
+		t.Errorf("expected only 'cinema' to remain, got %v", list)
 	}
 }

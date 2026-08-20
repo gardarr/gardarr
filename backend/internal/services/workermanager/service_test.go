@@ -119,3 +119,60 @@ func TestBulkTaskActionReportsInvalidWorkerAsFailed(t *testing.T) {
 		t.Error("expected failure entry for invalid worker id")
 	}
 }
+
+func TestHashesWithAnyTag(t *testing.T) {
+	tests := []struct {
+		name  string
+		tasks []*entities.Task
+		names []string
+		want  []string
+	}{
+		{
+			name:  "no tasks",
+			tasks: []*entities.Task{},
+			names: []string{"quality::1080p"},
+			want:  nil,
+		},
+		{
+			name: "matches a task carrying one of the names",
+			tasks: []*entities.Task{
+				{Hash: "h1", Tags: []string{"quality::1080p", "movies"}},
+				{Hash: "h2", Tags: []string{"quality::4k"}},
+			},
+			names: []string{"quality::1080p"},
+			want:  []string{"h1"},
+		},
+		{
+			name: "matches every task carrying any of the names, once each",
+			tasks: []*entities.Task{
+				{Hash: "h1", Tags: []string{"quality::1080p"}},
+				{Hash: "h2", Tags: []string{"quality::720p", "quality::1080p"}},
+				{Hash: "h3", Tags: []string{"quality::4k"}},
+			},
+			names: []string{"quality::1080p", "quality::720p"},
+			want:  []string{"h1", "h2"},
+		},
+		{
+			name: "task with none of the names is excluded",
+			tasks: []*entities.Task{
+				{Hash: "h1", Tags: []string{"movies"}},
+			},
+			names: []string{"quality::1080p"},
+			want:  nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := hashesWithAnyTag(tt.tasks, tt.names)
+			if len(got) != len(tt.want) {
+				t.Fatalf("got %v want %v", got, tt.want)
+			}
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Fatalf("got %v want %v", got, tt.want)
+				}
+			}
+		})
+	}
+}

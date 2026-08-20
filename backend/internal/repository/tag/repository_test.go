@@ -218,3 +218,98 @@ func TestRepositoryDeleteTagNotFound(t *testing.T) {
 		t.Error("expected error for nonexistent tag, got nil")
 	}
 }
+
+func TestRepositoryDeleteTagByName(t *testing.T) {
+	db := database.SetupTestDB(t, &models.Tag{})
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	if _, err := repo.CreateTag(ctx, entities.Tag{Name: "movies", Kind: entities.TagKindTag}); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if err := repo.DeleteTagByName(ctx, entities.TagKindTag, "movies"); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if _, err := repo.GetTagByName(ctx, entities.TagKindTag, "movies"); err == nil {
+		t.Error("expected tag to be deleted, got nil error on lookup")
+	}
+}
+
+func TestRepositoryDeleteTagByNameNoLocalRowIsNotAnError(t *testing.T) {
+	// A tag only ever observed live on a worker has no local row - deleting
+	// it by name must not error, since the row's absence is already the
+	// correct managed state.
+	db := database.SetupTestDB(t, &models.Tag{})
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	if err := repo.DeleteTagByName(ctx, entities.TagKindTag, "nonexistent"); err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+}
+
+func TestRepositoryDeleteTagByNameOnlyMatchesItsOwnKind(t *testing.T) {
+	db := database.SetupTestDB(t, &models.Tag{})
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	if _, err := repo.CreateTag(ctx, entities.Tag{Name: "quality", Kind: entities.TagKindScope}); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if err := repo.DeleteTagByName(ctx, entities.TagKindTag, "quality"); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if _, err := repo.GetTagByName(ctx, entities.TagKindScope, "quality"); err != nil {
+		t.Errorf("expected scope row to survive deleting a different kind, got %v", err)
+	}
+}
+
+func TestRepositoryReconcileMergedTags(t *testing.T) {
+	db := database.SetupTestDB(t, &models.Tag{})
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	if _, err := repo.CreateTag(ctx, entities.Tag{Name: "movies", Kind: entities.TagKindTag, Color: "#111111"}); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if _, err := repo.CreateTag(ctx, entities.Tag{Name: "films", Kind: entities.TagKindTag, Color: "#222222"}); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	target, err := repo.CreateTag(ctx, entities.Tag{Name: "cinema", Kind: entities.TagKindTag, Color: "#333333"})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if err := repo.ReconcileMergedTags(ctx, []string{"movies", "films"}); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if _, err := repo.GetTagByName(ctx, entities.TagKindTag, "movies"); err == nil {
+		t.Error("expected source 'movies' row to be deleted")
+	}
+	if _, err := repo.GetTagByName(ctx, entities.TagKindTag, "films"); err == nil {
+		t.Error("expected source 'films' row to be deleted")
+	}
+
+	survivingTarget, err := repo.GetTagByID(ctx, target.ID)
+	if err != nil {
+		t.Fatalf("expected target row to survive, got error: %v", err)
+	}
+	if survivingTarget.Color != "#333333" {
+		t.Errorf("expected target's own color to be untouched, got %s", survivingTarget.Color)
+	}
+}
+
+func TestRepositoryReconcileMergedTagsEmptySourcesIsNoop(t *testing.T) {
+	db := database.SetupTestDB(t, &models.Tag{})
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	if err := repo.ReconcileMergedTags(ctx, nil); err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+}

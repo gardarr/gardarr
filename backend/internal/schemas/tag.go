@@ -14,3 +14,15 @@ type TagUpdateRequest struct {
 	Color string `json:"color" binding:"omitempty,max=50"`
 	Icon  string `json:"icon" binding:"omitempty,max=100"`
 }
+
+// TagRenameRequest represents the request body for renaming a tag.
+type TagRenameRequest struct {
+	From string `json:"from" binding:"required,min=1,max=255"`
+	To   string `json:"to" binding:"required,min=1,max=255"`
+}
+
+// TagMergeRequest represents the request body for merging tags into one.
+type TagMergeRequest struct {
+	Sources []string `json:"sources" binding:"required,min=1,dive,required,max=255"`
+	Target  string   `json:"target" binding:"required,min=1,max=255"`
+}
