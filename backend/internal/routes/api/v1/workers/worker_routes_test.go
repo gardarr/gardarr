@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-
 func TestSetWorkerTaskTags_InvalidJSON(t *testing.T) {
 	// Setup
 	gin.SetMode(gin.TestMode)
@@ -35,6 +34,32 @@ func TestSetWorkerTaskTags_InvalidJSON(t *testing.T) {
 	// Assertions
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Contains(t, w.Body.String(), "Invalid request body")
+}
+
+func TestSetWorkerSpeedLimitsAcceptsZeroButRequiresBothFields(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	module := &Module{}
+
+	t.Run("zero is a valid unlimited limit", func(t *testing.T) {
+		router := gin.New()
+		router.POST("/worker/:id/speed/limits", module.setWorkerSpeedLimits)
+		req := httptest.NewRequest(http.MethodPost, "/worker/worker/speed/limits", bytes.NewBufferString(`{"download_limit":0,"upload_limit":0}`))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		// Binding passed; the nil service makes the handler fail later.
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+
+	t.Run("missing field is rejected", func(t *testing.T) {
+		router := gin.New()
+		router.POST("/worker/:id/speed/limits", module.setWorkerSpeedLimits)
+		req := httptest.NewRequest(http.MethodPost, "/worker/worker/speed/limits", bytes.NewBufferString(`{"download_limit":0}`))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
 }
 
 func TestSetWorkerTaskTags_ValidJSON(t *testing.T) {

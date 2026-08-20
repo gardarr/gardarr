@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, HardDrive, Wifi, Activity, AlertTriangle } from "lucide-react";
+import { Loader2, HardDrive, Wifi, Activity, AlertTriangle, Gauge } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { WorkerIcon } from "./ui/WorkerIcon";
 import { QBittorrentIcon } from "./ui/QBittorrentIcon";
@@ -85,6 +85,13 @@ export function WorkerCard({ worker, statusRefreshToken, onShowDetails }: Readon
                 </div>
 
                 {!live.checking && <WorkerErrorBadge worker={merged} />}
+
+                {worker.bandwidth_schedule_status?.active && (
+                  <div className="flex items-center gap-1 text-xs text-primary" title={worker.bandwidth_schedule_status.name}>
+                    <Gauge className="h-3 w-3" />
+                    <span>{t('workers.schedules.activeBadge', 'Scheduled limit')}{worker.bandwidth_schedule_status.name ? `: ${worker.bandwidth_schedule_status.name}` : ''}</span>
+                  </div>
+                )}
 
                 {merged.instance && merged.status === 'ACTIVE' && (
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">

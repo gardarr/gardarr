@@ -39,8 +39,8 @@ func validateInstanceType(fl validator.FieldLevel) bool {
 
 // InstanceSetSpeedLimitSchema represents the request body for setting download speed limit
 type InstanceSetSpeedLimitSchema struct {
-	DownloadLimit int `json:"download_limit" binding:"required,min=1"`
-	UploadLimit   int `json:"upload_limit" binding:"required,min=1"`
+	DownloadLimit *int `json:"download_limit" binding:"required,gte=0"`
+	UploadLimit   *int `json:"upload_limit" binding:"required,gte=0"`
 }
 
 // InstanceSetMaxActiveTorrentLimitsSchema represents the request body for setting max active torrent limits

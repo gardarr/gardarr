@@ -114,11 +114,11 @@ run-local: build-frontend copy-frontend
 
 # Comando para rodar apenas o backend (sem frontend)
 run-backend:
-	cd $(BACKEND_DIR) && APP_PORT=5001 go run main.go
+	cd $(BACKEND_DIR) && APP_PORT=3501 go run main.go
 
 # Comando para rodar apenas o frontend em modo dev
 run-frontend:
-	cd $(FRONTEND_DIR) && npm run dev -- --port 5000
+	cd $(FRONTEND_DIR) && npm run dev -- --port 3500
 
 # Comando para compilar para Linux
 build-linux:
@@ -179,12 +179,12 @@ clean-all: clean clean-deps
 # Comando para desenvolvimento (frontend + backend em paralelo)
 dev:
 	@echo "Iniciando desenvolvimento..."
-	@echo "Frontend: http://localhost:5000"
-	@echo "Backend: http://localhost:5001"
+	@echo "Frontend: http://localhost:3500"
+	@echo "Backend: http://localhost:3501"
 	@echo "Pressione Ctrl+C para parar"
 	@trap 'kill %1 %2' INT; \
-	cd $(FRONTEND_DIR) && npm run dev -- --port 5000 & \
-	cd $(BACKEND_DIR) && APP_PORT=5001 go run main.go & \
+	cd $(FRONTEND_DIR) && npm run dev -- --port 3500 & \
+	cd $(BACKEND_DIR) && APP_PORT=3501 go run main.go & \
 	wait
 
 # Comando para desenvolvimento separado (recomendado)
@@ -193,8 +193,8 @@ dev-separate:
 	@echo "Terminal 1: make run-backend"
 	@echo "Terminal 2: make run-frontend"
 	@echo ""
-	@echo "Frontend: http://localhost:5000"
-	@echo "Backend: http://localhost:5001"
+	@echo "Frontend: http://localhost:3500"
+	@echo "Backend: http://localhost:3501"
 
 # Comando para build de produção com Docker
 docker-prod: docker-build
@@ -234,7 +234,7 @@ help:
 	@echo "  make help             - Mostrar esta ajuda"
 	@echo ""
 	@echo "Desenvolvimento Local:"
-	@echo "  Terminal 1: make run-backend   (Backend na porta 5001)"
-	@echo "  Terminal 2: make run-frontend  (Frontend na porta 5000)"
+	@echo "  Terminal 1: make run-backend   (Backend na porta 3501)"
+	@echo "  Terminal 2: make run-frontend  (Frontend na porta 3500)"
 
 .PHONY: build-frontend copy-frontend build-full docker-build docker-build-pipeline docker-build-local docker-run-local run-local run-backend run-frontend test-backend build-linux build-darwin build-darwin-arm64 build-windows build-windows-arm64 build-all install-frontend install-backend install test-integration clean clean-deps clean-all dev dev-separate docker-prod docker-stop docker-clean help

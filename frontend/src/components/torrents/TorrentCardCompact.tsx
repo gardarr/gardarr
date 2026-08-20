@@ -23,6 +23,7 @@ export type { MobileTorrent };
 
 type TorrentCardCompactProps = TorrentActionHandlers & TorrentSelectionProps & {
   torrent: MobileTorrent;
+  compact?: boolean;
   selected?: boolean;
 };
 
@@ -41,6 +42,7 @@ export const TorrentCardCompact = memo(function TorrentCardCompact({
   onSearchMetadata,
   onLimits,
   onMetadataUpdate,
+  compact,
   selectionMode,
   selected,
   onToggleSelect,
@@ -79,7 +81,7 @@ export const TorrentCardCompact = memo(function TorrentCardCompact({
   return (
     <TorrentContextMenuWrapper torrent={torrent} actions={actions} selection={selection}>
       <Card
-        className="hover:shadow-lg transition-shadow overflow-hidden p-0 cursor-pointer relative dark:border-black/80"
+        className="hover:shadow-lg hover:outline hover:outline-2 hover:outline-primary/60 hover:shadow-primary/30 transition-shadow overflow-hidden p-0 cursor-pointer relative dark:border-black/80"
         onClick={handleCardClick}
       >
         {hasImage ? (
@@ -107,12 +109,12 @@ export const TorrentCardCompact = memo(function TorrentCardCompact({
         <TorrentThumbnail
           torrent={torrent}
           alt={torrent.name}
-          sizeClassName="w-20 absolute inset-y-0 left-0 z-[5]"
+          sizeClassName={`${compact ? "w-16" : "w-20"} absolute inset-y-0 left-0 z-[5]`}
           roundedClassName="rounded-none"
           iconClassName="h-8 w-8 text-muted-foreground"
         />
 
-        <div className="relative z-10 flex flex-col gap-1 py-2 pr-2.5 pl-24">
+        <div className={`relative z-10 flex flex-col gap-1 py-2 pr-2.5 ${compact ? "pl-20" : "pl-24"}`}>
           {/* Line 1: identity - checkbox, status, name, worker.
               Translucent strip behind it for readability over the thumbnail/
               background, plus a status-tinted gradient on top of that. */}
@@ -120,7 +122,7 @@ export const TorrentCardCompact = memo(function TorrentCardCompact({
             <div className="absolute inset-0 bg-background/60 dark:bg-black/40 backdrop-blur-sm" aria-hidden />
             <div className={`absolute inset-0 ${getStatusGradientColor(torrent.status)}`} aria-hidden />
 
-            <div className="relative flex items-center gap-1.5 min-w-0 pl-4 pr-2.5 py-2">
+            <div className={`relative flex items-center gap-1.5 min-w-0 pl-4 pr-2.5 ${compact ? "py-1" : "py-2"}`}>
               {selectionMode && (
                 <TorrentSelectionCheckbox
                   torrentId={torrent.id}
@@ -152,7 +154,7 @@ export const TorrentCardCompact = memo(function TorrentCardCompact({
 
           {/* Line 2: speeds + totals transferred - icon always shown so idle
               torrents (0 B/s) keep the same shape as active ones */}
-          <div className="flex flex-col gap-0.5 text-[11px] text-muted-foreground">
+          <div className={`flex text-[11px] text-muted-foreground ${compact ? "flex-row items-center gap-3" : "flex-col gap-0.5"}`}>
             <SpeedRow icon={Upload} rate={torrent.uploadRateBps} total={torrent.uploadedBytes} colorClass="text-purple-600 dark:text-purple-400" />
             <SpeedRow icon={Download} rate={torrent.downloadRateBps} total={torrent.downloadedBytes} colorClass="text-green-600 dark:text-green-400" />
           </div>

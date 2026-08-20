@@ -35,6 +35,7 @@ export default function TorrentListMobile({
           <TorrentCardCompact
             key={getTorrentRenderKey(t)}
             torrent={t}
+            compact={compact}
             onShowDetails={onShowDetails}
             onStart={onStart}
             onStop={onStop}

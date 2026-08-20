@@ -19,6 +19,8 @@ interface SelectCategoryProps {
   showAddButton?: boolean;
   onCategoryCreated?: (category: Category) => void;
   autoLoad?: boolean;
+  /** Compact trigger height for dense layouts. */
+  dense?: boolean;
 }
 
 export function SelectCategory({
@@ -30,7 +32,8 @@ export function SelectCategory({
   className = "",
   showAddButton = true,
   onCategoryCreated,
-  autoLoad = true
+  autoLoad = true,
+  dense = false
 }: SelectCategoryProps) {
   const { t } = useTranslation();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -116,18 +119,20 @@ export function SelectCategory({
 
   return (
     <div className={`space-y-2 ${className}`}>
-      <Label className="flex items-center gap-2">
-        <Folder className="h-4 w-4" />
-        {(label ?? t("torrents.addModal.category.label"))} {required && <span className="text-destructive">*</span>}
-      </Label>
-      
+      {label !== "" && (
+        <Label className="flex items-center gap-2">
+          <Folder className="h-4 w-4" />
+          {(label ?? t("torrents.addModal.category.label"))} {required && <span className="text-destructive">*</span>}
+        </Label>
+      )}
+
       <div className="flex gap-2">
         <div className="relative flex-1" ref={categoryDropdownRef}>
           <Button
             type="button"
             variant="outline"
             onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
-            className={`h-12 w-full justify-between px-4 text-left ${error ? "border-destructive" : ""}`}
+            className={`${dense ? "h-9 px-3" : "h-12 px-4"} w-full justify-between text-left ${error ? "border-destructive" : ""}`}
           >
             <div className="flex min-w-0 items-center gap-2">
               {selectedCategory ? (

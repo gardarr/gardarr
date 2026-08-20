@@ -160,6 +160,8 @@ func (r *Repository) CreateWorker(ctx context.Context, worker entities.Worker) (
 		EncryptedQBittorrentPassword: encPassword,
 		Icon:                         worker.Icon,
 		Color:                        worker.Color,
+		DefaultDownloadSpeedLimit:    worker.DefaultDownloadSpeedLimit,
+		DefaultUploadSpeedLimit:      worker.DefaultUploadSpeedLimit,
 	}
 
 	if err := db.Create(handler).Error; err != nil {
@@ -723,14 +725,16 @@ func (r *Repository) resolveWorkerCredential(value string) (string, error) {
 
 func toWorker(item models.Worker) *entities.Worker {
 	return &entities.Worker{
-		UUID:                item.UUID,
-		Name:                item.Name,
-		Type:                item.Type,
-		Address:             item.Address,
-		QBittorrentURL:      item.EncryptedQBittorrentURL,
-		QBittorrentUsername: item.EncryptedQBittorrentUsername,
-		QBittorrentPassword: item.EncryptedQBittorrentPassword,
-		Icon:                item.Icon,
-		Color:               item.Color,
+		UUID:                      item.UUID,
+		Name:                      item.Name,
+		Type:                      item.Type,
+		Address:                   item.Address,
+		QBittorrentURL:            item.EncryptedQBittorrentURL,
+		QBittorrentUsername:       item.EncryptedQBittorrentUsername,
+		QBittorrentPassword:       item.EncryptedQBittorrentPassword,
+		Icon:                      item.Icon,
+		Color:                     item.Color,
+		DefaultDownloadSpeedLimit: item.DefaultDownloadSpeedLimit,
+		DefaultUploadSpeedLimit:   item.DefaultUploadSpeedLimit,
 	}
 }

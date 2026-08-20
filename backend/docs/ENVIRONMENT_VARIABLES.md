@@ -8,6 +8,12 @@ This document lists all environment variables used by Gardarr backend.
 
 ## Application
 
+### `BANDWIDTH_SCHEDULE_INTERVAL`
+- **Description**: Frequency for evaluating worker bandwidth schedules.
+- **Default**: `1m`
+- **Example**: `BANDWIDTH_SCHEDULE_INTERVAL=30s`
+- **Note**: schedules use Gardarr's configured timezone. Do not enable qBittorrent's alternative-rate scheduler for the same worker.
+
 ### `APP_PORT`
 - **Description**: Port number where the server will listen
 - **Default**: `3200`

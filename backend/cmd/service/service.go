@@ -36,6 +36,7 @@ import (
 	wsRoutes "github.com/jfxdev/gardarr/internal/routes/api/v1/ws"
 	metricsRoutes "github.com/jfxdev/gardarr/internal/routes/metrics"
 	"github.com/jfxdev/gardarr/internal/schemas"
+	"github.com/jfxdev/gardarr/internal/services/bandwidthscheduler"
 	"github.com/jfxdev/gardarr/internal/services/crypto"
 	"github.com/jfxdev/gardarr/internal/services/eventpoller"
 	eventsService "github.com/jfxdev/gardarr/internal/services/events"
@@ -156,6 +157,11 @@ func Run(cmd *cobra.Command, args []string) error {
 	defer cancelPoller()
 	eventPollerSvc.Start(ctx)
 
+	// Bandwidth scheduler — applies configured global rate limits in the
+	// Gardarr settings timezone.
+	bandwidthSchedulerSvc := bandwidthscheduler.NewService(db, workerSvc, settingsSvc, eventSvc)
+	bandwidthSchedulerSvc.Start(ctx)
+
 	// Periodic cleanup — enforces EVENT_RETENTION_DAYS and prunes stale task states
 	eventSvc.StartCleanupJob(ctx)
 
@@ -180,7 +186,7 @@ func Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err = setRoutes(db, workerSvc, metaSvc, integrationSvc, providerConfigSvc, wsHub, allowedOrigins); err != nil {
+	if err = setRoutes(db, workerSvc, bandwidthSchedulerSvc, metaSvc, integrationSvc, providerConfigSvc, wsHub, allowedOrigins); err != nil {
 		return err
 	}
 
@@ -279,7 +285,7 @@ func originsFromBaseURL(baseURL string) []string {
 	// Allow common development origins for localhost
 	host := u.Hostname()
 	if host == "localhost" || host == "127.0.0.1" {
-		origins = append(origins, "http://localhost:5000")
+		origins = append(origins, "http://localhost:3500")
 	}
 
 	return origins
@@ -485,6 +491,7 @@ func spaFallbackHandler(c *gin.Context) {
 func setRoutes(
 	db *database.Database,
 	a *workermanager.Service,
+	bandwidthScheduler *bandwidthscheduler.Service,
 	metaSvc *metadata.Service,
 	integrationSvc *integration.Service,
 	providerConfigSvc *integration.ProviderConfigService,
@@ -512,7 +519,7 @@ func setRoutes(
 	v1 := router.Group("/v1")
 	health.NewModule(v1, db).Register()
 	auth.NewModule(v1, db, wsHub).Register()
-	workers.NewModule(v1, a).Register()
+	workers.NewModule(v1, a, bandwidthScheduler).Register()
 	category.NewModule(v1, db).Register()
 	users.NewModule(v1, db).Register()
 	profile.NewModule(v1, db).Register()

@@ -17,8 +17,39 @@ type Worker struct {
 	EncryptedQBittorrentPassword string    `gorm:"size:600"`
 	Icon                         string    `gorm:"size:100"`
 	Color                        string    `gorm:"size:50"`
-	CreatedAt                    time.Time `gorm:"autoCreateTime"`
-	UpdatedAt                    time.Time `gorm:"autoUpdateTime"`
+	// Nil means Gardarr has never been asked to manage this worker's baseline.
+	DefaultDownloadSpeedLimit *int      `gorm:"column:default_download_speed_limit"`
+	DefaultUploadSpeedLimit   *int      `gorm:"column:default_upload_speed_limit"`
+	CreatedAt                 time.Time `gorm:"autoCreateTime"`
+	UpdatedAt                 time.Time `gorm:"autoUpdateTime"`
+}
+
+// BandwidthSchedule stores a recurring local-time speed-limit window. DaysOfWeek
+// is a Sunday-first bitmask (bit 0 = Sunday).
+type BandwidthSchedule struct {
+	UUID          uuid.UUID `gorm:"type:uuid;primaryKey;uniqueIndex"`
+	WorkerUUID    uuid.UUID `gorm:"type:uuid;not null;index;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	Worker        Worker    `gorm:"foreignKey:WorkerUUID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
+	Name          string    `gorm:"size:100;not null"`
+	DaysOfWeek    uint8     `gorm:"not null"`
+	StartMinute   int       `gorm:"not null"`
+	EndMinute     int       `gorm:"not null"`
+	DownloadLimit int       `gorm:"not null"`
+	UploadLimit   int       `gorm:"not null"`
+	Priority      int       `gorm:"not null;default:0;index"`
+	Color         string    `gorm:"size:7;not null;default:'#64748b'"`
+	Enabled       bool      `gorm:"not null;default:true"`
+	CreatedAt     time.Time `gorm:"autoCreateTime"`
+	UpdatedAt     time.Time `gorm:"autoUpdateTime"`
+}
+
+func (BandwidthSchedule) TableName() string { return "bandwidth_schedules" }
+
+func (s *BandwidthSchedule) BeforeCreate(tx *gorm.DB) (err error) {
+	if s.UUID == uuid.Nil {
+		s.UUID = uuid.New()
+	}
+	return nil
 }
 
 func (a *Worker) TableName() string {
@@ -40,16 +71,24 @@ func (a *Worker) BeforeUpdate(tx *gorm.DB) (err error) {
 }
 
 type WorkerResponse struct {
-	UUID      string           `json:"uuid"`
-	Name      string           `json:"name"`
-	Address   string           `json:"address"`
-	Status    string           `json:"status"`
-	Error     string           `json:"error,omitempty"`
-	ErrorCode string           `json:"error_code,omitempty"`
-	Permanent bool             `json:"permanent,omitempty"`
-	Icon      string           `json:"icon,omitempty"`
-	Color     string           `json:"color,omitempty"`
-	Instance  InstanceResponse `json:"instance"`
+	UUID                    string                           `json:"uuid"`
+	Name                    string                           `json:"name"`
+	Address                 string                           `json:"address"`
+	Status                  string                           `json:"status"`
+	Error                   string                           `json:"error,omitempty"`
+	ErrorCode               string                           `json:"error_code,omitempty"`
+	Permanent               bool                             `json:"permanent,omitempty"`
+	Icon                    string                           `json:"icon,omitempty"`
+	Color                   string                           `json:"color,omitempty"`
+	Instance                InstanceResponse                 `json:"instance"`
+	BandwidthScheduleStatus *BandwidthScheduleStatusResponse `json:"bandwidth_schedule_status,omitempty"`
+}
+
+type BandwidthScheduleStatusResponse struct {
+	Active        bool   `json:"active"`
+	Name          string `json:"name,omitempty"`
+	DownloadLimit *int   `json:"download_limit,omitempty"`
+	UploadLimit   *int   `json:"upload_limit,omitempty"`
 }
 
 type WorkerVersionResponse struct {

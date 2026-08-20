@@ -16,7 +16,7 @@ import type { Worker } from "@/types/worker";
 const navigateMock = vi.fn();
 let currentPathname = "/workers";
 
-vi.mock("react-router-dom", () => ({
+vi.mock("react-router", () => ({
   useNavigate: () => navigateMock,
   useLocation: () => ({ pathname: currentPathname }),
 }));

@@ -2,8 +2,9 @@ package constants
 
 // Event types
 const (
-	EventTypeTorrentStateChange = "torrent.state_change"
-	EventTypeTorrentAdded       = "torrent.added"
-	EventTypeTorrentRemoved     = "torrent.removed"
-	EventTypeTorrentCompleted   = "torrent.completed"
+	EventTypeTorrentStateChange       = "torrent.state_change"
+	EventTypeTorrentAdded             = "torrent.added"
+	EventTypeTorrentRemoved           = "torrent.removed"
+	EventTypeTorrentCompleted         = "torrent.completed"
+	EventTypeBandwidthScheduleApplied = "bandwidth.schedule_applied"
 )

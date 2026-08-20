@@ -601,6 +601,8 @@
       "uploadLimit": "Upload Limit",
       "saveSpeedLimits": "Save Speed Limits",
       "speedToastTitle": "Speed limits updated",
+      "scheduleActiveTitle": "A speed schedule is active",
+      "scheduleActiveDescription": "“{{name}}” is currently controlling the limits. Changes saved here apply immediately, but are temporary until the next schedule transition. They also update the default limits used outside schedules.",
       "instanceActiveLimits": "Instance Active Torrent Limits",
       "maxActiveDownloads": "Max Active Downloads",
       "maxActiveUploads": "Max Active Uploads",
@@ -609,7 +611,41 @@
       "saveActiveLimits": "Save Active Limits",
       "activeToastTitle": "Active limits updated"
     },
-    "schedules": "Schedules"
+    "schedules": {
+      "title": "Schedules",
+      "loading": "Loading schedules...",
+      "active": "Active now: {{name}}",
+      "noActive": "No schedule is active",
+      "unmanaged": "Save limits or create a schedule to establish a baseline.",
+      "add": "Add Rule",
+      "empty": "No schedules yet.",
+      "new": "New schedule",
+      "edit": "Edit schedule",
+      "formDescription": "Set the rule's times and limits.",
+      "projectTimezone": "Project timezone: {{timezone}}",
+      "name": "Name",
+      "start": "Start",
+      "end": "End",
+      "days": "Days",
+      "priority": "Priority",
+      "priorityOrder": "Priority {{position}}",
+      "ruleColor": "Rule color",
+      "enabled": "Enabled",
+      "activeBadge": "Scheduled limit",
+      "activeRule": "Active",
+      "validation": "Choose a name and at least one day.",
+      "deleteConfirm": "Delete this schedule?",
+      "deleteDialogTitle": "Delete schedule?",
+      "deleteDialogDescription": "This will permanently remove “{{name}}”.",
+      "deleting": "Deleting...",
+      "gridHelp": "Weekly preview. End time is exclusive; equal start and end means the full day.",
+      "maxReached": "Maximum of 5 schedules per worker.",
+      "reorderHint": "Drag rules to reorder priority.",
+      "createdToast": "Schedule created",
+      "updatedToast": "Schedule updated",
+      "deletedToast": "Schedule deleted",
+      "reorderedToast": "Schedule priority updated"
+    }
   },
   "users": {
     "title": "Users",
@@ -1202,7 +1238,53 @@
     "actions": {
       "forceDownload": "Force Download",
       "forceReannounce": "Force Reannounce",
-      "forceRecheck": "Force Recheck"
+      "forceRecheck": "Force Recheck",
+      "share": "Share card"
+    },
+    "shareCard": {
+      "title": "Share ratio card",
+      "description": "Choose a format and theme before copying, downloading, or sharing the image.",
+      "formatLabel": "Format",
+      "themeLabel": "Theme",
+      "titleColor": "Title color",
+      "username": "Username (optional)",
+      "usernamePlaceholder": "@your_username",
+      "usernameHint": "Fill in to show your identity in the top-right corner.",
+      "dragHint": "Drag the image to adjust it vertically",
+      "includeDescription": "Show description",
+      "includeDescriptionHint": "Turn off for a cleaner card.",
+      "openFromRatio": "Open ratio sharing options",
+      "formats": {
+        "portrait": "Portrait",
+        "square": "Square",
+        "story": "Story"
+      },
+      "themes": {
+        "light": "Light",
+        "dark": "Dark"
+      },
+      "copyImage": "Copy image",
+      "download": "Download PNG",
+      "nativeShare": "Share",
+      "rendering": "Rendering preview…",
+      "previewError": "The card preview could not be rendered.",
+      "previewAria": "Shareable card preview for {{title}}",
+      "privacyNote": "The card does not include the hash, magnet link, path, or worker.",
+      "shareText": "My ratio on {{title}} reached {{ratio}}x. Sharing keeps the community alive!",
+      "card": {
+        "ratio": "Ratio",
+        "uploaded": "Uploaded",
+        "popularity": "Popularity",
+        "sharingTime": "Sharing time",
+        "size": "Size"
+      },
+      "toasts": {
+        "copied": "Image copied to the clipboard",
+        "downloaded": "Card downloaded successfully",
+        "copyError": "This browser could not copy the image. Try downloading the PNG.",
+        "downloadError": "The card could not be downloaded",
+        "shareError": "The card could not be shared"
+      }
     },
     "name": {
       "label": "Name",
@@ -1298,6 +1380,14 @@
     },
     "description": {
       "label": "Description"
+    },
+    "autosave": {
+      "saving": "Saving…",
+      "saved": "Saved",
+      "error": "Save failed"
+    },
+    "editSection": {
+      "title": "Details"
     }
   },
   "torrent": {

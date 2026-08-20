@@ -15,16 +15,17 @@ import (
 )
 
 var expectedSeededCategories = map[string]struct {
-	Icon  string
-	Color string
+	Icon        string
+	Color       string
+	DefaultTags []string
 }{
-	"Movies": {Icon: "Film", Color: "#ef4444"},
-	"Shows":  {Icon: "Tv", Color: "#3b82f6"},
-	"Games":  {Icon: "Gamepad2", Color: "#10b981"},
-	"Other":  {Icon: "Folder", Color: "#6b7280"},
-	"Books":  {Icon: "BookOpen", Color: "#f59e0b"},
-	"Anime":  {Icon: "Star", Color: "#ec4899"},
-	"Music":  {Icon: "Music", Color: "#14b8a6"},
+	"Movies": {Icon: "Film", Color: "#ef4444", DefaultTags: []string{"movie", "1080p"}},
+	"Shows":  {Icon: "Tv", Color: "#3b82f6", DefaultTags: []string{"tv", "episode"}},
+	"Games":  {Icon: "Gamepad2", Color: "#10b981", DefaultTags: []string{"game", "pc"}},
+	"Other":  {Icon: "Folder", Color: "#6b7280", DefaultTags: []string{"misc"}},
+	"Books":  {Icon: "BookOpen", Color: "#f59e0b", DefaultTags: []string{"book", "ebook"}},
+	"Anime":  {Icon: "Star", Color: "#ec4899", DefaultTags: []string{"anime", "sub"}},
+	"Music":  {Icon: "Music", Color: "#14b8a6", DefaultTags: []string{"music", "flac"}},
 }
 
 func TestMigration007AddColorIconToCategories(t *testing.T) {
@@ -126,6 +127,27 @@ func TestMigrationAllMigrationsCanRunTwice(t *testing.T) {
 	}
 
 	assertSeededCategories(t, db)
+}
+
+func TestMigration036CreatesBandwidthSchedulesAndBaselineColumns(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("Failed to create test database: %v", err)
+	}
+	m := migration.NewMigrator(db)
+	Register(m)
+	if err := m.Up(); err != nil {
+		t.Fatalf("Failed to run migrations: %v", err)
+	}
+	if !db.Migrator().HasTable(&models.BandwidthSchedule{}) {
+		t.Fatal("Expected bandwidth schedules table to exist")
+	}
+	if !db.Migrator().HasColumn(&models.Worker{}, "DefaultDownloadSpeedLimit") || !db.Migrator().HasColumn(&models.Worker{}, "DefaultUploadSpeedLimit") {
+		t.Fatal("Expected worker baseline columns to exist")
+	}
+	if !db.Migrator().HasColumn(&models.BandwidthSchedule{}, "Color") {
+		t.Fatal("Expected schedule color column to exist")
+	}
 }
 
 func TestMigration030RemovesLegacyWorkerTokenColumns(t *testing.T) {
@@ -320,8 +342,8 @@ func assertSeededCategories(t *testing.T, db *gorm.DB) {
 			t.Errorf("Expected empty default directory for %s, got %s", category.Name, category.DefaultDirectory)
 		}
 
-		if len(category.DefaultTags) != 0 {
-			t.Errorf("Expected no default tags for %s, got %v", category.Name, []string(category.DefaultTags))
+		if !slices.Equal([]string(category.DefaultTags), expected.DefaultTags) {
+			t.Errorf("Expected default tags %v for %s, got %v", expected.DefaultTags, category.Name, []string(category.DefaultTags))
 		}
 
 		if category.MetadataSource != "none" {

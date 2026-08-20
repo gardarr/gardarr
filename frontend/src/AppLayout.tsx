@@ -2,7 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { Settings, Users, ArrowDownUp, Menu, Sun, Moon, Info, LogOut, FolderOpen, UserCircle, Server, Plug, History } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router";
 import PageTransition from "@/components/PageTransition";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/auth-hooks";

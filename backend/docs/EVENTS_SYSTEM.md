@@ -14,6 +14,7 @@ const (
     EventTypeTorrentAdded       = "torrent.added"
     EventTypeTorrentRemoved     = "torrent.removed"
     EventTypeTorrentCompleted   = "torrent.completed"
+	EventTypeBandwidthScheduleApplied = "bandwidth.schedule_applied"
 )
 ```
 

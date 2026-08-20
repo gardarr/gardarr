@@ -9,7 +9,10 @@ import type {
   WorkerPreferences,
   SpeedLimitsSchema,
   ActiveLimitsSchema,
-  LogEntry
+  LogEntry,
+  BandwidthSchedule,
+  BandwidthScheduleInput,
+  BandwidthSchedulePreview
 } from '../types/worker';
 
 // Worker routes remain the public contract, but each worker now represents a
@@ -116,6 +119,30 @@ export class WorkerService {
    */
   async setWorkerActiveLimits(workerId: string, limits: ActiveLimitsSchema): Promise<ApiResponse<{ message: string }>> {
     return api.post<{ message: string }>(`/worker/${workerId}/active/limits`, limits);
+  }
+
+  async listSchedules(workerId: string): Promise<ApiResponse<BandwidthSchedule[]>> {
+    return api.get<BandwidthSchedule[]>(`/worker/${workerId}/schedules`);
+  }
+
+  async getSchedulePreview(workerId: string): Promise<ApiResponse<BandwidthSchedulePreview>> {
+    return api.get<BandwidthSchedulePreview>(`/worker/${workerId}/schedules/preview`);
+  }
+
+  async createSchedule(workerId: string, schedule: BandwidthScheduleInput): Promise<ApiResponse<BandwidthSchedule>> {
+    return api.post<BandwidthSchedule>(`/worker/${workerId}/schedules`, schedule);
+  }
+
+  async updateSchedule(workerId: string, scheduleId: string, schedule: BandwidthScheduleInput): Promise<ApiResponse<BandwidthSchedule>> {
+    return api.put<BandwidthSchedule>(`/worker/${workerId}/schedules/${scheduleId}`, schedule);
+  }
+
+  async deleteSchedule(workerId: string, scheduleId: string): Promise<ApiResponse<null>> {
+    return api.delete<null>(`/worker/${workerId}/schedules/${scheduleId}`);
+  }
+
+  async reorderSchedules(workerId: string, scheduleIds: string[]): Promise<ApiResponse<BandwidthSchedule[]>> {
+    return api.put<BandwidthSchedule[]>(`/worker/${workerId}/schedules/order`, { schedule_ids: scheduleIds });
   }
 
   /**

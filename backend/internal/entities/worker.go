@@ -55,20 +55,22 @@ const (
 )
 
 type Worker struct {
-	UUID                uuid.UUID
-	Name                string
-	Address             string
-	Type                string
-	QBittorrentURL      string
-	QBittorrentUsername string
-	QBittorrentPassword string
-	Status              string
-	Error               string
-	ErrorCode           WorkerErrorCode // Specific error code for frontend handling
-	Permanent           bool            // True if error requires user intervention
-	Icon                string          // Optional icon for frontend display
-	Color               string          // Optional color for frontend display
-	Instance            *Instance
+	UUID                      uuid.UUID
+	Name                      string
+	Address                   string
+	Type                      string
+	QBittorrentURL            string
+	QBittorrentUsername       string
+	QBittorrentPassword       string
+	Status                    string
+	Error                     string
+	ErrorCode                 WorkerErrorCode // Specific error code for frontend handling
+	Permanent                 bool            // True if error requires user intervention
+	Icon                      string          // Optional icon for frontend display
+	Color                     string          // Optional color for frontend display
+	DefaultDownloadSpeedLimit *int
+	DefaultUploadSpeedLimit   *int
+	Instance                  *Instance
 }
 
 type WorkerVersion struct {

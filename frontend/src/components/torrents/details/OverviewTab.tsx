@@ -5,7 +5,7 @@ import { TorrentLifetimeWidget } from "@/components/widgets/TorrentLifetimeWidge
 import type { Task } from "@/types/torrent";
 import type { Category } from "@/types/category";
 import { DetailCard } from "./DetailCard";
-import { InlineEditableText } from "./InlineEditableText";
+import { AutoSaveField } from "./AutoSaveField";
 import { TransferStatsCard } from "./TransferStatsCard";
 import { CategoryTagsCard } from "./CategoryTagsCard";
 
@@ -14,9 +14,10 @@ interface OverviewTabProps {
   onSetLocation?: (torrentId: string, location: string) => void;
   onCategoryDataChange?: (category: Category | null) => void;
   onCategoryTagsUpdate?: (torrentId: string, patch: { category?: string; tags?: string[] }) => void;
+  onShare?: () => void;
 }
 
-export function OverviewTab({ torrent, onSetLocation, onCategoryDataChange, onCategoryTagsUpdate }: OverviewTabProps) {
+export function OverviewTab({ torrent, onSetLocation, onCategoryDataChange, onCategoryTagsUpdate, onShare }: OverviewTabProps) {
   const { t } = useTranslation();
 
   const handleSavePath = (path: string) => {
@@ -38,6 +39,7 @@ export function OverviewTab({ torrent, onSetLocation, onCategoryDataChange, onCa
           ratio={torrent.ratio}
           popularity={torrent.popularity}
           totalUploaded={torrent.network?.upload?.amount}
+          onShare={onShare}
         />
         <TransferStatsCard torrent={torrent} />
       </div>
@@ -48,14 +50,12 @@ export function OverviewTab({ torrent, onSetLocation, onCategoryDataChange, onCa
 
       <div className="space-y-2">
         <h3 className="text-sm font-medium text-muted-foreground">{t("torrentDetails.path.title", { defaultValue: "Caminho" })}</h3>
-        <InlineEditableText
+        <AutoSaveField
           icon={FolderOpen}
           value={torrent.path}
-          editLabel={t("torrentDetails.path.edit", { defaultValue: "Editar caminho" })}
-          saveLabel={t("torrentDetails.path.save", { defaultValue: "Salvar caminho" })}
+          ariaLabel={t("torrentDetails.path.edit", { defaultValue: "Editar caminho" })}
           copyText={torrent.path}
           onSave={handleSavePath}
-          display={<span className="text-xs sm:text-sm break-all leading-relaxed">{torrent.path}</span>}
         />
       </div>
     </div>

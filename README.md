@@ -94,6 +94,7 @@ Gardarr is a **modern, lightweight management and analytics platform for qBittor
 - [🚀 Getting Started](#-getting-started)
   - [Standalone Mode](#-standalone-mode)
 - [🏗️ Architecture](#-architecture)
+- [⏱️ Bandwidth Schedules](#-bandwidth-schedules)
 - [🏆 Ratio Grading System](#-ratio-grading-system)
 - [🔌 Integrations & Events](#-integrations--events)
 - [📊 Metrics & Analytics](#-metrics--analytics)
@@ -116,6 +117,7 @@ Gardarr is a **modern, lightweight management and analytics platform for qBittor
   - Real-time download/upload speed monitoring.
   - Historical data analysis.
   - **Ratio Grading**: Gamification system (E to S++) for ratio tracking.
+- **⏱️ Bandwidth Schedules**: Automatically apply download and upload limits to each worker at the times you choose, with a clear weekly calendar and automatic restoration of the normal limits afterwards.
 - **📝 Event System**: Comprehensive event tracking for state changes, completions, and errors, persisted in the database.
 - **🔐 Secure Authentication**: 
   - Argon2id password hashing.
@@ -133,6 +135,18 @@ Essential infrastructure for seedbox operators managing single or multiple serve
 - **Cost Efficiency**: Monitor storage, bandwidth, and performance to maximize ROI
 - **Bulk Operations**: Handle hundreds of torrents efficiently with batch actions and smart organization
 - **Mobile Management**: Control your seedbox fleet on-the-go with responsive mobile interface
+
+## ⏱️ Bandwidth Schedules
+
+Bandwidth schedules let Gardarr change a worker's global download and upload limits automatically during the week. They are useful when you want quieter hours during the day, full speed overnight, or different limits for weekends.
+
+Create up to five rules per worker, choose the days and start/end times, and set download and upload limits. Use `0` for an unlimited direction. All times follow the timezone configured for Gardarr, so the same schedule behaves predictably wherever the worker runs.
+
+The weekly calendar shows where each rule applies. Drag rules into the order you want: when two rules overlap, the one higher in the list wins. Gardarr shows which rule is active and records every limit change as an event, so webhook integrations and event history stay informed.
+
+Your normal limits are kept as the worker's default. When no rule is active, Gardarr restores those limits automatically. If you change limits manually while a rule is active, the change takes effect immediately but is temporary until the next schedule transition; it also becomes the new default for time outside scheduled windows.
+
+Do not configure qBittorrent's own alternative speed-limit scheduler for the same worker. Let Gardarr be the single source of truth for scheduled limits.
 
 ## 📋 Requirements
 

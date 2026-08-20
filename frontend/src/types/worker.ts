@@ -12,6 +12,47 @@ export interface Worker {
   icon?: string;
   color?: string;
   version?: Version;
+  bandwidth_schedule_status?: BandwidthScheduleStatus;
+}
+
+export interface BandwidthScheduleStatus {
+  active: boolean;
+  name?: string;
+  download_limit?: number;
+  upload_limit?: number;
+}
+
+export interface BandwidthSchedule {
+  uuid: string;
+  worker_uuid: string;
+  name: string;
+  days_of_week: number[];
+  start_time: string;
+  end_time: string;
+  download_limit: number;
+  upload_limit: number;
+  priority: number;
+  color: string;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BandwidthScheduleInput {
+  name: string;
+  days_of_week: number[];
+  start_time: string;
+  end_time: string;
+  download_limit: number;
+  upload_limit: number;
+  enabled: boolean;
+}
+
+export interface BandwidthSchedulePreview {
+  timezone: string;
+  source: 'schedule' | 'default' | 'unmanaged';
+  schedule?: BandwidthSchedule;
+  limits?: { download_limit: number; upload_limit: number };
 }
 
 export interface Version {
@@ -127,8 +168,8 @@ export interface WorkerPreferences {
 
 // Speed Limits Schema
 export interface SpeedLimitsSchema {
-  download_limit: number; // -1 for unlimited
-  upload_limit: number;   // -1 for unlimited
+  download_limit: number; // 0 for unlimited
+  upload_limit: number;   // 0 for unlimited
 }
 
 // Active Limits Schema

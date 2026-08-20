@@ -114,6 +114,8 @@ export function EventList({
         return <XCircle className="h-5 w-5" />;
       case "torrent.completed":
         return <CheckCircle className="h-5 w-5" />;
+      case "bandwidth.schedule_applied":
+        return <ArrowRightLeft className="h-5 w-5" />;
     }
   };
 
@@ -127,6 +129,8 @@ export function EventList({
         return "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20";
       case "torrent.completed":
         return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
+      case "bandwidth.schedule_applied":
+        return "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20";
     }
   };
 
@@ -151,6 +155,7 @@ export function EventList({
       "torrent.added": t("history.badge.added"),
       "torrent.removed": t("history.badge.removed"),
       "torrent.completed": t("history.badge.completed"),
+      "bandwidth.schedule_applied": t("history.badge.bandwidthScheduleApplied", "Bandwidth schedule applied"),
     };
 
     return typeMap[type];
@@ -405,4 +410,3 @@ export function EventList({
     </div>
   );
 }
-

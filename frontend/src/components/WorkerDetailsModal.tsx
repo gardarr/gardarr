@@ -22,6 +22,7 @@ import { WorkerIcon } from "./ui/WorkerIcon";
 import { QBittorrentIcon } from "./ui/QBittorrentIcon";
 import { workerService } from "../services/workers";
 import { WorkerLimits } from "./WorkerLimits";
+import { BandwidthSchedules } from "./BandwidthSchedules";
 import { WorkerErrorDisplay } from "./WorkerErrorDisplay";
 import { WorkerLogsTab } from "./WorkerLogsTab";
 
@@ -226,7 +227,7 @@ export function WorkerDetailsModal({
             <TabsTrigger value="detalhes">{t('workers.details')}</TabsTrigger>
             <TabsTrigger value="logs" disabled={worker?.status === 'ERRORED' || worker?.status === 'INITIALIZING'}>{t('workers.logs.title', 'Logs')}</TabsTrigger>
             <TabsTrigger value="limites" disabled={worker?.status === 'ERRORED' || worker?.status === 'INITIALIZING'}>{t('workers.limits.title')}</TabsTrigger>
-            <TabsTrigger value="schedules" disabled>{t('workers.schedules')}</TabsTrigger>
+            <TabsTrigger value="schedules" disabled={worker?.status === 'ERRORED' || worker?.status === 'INITIALIZING'}>{t('workers.schedules.title')}</TabsTrigger>
           </TabsList>
 
           <CustomScrollArea className="w-full flex-1 min-h-0" variant="thin" mobileFallback>
@@ -510,11 +511,7 @@ export function WorkerDetailsModal({
             </TabsContent>
 
             <TabsContent value="schedules" className="mt-4">
-              <div className="space-y-4 p-4">
-                <p className="text-sm text-muted-foreground">
-                  {t('workers.schedules.comingSoon', 'Speed schedules configuration coming soon...')}
-                </p>
-              </div>
+              {worker && <BandwidthSchedules workerId={worker.uuid} />}
             </TabsContent>
           </CustomScrollArea>
         </Tabs>

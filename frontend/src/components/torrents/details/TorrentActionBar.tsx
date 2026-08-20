@@ -1,4 +1,4 @@
-import { Play, Pause, Zap, Radio, CheckCircle, Trash2, type LucideIcon } from "lucide-react";
+import { Play, Pause, Zap, Radio, CheckCircle, Share2, Trash2, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
@@ -11,6 +11,7 @@ interface TorrentActionBarProps {
   onForceDownload?: (torrentId: string) => void;
   onForceReannounce?: (torrentId: string) => void;
   onForceRecheck?: (torrentId: string) => void;
+  onShare?: () => void;
   onDelete?: () => void;
 }
 
@@ -28,6 +29,7 @@ export function TorrentActionBar({
   onForceDownload,
   onForceReannounce,
   onForceRecheck,
+  onShare,
   onDelete,
 }: TorrentActionBarProps) {
   const { t } = useTranslation();
@@ -70,6 +72,13 @@ export function TorrentActionBar({
       label: t("torrentDetails.actions.forceRecheck", { defaultValue: "Force Recheck" }),
       onClick: () => onForceRecheck(torrentId),
       className: "text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-950 dark:text-purple-400 dark:hover:text-purple-300",
+    });
+  }
+  if (onShare) {
+    actions.push({
+      icon: Share2,
+      label: t("torrentDetails.actions.share", { defaultValue: "Share card" }),
+      onClick: onShare,
     });
   }
   if (onDelete) {

@@ -8,7 +8,7 @@ import { getStatusIcon, getStatusColor, getStatusBackgroundColor, type TorrentSt
 import { getStatusTranslationKey } from "@/utils/statusUtils";
 import { useTorrentBlurIntensity, getBlurPixels } from "../hooks";
 import { formatBytes } from "@/utils/bytes";
-import { InlineEditableText } from "./InlineEditableText";
+import { AutoSaveField } from "./AutoSaveField";
 import { TorrentProgressIndicator } from "../shared";
 import type { Task, TaskMetadata } from "@/types/torrent";
 
@@ -78,13 +78,13 @@ export function TorrentHeroHeader({ torrent, onUpdate }: TorrentHeroHeaderProps)
         </div>
 
         <div className="flex-1 min-w-0 space-y-2 sm:space-y-3">
-          {/* Editable display name */}
-          <InlineEditableText
+          {/* Editable display name — click to edit, autosaves on blur */}
+          <AutoSaveField
             icon={FileText}
             value={torrent.metadata?.name || torrent.name}
-            editLabel={t("torrentDetails.name.edit", { defaultValue: "Editar nome" })}
-            saveLabel={t("torrentDetails.name.save", { defaultValue: "Salvar nome" })}
+            ariaLabel={t("torrentDetails.name.edit", { defaultValue: "Editar nome" })}
             copyText={torrent.metadata?.name || torrent.name}
+            inputClassName="font-semibold"
             onSave={handleSaveName}
             display={
               <div>
