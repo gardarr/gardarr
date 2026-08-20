@@ -1073,6 +1073,7 @@
     "merge": "Merge",
     "mergeSourcesHint": "Every torrent carrying one of these tags will get the target tag instead.",
     "deriveTitle": "Derive Tags",
+    "deriveSubtitle": "Create several related tags at once by combining this tag's fixed part with each value you add below.",
     "deriveTagAction": "Derive from {{name}}",
     "derive": "Derive",
     "deriveComposedHint": "This tag already uses \"{{separator}}\" - new tags reuse it automatically with the same suffix.",

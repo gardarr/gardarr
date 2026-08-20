@@ -7,6 +7,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Wand2, X } from "lucide-react";
@@ -99,6 +100,7 @@ export function DeriveTagsModal({ open, onOpenChange, source, onSubmit }: Derive
             <Wand2 className="h-5 w-5" />
             {t('tags.deriveTitle')}
           </DialogTitle>
+          <DialogDescription>{t('tags.deriveSubtitle')}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">

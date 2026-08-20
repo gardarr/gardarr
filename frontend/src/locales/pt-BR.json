@@ -1099,6 +1099,7 @@
     "merge": "Mesclar",
     "mergeSourcesHint": "Todo torrent que tiver uma dessas tags passará a ter a tag de destino no lugar.",
     "deriveTitle": "Derivar Tags",
+    "deriveSubtitle": "Crie várias tags relacionadas de uma vez, combinando a parte fixa desta tag com cada valor adicionado abaixo.",
     "deriveTagAction": "Derivar de {{name}}",
     "derive": "Derivar",
     "deriveComposedHint": "Esta tag já usa \"{{separator}}\" - as novas tags reaproveitam esse separador automaticamente com o mesmo sufixo.",
