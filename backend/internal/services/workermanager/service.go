@@ -782,6 +782,49 @@ func (s *Service) SetWorkerTaskTags(ctx context.Context, workerID, taskID string
 	return s.repository.SetWorkerTaskTags(worker, taskID, schema)
 }
 
+// CreateTagsAcrossWorkers creates tags on every registered worker's
+// qBittorrent server, without attaching them to any torrent. It is
+// best-effort per worker: an unreachable worker is reported in the
+// returned map (keyed by worker ID) rather than failing the whole call, so
+// the tag can still be persisted locally and synced to that worker on its
+// next write.
+func (s *Service) CreateTagsAcrossWorkers(ctx context.Context, tags []string) (map[string]string, error) {
+	workers, err := s.ListWorkersBasic()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list workers: %w", err)
+	}
+
+	type workerOutcome struct {
+		workerID string
+		err      error
+	}
+
+	resultChan := make(chan workerOutcome, len(workers))
+	for _, worker := range workers {
+		go func(w *entities.Worker) {
+			resultChan <- workerOutcome{workerID: w.UUID.String(), err: s.repository.CreateWorkerTags(w, tags)}
+		}(worker)
+	}
+
+	failed := make(map[string]string)
+	for range workers {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case outcome := <-resultChan:
+			if outcome.err != nil {
+				failed[outcome.workerID] = outcome.err.Error()
+				logger.Error("create tags failed for worker",
+					"worker_id", outcome.workerID,
+					"error", outcome.err.Error(),
+				)
+			}
+		}
+	}
+
+	return failed, nil
+}
+
 func (s *Service) SetWorkerTaskCategory(ctx context.Context, workerID, taskID string, schema schemas.TaskSetCategorySchema) error {
 	worker, err := s.fetchWorker(workerID)
 	if err != nil {
