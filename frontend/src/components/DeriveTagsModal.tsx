@@ -150,6 +150,7 @@ export function DeriveTagsModal({ open, onOpenChange, source, onSubmit }: Derive
             <div
               className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[40px] flex-wrap gap-1 items-center cursor-text"
               onClick={() => document.getElementById('derive-value-input')?.focus()}
+              onKeyDown={() => document.getElementById('derive-value-input')?.focus()}
             >
               {values.map((value, index) => (
                 <span
