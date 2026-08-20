@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/auth-hooks";
 import { AddTorrentProvider } from "@/contexts/AddTorrentContext";
 import { useAddTorrent } from "@/contexts/add-torrent-hooks";
+import { TagColorsProvider } from "@/contexts/TagColorsContext";
 import { AddTorrentModal } from "@/components/AddTorrentModal";
 import { AddTorrentButton } from "@/components/AddTorrentButton";
 import VariantColorSelectButton from "@/components/VariantColorSelectButton";
@@ -17,10 +18,12 @@ import logoImage from "@/assets/img/logo/logo.png";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AddTorrentProvider>
-      <AppLayoutInner>{children}</AppLayoutInner>
-      <AddTorrentModal />
-    </AddTorrentProvider>
+    <TagColorsProvider>
+      <AddTorrentProvider>
+        <AppLayoutInner>{children}</AppLayoutInner>
+        <AddTorrentModal />
+      </AddTorrentProvider>
+    </TagColorsProvider>
   );
 }
 

@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { AddTagModal } from "./components/AddTagModal";
 import { MergeTagsModal } from "./components/MergeTagsModal";
+import { useTagColors } from "@/contexts/tag-colors-hooks";
 
 const DEFAULT_COLOR = "#3b82f6";
 
@@ -38,6 +39,7 @@ function warnIfPartialFailure(t: (key: string, opts?: Record<string, unknown>) =
 
 function Tags() {
   const { t } = useTranslation();
+  const { refresh: refreshTagColors } = useTagColors();
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -81,6 +83,7 @@ function Tags() {
         throw new Error(response.error);
       } else if (response.data) {
         toast.success(t('tags.notifications.createSuccess'));
+        refreshTagColors();
         await loadTags();
         return response.data;
       }
@@ -98,6 +101,7 @@ function Tags() {
         throw new Error(response.error);
       }
       toast.success(t('tags.notifications.updateSuccess'));
+      refreshTagColors();
       await loadTags();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('tags.errors.updateFailed'));
@@ -115,6 +119,7 @@ function Tags() {
       } else {
         toast.success(t('tags.notifications.deleteSuccess'));
         warnIfPartialFailure(t, response.data);
+        refreshTagColors();
         setShowDeleteModal(false);
         setTagToDelete(null);
         await loadTags();
@@ -137,6 +142,7 @@ function Tags() {
 
       toast.success(sources.length === 1 ? t('tags.notifications.renameSuccess') : t('tags.notifications.mergeSuccess'));
       warnIfPartialFailure(t, response.data);
+      refreshTagColors();
       await loadTags();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('tags.errors.mergeFailed'));

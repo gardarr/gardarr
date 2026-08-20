@@ -1445,6 +1445,7 @@ export default function TorrentsPage() {
                 onToggleItem={tagControls.toggle}
                 onSetAll={tagControls.setAll}
                 useTagBadge={true}
+                groupByScope={true}
               />
             </div>
 
