@@ -8,6 +8,7 @@ import type {
   RenameTagRequest,
   MergeTagsRequest,
   TagOperationResult,
+  TagConflictReport,
 } from '../types/tag';
 
 /**
@@ -60,6 +61,15 @@ export class TagService {
    */
   async mergeTags(mergeData: MergeTagsRequest): Promise<ApiResponse<TagOperationResult>> {
     return api.post<TagOperationResult>(`${this.baseEndpoint}/merge`, mergeData);
+  }
+
+  /**
+   * Reports backward-compatibility issues the scoped-tag rules introduce
+   * for existing data: torrents holding multiple values for the same
+   * exclusive scope, and tags using a single ":" worth reviewing
+   */
+  async getConflicts(): Promise<ApiResponse<TagConflictReport>> {
+    return api.get<TagConflictReport>(`${this.baseEndpoint}/conflicts`);
   }
 }
 

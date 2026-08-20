@@ -42,3 +42,22 @@ export interface MergeTagsRequest {
 export interface TagOperationResult {
   failed_workers?: Record<string, string> | null;
 }
+
+// A single torrent holding more than one value for the same exclusive
+// scope (e.g. "quality::4k" and "quality::1080p" together) - invalid
+// under the scoped-tag rules, reported rather than silently reconciled.
+export interface ScopeConflict {
+  worker_id: string;
+  task_hash: string;
+  task_name: string;
+  scope: string;
+  tags: string[];
+}
+
+export interface TagConflictReport {
+  scope_conflicts: ScopeConflict[];
+  // Tags using a single ":" (grouped semantics) observed on any worker -
+  // worth reviewing since that separator had no meaning before scoped
+  // tags existed.
+  grouped_tags: string[];
+}

@@ -123,7 +123,7 @@ Gardarr is a **modern, lightweight multi-instance management platform for qBitto
   - Argon2id password hashing.
   - HTTP-only secure cookies for session management.
   - Role-based access control (RBAC).
-- **🏷️ Organization**: Smart category management with advanced tagging system supporting composite tags.
+- **🏷️ Organization**: Category management plus a colorable tag system with GitLab-style scoped tags (`quality::4k`) and grouped tags (`genre:action`), rename/merge, and a backward-compatibility check for existing data.
 - **📱 Mobile-First**: Responsive UI designed for seamless usage on smartphones and tablets.
 - **🐳 Docker Native**: Built for containerized environments, with support for Docker secrets through `_FILE` variables.
 
@@ -283,9 +283,21 @@ Upload custom images (JPEG, PNG, GIF, WEBP up to 10MB) with positioning and opac
 
 Organize torrents with pre-configured categories featuring custom icons (16 options), colors (10 options), default directories, and default tags. Configure once, apply everywhere.
 
-### Tags
+### Tags & Composite Tags
 
-Simple tags (`movies`, `music`) and composite tags using `::` separator for hierarchical organization (`genre::action`, `quality::4k`, `year::2024`).
+A dedicated **Tags** page (under **Management**, alongside Categories) persists color per tag - the same enrichment relationship Categories already has with qBittorrent: a tag observed on a worker but never colored locally still shows up and is fully manageable.
+
+Beyond plain tags (`movies`, `music`), the `::` and `:` separators carry real, enforced meaning rather than just a rendering convention:
+
+| Form | Meaning | Multiple values per torrent? |
+|---|---|---|
+| `key::value` | **Scoped** (GitLab-style) - e.g. `quality::4k` | No - applying `quality::1080p` to a torrent already holding `quality::4k` replaces it |
+| `key:value` | **Grouped**, hierarchical for display/filtering - e.g. `genre:action` | Yes |
+| `value` | Plain tag | n/a |
+
+Every `key::*` tag shares one color by default (set once on the scope), with an optional override per exact value - so a torrent's quality, resolution, or year reads at a glance instead of blending into a wall of same-colored pills. The torrents page's tag filter groups accordingly, with each scope under its own heading.
+
+Renaming and merging tags share one mechanic (a rename is a merge with a single source): every affected torrent, on every worker, gets the new tag and loses the old one, reported per worker rather than claimed as a blanket success if a worker is unreachable. The Tags page also surfaces case-variant clusters (`4k` vs `4K`) as one-click merge candidates, and flags any pre-existing torrent whose tags are no longer valid under scoped semantics (e.g. two values for the same scope) without silently rewriting them.
 
 ## 🛠️ Technology Stack
 

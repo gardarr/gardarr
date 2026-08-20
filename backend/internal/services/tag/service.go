@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	tagrepository "github.com/jfxdev/gardarr/internal/repository/tag"
 	"github.com/jfxdev/gardarr/internal/services/workermanager"
+	"github.com/jfxdev/gardarr/internal/tagrules"
 	"github.com/jfxdev/gardarr/pkg/logger"
 )
 
@@ -203,6 +205,79 @@ func (s *Service) DeleteTag(ctx context.Context, kind entities.TagKind, name str
 	}
 
 	return failed, nil
+}
+
+// DetectConflicts reports backward-compatibility issues the scoped-tag
+// rules introduce for tags that predate them: torrents holding more than
+// one value for the same exclusive scope, and tags using a single ":"
+// (grouped semantics, a new meaning) worth reviewing. Nothing is changed -
+// existing data is reported, not reconciled, until the next write touches
+// it.
+func (s *Service) DetectConflicts(ctx context.Context) (*entities.TagConflictReport, error) {
+	if s.workers == nil {
+		return detectTagConflicts(nil), nil
+	}
+
+	result, err := s.workers.ListWorkersTasks(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for workerID, errMsg := range result.Errors {
+		logger.Error("worker unreachable while detecting tag conflicts", "worker_id", workerID, "error", errMsg)
+	}
+
+	return detectTagConflicts(result.Tasks), nil
+}
+
+// detectTagConflicts is DetectConflicts' pure core, over a flat task list
+// from any number of workers.
+func detectTagConflicts(tasks []*entities.Task) *entities.TagConflictReport {
+	report := &entities.TagConflictReport{
+		ScopeConflicts: []entities.ScopeConflict{},
+		GroupedTags:    []string{},
+	}
+
+	groupedTags := make(map[string]struct{})
+
+	for _, task := range tasks {
+		byScope := make(map[string][]string)
+		for _, tag := range task.Tags {
+			switch parsed := tagrules.Parse(tag); parsed.Kind {
+			case tagrules.KindScoped:
+				byScope[parsed.Key] = append(byScope[parsed.Key], parsed.Raw)
+			case tagrules.KindGrouped:
+				groupedTags[parsed.Raw] = struct{}{}
+			}
+		}
+
+		for scope, tags := range byScope {
+			if len(tags) < 2 {
+				continue
+			}
+			sort.Strings(tags)
+			report.ScopeConflicts = append(report.ScopeConflicts, entities.ScopeConflict{
+				WorkerID: task.WorkerID.String(),
+				TaskHash: task.Hash,
+				TaskName: task.Name,
+				Scope:    scope,
+				Tags:     tags,
+			})
+		}
+	}
+
+	for tag := range groupedTags {
+		report.GroupedTags = append(report.GroupedTags, tag)
+	}
+	sort.Strings(report.GroupedTags)
+	sort.Slice(report.ScopeConflicts, func(i, j int) bool {
+		a, b := report.ScopeConflicts[i], report.ScopeConflicts[j]
+		if a.TaskName != b.TaskName {
+			return a.TaskName < b.TaskName
+		}
+		return a.Scope < b.Scope
+	})
+
+	return report
 }
 
 // dedupeNonEmpty trims and deduplicates a list of tag names, dropping

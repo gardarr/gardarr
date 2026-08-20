@@ -1115,6 +1115,13 @@
       "sourcesRequired": "At least one source tag is required",
       "targetRequired": "Target tag is required",
       "targetInSources": "Target must not be one of the source tags"
+    },
+    "conflicts": {
+      "title": "Backward-compatibility check",
+      "scopeDescription": "1 torrent holds more than one value for the same scope, which is no longer valid - nothing was changed, this will resolve the next time that torrent's tags are written.",
+      "scopeDescription_plural": "{{count}} torrents hold more than one value for the same scope, which is no longer valid - nothing was changed, this will resolve the next time each torrent's tags are written.",
+      "groupedDescription": "1 tag uses a single \":\" and is now treated as grouped - review it in case it wasn't meant to be composite.",
+      "groupedDescription_plural": "{{count}} tags use a single \":\" and are now treated as grouped - review them in case they weren't meant to be composite."
     }
   },
   "integrations": {

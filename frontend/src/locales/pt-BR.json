@@ -1141,6 +1141,13 @@
       "sourcesRequired": "Pelo menos uma tag de origem é obrigatória",
       "targetRequired": "A tag de destino é obrigatória",
       "targetInSources": "O destino não pode ser uma das tags de origem"
+    },
+    "conflicts": {
+      "title": "Verificação de compatibilidade",
+      "scopeDescription": "1 torrent tem mais de um valor para o mesmo escopo, o que não é mais válido - nada foi alterado, isso se resolve na próxima vez que as tags desse torrent forem gravadas.",
+      "scopeDescription_plural": "{{count}} torrents têm mais de um valor para o mesmo escopo, o que não é mais válido - nada foi alterado, isso se resolve na próxima vez que as tags de cada torrent forem gravadas.",
+      "groupedDescription": "1 tag usa um único \":\" e agora é tratada como agrupada - revise-a caso não fosse destinada a ser composta.",
+      "groupedDescription_plural": "{{count}} tags usam um único \":\" e agora são tratadas como agrupadas - revise-as caso não fossem destinadas a ser compostas."
     }
   },
   "integrations": {

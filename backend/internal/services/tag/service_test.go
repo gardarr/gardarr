@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/models"
@@ -16,6 +17,112 @@ func TestDedupeNonEmpty(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %v want %v", got, want)
 	}
+}
+
+func TestDetectTagConflicts(t *testing.T) {
+	workerID := uuid.New()
+
+	t.Run("no tasks", func(t *testing.T) {
+		report := detectTagConflicts(nil)
+		if len(report.ScopeConflicts) != 0 {
+			t.Errorf("expected no scope conflicts, got %v", report.ScopeConflicts)
+		}
+		if len(report.GroupedTags) != 0 {
+			t.Errorf("expected no grouped tags, got %v", report.GroupedTags)
+		}
+	})
+
+	t.Run("single value per scope is not a conflict", func(t *testing.T) {
+		tasks := []*entities.Task{
+			{WorkerID: workerID, Hash: "h1", Name: "Movie", Tags: []string{"quality::4k", "movies"}},
+		}
+		report := detectTagConflicts(tasks)
+		if len(report.ScopeConflicts) != 0 {
+			t.Errorf("expected no scope conflicts, got %v", report.ScopeConflicts)
+		}
+	})
+
+	t.Run("two values for the same scope is a conflict", func(t *testing.T) {
+		tasks := []*entities.Task{
+			{WorkerID: workerID, Hash: "h1", Name: "Movie", Tags: []string{"quality::4k", "quality::1080p"}},
+		}
+		report := detectTagConflicts(tasks)
+		if len(report.ScopeConflicts) != 1 {
+			t.Fatalf("expected 1 scope conflict, got %d", len(report.ScopeConflicts))
+		}
+		conflict := report.ScopeConflicts[0]
+		if conflict.Scope != "quality" {
+			t.Errorf("expected scope quality, got %s", conflict.Scope)
+		}
+		if conflict.WorkerID != workerID.String() {
+			t.Errorf("expected worker id %s, got %s", workerID.String(), conflict.WorkerID)
+		}
+		if conflict.TaskHash != "h1" || conflict.TaskName != "Movie" {
+			t.Errorf("unexpected task identity: %+v", conflict)
+		}
+		want := []string{"quality::1080p", "quality::4k"}
+		if !reflect.DeepEqual(conflict.Tags, want) {
+			t.Errorf("expected sorted tags %v, got %v", want, conflict.Tags)
+		}
+	})
+
+	t.Run("different scopes on the same task don't conflict with each other", func(t *testing.T) {
+		tasks := []*entities.Task{
+			{WorkerID: workerID, Hash: "h1", Name: "Movie", Tags: []string{"quality::4k", "genre::action"}},
+		}
+		report := detectTagConflicts(tasks)
+		if len(report.ScopeConflicts) != 0 {
+			t.Errorf("expected no scope conflicts, got %v", report.ScopeConflicts)
+		}
+	})
+
+	t.Run("conflicts across multiple tasks are all reported, sorted by task then scope", func(t *testing.T) {
+		tasks := []*entities.Task{
+			{WorkerID: workerID, Hash: "h2", Name: "Zeta", Tags: []string{"quality::4k", "quality::1080p"}},
+			{WorkerID: workerID, Hash: "h1", Name: "Alpha", Tags: []string{"genre::action", "genre::comedy"}},
+		}
+		report := detectTagConflicts(tasks)
+		if len(report.ScopeConflicts) != 2 {
+			t.Fatalf("expected 2 scope conflicts, got %d", len(report.ScopeConflicts))
+		}
+		if report.ScopeConflicts[0].TaskName != "Alpha" || report.ScopeConflicts[1].TaskName != "Zeta" {
+			t.Errorf("expected conflicts sorted by task name, got %+v", report.ScopeConflicts)
+		}
+	})
+
+	t.Run("grouped (single colon) tags are collected, deduped and sorted", func(t *testing.T) {
+		tasks := []*entities.Task{
+			{WorkerID: workerID, Hash: "h1", Name: "A", Tags: []string{"S01:E02", "movies"}},
+			{WorkerID: workerID, Hash: "h2", Name: "B", Tags: []string{"S01:E02", "genre:action"}},
+		}
+		report := detectTagConflicts(tasks)
+		want := []string{"S01:E02", "genre:action"}
+		if len(report.GroupedTags) != len(want) {
+			t.Fatalf("expected %d grouped tags, got %v", len(want), report.GroupedTags)
+		}
+		for _, tag := range want {
+			found := false
+			for _, got := range report.GroupedTags {
+				if got == tag {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("expected grouped tags to include %q, got %v", tag, report.GroupedTags)
+			}
+		}
+	})
+
+	t.Run("scoped and plain tags are not reported as grouped", func(t *testing.T) {
+		tasks := []*entities.Task{
+			{WorkerID: workerID, Hash: "h1", Name: "A", Tags: []string{"quality::4k", "movies"}},
+		}
+		report := detectTagConflicts(tasks)
+		if len(report.GroupedTags) != 0 {
+			t.Errorf("expected no grouped tags, got %v", report.GroupedTags)
+		}
+	})
 }
 
 // newTestService builds a Service with a nil workermanager.Service, matching

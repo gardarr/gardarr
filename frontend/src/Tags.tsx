@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { tagService } from "./services/tags";
-import type { Tag, CreateTagRequest, UpdateTagRequest, TagOperationResult } from "./types/tag";
+import type { Tag, CreateTagRequest, UpdateTagRequest, TagOperationResult, TagConflictReport } from "./types/tag";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { AddTagModal } from "./components/AddTagModal";
@@ -43,6 +43,7 @@ function Tags() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [conflicts, setConflicts] = useState<TagConflictReport | null>(null);
 
   const [showTagModal, setShowTagModal] = useState(false);
   const [editingTag, setEditingTag] = useState<Tag | null>(null);
@@ -71,9 +72,24 @@ function Tags() {
     }
   }, [t]);
 
+  const loadConflicts = useCallback(async () => {
+    // Best-effort: this is a compatibility report, not core data, so a
+    // failure here shouldn't block the rest of the page.
+    const response = await tagService.getConflicts();
+    if (response.data) {
+      setConflicts(response.data);
+    }
+  }, []);
+
   useEffect(() => {
     loadTags();
-  }, [loadTags]);
+    loadConflicts();
+  }, [loadTags, loadConflicts]);
+
+  const handleRefresh = () => {
+    loadTags();
+    loadConflicts();
+  };
 
   const handleCreateTag = async (createForm: CreateTagRequest) => {
     try {
@@ -205,7 +221,7 @@ function Tags() {
           </div>
         </div>
         <div className="flex gap-2 w-full sm:w-auto justify-between sm:justify-end">
-          <Button onClick={loadTags} variant="outline" size="icon" aria-label={t('common.refresh')}>
+          <Button onClick={handleRefresh} variant="outline" size="icon" aria-label={t('common.refresh')}>
             <RefreshCw className="h-4 w-4" />
           </Button>
           <Button onClick={() => setShowTagModal(true)} size="sm">
@@ -214,6 +230,55 @@ function Tags() {
           </Button>
         </div>
       </div>
+
+      {/* Backward-compatibility conflicts */}
+      {conflicts && (conflicts.scope_conflicts.length > 0 || conflicts.grouped_tags.length > 0) && (
+        <Card className="border-destructive/30 bg-destructive/5">
+          <CardContent className="space-y-4 py-4">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />
+              <h3 className="text-sm font-semibold">{t('tags.conflicts.title')}</h3>
+            </div>
+
+            {conflicts.scope_conflicts.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  {t('tags.conflicts.scopeDescription', { count: conflicts.scope_conflicts.length })}
+                </p>
+                <div className="space-y-1.5 max-h-56 overflow-y-auto">
+                  {conflicts.scope_conflicts.map((conflict, index) => (
+                    <div
+                      key={`${conflict.worker_id}-${conflict.task_hash}-${conflict.scope}-${index}`}
+                      className="rounded-md border bg-background px-3 py-2 text-xs"
+                    >
+                      <div className="font-medium truncate">{conflict.task_name}</div>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1 text-muted-foreground">
+                        <span className="font-medium">{conflict.scope}:</span>
+                        {conflict.tags.map((tag) => (
+                          <span key={tag} className="bg-muted px-1.5 py-0.5 rounded">{tag}</span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {conflicts.grouped_tags.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  {t('tags.conflicts.groupedDescription', { count: conflicts.grouped_tags.length })}
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {conflicts.grouped_tags.map((tag) => (
+                    <span key={tag} className="text-xs bg-muted px-2 py-0.5 rounded-full">{tag}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Merge candidates */}
       {mergeCandidates.length > 0 && (

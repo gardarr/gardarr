@@ -37,6 +37,7 @@ func (m *Module) Register() {
 
 	m.group.POST("", m.createTag)
 	m.group.GET("", m.listTags)
+	m.group.GET("/conflicts", m.getConflicts)
 	m.group.PUT("/:id", m.updateTag)
 	m.group.DELETE("", m.deleteTag)
 	m.group.POST("/rename", m.renameTag)
@@ -86,6 +87,19 @@ func (m *Module) listTags(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+// getConflicts reports backward-compatibility issues the scoped-tag rules
+// introduce for existing data: torrents holding multiple values for the
+// same exclusive scope, and tags using a single ":" worth reviewing.
+func (m *Module) getConflicts(c *gin.Context) {
+	report, err := m.service.DetectConflicts(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to detect tag conflicts"})
+		return
+	}
+
+	c.JSON(http.StatusOK, report)
 }
 
 // updateTag updates an existing tag's color/icon

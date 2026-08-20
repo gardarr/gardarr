@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/models"
 )
@@ -26,6 +27,7 @@ func setupTestRouter(t *testing.T) *gin.Engine {
 
 	tagsGroup.POST("", module.createTag)
 	tagsGroup.GET("", module.listTags)
+	tagsGroup.GET("/conflicts", module.getConflicts)
 	tagsGroup.PUT("/:id", module.updateTag)
 	tagsGroup.DELETE("", module.deleteTag)
 	tagsGroup.POST("/rename", module.renameTag)
@@ -316,5 +318,25 @@ func TestRoutes_MergeTags_Success(t *testing.T) {
 	}
 	if len(list) != 1 || list[0].Name != "cinema" {
 		t.Errorf("expected only 'cinema' to remain, got %v", list)
+	}
+}
+
+func TestRoutes_GetConflicts_EmptyWithoutWorkers(t *testing.T) {
+	router := setupTestRouter(t)
+
+	w := sendJSONRequest(router, "GET", "/api/v1/tags/conflicts", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var report entities.TagConflictReport
+	if err := json.Unmarshal(w.Body.Bytes(), &report); err != nil {
+		t.Fatalf("failed to unmarshal response: %v", err)
+	}
+	if len(report.ScopeConflicts) != 0 {
+		t.Errorf("expected no scope conflicts without a workermanager, got %v", report.ScopeConflicts)
+	}
+	if len(report.GroupedTags) != 0 {
+		t.Errorf("expected no grouped tags without a workermanager, got %v", report.GroupedTags)
 	}
 }
