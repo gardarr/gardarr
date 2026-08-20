@@ -717,6 +717,19 @@ func Register(m *migration.Migrator) {
 				return nil
 			},
 		},
+		{
+			Version:     "038_create_tags_table",
+			Description: "Cria a tabela de tags (enriquecimento local: cor e ícone)",
+			Up: func(db *gorm.DB) error {
+				return db.AutoMigrate(&models.Tag{})
+			},
+			Down: func(db *gorm.DB) error {
+				if db.Migrator().HasTable(&models.Tag{}) {
+					return db.Migrator().DropTable(&models.Tag{})
+				}
+				return nil
+			},
+		},
 	})
 }
 

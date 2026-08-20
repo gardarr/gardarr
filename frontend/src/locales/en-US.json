@@ -60,9 +60,11 @@
     "toggleSidebar": "Toggle sidebar",
     "sections": {
       "library": "Library",
+      "management": "Management",
       "system": "System",
       "administration": "Administration"
-    }
+    },
+    "tags": "Tags"
   },
   "profile": {
     "title": "Profile",
@@ -880,7 +882,9 @@
       "status": "Status",
       "categories": "Categories",
       "tags": "Tags",
-      "ratioGrades": "Ratio Grades"
+      "ratioGrades": "Ratio Grades",
+      "otherTags": "Other",
+      "unnamed": "(unnamed)"
     },
     "sortBy": {
       "priority": "priority",
@@ -1042,6 +1046,116 @@
       "createFailed": "Failed to create category",
       "updateFailed": "Failed to update category",
       "deleteFailed": "Failed to delete category"
+    }
+  },
+  "tags": {
+    "title": "Tags",
+    "subtitle": "Manage torrent tags and scoped colors",
+    "addTag": "Add Tag",
+    "createNew": "Create New Tag",
+    "create": "Create Tag",
+    "createHint": "Use \"::\" for a scoped tag (e.g. quality::4k) or \":\" for a grouped one (e.g. genre:action).",
+    "edit": "Edit",
+    "search": "Search tags...",
+    "loading": "Loading tags...",
+    "noTags": "No tags found",
+    "noTagsDesc": "Tags appear here once used on a torrent, or you can create one to set its color ahead of time",
+    "editTag": "Edit {{name}}",
+    "renameTagAction": "Rename {{name}}",
+    "deleteTagAction": "Delete {{name}}",
+    "deleteConfirmTitle": "Delete Tag",
+    "deleteConfirmMessage": "Are you sure you want to delete the tag \"{{name}}\"? It will be removed from {{count}} torrent. This action cannot be undone.",
+    "deleteConfirmMessage_plural": "Are you sure you want to delete the tag \"{{name}}\"? It will be removed from {{count}} torrents. This action cannot be undone.",
+    "deleteConfirmMessageScope": "Are you sure you want to delete the scope \"{{name}}\"? This only removes its shared color - it has no counterpart on your workers. This action cannot be undone.",
+    "renameTitle": "Rename Tag",
+    "mergeTitle": "Merge Tags",
+    "rename": "Rename",
+    "merge": "Merge",
+    "mergeSourcesHint": "Every torrent carrying one of these tags will get the target tag instead.",
+    "deriveTitle": "Derive Tags",
+    "deriveSubtitle": "Create several related tags at once by combining this tag's fixed part with each value you add below.",
+    "deriveTagAction": "Derive from {{name}}",
+    "derive": "Derive",
+    "deriveComposedHint": "This tag already uses \"{{separator}}\" - new tags reuse it automatically with the same suffix.",
+    "deriveComposedHintSuffix": "This tag already uses \"{{separator}}\" - new tags reuse it automatically with the same prefix.",
+    "derivePlainHint": "Pick where the prefix and suffix meet, e.g. \"-\" splits \"movies-1080p\" into \"movies\" and \"1080p\".",
+    "deriveModePrefix": "Prefix",
+    "deriveModeSuffix": "Suffix",
+    "derivePreview": "Will create",
+    "fields": {
+      "name": "Name",
+      "color": "Color",
+      "kind": "Kind",
+      "usageCount": "Usage",
+      "actions": "Actions",
+      "sources": "Source tags",
+      "target": "Target tag",
+      "source": "Source tag",
+      "delimiter": "Delimiter",
+      "mode": "Derive by",
+      "prefixes": "New prefixes",
+      "suffixes": "New suffixes"
+    },
+    "placeholders": {
+      "name": "Enter tag name...",
+      "sources": "Add a source tag...",
+      "target": "Enter target tag name...",
+      "delimiter": "e.g. -",
+      "prefixes": "Add a prefix and press Enter...",
+      "suffixes": "Add a suffix and press Enter..."
+    },
+    "kindLabels": {
+      "tag": "Tag",
+      "scope": "Scope",
+      "tagWithUsage": "{{count}} torrent",
+      "tagWithUsage_plural": "{{count}} torrents"
+    },
+    "mergeCandidates": {
+      "title": "Possible duplicates",
+      "description": "These tags only differ by case (e.g. \"4k\" vs \"4K\") - merging keeps whichever is used most and retires the rest.",
+      "merge": "Merge"
+    },
+    "stats": {
+      "totalTags": "Tags",
+      "scopes": "Scopes",
+      "unused": "Unused",
+      "mostUsed": "Most used"
+    },
+    "notifications": {
+      "createSuccess": "Tag created successfully!",
+      "updateSuccess": "Tag updated successfully!",
+      "deleteSuccess": "Tag deleted successfully!",
+      "renameSuccess": "Tag renamed successfully!",
+      "mergeSuccess": "Tags merged successfully!",
+      "partialFailure": "Applied, but 1 worker could not be reached and will sync on its next write.",
+      "partialFailure_plural": "Applied, but {{count}} workers could not be reached and will sync on their next write.",
+      "deriveSuccess": "1 tag created!",
+      "deriveSuccess_other": "{{count}} tags created!",
+      "derivePartialFailure": "1 tag could not be created.",
+      "derivePartialFailure_other": "{{count}} tags could not be created."
+    },
+    "errors": {
+      "nameRequired": "Tag name is required",
+      "loadFailed": "Failed to load tags",
+      "createFailed": "Failed to create tag",
+      "updateFailed": "Failed to update tag",
+      "deleteFailed": "Failed to delete tag",
+      "mergeFailed": "Failed to apply rename/merge",
+      "sourcesRequired": "At least one source tag is required",
+      "targetRequired": "Target tag is required",
+      "targetInSources": "Target must not be one of the source tags",
+      "deriveFailed": "Failed to derive tags",
+      "prefixesRequired": "At least one prefix is required",
+      "suffixesRequired": "At least one suffix is required",
+      "delimiterRequired": "A delimiter is required for a plain tag",
+      "deriveInvalid": "No valid tag could be derived from this input"
+    },
+    "conflicts": {
+      "title": "Backward-compatibility check",
+      "scopeDescription": "1 torrent holds more than one value for the same scope, which is no longer valid - nothing was changed, this will resolve the next time that torrent's tags are written.",
+      "scopeDescription_plural": "{{count}} torrents hold more than one value for the same scope, which is no longer valid - nothing was changed, this will resolve the next time each torrent's tags are written.",
+      "groupedDescription": "1 tag uses a single \":\" and is now treated as grouped - review it in case it wasn't meant to be composite.",
+      "groupedDescription_plural": "{{count}} tags use a single \":\" and are now treated as grouped - review them in case they weren't meant to be composite."
     }
   },
   "integrations": {

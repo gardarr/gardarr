@@ -670,12 +670,16 @@ func groupBulkTaskHashesByWorker(items []schemas.BulkTaskItemSchema) map[string]
 	hashesByWorker := make(map[string][]string)
 	seen := make(map[string]struct{}, len(items))
 	for _, item := range items {
-		key := item.WorkerID + ":" + item.Hash
+		hash := strings.TrimSpace(item.Hash)
+		if hash == "" {
+			continue
+		}
+		key := item.WorkerID + ":" + hash
 		if _, exists := seen[key]; exists {
 			continue
 		}
 		seen[key] = struct{}{}
-		hashesByWorker[item.WorkerID] = append(hashesByWorker[item.WorkerID], item.Hash)
+		hashesByWorker[item.WorkerID] = append(hashesByWorker[item.WorkerID], hash)
 	}
 	return hashesByWorker
 }
@@ -780,6 +784,124 @@ func (s *Service) SetWorkerTaskTags(ctx context.Context, workerID, taskID string
 	}
 
 	return s.repository.SetWorkerTaskTags(worker, taskID, schema)
+}
+
+// fanOutAcrossWorkers runs op against every registered worker concurrently.
+// A worker whose op fails is reported in the returned map (keyed by worker
+// ID, logged with logMsg) rather than failing the whole call, so tag
+// operations remain best-effort per worker: an unreachable worker doesn't
+// block the ones that succeed. total is the number of workers op was
+// attempted against, so a caller can tell "every worker failed" (len(failed)
+// == total, total > 0) apart from "nothing to attempt" (total == 0) - the
+// two mean different things for whether local bookkeeping should proceed.
+func (s *Service) fanOutAcrossWorkers(ctx context.Context, logMsg string, op func(w *entities.Worker) error) (failed map[string]string, total int, err error) {
+	workers, err := s.ListWorkersBasic()
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list workers: %w", err)
+	}
+
+	type workerOutcome struct {
+		workerID string
+		err      error
+	}
+
+	if err := ctx.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	resultChan := make(chan workerOutcome, len(workers))
+	for _, worker := range workers {
+		go func(w *entities.Worker) {
+			resultChan <- workerOutcome{workerID: w.UUID.String(), err: op(w)}
+		}(worker)
+	}
+
+	failed = make(map[string]string)
+	for range workers {
+		select {
+		case <-ctx.Done():
+			return nil, 0, ctx.Err()
+		case outcome := <-resultChan:
+			if outcome.err != nil {
+				failed[outcome.workerID] = outcome.err.Error()
+				logger.Error(logMsg, "worker_id", outcome.workerID, "error", outcome.err.Error())
+			}
+		}
+	}
+
+	return failed, len(workers), nil
+}
+
+// CreateTagsAcrossWorkers creates tags on every registered worker's
+// qBittorrent server, without attaching them to any torrent. The tag can
+// still be persisted locally and synced to a failed worker on its next
+// write.
+func (s *Service) CreateTagsAcrossWorkers(ctx context.Context, tags []string) (failed map[string]string, total int, err error) {
+	return s.fanOutAcrossWorkers(ctx, "create tags failed for worker", func(w *entities.Worker) error {
+		return s.repository.CreateWorkerTags(w, tags)
+	})
+}
+
+// DeleteTagAcrossWorkers deregisters a tag from every worker's qBittorrent
+// server, detaching it from every torrent that carries it.
+func (s *Service) DeleteTagAcrossWorkers(ctx context.Context, name string) (failed map[string]string, total int, err error) {
+	return s.fanOutAcrossWorkers(ctx, "delete tag failed for worker", func(w *entities.Worker) error {
+		return s.repository.DeleteWorkerTags(w, []string{name})
+	})
+}
+
+// MergeTagsAcrossWorkers is rename's and merge's shared mechanic (rename
+// is a merge with a single source): on every worker, every torrent
+// currently holding one of sources gets target added (scoped-tag
+// exclusivity still applies, same as any other tag write), then sources
+// are deregistered from that worker - detaching them from any torrent
+// that still carries them and removing the now-orphaned tag entry. Both
+// steps are idempotent (adding a tag a torrent already has, or deleting
+// one it doesn't, is a no-op), so retrying after a partial failure is
+// safe. A worker whose add step fails is skipped for the delete step too,
+// so sources isn't deregistered there before target is confirmed attached.
+func (s *Service) MergeTagsAcrossWorkers(ctx context.Context, sources []string, target string) (failed map[string]string, total int, err error) {
+	return s.fanOutAcrossWorkers(ctx, "merge tags failed for worker", func(w *entities.Worker) error {
+		return s.mergeTagsOnWorker(w, sources, target)
+	})
+}
+
+func (s *Service) mergeTagsOnWorker(worker *entities.Worker, sources []string, target string) error {
+	tasks, err := s.repository.ListWorkerTasks(worker)
+	if err != nil {
+		return err
+	}
+
+	hashes := hashesWithAnyTag(tasks, sources)
+
+	if len(hashes) > 0 {
+		if err := s.repository.AddWorkerTaskTags(worker, strings.Join(hashes, "|"), []string{target}); err != nil {
+			return err
+		}
+	}
+
+	return s.repository.DeleteWorkerTags(worker, sources)
+}
+
+// hashesWithAnyTag returns the hash of every task carrying at least one of
+// names.
+func hashesWithAnyTag(tasks []*entities.Task, names []string) []string {
+	nameSet := make(map[string]struct{}, len(names))
+	for _, name := range names {
+		nameSet[name] = struct{}{}
+	}
+
+	var hashes []string
+	for _, task := range tasks {
+		for _, tag := range task.Tags {
+			if _, ok := nameSet[tag]; ok {
+				hashes = append(hashes, task.Hash)
+				break
+			}
+		}
+	}
+
+	return hashes
 }
 
 func (s *Service) SetWorkerTaskCategory(ctx context.Context, workerID, taskID string, schema schemas.TaskSetCategorySchema) error {

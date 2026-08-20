@@ -29,6 +29,7 @@ import (
 	"github.com/jfxdev/gardarr/internal/routes/api/v1/settings"
 	"github.com/jfxdev/gardarr/internal/routes/api/v1/setup"
 	"github.com/jfxdev/gardarr/internal/routes/api/v1/signup"
+	tagsRoutes "github.com/jfxdev/gardarr/internal/routes/api/v1/tags"
 	"github.com/jfxdev/gardarr/internal/routes/api/v1/task_metadata"
 	"github.com/jfxdev/gardarr/internal/routes/api/v1/users"
 	"github.com/jfxdev/gardarr/internal/routes/api/v1/version"
@@ -530,6 +531,7 @@ func setRoutes(dependencies routeDependencies, allowedOrigins []string) error {
 	auth.NewModule(v1, dependencies.db, dependencies.websocket).Register()
 	workers.NewModule(v1, dependencies.workers, dependencies.bandwidthSchedule).Register()
 	category.NewModule(v1, dependencies.db).Register()
+	tagsRoutes.NewModule(v1, dependencies.db, dependencies.workers).Register()
 	users.NewModule(v1, dependencies.db).Register()
 	profile.NewModule(v1, dependencies.db).Register()
 	signup.NewModule(v1, dependencies.db).Register()

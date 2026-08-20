@@ -575,6 +575,28 @@ func (r *Repository) AddWorkerTaskTags(worker *entities.Worker, taskID string, t
 	return taskservice.New(client).AddTaskTags(context.Background(), taskID, tags)
 }
 
+// CreateWorkerTags creates one or more tags on the worker's qBittorrent
+// server without attaching them to any torrent.
+func (r *Repository) CreateWorkerTags(worker *entities.Worker, tags []string) error {
+	client, err := r.getClient(worker)
+	if err != nil {
+		return err
+	}
+
+	return client.CreateTags(tags)
+}
+
+// DeleteWorkerTags removes one or more tags from the worker's qBittorrent
+// server, detaching them from every torrent that carries them.
+func (r *Repository) DeleteWorkerTags(worker *entities.Worker, tags []string) error {
+	client, err := r.getClient(worker)
+	if err != nil {
+		return err
+	}
+
+	return client.DeleteTags(tags)
+}
+
 func (r *Repository) SetWorkerTaskCategory(worker *entities.Worker, taskID string, schema schemas.TaskSetCategorySchema) error {
 	client, err := r.getClient(worker)
 	if err != nil {

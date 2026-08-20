@@ -9,6 +9,7 @@ import (
 	"github.com/jfxdev/gardarr/internal/constants"
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/schemas"
+	"github.com/jfxdev/gardarr/internal/tagrules"
 	"github.com/jfxdev/go-qbt"
 
 	"github.com/jfxdev/gardarr/pkg/errors"
@@ -79,8 +80,10 @@ func (s *Repository) Add(schema schemas.TaskCreateSchema) (*entities.Task, error
 	for _, item := range list {
 		if strings.EqualFold(item.MagnetLink.Hash, uri.Hash) {
 			task = item
-			if err := s.client.AddTorrentTags(task.Hash, schema.Tags); err != nil {
-				return nil, err
+			if tags := normalizeDesiredTags(schema.Tags); len(tags) > 0 {
+				if err := s.client.AddTorrentTags(task.Hash, tags); err != nil {
+					return nil, err
+				}
 			}
 			break
 		}
@@ -120,8 +123,8 @@ func (s *Repository) AddFile(fileName string, fileData []byte, schema schemas.Ta
 
 	for _, item := range list {
 		if torrentfile.MatchesInfoHash(hashes, item.InfoHashV1, item.InfoHashV2) {
-			if len(schema.Tags) > 0 {
-				if err := s.client.AddTorrentTags(item.Hash, schema.Tags); err != nil {
+			if tags := normalizeDesiredTags(schema.Tags); len(tags) > 0 {
+				if err := s.client.AddTorrentTags(item.Hash, tags); err != nil {
 					return nil, err
 				}
 			}
@@ -247,6 +250,13 @@ func splitTaskTags(tags string) []string {
 	return result
 }
 
+// normalizeDesiredTags trims/dedupes a tag list and enforces scoped-tag
+// exclusivity within it (see internal/tagrules): a "key::value" tag is
+// exclusive within "key", so if the list holds more than one value for the
+// same key, only the last one (in input order) survives. This covers a
+// closed desired set on its own - a brand new torrent's tags, or the full
+// list SetTags diffs against current - since any conflicting older value
+// not repeated in the desired set is naturally dropped by that diff.
 func normalizeDesiredTags(tags []string) []string {
 	result := make([]string, 0, len(tags))
 	seen := make(map[string]struct{}, len(tags))
@@ -263,12 +273,37 @@ func normalizeDesiredTags(tags []string) []string {
 		result = append(result, normalized)
 	}
 
+	return resolveScopeConflicts(result)
+}
+
+// resolveScopeConflicts keeps only the last tag (in input order) for each
+// scope key. tags must already be deduplicated - every element is a
+// distinct string, so at most one of them equals lastForScope[scope].
+func resolveScopeConflicts(tags []string) []string {
+	lastForScope := make(map[string]string)
+	for _, tag := range tags {
+		if scope, ok := tagrules.ScopeOf(tag); ok {
+			lastForScope[scope] = tag
+		}
+	}
+
+	result := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		scope, ok := tagrules.ScopeOf(tag)
+		if !ok || lastForScope[scope] == tag {
+			result = append(result, tag)
+		}
+	}
+
 	return result
 }
 
 // AddTags adds tags to one or more torrents (hash may be "h1|h2|...").
-// Unlike SetTags it does not diff against current tags, so it works with
-// qBittorrent's native multi-hash batching.
+// Unlike SetTags it does not diff the full desired state, but it still
+// enforces scoped-tag exclusivity: adding a "key::value" tag to a torrent
+// that already carries a different value under the same "key" removes
+// that old value first (removeConflictingScopedTags), so a torrent can't
+// end up holding two values for the same exclusive scope.
 func (s *Repository) AddTags(hash string, tags []string) error {
 	normalized := normalizeDesiredTags(tags)
 	if len(normalized) == 0 {
@@ -279,7 +314,101 @@ func (s *Repository) AddTags(hash string, tags []string) error {
 		return errors.Wrap(err, "failed to add torrent tags")
 	}
 
+	if err := s.removeConflictingScopedTags(hash, normalized); err != nil {
+		return errors.Wrap(err, "failed to remove conflicting scoped tags")
+	}
+
 	return nil
+}
+
+// removeConflictingScopedTags strips, per torrent in the "h1|h2|..." batch,
+// any current tag whose scope collides with one of the incoming tags but
+// whose value differs. It's a no-op (skipping the ListTorrents call
+// entirely) unless at least one incoming tag is scoped.
+func (s *Repository) removeConflictingScopedTags(hash string, incoming []string) error {
+	hasScoped := false
+	for _, tag := range incoming {
+		if _, ok := tagrules.ScopeOf(tag); ok {
+			hasScoped = true
+			break
+		}
+	}
+	if !hasScoped {
+		return nil
+	}
+
+	targeted := make(map[string]struct{})
+	for _, h := range strings.Split(hash, "|") {
+		if h = strings.TrimSpace(h); h != "" {
+			targeted[h] = struct{}{}
+		}
+	}
+
+	items, err := s.client.ListTorrents(qbt.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	currentByHash := make(map[string]string, len(targeted))
+	for _, item := range items {
+		if _, ok := targeted[item.Hash]; ok {
+			currentByHash[item.Hash] = item.Tags
+		}
+	}
+
+	removals := conflictingScopedTagsByHash(currentByHash, incoming)
+
+	// Group hashes that need the exact same tags removed so they can share
+	// a single DeleteTorrentTags call instead of one per torrent.
+	hashesByTagSet := make(map[string][]string)
+	for h, toRemove := range removals {
+		slices.Sort(toRemove)
+		key := strings.Join(toRemove, ",")
+		hashesByTagSet[key] = append(hashesByTagSet[key], h)
+	}
+
+	for tagSet, hashes := range hashesByTagSet {
+		if err := s.client.DeleteTorrentTags(strings.Join(hashes, "|"), strings.Split(tagSet, ",")); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// conflictingScopedTagsByHash computes, for each hash in currentByHash,
+// which of its current tags need removing before the incoming tags are
+// added: a current tag conflicts if it shares a scope with an incoming
+// tag but has a different value.
+func conflictingScopedTagsByHash(currentByHash map[string]string, incoming []string) map[string][]string {
+	incomingByScope := make(map[string]string, len(incoming))
+	for _, tag := range incoming {
+		if scope, ok := tagrules.ScopeOf(tag); ok {
+			incomingByScope[scope] = tag
+		}
+	}
+	if len(incomingByScope) == 0 {
+		return nil
+	}
+
+	result := make(map[string][]string)
+	for hash, current := range currentByHash {
+		var toRemove []string
+		for _, tag := range splitTaskTags(current) {
+			scope, ok := tagrules.ScopeOf(tag)
+			if !ok {
+				continue
+			}
+			if incomingValue, conflicts := incomingByScope[scope]; conflicts && incomingValue != tag {
+				toRemove = append(toRemove, tag)
+			}
+		}
+		if len(toRemove) > 0 {
+			result[hash] = toRemove
+		}
+	}
+
+	return result
 }
 
 func (s *Repository) SetCategory(hash string, category string) error {

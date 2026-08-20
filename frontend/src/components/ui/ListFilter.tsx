@@ -2,7 +2,9 @@ import { useDropdown } from "@/hooks/useDropdown";
 import { Button } from "@/components/ui/button";
 import { TagBadge } from "@/components/ui/TagBadge";
 import { ChevronDown, Check } from "lucide-react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { scopeOf } from "@/utils/tagRules";
 
 interface ListFilterProps {
   label: string;
@@ -11,6 +13,47 @@ interface ListFilterProps {
   onToggleItem: (item: string) => void;
   onSetAll: (checked: boolean) => void;
   useTagBadge?: boolean;
+  // Splits availableItems into per-scope groups (e.g. every "quality::*"
+  // under a "quality" heading) plus a leftover group for plain/grouped
+  // tags, instead of one flat list.
+  groupByScope?: boolean;
+}
+
+function ListFilterOption({
+  item,
+  selected,
+  useTagBadge,
+  onToggleItem,
+}: {
+  item: string;
+  selected: boolean;
+  useTagBadge: boolean;
+  onToggleItem: (item: string) => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <button
+      className={`w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground ${selected ? 'bg-muted' : ''}`}
+      onClick={() => onToggleItem(item)}
+      role="option"
+      aria-selected={selected}
+      title={item}
+    >
+      <div className="flex items-center gap-2 min-w-0 flex-1">
+        {useTagBadge ? (
+          <TagBadge
+            tag={item}
+            size="sm"
+            showIcon={false}
+            className="text-xs"
+          />
+        ) : (
+          <span className="truncate max-w-[220px]">{item || t('torrents.filters.unnamed')}</span>
+        )}
+      </div>
+      {selected && <Check className="h-4 w-4 flex-shrink-0" />}
+    </button>
+  );
 }
 
 export function ListFilter({
@@ -20,9 +63,34 @@ export function ListFilter({
   onToggleItem,
   onSetAll,
   useTagBadge = false,
+  groupByScope = false,
 }: ListFilterProps) {
   const { t } = useTranslation();
   const { isOpen, setIsOpen, ref: dropdownRef } = useDropdown();
+
+  const { scopedGroups, ungrouped } = useMemo(() => {
+    if (!groupByScope) {
+      return { scopedGroups: [] as [string, string[]][], ungrouped: availableItems };
+    }
+
+    const groups = new Map<string, string[]>();
+    const rest: string[] = [];
+    for (const item of availableItems) {
+      const scope = scopeOf(item);
+      if (scope) {
+        const group = groups.get(scope) ?? [];
+        group.push(item);
+        groups.set(scope, group);
+      } else {
+        rest.push(item);
+      }
+    }
+
+    return {
+      scopedGroups: Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b)),
+      ungrouped: rest,
+    };
+  }, [availableItems, groupByScope]);
 
   const allSelected = availableItems.length > 0 && selectedItems.size === availableItems.length;
   const noneSelected = selectedItems.size === 0;
@@ -85,34 +153,51 @@ export function ListFilter({
             <div className="px-3 py-2 text-sm text-muted-foreground">
               Nenhum item disponível
             </div>
+          ) : scopedGroups.length === 0 ? (
+            ungrouped.map((item) => (
+              <ListFilterOption
+                key={item}
+                item={item}
+                selected={selectedItems.has(item)}
+                useTagBadge={useTagBadge}
+                onToggleItem={onToggleItem}
+              />
+            ))
           ) : (
-            availableItems.map((item) => {
-              const selected = selectedItems.has(item);
-              return (
-                <button
-                  key={item}
-                  className={`w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground ${selected ? 'bg-muted' : ''}`}
-                  onClick={() => onToggleItem(item)}
-                  role="option"
-                  aria-selected={selected}
-                  title={item}
-                >
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    {useTagBadge ? (
-                      <TagBadge
-                        tag={item}
-                        size="sm"
-                        showIcon={false}
-                        className="text-xs"
-                      />
-                    ) : (
-                      <span className="truncate max-w-[220px]">{item || "(sem nome)"}</span>
-                    )}
+            <>
+              {scopedGroups.map(([scope, items]) => (
+                <div key={scope}>
+                  <div className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {scope}
                   </div>
-                  {selected && <Check className="h-4 w-4 flex-shrink-0" />}
-                </button>
-              );
-            })
+                  {items.map((item) => (
+                    <ListFilterOption
+                      key={item}
+                      item={item}
+                      selected={selectedItems.has(item)}
+                      useTagBadge={useTagBadge}
+                      onToggleItem={onToggleItem}
+                    />
+                  ))}
+                </div>
+              ))}
+              {ungrouped.length > 0 && (
+                <div>
+                  <div className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {t('torrents.filters.otherTags')}
+                  </div>
+                  {ungrouped.map((item) => (
+                    <ListFilterOption
+                      key={item}
+                      item={item}
+                      selected={selectedItems.has(item)}
+                      useTagBadge={useTagBadge}
+                      onToggleItem={onToggleItem}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

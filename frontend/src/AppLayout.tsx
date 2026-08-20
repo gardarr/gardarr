@@ -1,6 +1,6 @@
 // AppLayout.tsx
 import { Button } from "@/components/ui/button";
-import { Settings, Users, ArrowDownUp, Menu, Sun, Moon, Info, LogOut, FolderOpen, UserCircle, Server, Plug, History } from "lucide-react";
+import { Settings, Users, ArrowDownUp, Menu, Sun, Moon, Info, LogOut, FolderOpen, UserCircle, Server, Plug, History, Tag } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import PageTransition from "@/components/PageTransition";
@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/auth-hooks";
 import { AddTorrentProvider } from "@/contexts/AddTorrentContext";
 import { useAddTorrent } from "@/contexts/add-torrent-hooks";
+import { TagColorsProvider } from "@/contexts/TagColorsContext";
 import { AddTorrentModal } from "@/components/AddTorrentModal";
 import { AddTorrentButton } from "@/components/AddTorrentButton";
 import VariantColorSelectButton from "@/components/VariantColorSelectButton";
@@ -17,10 +18,12 @@ import logoImage from "@/assets/img/logo/logo.png";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AddTorrentProvider>
-      <AppLayoutInner>{children}</AppLayoutInner>
-      <AddTorrentModal />
-    </AddTorrentProvider>
+    <TagColorsProvider>
+      <AddTorrentProvider>
+        <AppLayoutInner>{children}</AppLayoutInner>
+        <AddTorrentModal />
+      </AddTorrentProvider>
+    </TagColorsProvider>
   );
 }
 
@@ -82,7 +85,15 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
       label: t("navigation.sections.library"),
       items: [
         { href: "/torrents", icon: ArrowDownUp, label: t("navigation.torrents"), key: "torrents" },
+        { href: "/history", icon: History, label: t("navigation.history"), key: "history" },
+      ],
+    },
+    {
+      key: "management",
+      label: t("navigation.sections.management"),
+      items: [
         { href: "/categories", icon: FolderOpen, label: t("navigation.categories"), key: "categories" },
+        { href: "/tags", icon: Tag, label: t("navigation.tags"), key: "tags" },
       ],
     },
     {
@@ -91,7 +102,6 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
       items: [
         { href: "/workers", icon: Server, label: t("navigation.workers"), key: "workers" },
         { href: "/integrations", icon: Plug, label: t("navigation.integrations"), key: "integrations" },
-        { href: "/history", icon: History, label: t("navigation.history"), key: "history" },
       ],
     },
     {

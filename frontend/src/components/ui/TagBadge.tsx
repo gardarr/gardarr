@@ -1,5 +1,7 @@
 import { Tag, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { parseTag } from "@/utils/tagRules";
+import { useTagColors } from "@/contexts/tag-colors-hooks";
 
 interface TagBadgeProps {
   tag: string;
@@ -10,10 +12,10 @@ interface TagBadgeProps {
   onDelete?: () => void;
 }
 
-export function TagBadge({ 
-  tag, 
-  className, 
-  showIcon = true, 
+export function TagBadge({
+  tag,
+  className,
+  showIcon = true,
   size = "sm",
   showDelete = false,
   onDelete
@@ -26,40 +28,48 @@ export function TagBadge({
 
   const iconSizes = {
     sm: "h-3 w-3",
-    md: "h-3.5 w-3.5", 
+    md: "h-3.5 w-3.5",
     lg: "h-4 w-4"
   };
 
-  // Check if tag is composite (contains ::)
-  const isComposite = tag.includes('::');
-  
-  if (isComposite) {
-    // Split only on the first occurrence of ::
-    const separatorIndex = tag.indexOf('::');
-    const category = tag.substring(0, separatorIndex);
-    const value = tag.substring(separatorIndex + 2);
-    
+  const parsed = parseTag(tag);
+  const { getTagColor, getScopeColor } = useTagColors();
+
+  if (parsed.kind === "scoped") {
+    // The key half always uses the scope's shared color, so every
+    // "key::*" badge reads as one hue at a glance; the value half prefers
+    // its own exact override and otherwise falls back to that same color.
+    const scopeColor = getScopeColor(parsed.key);
+    const exactValueColor = getTagColor(parsed.raw);
+    const valueColor = exactValueColor ?? scopeColor;
+    const valueColorIsInherited = !exactValueColor;
+
     return (
       <div className={cn("inline-flex items-center", className)}>
-        {/* Category badge - primary theme */}
+        {/* Category badge */}
         <span
           className={cn(
-            "inline-flex items-center gap-1 bg-primary text-primary-foreground border border-primary rounded-l-full font-medium",
+            "inline-flex items-center gap-1 rounded-l-full font-medium",
+            scopeColor ? "text-white" : "bg-primary text-primary-foreground border border-primary",
             sizeClasses[size]
           )}
+          style={scopeColor ? { backgroundColor: scopeColor } : undefined}
         >
           {showIcon && <Tag className={iconSizes[size]} />}
-          {category}
+          {parsed.key}
         </span>
-        
-        {/* Value badge - secondary theme */}
+
+        {/* Value badge - a shade darker than the key half when both share the scope color */}
         <span
           className={cn(
-            "inline-flex items-center gap-1 bg-secondary text-secondary-foreground border border-secondary rounded-r-full font-medium border-l-0",
+            "inline-flex items-center gap-1 rounded-r-full font-medium",
+            valueColor ? "text-white" : "bg-secondary text-secondary-foreground border border-secondary",
+            "border-l-0",
             sizeClasses[size]
           )}
+          style={valueColor ? { backgroundColor: valueColor, ...(valueColorIsInherited ? { filter: "brightness(0.82)" } : {}) } : undefined}
         >
-          {value}
+          {parsed.value}
           {showDelete && onDelete && (
             <button
               type="button"
@@ -77,17 +87,21 @@ export function TagBadge({
     );
   }
 
+  const plainColor = getTagColor(parsed.raw);
+
   // Regular single tag
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 bg-primary text-primary-foreground border border-primary rounded-full font-medium",
+        "inline-flex items-center gap-1 rounded-full font-medium",
+        plainColor ? "text-white" : "bg-primary text-primary-foreground border border-primary",
         sizeClasses[size],
         className
       )}
+      style={plainColor ? { backgroundColor: plainColor } : undefined}
     >
       {showIcon && <Tag className={iconSizes[size]} />}
-      {tag}
+      {parsed.raw}
       {showDelete && onDelete && (
         <button
           type="button"

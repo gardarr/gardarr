@@ -38,6 +38,8 @@ type RepositoryInterface interface {
 	SetWorkerTaskUploadLimit(worker *entities.Worker, taskID string, schema schemas.TaskSetUploadLimitSchema) error
 	SetWorkerTaskTags(worker *entities.Worker, taskID string, schema schemas.TaskSetTagsSchema) error
 	AddWorkerTaskTags(worker *entities.Worker, taskID string, tags []string) error
+	CreateWorkerTags(worker *entities.Worker, tags []string) error
+	DeleteWorkerTags(worker *entities.Worker, tags []string) error
 	SetWorkerTaskCategory(worker *entities.Worker, taskID string, schema schemas.TaskSetCategorySchema) error
 	ListWorkerTaskFiles(worker *entities.Worker, taskID string) ([]*entities.TaskFile, error)
 	GetWorkerTasksStats(worker *entities.Worker) (*entities.TaskStats, error)

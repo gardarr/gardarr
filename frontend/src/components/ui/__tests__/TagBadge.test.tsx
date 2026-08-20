@@ -1,7 +1,63 @@
 import { render, screen } from '@testing-library/react';
 import { TagBadge } from '../TagBadge';
+import { TagColorsContext, type TagColorsContextValue } from '@/contexts/tag-colors-context';
+
+function renderWithColors(
+  ui: React.ReactElement,
+  overrides: Partial<TagColorsContextValue>
+) {
+  const value: TagColorsContextValue = {
+    getTagColor: () => undefined,
+    getScopeColor: () => undefined,
+    refresh: () => {},
+    ...overrides,
+  };
+  return render(
+    <TagColorsContext.Provider value={value}>{ui}</TagColorsContext.Provider>
+  );
+}
 
 describe('TagBadge', () => {
+  describe('Tag colors', () => {
+    it('falls back to the default theme when no color is stored', () => {
+      render(<TagBadge tag="movies" />);
+      const badge = screen.getByText('movies').closest('span');
+      expect(badge).toHaveClass('bg-primary', 'text-primary-foreground');
+      expect(badge).not.toHaveAttribute('style');
+    });
+
+    it('applies an exact tag color override', () => {
+      renderWithColors(<TagBadge tag="movies" />, {
+        getTagColor: (name) => (name === 'movies' ? '#ff0000' : undefined),
+      });
+      const badge = screen.getByText('movies').closest('span');
+      expect(badge).toHaveClass('text-white');
+      expect(badge).not.toHaveClass('bg-primary');
+      expect(badge).toHaveStyle({ backgroundColor: '#ff0000' });
+    });
+
+    it('colors a scoped tag by its scope when no exact override exists', () => {
+      renderWithColors(<TagBadge tag="quality::4k" />, {
+        getScopeColor: (scope) => (scope === 'quality' ? '#00ff00' : undefined),
+      });
+      const keyBadge = screen.getByText('quality').closest('span');
+      const valueBadge = screen.getByText('4k').closest('span');
+      expect(keyBadge).toHaveStyle({ backgroundColor: '#00ff00' });
+      expect(valueBadge).toHaveStyle({ backgroundColor: '#00ff00' });
+    });
+
+    it('prefers an exact override for the value half over the scope color', () => {
+      renderWithColors(<TagBadge tag="quality::4k" />, {
+        getScopeColor: (scope) => (scope === 'quality' ? '#00ff00' : undefined),
+        getTagColor: (name) => (name === 'quality::4k' ? '#0000ff' : undefined),
+      });
+      const keyBadge = screen.getByText('quality').closest('span');
+      const valueBadge = screen.getByText('4k').closest('span');
+      expect(keyBadge).toHaveStyle({ backgroundColor: '#00ff00' });
+      expect(valueBadge).toHaveStyle({ backgroundColor: '#0000ff' });
+    });
+  });
+
   describe('Regular tags', () => {
     it('renders tag text correctly', () => {
       render(<TagBadge tag="test-tag" />);
@@ -127,21 +183,23 @@ describe('TagBadge', () => {
       expect(screen.getByText('sub::value')).toBeInTheDocument();
     });
 
-    it('handles empty category gracefully', () => {
+    it('renders as a single plain badge when the category is empty', () => {
+      // "::value" has nothing before the separator, so it isn't a valid
+      // scoped tag (see tagRules.parseTag) and falls back to a single
+      // badge showing the literal text, instead of a badge with a blank
+      // category pill.
       render(<TagBadge tag="::value" />);
-      // Check that value badge exists and displays correctly
-      expect(screen.getByText('value')).toBeInTheDocument();
-      // Category badge exists but has no text content
-      const categoryBadge = screen.getByText('value').closest('div')?.querySelector('span:first-child');
-      expect(categoryBadge).toBeInTheDocument();
+      expect(screen.getByText('::value')).toBeInTheDocument();
+      expect(screen.queryByText('value')).not.toBeInTheDocument();
     });
 
-    it('handles empty value gracefully', () => {
+    it('renders as a single plain badge when the value is empty', () => {
+      // "category::" has nothing after the separator, so it isn't a valid
+      // scoped tag and falls back to a single badge showing the literal
+      // text, instead of a badge with a blank value pill.
       render(<TagBadge tag="category::" />);
-      expect(screen.getByText('category')).toBeInTheDocument();
-      // Value badge exists but has no text content
-      const valueBadge = screen.getByText('category').closest('div')?.querySelector('span:last-child');
-      expect(valueBadge).toBeInTheDocument();
+      expect(screen.getByText('category::')).toBeInTheDocument();
+      expect(screen.queryByText('category')).not.toBeInTheDocument();
     });
   });
 });

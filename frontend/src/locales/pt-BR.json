@@ -60,9 +60,11 @@
     "toggleSidebar": "Alternar barra lateral",
     "sections": {
       "library": "Biblioteca",
+      "management": "Gerenciamento",
       "system": "Sistema",
       "administration": "Administração"
-    }
+    },
+    "tags": "Tags"
   },
   "profile": {
     "title": "Perfil",
@@ -906,7 +908,9 @@
       "status": "Status",
       "categories": "Categorias",
       "tags": "Tags",
-      "ratioGrades": "Notas de Ratio"
+      "ratioGrades": "Notas de Ratio",
+      "otherTags": "Outras",
+      "unnamed": "(sem nome)"
     },
     "sortBy": {
       "priority": "prioridade",
@@ -1068,6 +1072,116 @@
       "createFailed": "Falha ao criar categoria",
       "updateFailed": "Falha ao atualizar categoria",
       "deleteFailed": "Falha ao excluir categoria"
+    }
+  },
+  "tags": {
+    "title": "Tags",
+    "subtitle": "Gerencie tags de torrents e cores de escopo",
+    "addTag": "Adicionar Tag",
+    "createNew": "Criar Nova Tag",
+    "create": "Criar Tag",
+    "createHint": "Use \"::\" para uma tag de escopo (ex: qualidade::4k) ou \":\" para uma agrupada (ex: gênero:ação).",
+    "edit": "Editar",
+    "search": "Buscar tags...",
+    "loading": "Carregando tags...",
+    "noTags": "Nenhuma tag encontrada",
+    "noTagsDesc": "As tags aparecem aqui assim que usadas em um torrent, ou você pode criar uma para definir sua cor antecipadamente",
+    "editTag": "Editar {{name}}",
+    "renameTagAction": "Renomear {{name}}",
+    "deleteTagAction": "Excluir {{name}}",
+    "deleteConfirmTitle": "Excluir Tag",
+    "deleteConfirmMessage": "Tem certeza que deseja excluir a tag \"{{name}}\"? Ela será removida de {{count}} torrent. Esta ação não pode ser desfeita.",
+    "deleteConfirmMessage_plural": "Tem certeza que deseja excluir a tag \"{{name}}\"? Ela será removida de {{count}} torrents. Esta ação não pode ser desfeita.",
+    "deleteConfirmMessageScope": "Tem certeza que deseja excluir o escopo \"{{name}}\"? Isso remove apenas a cor compartilhada - ele não tem equivalente nos seus workers. Esta ação não pode ser desfeita.",
+    "renameTitle": "Renomear Tag",
+    "mergeTitle": "Mesclar Tags",
+    "rename": "Renomear",
+    "merge": "Mesclar",
+    "mergeSourcesHint": "Todo torrent que tiver uma dessas tags passará a ter a tag de destino no lugar.",
+    "deriveTitle": "Derivar Tags",
+    "deriveSubtitle": "Crie várias tags relacionadas de uma vez, combinando a parte fixa desta tag com cada valor adicionado abaixo.",
+    "deriveTagAction": "Derivar de {{name}}",
+    "derive": "Derivar",
+    "deriveComposedHint": "Esta tag já usa \"{{separator}}\" - as novas tags reaproveitam esse separador automaticamente com o mesmo sufixo.",
+    "deriveComposedHintSuffix": "Esta tag já usa \"{{separator}}\" - as novas tags reaproveitam esse separador automaticamente com o mesmo prefixo.",
+    "derivePlainHint": "Escolha onde o prefixo e o sufixo se encontram, ex: \"-\" separa \"movies-1080p\" em \"movies\" e \"1080p\".",
+    "deriveModePrefix": "Prefixo",
+    "deriveModeSuffix": "Sufixo",
+    "derivePreview": "Serão criadas",
+    "fields": {
+      "name": "Nome",
+      "color": "Cor",
+      "kind": "Tipo",
+      "usageCount": "Uso",
+      "actions": "Ações",
+      "sources": "Tags de origem",
+      "target": "Tag de destino",
+      "source": "Tag de origem",
+      "delimiter": "Delimitador",
+      "mode": "Derivar por",
+      "prefixes": "Novos prefixos",
+      "suffixes": "Novos sufixos"
+    },
+    "placeholders": {
+      "name": "Digite o nome da tag...",
+      "sources": "Adicionar uma tag de origem...",
+      "target": "Digite o nome da tag de destino...",
+      "delimiter": "ex: -",
+      "prefixes": "Adicionar um prefixo e pressionar Enter...",
+      "suffixes": "Adicionar um sufixo e pressionar Enter..."
+    },
+    "kindLabels": {
+      "tag": "Tag",
+      "scope": "Escopo",
+      "tagWithUsage": "{{count}} torrent",
+      "tagWithUsage_plural": "{{count}} torrents"
+    },
+    "mergeCandidates": {
+      "title": "Possíveis duplicatas",
+      "description": "Estas tags diferem apenas por maiúsculas/minúsculas (ex: \"4k\" vs \"4K\") - mesclar mantém a mais usada e aposenta as demais.",
+      "merge": "Mesclar"
+    },
+    "stats": {
+      "totalTags": "Tags",
+      "scopes": "Escopos",
+      "unused": "Não usadas",
+      "mostUsed": "Mais usada"
+    },
+    "notifications": {
+      "createSuccess": "Tag criada com sucesso!",
+      "updateSuccess": "Tag atualizada com sucesso!",
+      "deleteSuccess": "Tag excluída com sucesso!",
+      "renameSuccess": "Tag renomeada com sucesso!",
+      "mergeSuccess": "Tags mescladas com sucesso!",
+      "partialFailure": "Aplicado, mas 1 worker não pôde ser alcançado e sincronizará na próxima escrita.",
+      "partialFailure_plural": "Aplicado, mas {{count}} workers não puderam ser alcançados e sincronizarão na próxima escrita.",
+      "deriveSuccess": "1 tag criada!",
+      "deriveSuccess_other": "{{count}} tags criadas!",
+      "derivePartialFailure": "1 tag não pôde ser criada.",
+      "derivePartialFailure_other": "{{count}} tags não puderam ser criadas."
+    },
+    "errors": {
+      "nameRequired": "O nome da tag é obrigatório",
+      "loadFailed": "Falha ao carregar tags",
+      "createFailed": "Falha ao criar tag",
+      "updateFailed": "Falha ao atualizar tag",
+      "deleteFailed": "Falha ao excluir tag",
+      "mergeFailed": "Falha ao aplicar renomeação/mesclagem",
+      "sourcesRequired": "Pelo menos uma tag de origem é obrigatória",
+      "targetRequired": "A tag de destino é obrigatória",
+      "targetInSources": "O destino não pode ser uma das tags de origem",
+      "deriveFailed": "Falha ao derivar tags",
+      "prefixesRequired": "Pelo menos um prefixo é obrigatório",
+      "suffixesRequired": "Pelo menos um sufixo é obrigatório",
+      "delimiterRequired": "Um delimitador é obrigatório para uma tag simples",
+      "deriveInvalid": "Nenhuma tag válida pôde ser derivada desta entrada"
+    },
+    "conflicts": {
+      "title": "Verificação de compatibilidade",
+      "scopeDescription": "1 torrent tem mais de um valor para o mesmo escopo, o que não é mais válido - nada foi alterado, isso se resolve na próxima vez que as tags desse torrent forem gravadas.",
+      "scopeDescription_plural": "{{count}} torrents têm mais de um valor para o mesmo escopo, o que não é mais válido - nada foi alterado, isso se resolve na próxima vez que as tags de cada torrent forem gravadas.",
+      "groupedDescription": "1 tag usa um único \":\" e agora é tratada como agrupada - revise-a caso não fosse destinada a ser composta.",
+      "groupedDescription_plural": "{{count}} tags usam um único \":\" e agora são tratadas como agrupadas - revise-as caso não fossem destinadas a ser compostas."
     }
   },
   "integrations": {
