@@ -1139,6 +1139,12 @@
       "description": "Estas tags diferem apenas por maiúsculas/minúsculas (ex: \"4k\" vs \"4K\") - mesclar mantém a mais usada e aposenta as demais.",
       "merge": "Mesclar"
     },
+    "stats": {
+      "totalTags": "Tags",
+      "scopes": "Escopos",
+      "unused": "Não usadas",
+      "mostUsed": "Mais usada"
+    },
     "notifications": {
       "createSuccess": "Tag criada com sucesso!",
       "updateSuccess": "Tag atualizada com sucesso!",

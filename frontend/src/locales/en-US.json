@@ -1113,6 +1113,12 @@
       "description": "These tags only differ by case (e.g. \"4k\" vs \"4K\") - merging keeps whichever is used most and retires the rest.",
       "merge": "Merge"
     },
+    "stats": {
+      "totalTags": "Tags",
+      "scopes": "Scopes",
+      "unused": "Unused",
+      "mostUsed": "Most used"
+    },
     "notifications": {
       "createSuccess": "Tag created successfully!",
       "updateSuccess": "Tag updated successfully!",

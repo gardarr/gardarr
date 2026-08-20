@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import Tags from "@/Tags";
 import type { Tag, TagConflictReport } from "@/types/tag";
@@ -153,8 +153,11 @@ describe("Tags page", () => {
 
     fireEvent.change(screen.getByPlaceholderText("tags.search"), { target: { value: "gam" } });
 
-    expect(screen.getAllByText("games").length).toBeGreaterThan(0);
-    expect(screen.queryByText("movies")).not.toBeInTheDocument();
+    // Scoped to the list itself - the overview row's "most used" stat is
+    // search-independent and may legitimately still show "movies".
+    const list = within(screen.getByTestId("tags-list"));
+    expect(list.getAllByText("games").length).toBeGreaterThan(0);
+    expect(list.queryByText("movies")).not.toBeInTheDocument();
   });
 
   it("reloads tags and conflicts when refresh is clicked", async () => {
