@@ -60,9 +60,11 @@
     "toggleSidebar": "Alternar barra lateral",
     "sections": {
       "library": "Biblioteca",
+      "management": "Gerenciamento",
       "system": "Sistema",
       "administration": "Administração"
-    }
+    },
+    "tags": "Tags"
   },
   "profile": {
     "title": "Perfil",
@@ -1068,6 +1070,76 @@
       "createFailed": "Falha ao criar categoria",
       "updateFailed": "Falha ao atualizar categoria",
       "deleteFailed": "Falha ao excluir categoria"
+    }
+  },
+  "tags": {
+    "title": "Tags",
+    "subtitle": "Gerencie tags de torrents e cores de escopo",
+    "addTag": "Adicionar Tag",
+    "createNew": "Criar Nova Tag",
+    "create": "Criar Tag",
+    "createHint": "Use \"::\" para uma tag de escopo (ex: qualidade::4k) ou \":\" para uma agrupada (ex: gênero:ação).",
+    "edit": "Editar",
+    "search": "Buscar tags...",
+    "loading": "Carregando tags...",
+    "noTags": "Nenhuma tag encontrada",
+    "noTagsDesc": "As tags aparecem aqui assim que usadas em um torrent, ou você pode criar uma para definir sua cor antecipadamente",
+    "editTag": "Editar {{name}}",
+    "renameTagAction": "Renomear {{name}}",
+    "deleteTagAction": "Excluir {{name}}",
+    "deleteConfirmTitle": "Excluir Tag",
+    "deleteConfirmMessage": "Tem certeza que deseja excluir a tag \"{{name}}\"? Ela será removida de {{count}} torrent. Esta ação não pode ser desfeita.",
+    "deleteConfirmMessage_plural": "Tem certeza que deseja excluir a tag \"{{name}}\"? Ela será removida de {{count}} torrents. Esta ação não pode ser desfeita.",
+    "deleteConfirmMessageScope": "Tem certeza que deseja excluir o escopo \"{{name}}\"? Isso remove apenas a cor compartilhada - ele não tem equivalente nos seus workers. Esta ação não pode ser desfeita.",
+    "renameTitle": "Renomear Tag",
+    "mergeTitle": "Mesclar Tags",
+    "rename": "Renomear",
+    "merge": "Mesclar",
+    "mergeSourcesHint": "Todo torrent que tiver uma dessas tags passará a ter a tag de destino no lugar.",
+    "fields": {
+      "name": "Nome",
+      "color": "Cor",
+      "kind": "Tipo",
+      "usageCount": "Uso",
+      "actions": "Ações",
+      "sources": "Tags de origem",
+      "target": "Tag de destino"
+    },
+    "placeholders": {
+      "name": "Digite o nome da tag...",
+      "sources": "Adicionar uma tag de origem...",
+      "target": "Digite o nome da tag de destino..."
+    },
+    "kindLabels": {
+      "tag": "Tag",
+      "scope": "Escopo",
+      "tagWithUsage": "{{count}} torrent",
+      "tagWithUsage_plural": "{{count}} torrents"
+    },
+    "mergeCandidates": {
+      "title": "Possíveis duplicatas",
+      "description": "Estas tags diferem apenas por maiúsculas/minúsculas (ex: \"4k\" vs \"4K\") - mesclar mantém a mais usada e aposenta as demais.",
+      "merge": "Mesclar"
+    },
+    "notifications": {
+      "createSuccess": "Tag criada com sucesso!",
+      "updateSuccess": "Tag atualizada com sucesso!",
+      "deleteSuccess": "Tag excluída com sucesso!",
+      "renameSuccess": "Tag renomeada com sucesso!",
+      "mergeSuccess": "Tags mescladas com sucesso!",
+      "partialFailure": "Aplicado, mas 1 worker não pôde ser alcançado e sincronizará na próxima escrita.",
+      "partialFailure_plural": "Aplicado, mas {{count}} workers não puderam ser alcançados e sincronizarão na próxima escrita."
+    },
+    "errors": {
+      "nameRequired": "O nome da tag é obrigatório",
+      "loadFailed": "Falha ao carregar tags",
+      "createFailed": "Falha ao criar tag",
+      "updateFailed": "Falha ao atualizar tag",
+      "deleteFailed": "Falha ao excluir tag",
+      "mergeFailed": "Falha ao aplicar renomeação/mesclagem",
+      "sourcesRequired": "Pelo menos uma tag de origem é obrigatória",
+      "targetRequired": "A tag de destino é obrigatória",
+      "targetInSources": "O destino não pode ser uma das tags de origem"
     }
   },
   "integrations": {

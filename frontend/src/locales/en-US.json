@@ -60,9 +60,11 @@
     "toggleSidebar": "Toggle sidebar",
     "sections": {
       "library": "Library",
+      "management": "Management",
       "system": "System",
       "administration": "Administration"
-    }
+    },
+    "tags": "Tags"
   },
   "profile": {
     "title": "Profile",
@@ -1042,6 +1044,76 @@
       "createFailed": "Failed to create category",
       "updateFailed": "Failed to update category",
       "deleteFailed": "Failed to delete category"
+    }
+  },
+  "tags": {
+    "title": "Tags",
+    "subtitle": "Manage torrent tags and scoped colors",
+    "addTag": "Add Tag",
+    "createNew": "Create New Tag",
+    "create": "Create Tag",
+    "createHint": "Use \"::\" for a scoped tag (e.g. quality::4k) or \":\" for a grouped one (e.g. genre:action).",
+    "edit": "Edit",
+    "search": "Search tags...",
+    "loading": "Loading tags...",
+    "noTags": "No tags found",
+    "noTagsDesc": "Tags appear here once used on a torrent, or you can create one to set its color ahead of time",
+    "editTag": "Edit {{name}}",
+    "renameTagAction": "Rename {{name}}",
+    "deleteTagAction": "Delete {{name}}",
+    "deleteConfirmTitle": "Delete Tag",
+    "deleteConfirmMessage": "Are you sure you want to delete the tag \"{{name}}\"? It will be removed from {{count}} torrent. This action cannot be undone.",
+    "deleteConfirmMessage_plural": "Are you sure you want to delete the tag \"{{name}}\"? It will be removed from {{count}} torrents. This action cannot be undone.",
+    "deleteConfirmMessageScope": "Are you sure you want to delete the scope \"{{name}}\"? This only removes its shared color - it has no counterpart on your workers. This action cannot be undone.",
+    "renameTitle": "Rename Tag",
+    "mergeTitle": "Merge Tags",
+    "rename": "Rename",
+    "merge": "Merge",
+    "mergeSourcesHint": "Every torrent carrying one of these tags will get the target tag instead.",
+    "fields": {
+      "name": "Name",
+      "color": "Color",
+      "kind": "Kind",
+      "usageCount": "Usage",
+      "actions": "Actions",
+      "sources": "Source tags",
+      "target": "Target tag"
+    },
+    "placeholders": {
+      "name": "Enter tag name...",
+      "sources": "Add a source tag...",
+      "target": "Enter target tag name..."
+    },
+    "kindLabels": {
+      "tag": "Tag",
+      "scope": "Scope",
+      "tagWithUsage": "{{count}} torrent",
+      "tagWithUsage_plural": "{{count}} torrents"
+    },
+    "mergeCandidates": {
+      "title": "Possible duplicates",
+      "description": "These tags only differ by case (e.g. \"4k\" vs \"4K\") - merging keeps whichever is used most and retires the rest.",
+      "merge": "Merge"
+    },
+    "notifications": {
+      "createSuccess": "Tag created successfully!",
+      "updateSuccess": "Tag updated successfully!",
+      "deleteSuccess": "Tag deleted successfully!",
+      "renameSuccess": "Tag renamed successfully!",
+      "mergeSuccess": "Tags merged successfully!",
+      "partialFailure": "Applied, but 1 worker could not be reached and will sync on its next write.",
+      "partialFailure_plural": "Applied, but {{count}} workers could not be reached and will sync on their next write."
+    },
+    "errors": {
+      "nameRequired": "Tag name is required",
+      "loadFailed": "Failed to load tags",
+      "createFailed": "Failed to create tag",
+      "updateFailed": "Failed to update tag",
+      "deleteFailed": "Failed to delete tag",
+      "mergeFailed": "Failed to apply rename/merge",
+      "sourcesRequired": "At least one source tag is required",
+      "targetRequired": "Target tag is required",
+      "targetInSources": "Target must not be one of the source tags"
     }
   },
   "integrations": {
