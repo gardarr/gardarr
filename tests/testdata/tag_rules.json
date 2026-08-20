@@ -1,0 +1,20 @@
+[
+  { "name": "empty string", "input": "", "kind": "plain", "key": "", "value": "", "raw": "" },
+  { "name": "whitespace only", "input": "   ", "kind": "plain", "key": "", "value": "", "raw": "" },
+  { "name": "plain tag", "input": "movies", "kind": "plain", "key": "", "value": "movies", "raw": "movies" },
+  { "name": "grouped single colon", "input": "a:b", "kind": "grouped", "key": "a", "value": "b", "raw": "a:b" },
+  { "name": "scoped double colon", "input": "a::b", "kind": "scoped", "key": "a", "value": "b", "raw": "a::b" },
+  { "name": "scoped, extra double colon in value", "input": "a::b::c", "kind": "scoped", "key": "a", "value": "b::c", "raw": "a::b::c" },
+  { "name": "grouped, extra colon in value", "input": "a:b:c", "kind": "grouped", "key": "a", "value": "b:c", "raw": "a:b:c" },
+  { "name": "scoped, single colon inside value", "input": "a::b:c", "kind": "scoped", "key": "a", "value": "b:c", "raw": "a::b:c" },
+  { "name": "double colon with empty key", "input": "::x", "kind": "plain", "key": "", "value": "::x", "raw": "::x" },
+  { "name": "double colon with empty value", "input": "x::", "kind": "plain", "key": "", "value": "x::", "raw": "x::" },
+  { "name": "single colon with empty key", "input": ":x", "kind": "plain", "key": "", "value": ":x", "raw": ":x" },
+  { "name": "single colon with empty value", "input": "x:", "kind": "plain", "key": "", "value": "x:", "raw": "x:" },
+  { "name": "whitespace trimmed around scope separator", "input": "  a :: b  ", "kind": "scoped", "key": "a", "value": "b", "raw": "a :: b" },
+  { "name": "whitespace trimmed around group separator", "input": "  a : b  ", "kind": "grouped", "key": "a", "value": "b", "raw": "a : b" },
+  { "name": "case-sensitive scope, uppercase key", "input": "A::4k", "kind": "scoped", "key": "A", "value": "4k", "raw": "A::4k" },
+  { "name": "case-sensitive scope, lowercase key", "input": "a::4K", "kind": "scoped", "key": "a", "value": "4K", "raw": "a::4K" },
+  { "name": "grouped example from README", "input": "genre:action", "kind": "grouped", "key": "genre", "value": "action", "raw": "genre:action" },
+  { "name": "scoped example from README", "input": "quality::4k", "kind": "scoped", "key": "quality", "value": "4k", "raw": "quality::4k" }
+]

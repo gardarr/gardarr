@@ -1,5 +1,6 @@
 import { Tag, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { parseTag } from "@/utils/tagRules";
 
 interface TagBadgeProps {
   tag: string;
@@ -30,15 +31,9 @@ export function TagBadge({
     lg: "h-4 w-4"
   };
 
-  // Check if tag is composite (contains ::)
-  const isComposite = tag.includes('::');
-  
-  if (isComposite) {
-    // Split only on the first occurrence of ::
-    const separatorIndex = tag.indexOf('::');
-    const category = tag.substring(0, separatorIndex);
-    const value = tag.substring(separatorIndex + 2);
-    
+  const parsed = parseTag(tag);
+
+  if (parsed.kind === "scoped") {
     return (
       <div className={cn("inline-flex items-center", className)}>
         {/* Category badge - primary theme */}
@@ -49,7 +44,7 @@ export function TagBadge({
           )}
         >
           {showIcon && <Tag className={iconSizes[size]} />}
-          {category}
+          {parsed.key}
         </span>
         
         {/* Value badge - secondary theme */}
@@ -59,7 +54,7 @@ export function TagBadge({
             sizeClasses[size]
           )}
         >
-          {value}
+          {parsed.value}
           {showDelete && onDelete && (
             <button
               type="button"
@@ -87,7 +82,7 @@ export function TagBadge({
       )}
     >
       {showIcon && <Tag className={iconSizes[size]} />}
-      {tag}
+      {parsed.raw}
       {showDelete && onDelete && (
         <button
           type="button"

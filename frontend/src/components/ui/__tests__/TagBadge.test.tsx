@@ -127,21 +127,23 @@ describe('TagBadge', () => {
       expect(screen.getByText('sub::value')).toBeInTheDocument();
     });
 
-    it('handles empty category gracefully', () => {
+    it('renders as a single plain badge when the category is empty', () => {
+      // "::value" has nothing before the separator, so it isn't a valid
+      // scoped tag (see tagRules.parseTag) and falls back to a single
+      // badge showing the literal text, instead of a badge with a blank
+      // category pill.
       render(<TagBadge tag="::value" />);
-      // Check that value badge exists and displays correctly
-      expect(screen.getByText('value')).toBeInTheDocument();
-      // Category badge exists but has no text content
-      const categoryBadge = screen.getByText('value').closest('div')?.querySelector('span:first-child');
-      expect(categoryBadge).toBeInTheDocument();
+      expect(screen.getByText('::value')).toBeInTheDocument();
+      expect(screen.queryByText('value')).not.toBeInTheDocument();
     });
 
-    it('handles empty value gracefully', () => {
+    it('renders as a single plain badge when the value is empty', () => {
+      // "category::" has nothing after the separator, so it isn't a valid
+      // scoped tag and falls back to a single badge showing the literal
+      // text, instead of a badge with a blank value pill.
       render(<TagBadge tag="category::" />);
-      expect(screen.getByText('category')).toBeInTheDocument();
-      // Value badge exists but has no text content
-      const valueBadge = screen.getByText('category').closest('div')?.querySelector('span:last-child');
-      expect(valueBadge).toBeInTheDocument();
+      expect(screen.getByText('category::')).toBeInTheDocument();
+      expect(screen.queryByText('category')).not.toBeInTheDocument();
     });
   });
 });
