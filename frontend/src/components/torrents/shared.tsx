@@ -257,12 +257,14 @@ export function TorrentThumbnail({
   torrent,
   sizeClassName,
   iconClassName,
+  placeholderIconClassName,
   roundedClassName = "rounded",
   alt = "",
 }: {
   torrent: TorrentListItem;
   sizeClassName: string;
   iconClassName: string;
+  placeholderIconClassName?: string;
   roundedClassName?: string;
   alt?: string;
 }) {
@@ -278,7 +280,7 @@ export function TorrentThumbnail({
           loading="lazy"
         />
       ) : (
-        <ImageIcon className={`${iconClassName} !text-neutral-500 dark:!text-neutral-400`} />
+        <ImageIcon className={`${iconClassName} ${placeholderIconClassName ?? ""} !text-neutral-500 dark:!text-neutral-400`} />
       )}
     </div>
   );

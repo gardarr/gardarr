@@ -344,15 +344,14 @@
       "multiPlatform": "Suporte multiplataforma com imagens Docker para AMD64 e ARM64",
       "automated": "Pipeline automatizado de CI/CD com GitHub Actions",
       "lightweight": "Leve e otimizado para desempenho",
-      "openSource": "Código aberto com licença GPL-3.0",
+      "openSource": "Código aberto com licença AGPL-3.0",
       "mobileOptimized": "Design mobile-first com interface responsiva"
     },
     "links": {
       "title": "Links do Projeto",
       "repository": "Repositório GitHub",
       "documentation": "Documentação de Desenvolvimento",
-      "sponsor": "Patrocinar",
-      "buyMeCoffee": "Buy me a coffee"
+      "sponsor": "Patrocinar"
     },
     "attribution": {
       "title": "Atribuições",
@@ -360,7 +359,7 @@
     },
     "license": {
       "title": "Licença",
-      "description": "Este projeto é licenciado sob a Licença Pública Geral GNU v3.0. Você é livre para usar, modificar e distribuir este software sob os termos da licença GPL-3.0."
+      "description": "Este projeto é licenciado sob a GNU Affero General Public License v3.0. Se você modificar o Gardarr e disponibilizá-lo pela rede, deverá oferecer aos usuários o código-fonte correspondente."
     },
     "thanks": "Obrigado por usar o Gardarr! Seu apoio e feedback ajudam o projeto a evoluir.",
     "footer": "Construído com ❤️ pela comunidade"
@@ -1435,7 +1434,9 @@
       "nameUpdateError": "Erro ao atualizar nome"
     },
     "description": {
-      "label": "Descrição"
+      "label": "Descrição",
+      "showMore": "Mostrar mais",
+      "showLess": "Mostrar menos"
     },
     "autosave": {
       "saving": "Salvando…",

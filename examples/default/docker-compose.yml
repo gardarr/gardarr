@@ -10,12 +10,9 @@ services:
     environment:
       APP_PORT: ${APP_PORT:-3200}
       # APP_URL should be origin-only: http://example.com or http://localhost:3200 (no trailing slash or path)
-      APP_URL: ${APP_URL:-http://gardarr.mydomain.com}
-      APP_MODE: standalone
-      # Optional: configure one local qBittorrent directly at startup
-      QBITTORRENT_URL: "${QBITTORRENT_URL}"
-      QBITTORRENT_USERNAME: "${QBITTORRENT_USERNAME}"
-      QBITTORRENT_PASSWORD: "${QBITTORRENT_PASSWORD}"
+      APP_URL: ${APP_URL:-http://localhost:3200}
+      # Required: a Base64-encoded 32-byte key. Generate with: openssl rand -base64 32
+      ENCRYPTION_KEY: "${ENCRYPTION_KEY:?Set ENCRYPTION_KEY in .env}"
     volumes:
       # Use /data to persist SQLite database
       - gardarr_data:/data
@@ -33,6 +30,8 @@ services:
 
 volumes:
   gardarr_data:
+    driver: local
+  gardarr_media:
     driver: local
 
 networks:

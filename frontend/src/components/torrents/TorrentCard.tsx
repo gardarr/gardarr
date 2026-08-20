@@ -143,6 +143,7 @@ export const TorrentCard = memo(function TorrentCard({
                   sizeClassName="w-16 h-16"
                   roundedClassName="rounded-md"
                   iconClassName="h-8 w-8 text-muted-foreground"
+                  placeholderIconClassName="opacity-40"
                 />
                 <div className="flex-1 flex flex-col gap-1.5 text-[11px] text-muted-foreground">
                   <StatBadge
@@ -214,6 +215,7 @@ export const TorrentCard = memo(function TorrentCard({
                   sizeClassName="w-24 h-24"
                   roundedClassName="rounded-md"
                   iconClassName="h-12 w-12 text-muted-foreground"
+                  placeholderIconClassName="opacity-40"
                 />
                 <div className="flex-1 flex flex-col gap-2 text-xs text-muted-foreground">
                   <StatBadge

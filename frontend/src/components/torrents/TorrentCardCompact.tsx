@@ -112,6 +112,7 @@ export const TorrentCardCompact = memo(function TorrentCardCompact({
           sizeClassName={`${compact ? "w-16" : "w-20"} absolute inset-y-0 left-0 z-[5]`}
           roundedClassName="rounded-none"
           iconClassName="h-8 w-8 text-muted-foreground"
+          placeholderIconClassName="opacity-40"
         />
 
         <div className={`relative z-10 flex flex-col gap-1 py-2 pr-2.5 ${compact ? "pl-20" : "pl-24"}`}>

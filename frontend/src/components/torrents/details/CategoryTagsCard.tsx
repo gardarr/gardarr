@@ -18,6 +18,10 @@ interface CategoryTagsCardProps {
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
+const normalizeTags = (values: string[] = []) => values
+  .map((tag) => tag.trim())
+  .filter((tag) => tag.length > 0);
+
 export function CategoryTagsCard({ torrent, onCategoryDataChange, onCategoryTagsUpdate }: CategoryTagsCardProps) {
   const { t } = useTranslation();
   const [categoryId, setCategoryId] = useState("");
@@ -29,7 +33,7 @@ export function CategoryTagsCard({ torrent, onCategoryDataChange, onCategoryTags
   const currentCategory = useRef<Category | null>(null);
 
   useEffect(() => {
-    setTags([...(torrent.tags || [])]);
+    setTags(normalizeTags(torrent.tags));
   }, [torrent]);
 
   // Resolve the current category to its full data (icon/color) and seed the select.
@@ -118,13 +122,14 @@ export function CategoryTagsCard({ torrent, onCategoryDataChange, onCategoryTags
     const operation = ++tagsOperation.current;
     const previousTags = [...tags];
     const previousParentTags = [...(torrent.tags ?? [])];
-    setTags(next); // optimistic
+    const normalizedTags = normalizeTags(next);
+    setTags(normalizedTags); // optimistic
     if (!torrent.worker?.uuid) return;
     setState("saving");
     try {
-      await torrentService.updateTaskTags(torrent.worker.uuid, torrent.id, next);
+      await torrentService.updateTaskTags(torrent.worker.uuid, torrent.id, normalizedTags);
       if (operation !== tagsOperation.current) return;
-      onCategoryTagsUpdate?.(torrent.id, { tags: [...next] });
+      onCategoryTagsUpdate?.(torrent.id, { tags: normalizedTags });
       flashSaved();
     } catch {
       if (operation !== tagsOperation.current) return;

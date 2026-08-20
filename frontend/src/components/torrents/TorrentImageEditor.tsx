@@ -102,16 +102,8 @@ export function TorrentImageEditor({
   }, [fetchProviderStatus]);
 
   useEffect(() => {
-    if (categoryMetadataSource === "none") return;
-
-    if (activeProviders[categoryMetadataSource]) {
-      const source = categoryMetadataSource.toUpperCase() as "TGDB" | "TMDB";
-      setImageSource((prev) => (prev === source ? prev : source));
-      return;
-    }
-
-    setImageSource((prev) => (prev ? prev : "Upload"));
-  }, [categoryMetadataSource, activeProviders]);
+    setImageSource("Upload");
+  }, [taskHash]);
 
   // Sincronizar estados quando metadata muda
   useEffect(() => {
@@ -306,7 +298,7 @@ export function TorrentImageEditor({
   }
 
   return (
-    <div className="space-y-6 py-4">
+    <div className="space-y-6 pt-0 pb-4">
       {/* Image Section */}
       <div className="space-y-3">
         <Label className="text-sm font-medium">
@@ -318,13 +310,8 @@ export function TorrentImageEditor({
           categoryMetadataSource={categoryMetadataSource}
           isTGDBActive={isTGDBActive}
           isTMDBActive={isTMDBActive}
+          className="mb-3"
         />
-
-        {categoryMetadataSource !== "none" && (
-          <p className="text-xs text-muted-foreground">
-            {t(`torrentImageEditor.sources.restricted.${categoryMetadataSource}`)}
-          </p>
-        )}
 
         {imagePreview ? (
           <>
@@ -445,17 +432,9 @@ export function TorrentImageEditor({
             onCancel={() => setImageSource("Upload")}
           />
         ) : imageSource === "Upload" && (
-          <div
-            role="button"
-            tabIndex={0}
-            className="border-2 border-dashed rounded-lg p-12 text-center cursor-pointer hover:bg-accent/50 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-            onClick={() => fileInputRef.current?.click()}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                fileInputRef.current?.click();
-              }
-            }}
+          <label
+            htmlFor="torrent-image-upload"
+            className="block cursor-pointer rounded-lg border-2 border-dashed p-12 text-center transition-colors hover:bg-accent/50"
           >
             <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
             <p className="text-sm text-muted-foreground mb-1">
@@ -467,11 +446,12 @@ export function TorrentImageEditor({
             <p className="text-xs text-muted-foreground/70 mt-2">
               {t('torrentImageEditor.image.autoUpload')}
             </p>
-          </div>
+          </label>
         )}
 
         <input
           ref={fileInputRef}
+          id="torrent-image-upload"
           type="file"
           accept="image/*"
           onChange={handleFileSelect}

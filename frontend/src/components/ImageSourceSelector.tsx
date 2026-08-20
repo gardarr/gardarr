@@ -32,9 +32,9 @@ export function ImageSourceSelector({
     tmdb: { source: "TMDB", isActive: isTMDBActive },
   };
 
-  // Category source (if any) sempre em primeiro, Upload em segundo.
+  // Upload is always first; the category provider, when available, comes after it.
   const providerEntry = categoryMetadataSource !== "none" ? providerSources[categoryMetadataSource] : undefined;
-  const sources: ImageSource[] = providerEntry ? [providerEntry.source, "Upload"] : ["Upload"];
+  const sources: ImageSource[] = providerEntry ? ["Upload", providerEntry.source] : ["Upload"];
 
   const isSourceDisabled = (source: ImageSource): boolean => {
     if (source === "Upload") {

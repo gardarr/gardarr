@@ -94,7 +94,7 @@ export default function AboutPage() {
           <div className="space-y-3 w-full">
             <h3 className="text-xl font-semibold">{t("about.license.title")}</h3>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-muted">
-              <span className="text-sm font-mono">GPL-3.0</span>
+              <span className="text-sm font-mono">GNU AGPLv3</span>
             </div>
             <p className="text-sm text-muted-foreground">
               {t("about.license.description")}
@@ -118,38 +118,21 @@ export default function AboutPage() {
               </a>
             </Button>
 
-            <div className="inline-flex overflow-hidden rounded-md">
-              <Button
-                className="justify-start bg-[var(--color-sponsor)] text-white hover:bg-[var(--color-sponsor-hover)] rounded-r-none"
-                asChild
+            <Button
+              className="justify-start bg-[var(--color-sponsor)] text-white hover:bg-[var(--color-sponsor-hover)]"
+              asChild
+            >
+              <a
+                href="https://github.com/sponsors/jfxdev"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2"
               >
-                <a
-                  href="https://github.com/sponsors/jfxdev"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2"
-                >
-                  <Heart className="h-4 w-4 fill-current" />
-                  {t("about.links.sponsor")}
-                  <ExternalLink className="h-3 w-3 ml-auto" />
-                </a>
-              </Button>
-
-              <Button
-                className="justify-start bg-[var(--color-coffee)] text-black hover:bg-[var(--color-coffee-hover)] rounded-l-none border-l border-black/20"
-                asChild
-              >
-                <a
-                  href="https://www.buymeacoffee.com/jfxdev"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2"
-                >
-                  {t("about.links.buyMeCoffee")}
-                  <ExternalLink className="h-3 w-3 ml-auto" />
-                </a>
-              </Button>
-            </div>
+                <Heart className="h-4 w-4 fill-current" />
+                {t("about.links.sponsor")}
+                <ExternalLink className="h-3 w-3 ml-auto" />
+              </a>
+            </Button>
 
             <Button 
               variant="outline" 
@@ -183,4 +166,3 @@ export default function AboutPage() {
     </div>
   );
 }
-

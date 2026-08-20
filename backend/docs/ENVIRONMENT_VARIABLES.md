@@ -2,7 +2,7 @@
 
 This document lists all environment variables used by Gardarr backend.
 
-> **Docker Secrets Support**: All variables support Docker secrets using the `_FILE` suffix (e.g., `DATABASE_PASSWORD_FILE=/run/secrets/db_password`).
+> **Docker Secrets Support**: Variables read through Gardarr's configuration helper support the `_FILE` suffix (e.g., `DATABASE_PASSWORD_FILE=/run/secrets/db_password`). `BASE_URL`, `CUSTOM_CSP`, `TGDB_KEY`, and `TMDB_KEY` are read directly from the environment.
 
 ---
 
@@ -25,6 +25,26 @@ This document lists all environment variables used by Gardarr backend.
   - `APP_URL=https://gardarr.example.com/` (trailing slash)
   - `APP_URL=https://gardarr.example.com/app` (path included)
 - **Note**: When `APP_URL=http://localhost:3200`, the backend also allows `http://localhost:3500` for the Vite dev server.
+
+### `APP_DOMAINS`
+- **Description**: Comma-separated list of additional allowed origins for CORS and the Content Security Policy.
+- **Default**: Empty
+- **Example**: `APP_DOMAINS=https://gardarr.example.com,https://admin.example.com`
+
+### `BASE_URL` (legacy)
+- **Description**: Fallback public URL used only when `APP_URL` is not set.
+- **Default**: `http://localhost:3200` (derived from `APP_PORT`)
+- **Recommendation**: Use `APP_URL` instead.
+
+### `TORRENT_IMAGE_UPLOAD_DIR`
+- **Description**: Directory used to store uploaded torrent images.
+- **Default**: `/media/uploads/images`
+- **Example**: `TORRENT_IMAGE_UPLOAD_DIR=/media/uploads/images`
+
+### `WS_STATS_INTERVAL`
+- **Description**: Frequency for broadcasting worker statistics to connected WebSocket clients.
+- **Default**: `2s`
+- **Example**: `WS_STATS_INTERVAL=5s`
 
 ### `BANDWIDTH_SCHEDULE_INTERVAL`
 - **Description**: Frequency for evaluating worker bandwidth schedules.
@@ -177,9 +197,9 @@ This document lists all environment variables used by Gardarr backend.
 
 ### `METRICS_USERNAME`
 - **Description**: Username for Basic Auth on `/metrics` endpoint
-- **Default**: Not set (endpoint disabled if not set)
+- **Default**: Not set
 - **Example**: `METRICS_USERNAME=prometheus`
-- **Note**: Both `METRICS_USERNAME` and `METRICS_PASSWORD` must be set to enable the endpoint
+- **Note**: Set `METRICS_ENABLED=true` and configure both credentials to enable authenticated metrics.
 
 ### `METRICS_PASSWORD`
 - **Description**: Password for Basic Auth on `/metrics` endpoint
@@ -187,19 +207,72 @@ This document lists all environment variables used by Gardarr backend.
 - **Example**: `METRICS_PASSWORD=your-secure-password`
 - **Security**: Use `METRICS_PASSWORD_FILE` with Docker secrets in production
 
-### `EVENT_POLL_INTERVAL`
-- **Description**: Interval for the event poller to check workers for task state changes
-- **Default**: `30s`
-- **Example**: `EVENT_POLL_INTERVAL=1m`
+### `METRICS_ENABLED`
+- **Description**: Enables the Prometheus-compatible `/metrics` endpoint.
+- **Default**: `false`
+- **Example**: `METRICS_ENABLED=true`
+- **Note**: Unless `METRICS_DISABLE_AUTH=true`, both `METRICS_USERNAME` and `METRICS_PASSWORD` are required.
+
+### `METRICS_DISABLE_AUTH`
+- **Description**: Exposes `/metrics` without Basic Auth.
+- **Default**: `false`
+- **Example**: `METRICS_DISABLE_AUTH=true`
+- **Security**: Use only on a protected internal network.
 
 ---
 
 ## Events
 
+### `EVENT_POLL_INTERVAL`
+- **Description**: Interval for the event poller to check workers for task state changes
+- **Default**: `30s`
+- **Example**: `EVENT_POLL_INTERVAL=1m`
+
 ### `EVENT_RETENTION_DAYS`
 - **Description**: Number of days to retain event history
 - **Default**: `7`
 - **Example**: `EVENT_RETENTION_DAYS=30`
+
+### `EVENT_SUBSCRIBER_BUFFER`
+- **Description**: Size of the in-memory queue used for each real-time event subscriber.
+- **Default**: `256`
+- **Example**: `EVENT_SUBSCRIBER_BUFFER=512`
+
+### `EVENT_CLEANUP_INTERVAL`
+- **Description**: Frequency for purging expired events and stale task states.
+- **Default**: `24h`
+- **Example**: `EVENT_CLEANUP_INTERVAL=12h`
+
+### `WEBHOOK_QUEUE_SIZE`
+- **Description**: Maximum number of pending events queued for each webhook.
+- **Default**: `100`
+- **Example**: `WEBHOOK_QUEUE_SIZE=200`
+
+### `WEBHOOK_MAX_ATTEMPTS`
+- **Description**: Maximum delivery attempts for a webhook event, including the initial request.
+- **Default**: `3`
+- **Example**: `WEBHOOK_MAX_ATTEMPTS=5`
+
+### `WEBHOOK_RETRY_BASE_DELAY`
+- **Description**: Base delay for exponential webhook retry backoff.
+- **Default**: `2s`
+- **Example**: `WEBHOOK_RETRY_BASE_DELAY=5s`
+
+---
+
+## Metadata Integrations
+
+### `TGDB_KEY`
+- **Description**: TheGamesDB API key used to bootstrap its metadata provider on startup.
+- **Default**: Not set
+- **Example**: `TGDB_KEY=your-api-key`
+- **Note**: The key is encrypted and stored only when that provider has not already been configured.
+
+### `TMDB_KEY`
+- **Description**: TMDB API key used to bootstrap its metadata provider on startup.
+- **Default**: Not set
+- **Example**: `TMDB_KEY=your-api-key`
+- **Note**: The key is encrypted and stored only when that provider has not already been configured.
 
 ---
 
@@ -246,6 +319,7 @@ DATABASE_SSL_MODE=require
 ENCRYPTION_KEY=your-32-byte-encryption-key-here
 
 # Prometheus Metrics (optional)
+METRICS_ENABLED=true
 METRICS_USERNAME=prometheus
 METRICS_PASSWORD=your-secure-password
 
