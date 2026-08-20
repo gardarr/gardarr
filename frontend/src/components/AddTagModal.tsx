@@ -51,7 +51,7 @@ export function AddTagModal({ open, onOpenChange, onTagCreated, editingTag, onTa
       if (editingTag && onTagUpdated) {
         await onTagUpdated(editingTag.id, { color: form.color });
       } else {
-        await onTagCreated(form);
+        await onTagCreated({ ...form, name: form.name.trim() });
       }
       onOpenChange(false);
     } catch (err) {
@@ -115,6 +115,8 @@ export function AddTagModal({ open, onOpenChange, onTagCreated, editingTag, onTa
                   style={{ backgroundColor: color.value }}
                   onClick={() => setForm({ ...form, color: color.value })}
                   title={color.name}
+                  aria-label={color.name}
+                  aria-pressed={form.color === color.value}
                 />
               ))}
             </div>

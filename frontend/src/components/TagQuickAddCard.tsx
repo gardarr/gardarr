@@ -22,6 +22,7 @@ export function TagQuickAddCard({ onCreate }: TagQuickAddCardProps) {
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
+    if (submitting) return;
     if (!name.trim()) {
       toast.error(t('tags.errors.nameRequired'));
       return;

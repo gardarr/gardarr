@@ -66,6 +66,8 @@ func (s *Service) ListTags(ctx context.Context) ([]*entities.Tag, error) {
 		})
 	}
 
+	sort.Slice(result, func(i, j int) bool { return result[i].Name < result[j].Name })
+
 	return result, nil
 }
 
@@ -113,13 +115,18 @@ func (s *Service) CreateTag(ctx context.Context, tag entities.Tag) (*entities.Ta
 		tag.Kind = entities.TagKindTag
 	}
 
+	created, err := s.repository.CreateTag(ctx, tag)
+	if err != nil {
+		return nil, err
+	}
+
 	if tag.Kind == entities.TagKindTag && s.workers != nil {
 		if _, _, err := s.workers.CreateTagsAcrossWorkers(ctx, []string{tag.Name}); err != nil {
 			logger.Error("failed to create tag across workers", "name", tag.Name, "error", err.Error())
 		}
 	}
 
-	return s.repository.CreateTag(ctx, tag)
+	return created, nil
 }
 
 // DeriveTags builds new tag names that reuse one side of source's separator

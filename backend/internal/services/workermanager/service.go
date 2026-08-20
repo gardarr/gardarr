@@ -670,12 +670,16 @@ func groupBulkTaskHashesByWorker(items []schemas.BulkTaskItemSchema) map[string]
 	hashesByWorker := make(map[string][]string)
 	seen := make(map[string]struct{}, len(items))
 	for _, item := range items {
-		key := item.WorkerID + ":" + item.Hash
+		hash := strings.TrimSpace(item.Hash)
+		if hash == "" {
+			continue
+		}
+		key := item.WorkerID + ":" + hash
 		if _, exists := seen[key]; exists {
 			continue
 		}
 		seen[key] = struct{}{}
-		hashesByWorker[item.WorkerID] = append(hashesByWorker[item.WorkerID], item.Hash)
+		hashesByWorker[item.WorkerID] = append(hashesByWorker[item.WorkerID], hash)
 	}
 	return hashesByWorker
 }
@@ -799,6 +803,10 @@ func (s *Service) fanOutAcrossWorkers(ctx context.Context, logMsg string, op fun
 	type workerOutcome struct {
 		workerID string
 		err      error
+	}
+
+	if err := ctx.Err(); err != nil {
+		return nil, 0, err
 	}
 
 	resultChan := make(chan workerOutcome, len(workers))

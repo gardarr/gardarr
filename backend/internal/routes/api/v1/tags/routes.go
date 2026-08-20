@@ -10,6 +10,7 @@ import (
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/middlewares"
 	"github.com/jfxdev/gardarr/internal/models"
+	tagrepository "github.com/jfxdev/gardarr/internal/repository/tag"
 	"github.com/jfxdev/gardarr/internal/schemas"
 	"github.com/jfxdev/gardarr/internal/services/tag"
 	"github.com/jfxdev/gardarr/internal/services/workermanager"
@@ -65,7 +66,7 @@ func (m *Module) createTag(c *gin.Context) {
 	})
 	if err != nil {
 		statusCode := http.StatusInternalServerError
-		if err.Error() == "tag already exists" {
+		if errors.Is(err, tagrepository.ErrTagAlreadyExists) {
 			statusCode = http.StatusConflict
 		}
 		c.JSON(statusCode, gin.H{"error": err.Error()})
@@ -124,7 +125,7 @@ func (m *Module) updateTag(c *gin.Context) {
 	existing, err := m.service.GetTagByID(c.Request.Context(), id)
 	if err != nil {
 		statusCode := http.StatusInternalServerError
-		if err.Error() == "tag not found" {
+		if errors.Is(err, tagrepository.ErrTagNotFound) {
 			statusCode = http.StatusNotFound
 		}
 		c.JSON(statusCode, gin.H{"error": err.Error()})
@@ -138,17 +139,17 @@ func (m *Module) updateTag(c *gin.Context) {
 		Color: existing.Color,
 		Icon:  existing.Icon,
 	}
-	if body.Color != "" {
-		updated.Color = body.Color
+	if body.Color != nil {
+		updated.Color = *body.Color
 	}
-	if body.Icon != "" {
-		updated.Icon = body.Icon
+	if body.Icon != nil {
+		updated.Icon = *body.Icon
 	}
 
 	result, err := m.service.UpdateTag(c.Request.Context(), updated)
 	if err != nil {
 		statusCode := http.StatusInternalServerError
-		if err.Error() == "tag not found" {
+		if errors.Is(err, tagrepository.ErrTagNotFound) {
 			statusCode = http.StatusNotFound
 		}
 		c.JSON(statusCode, gin.H{"error": err.Error()})

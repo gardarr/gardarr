@@ -40,7 +40,9 @@ export function TagBadge({
     // "key::*" badge reads as one hue at a glance; the value half prefers
     // its own exact override and otherwise falls back to that same color.
     const scopeColor = getScopeColor(parsed.key);
-    const valueColor = getTagColor(parsed.raw) ?? scopeColor;
+    const exactValueColor = getTagColor(parsed.raw);
+    const valueColor = exactValueColor ?? scopeColor;
+    const valueColorIsInherited = !exactValueColor;
 
     return (
       <div className={cn("inline-flex items-center", className)}>
@@ -65,7 +67,7 @@ export function TagBadge({
             "border-l-0",
             sizeClasses[size]
           )}
-          style={valueColor ? { backgroundColor: valueColor, filter: "brightness(0.82)" } : undefined}
+          style={valueColor ? { backgroundColor: valueColor, ...(valueColorIsInherited ? { filter: "brightness(0.82)" } : {}) } : undefined}
         >
           {parsed.value}
           {showDelete && onDelete && (

@@ -42,7 +42,8 @@ export function DeriveTagsModal({ open, onOpenChange, source, onSubmit }: Derive
 
   const parsedSource = useMemo(() => parseTag(source), [source]);
   const isComposed = parsedSource.kind !== "plain";
-  const effectiveDelimiter = isComposed ? "" : delimiter;
+  const trimmedDelimiter = delimiter.trim();
+  const effectiveDelimiter = isComposed ? "" : trimmedDelimiter;
   const isSuffixMode = mode === "suffix";
 
   const preview = useMemo(() => {
@@ -70,7 +71,7 @@ export function DeriveTagsModal({ open, onOpenChange, source, onSubmit }: Derive
       toast.error(isSuffixMode ? t('tags.errors.suffixesRequired') : t('tags.errors.prefixesRequired'));
       return;
     }
-    if (!isComposed && !delimiter.trim()) {
+    if (!isComposed && !trimmedDelimiter) {
       toast.error(t('tags.errors.delimiterRequired'));
       return;
     }
@@ -147,10 +148,9 @@ export function DeriveTagsModal({ open, onOpenChange, source, onSubmit }: Derive
 
           <div className="space-y-1.5">
             <Label className="text-sm">{t(isSuffixMode ? 'tags.fields.suffixes' : 'tags.fields.prefixes')}</Label>
-            <div
+            <label
+              htmlFor="derive-value-input"
               className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[40px] flex-wrap gap-1 items-center cursor-text"
-              onClick={() => document.getElementById('derive-value-input')?.focus()}
-              onKeyDown={() => document.getElementById('derive-value-input')?.focus()}
             >
               {values.map((value, index) => (
                 <span
@@ -187,7 +187,7 @@ export function DeriveTagsModal({ open, onOpenChange, source, onSubmit }: Derive
                 }}
                 className="flex-1 min-w-[120px] bg-transparent border-none outline-none text-sm"
               />
-            </div>
+            </label>
           </div>
 
           {preview.length > 0 && (

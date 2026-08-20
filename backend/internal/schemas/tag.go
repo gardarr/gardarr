@@ -9,10 +9,12 @@ type TagCreateRequest struct {
 }
 
 // TagUpdateRequest represents the request body for updating a tag.
-// Note: Name, Kind and ID are immutable and cannot be updated.
+// Note: Name, Kind and ID are immutable and cannot be updated. Color and
+// Icon are pointers so an omitted field can be distinguished from an
+// explicit empty string, which clears the existing value.
 type TagUpdateRequest struct {
-	Color string `json:"color" binding:"omitempty,max=50"`
-	Icon  string `json:"icon" binding:"omitempty,max=100"`
+	Color *string `json:"color" binding:"omitempty,max=50"`
+	Icon  *string `json:"icon" binding:"omitempty,max=100"`
 }
 
 // TagRenameRequest represents the request body for renaming a tag.

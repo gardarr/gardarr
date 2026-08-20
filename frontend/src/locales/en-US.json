@@ -883,7 +883,8 @@
       "categories": "Categories",
       "tags": "Tags",
       "ratioGrades": "Ratio Grades",
-      "otherTags": "Other"
+      "otherTags": "Other",
+      "unnamed": "(unnamed)"
     },
     "sortBy": {
       "priority": "priority",

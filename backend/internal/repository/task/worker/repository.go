@@ -310,12 +310,12 @@ func (s *Repository) AddTags(hash string, tags []string) error {
 		return nil
 	}
 
-	if err := s.removeConflictingScopedTags(hash, normalized); err != nil {
-		return errors.Wrap(err, "failed to remove conflicting scoped tags")
-	}
-
 	if err := s.client.AddTorrentTags(hash, normalized); err != nil {
 		return errors.Wrap(err, "failed to add torrent tags")
+	}
+
+	if err := s.removeConflictingScopedTags(hash, normalized); err != nil {
+		return errors.Wrap(err, "failed to remove conflicting scoped tags")
 	}
 
 	return nil
@@ -339,7 +339,9 @@ func (s *Repository) removeConflictingScopedTags(hash string, incoming []string)
 
 	targeted := make(map[string]struct{})
 	for _, h := range strings.Split(hash, "|") {
-		targeted[h] = struct{}{}
+		if h = strings.TrimSpace(h); h != "" {
+			targeted[h] = struct{}{}
+		}
 	}
 
 	items, err := s.client.ListTorrents(qbt.ListOptions{})

@@ -909,7 +909,8 @@
       "categories": "Categorias",
       "tags": "Tags",
       "ratioGrades": "Notas de Ratio",
-      "otherTags": "Outras"
+      "otherTags": "Outras",
+      "unnamed": "(sem nome)"
     },
     "sortBy": {
       "priority": "prioridade",

@@ -11,6 +11,13 @@ import (
 	"gorm.io/gorm"
 )
 
+// Sentinel errors returned by tag repository methods; callers should match
+// them with errors.Is rather than comparing error strings.
+var (
+	ErrTagAlreadyExists = errors.New("tag already exists")
+	ErrTagNotFound      = errors.New("tag not found")
+)
+
 type Repository struct {
 	db *database.Database
 }
@@ -33,7 +40,7 @@ func (r *Repository) CreateTag(ctx context.Context, tag entities.Tag) (*entities
 
 	if err := r.db.DB.WithContext(ctx).Create(model).Error; err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) || strings.Contains(err.Error(), "UNIQUE constraint failed") {
-			return nil, errors.New("tag already exists")
+			return nil, ErrTagAlreadyExists
 		}
 
 		return nil, err
@@ -62,7 +69,7 @@ func (r *Repository) GetTagByID(ctx context.Context, id string) (*entities.Tag, 
 	var model models.Tag
 	if err := r.db.DB.WithContext(ctx).Where("id = ?", id).First(&model).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("tag not found")
+			return nil, ErrTagNotFound
 		}
 		return nil, err
 	}
@@ -75,7 +82,7 @@ func (r *Repository) GetTagByName(ctx context.Context, kind entities.TagKind, na
 	var model models.Tag
 	if err := r.db.DB.WithContext(ctx).Where("kind = ? AND name = ?", string(kind), name).First(&model).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("tag not found")
+			return nil, ErrTagNotFound
 		}
 		return nil, err
 	}
@@ -91,11 +98,12 @@ func (r *Repository) UpdateTag(ctx context.Context, tag entities.Tag) (*entities
 		"icon":  tag.Icon,
 	}
 
-	if err := r.db.DB.WithContext(ctx).Model(&models.Tag{}).Where("id = ?", tag.ID).Updates(updates).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("tag not found")
-		}
-		return nil, err
+	result := r.db.DB.WithContext(ctx).Model(&models.Tag{}).Where("id = ?", tag.ID).Updates(updates)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return nil, ErrTagNotFound
 	}
 
 	return r.GetTagByID(ctx, tag.ID)
@@ -109,7 +117,7 @@ func (r *Repository) DeleteTag(ctx context.Context, id string) error {
 	}
 
 	if result.RowsAffected == 0 {
-		return errors.New("tag not found")
+		return ErrTagNotFound
 	}
 
 	return nil

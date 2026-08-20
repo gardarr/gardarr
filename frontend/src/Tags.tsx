@@ -128,7 +128,6 @@ function Tags() {
     try {
       const response = await tagService.createTag(createForm);
       if (response.error) {
-        toast.error(response.error);
         throw new Error(response.error);
       } else if (response.data) {
         toast.success(t('tags.notifications.createSuccess'));
@@ -146,7 +145,6 @@ function Tags() {
     try {
       const response = await tagService.updateTag(tagId, updateData);
       if (response.error) {
-        toast.error(response.error);
         throw new Error(response.error);
       }
       toast.success(t('tags.notifications.updateSuccess'));
@@ -185,7 +183,6 @@ function Tags() {
         : await tagService.mergeTags({ sources, target });
 
       if (response.error) {
-        toast.error(response.error);
         throw new Error(response.error);
       }
 
@@ -203,7 +200,6 @@ function Tags() {
     try {
       const response = await tagService.deriveTags({ source, delimiter, values, mode });
       if (response.error) {
-        toast.error(response.error);
         throw new Error(response.error);
       }
 

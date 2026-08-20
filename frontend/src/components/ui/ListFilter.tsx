@@ -30,6 +30,7 @@ function ListFilterOption({
   useTagBadge: boolean;
   onToggleItem: (item: string) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <button
       className={`w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground ${selected ? 'bg-muted' : ''}`}
@@ -47,7 +48,7 @@ function ListFilterOption({
             className="text-xs"
           />
         ) : (
-          <span className="truncate max-w-[220px]">{item || "(sem nome)"}</span>
+          <span className="truncate max-w-[220px]">{item || t('torrents.filters.unnamed')}</span>
         )}
       </div>
       {selected && <Check className="h-4 w-4 flex-shrink-0" />}

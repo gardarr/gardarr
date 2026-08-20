@@ -94,10 +94,9 @@ export function MergeTagsModal({ open, onOpenChange, initialSources, initialTarg
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label className="text-sm">{t('tags.fields.sources')}</Label>
-            <div
+            <label
+              htmlFor="merge-source-input"
               className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[40px] flex-wrap gap-1 items-center cursor-text"
-              onClick={() => document.getElementById('merge-source-input')?.focus()}
-              onKeyDown={() => document.getElementById('merge-source-input')?.focus()}
             >
               {sources.map((source, index) => (
                 <TagBadge
@@ -126,7 +125,7 @@ export function MergeTagsModal({ open, onOpenChange, initialSources, initialTarg
                 }}
                 className="flex-1 min-w-[120px] bg-transparent border-none outline-none text-sm"
               />
-            </div>
+            </label>
             <p className="text-xs text-muted-foreground">{t('tags.mergeSourcesHint')}</p>
           </div>
 
