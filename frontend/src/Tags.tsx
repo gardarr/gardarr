@@ -16,16 +16,18 @@ import {
   RefreshCw,
   Pencil,
   Merge,
+  Wand2,
   Layers,
   AlertTriangle,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { tagService } from "./services/tags";
-import type { Tag, CreateTagRequest, UpdateTagRequest, TagOperationResult, TagConflictReport } from "./types/tag";
+import type { Tag, CreateTagRequest, UpdateTagRequest, TagOperationResult, DeriveTagsResult, TagConflictReport, DeriveMode } from "./types/tag";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { AddTagModal } from "./components/AddTagModal";
 import { MergeTagsModal } from "./components/MergeTagsModal";
+import { DeriveTagsModal } from "./components/DeriveTagsModal";
 import { useTagColors } from "@/contexts/tag-colors-hooks";
 
 const DEFAULT_COLOR = "#3b82f6";
@@ -34,6 +36,13 @@ function warnIfPartialFailure(t: (key: string, opts?: Record<string, unknown>) =
   const failedCount = result?.failed_workers ? Object.keys(result.failed_workers).length : 0;
   if (failedCount > 0) {
     toast.warning(t('tags.notifications.partialFailure', { count: failedCount }));
+  }
+}
+
+function warnIfPartialDeriveFailure(t: (key: string, opts?: Record<string, unknown>) => string, result?: DeriveTagsResult) {
+  const failedCount = result?.failed ? Object.keys(result.failed).length : 0;
+  if (failedCount > 0) {
+    toast.warning(t('tags.notifications.derivePartialFailure', { count: failedCount }));
   }
 }
 
@@ -54,6 +63,9 @@ function Tags() {
   const [showMergeModal, setShowMergeModal] = useState(false);
   const [mergeInitialSources, setMergeInitialSources] = useState<string[]>([]);
   const [mergeInitialTarget, setMergeInitialTarget] = useState<string>("");
+
+  const [showDeriveModal, setShowDeriveModal] = useState(false);
+  const [deriveSource, setDeriveSource] = useState<string>("");
 
   const loadTags = useCallback(async () => {
     try {
@@ -166,6 +178,24 @@ function Tags() {
     }
   };
 
+  const handleDeriveSubmit = async (source: string, delimiter: string, values: string[], mode: DeriveMode) => {
+    try {
+      const response = await tagService.deriveTags({ source, delimiter, values, mode });
+      if (response.error) {
+        toast.error(response.error);
+        throw new Error(response.error);
+      }
+
+      toast.success(t('tags.notifications.deriveSuccess', { count: response.data?.created.length ?? 0 }));
+      warnIfPartialDeriveFailure(t, response.data);
+      refreshTagColors();
+      await loadTags();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('tags.errors.deriveFailed'));
+      throw err;
+    }
+  };
+
   const startEditTag = (tag: Tag) => {
     setEditingTag(tag);
     setShowTagModal(true);
@@ -182,6 +212,11 @@ function Tags() {
     setMergeInitialSources([tag.name]);
     setMergeInitialTarget("");
     setShowMergeModal(true);
+  };
+
+  const openDerive = (tag: Tag) => {
+    setDeriveSource(tag.name);
+    setShowDeriveModal(true);
   };
 
   // Groups tag-kind rows that share a case-insensitive name (e.g. "4k" and
@@ -411,6 +446,18 @@ function Tags() {
                                 <Merge className="h-4 w-4" />
                               </Button>
                             )}
+                            {tag.kind === "tag" && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 shrink-0"
+                                onClick={() => openDerive(tag)}
+                                aria-label={t('tags.deriveTagAction', { defaultValue: 'Derive from {{name}}', name: tag.name })}
+                              >
+                                <Wand2 className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button
                               type="button"
                               variant="ghost"
@@ -456,6 +503,11 @@ function Tags() {
                       {tag.kind === "tag" && (
                         <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => openRename(tag)}>
                           <Merge className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {tag.kind === "tag" && (
+                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDerive(tag)}>
+                          <Wand2 className="h-4 w-4" />
                         </Button>
                       )}
                       <Button
@@ -544,6 +596,14 @@ function Tags() {
         initialSources={mergeInitialSources}
         initialTarget={mergeInitialTarget}
         onSubmit={handleMergeSubmit}
+      />
+
+      {/* Derive Modal - Always available */}
+      <DeriveTagsModal
+        open={showDeriveModal}
+        onOpenChange={setShowDeriveModal}
+        source={deriveSource}
+        onSubmit={handleDeriveSubmit}
       />
     </div>
   );

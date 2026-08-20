@@ -1071,6 +1071,15 @@
     "rename": "Rename",
     "merge": "Merge",
     "mergeSourcesHint": "Every torrent carrying one of these tags will get the target tag instead.",
+    "deriveTitle": "Derive Tags",
+    "deriveTagAction": "Derive from {{name}}",
+    "derive": "Derive",
+    "deriveComposedHint": "This tag already uses \"{{separator}}\" - new tags reuse it automatically with the same suffix.",
+    "deriveComposedHintSuffix": "This tag already uses \"{{separator}}\" - new tags reuse it automatically with the same prefix.",
+    "derivePlainHint": "Pick where the prefix and suffix meet, e.g. \"-\" splits \"movies-1080p\" into \"movies\" and \"1080p\".",
+    "deriveModePrefix": "Prefix",
+    "deriveModeSuffix": "Suffix",
+    "derivePreview": "Will create",
     "fields": {
       "name": "Name",
       "color": "Color",
@@ -1078,12 +1087,20 @@
       "usageCount": "Usage",
       "actions": "Actions",
       "sources": "Source tags",
-      "target": "Target tag"
+      "target": "Target tag",
+      "source": "Source tag",
+      "delimiter": "Delimiter",
+      "mode": "Derive by",
+      "prefixes": "New prefixes",
+      "suffixes": "New suffixes"
     },
     "placeholders": {
       "name": "Enter tag name...",
       "sources": "Add a source tag...",
-      "target": "Enter target tag name..."
+      "target": "Enter target tag name...",
+      "delimiter": "e.g. -",
+      "prefixes": "Add a prefix and press Enter...",
+      "suffixes": "Add a suffix and press Enter..."
     },
     "kindLabels": {
       "tag": "Tag",
@@ -1103,7 +1120,11 @@
       "renameSuccess": "Tag renamed successfully!",
       "mergeSuccess": "Tags merged successfully!",
       "partialFailure": "Applied, but 1 worker could not be reached and will sync on its next write.",
-      "partialFailure_plural": "Applied, but {{count}} workers could not be reached and will sync on their next write."
+      "partialFailure_plural": "Applied, but {{count}} workers could not be reached and will sync on their next write.",
+      "deriveSuccess": "1 tag created!",
+      "deriveSuccess_other": "{{count}} tags created!",
+      "derivePartialFailure": "1 tag could not be created.",
+      "derivePartialFailure_other": "{{count}} tags could not be created."
     },
     "errors": {
       "nameRequired": "Tag name is required",
@@ -1114,7 +1135,12 @@
       "mergeFailed": "Failed to apply rename/merge",
       "sourcesRequired": "At least one source tag is required",
       "targetRequired": "Target tag is required",
-      "targetInSources": "Target must not be one of the source tags"
+      "targetInSources": "Target must not be one of the source tags",
+      "deriveFailed": "Failed to derive tags",
+      "prefixesRequired": "At least one prefix is required",
+      "suffixesRequired": "At least one suffix is required",
+      "delimiterRequired": "A delimiter is required for a plain tag",
+      "deriveInvalid": "No valid tag could be derived from this input"
     },
     "conflicts": {
       "title": "Backward-compatibility check",

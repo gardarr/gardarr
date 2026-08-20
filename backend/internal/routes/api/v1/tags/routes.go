@@ -13,6 +13,7 @@ import (
 	"github.com/jfxdev/gardarr/internal/schemas"
 	"github.com/jfxdev/gardarr/internal/services/tag"
 	"github.com/jfxdev/gardarr/internal/services/workermanager"
+	"github.com/jfxdev/gardarr/internal/tagrules"
 )
 
 // Module holds tag routes configuration
@@ -42,6 +43,7 @@ func (m *Module) Register() {
 	m.group.DELETE("", m.deleteTag)
 	m.group.POST("/rename", m.renameTag)
 	m.group.POST("/merge", m.mergeTags)
+	m.group.POST("/derive", m.deriveTags)
 }
 
 // createTag creates a new tag
@@ -228,6 +230,43 @@ func (m *Module) mergeTags(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"failed_workers": failed})
+}
+
+// deriveTags creates new tags that reuse one side of source's separator
+// (prefix or suffix, per Mode) while varying the other across values. A
+// source with a built-in separator ("::" scoped or ":" grouped) reuses it
+// automatically; a plain source requires delimiter.
+func (m *Module) deriveTags(c *gin.Context) {
+	var body schemas.TagDeriveRequest
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Validation failed",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	created, failed, err := m.service.DeriveTags(
+		c.Request.Context(),
+		body.Source,
+		body.Delimiter,
+		body.Values,
+		tagrules.Mode(body.Mode),
+		defaultTagKind(body.Kind),
+		body.Color,
+		body.Icon,
+	)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	response := make([]models.TagResponse, len(created))
+	for i, t := range created {
+		response[i] = m.toResponse(t, 0)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"created": response, "failed": failed})
 }
 
 // toResponse converts an entity to a response model

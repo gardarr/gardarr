@@ -94,6 +94,9 @@ export function MergeTagsModal({ open, onOpenChange, initialSources, initialTarg
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label className="text-sm">{t('tags.fields.sources')}</Label>
+            {/* Click-to-focus extends the input's hit area to the padding
+                around it; the input itself is the real, natively keyboard-
+                operable control, so no separate key handler is needed here. */}
             <div
               className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[40px] flex-wrap gap-1 items-center cursor-text"
               onClick={() => document.getElementById('merge-source-input')?.focus()}

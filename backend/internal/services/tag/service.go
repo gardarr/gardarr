@@ -122,6 +122,36 @@ func (s *Service) CreateTag(ctx context.Context, tag entities.Tag) (*entities.Ta
 	return s.repository.CreateTag(ctx, tag)
 }
 
+// DeriveTags builds new tag names that reuse one side of source's separator
+// while varying the other across values (see tagrules.Derive - a source
+// with a built-in separator, "::" scoped or ":" grouped, reuses it
+// automatically; a plain source needs delimiter), then creates each one via
+// CreateTag. Failures are per-derived-name rather than aborting the batch,
+// mirroring MergeTags/DeleteTag's partial tolerance.
+func (s *Service) DeriveTags(ctx context.Context, source, delimiter string, values []string, mode tagrules.Mode, kind entities.TagKind, color, icon string) ([]*entities.Tag, map[string]string, error) {
+	names, err := tagrules.Derive(source, delimiter, values, mode)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if kind == "" {
+		kind = entities.TagKindTag
+	}
+
+	created := make([]*entities.Tag, 0, len(names))
+	failed := make(map[string]string)
+	for _, name := range names {
+		tag, err := s.CreateTag(ctx, entities.Tag{Name: name, Kind: kind, Color: color, Icon: icon})
+		if err != nil {
+			failed[name] = err.Error()
+			continue
+		}
+		created = append(created, tag)
+	}
+
+	return created, failed, nil
+}
+
 // UpdateTag updates a tag's color/icon. Name and Kind are immutable.
 func (s *Service) UpdateTag(ctx context.Context, tag entities.Tag) (*entities.Tag, error) {
 	return s.repository.UpdateTag(ctx, tag)

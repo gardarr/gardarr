@@ -32,6 +32,7 @@ func setupTestRouter(t *testing.T) *gin.Engine {
 	tagsGroup.DELETE("", module.deleteTag)
 	tagsGroup.POST("/rename", module.renameTag)
 	tagsGroup.POST("/merge", module.mergeTags)
+	tagsGroup.POST("/derive", module.deriveTags)
 
 	return router
 }
@@ -318,6 +319,84 @@ func TestRoutes_MergeTags_Success(t *testing.T) {
 	}
 	if len(list) != 1 || list[0].Name != "cinema" {
 		t.Errorf("expected only 'cinema' to remain, got %v", list)
+	}
+}
+
+func TestRoutes_DeriveTags_ScopedSuccess(t *testing.T) {
+	router := setupTestRouter(t)
+
+	body := map[string]interface{}{
+		"source": "quality::4k",
+		"values": []string{"resolution", "codec"},
+	}
+	w := sendJSONRequest(router, "POST", "/api/v1/tags/derive", body)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var response struct {
+		Created []models.TagResponse `json:"created"`
+		Failed  map[string]string    `json:"failed"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+		t.Fatalf("failed to unmarshal response: %v", err)
+	}
+	if len(response.Created) != 2 {
+		t.Fatalf("expected 2 created tags, got %d: %v", len(response.Created), response.Created)
+	}
+	if len(response.Failed) != 0 {
+		t.Errorf("expected no failures, got %v", response.Failed)
+	}
+}
+
+func TestRoutes_DeriveTags_ModeSuffixSuccess(t *testing.T) {
+	router := setupTestRouter(t)
+
+	body := map[string]interface{}{
+		"source": "quality::4k",
+		"mode":   "suffix",
+		"values": []string{"1080p", "720p"},
+	}
+	w := sendJSONRequest(router, "POST", "/api/v1/tags/derive", body)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var response struct {
+		Created []models.TagResponse `json:"created"`
+		Failed  map[string]string    `json:"failed"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+		t.Fatalf("failed to unmarshal response: %v", err)
+	}
+	if len(response.Created) != 2 {
+		t.Fatalf("expected 2 created tags, got %d: %v", len(response.Created), response.Created)
+	}
+}
+
+func TestRoutes_DeriveTags_PlainWithoutDelimiterRejected(t *testing.T) {
+	router := setupTestRouter(t)
+
+	body := map[string]interface{}{
+		"source": "movies-1080p",
+		"values": []string{"quality"},
+	}
+	w := sendJSONRequest(router, "POST", "/api/v1/tags/derive", body)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestRoutes_DeriveTags_InvalidBody(t *testing.T) {
+	router := setupTestRouter(t)
+
+	w := sendJSONRequest(router, "POST", "/api/v1/tags/derive", map[string]interface{}{})
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
 	}
 }
 

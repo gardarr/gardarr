@@ -35,6 +35,29 @@ export interface MergeTagsRequest {
   target: string;
 }
 
+export type DeriveMode = "prefix" | "suffix";
+
+// delimiter is only required when source has no built-in separator
+// (":" / "::") - see utils/tagRules.ts's deriveTags. mode picks which side
+// of the separator is kept from source ("prefix", the default, or
+// "suffix").
+export interface DeriveTagsRequest {
+  source: string;
+  delimiter?: string;
+  values: string[];
+  mode?: DeriveMode;
+  kind?: TagKind;
+  color?: string;
+  icon?: string;
+}
+
+export interface DeriveTagsResult {
+  created: Tag[];
+  // Maps a derived tag name that failed to be created (e.g. it already
+  // exists) to its error message.
+  failed?: Record<string, string> | null;
+}
+
 // failed_workers maps a worker's UUID to its error message, and is present
 // (possibly empty/null) on every delete/rename/merge response - the local
 // side always succeeds or fails as a whole, but pushing the change to each

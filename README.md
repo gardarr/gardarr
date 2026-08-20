@@ -299,6 +299,8 @@ Every `key::*` tag shares one color by default (set once on the scope), with an 
 
 Renaming and merging tags share one mechanic (a rename is a merge with a single source): every affected torrent, on every worker, gets the new tag and loses the old one, reported per worker rather than claimed as a blanket success if a worker is unreachable. The Tags page also surfaces case-variant clusters (`4k` vs `4K`) as one-click merge candidates, and flags any pre-existing torrent whose tags are no longer valid under scoped semantics (e.g. two values for the same scope) without silently rewriting them.
 
+**Deriving tags** creates new catalog entries that reuse one side of an existing tag's separator while varying the other, without retagging any torrent. A prefix/suffix switch picks which side stays fixed: in the default prefix mode, deriving `resolution` and `codec` from `quality::4k` keeps the `4k` suffix and produces `resolution::4k` and `codec::4k`; flipping to suffix mode instead keeps the `quality` prefix and derives `quality::1080p`, `quality::720p`, etc. A composed source (`key::value` scoped or `key:value` grouped) reuses its own separator automatically. A plain source has no built-in separator, so you supply the delimiter yourself - deriving `quality` from `movies-1080p` with delimiter `-` produces `quality-1080p`.
+
 ## 🛠️ Technology Stack
 
 ### Backend

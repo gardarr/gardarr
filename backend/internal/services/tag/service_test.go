@@ -9,6 +9,7 @@ import (
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/models"
+	"github.com/jfxdev/gardarr/internal/tagrules"
 )
 
 func TestDedupeNonEmpty(t *testing.T) {
@@ -347,6 +348,118 @@ func TestServiceMergeTagsRejectsTargetInSources(t *testing.T) {
 	}
 	if err != ErrMergeTargetInSources {
 		t.Errorf("expected ErrMergeTargetInSources, got %v", err)
+	}
+}
+
+func TestServiceDeriveTagsScopedReusesSeparator(t *testing.T) {
+	service := newTestService(t)
+	ctx := context.Background()
+
+	created, failed, err := service.DeriveTags(ctx, "quality::4k", "", []string{"resolution", "codec"}, "", "", "", "")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(failed) != 0 {
+		t.Errorf("expected no failures, got %v", failed)
+	}
+	if len(created) != 2 {
+		t.Fatalf("expected 2 created tags, got %d", len(created))
+	}
+
+	names := map[string]bool{}
+	for _, tag := range created {
+		names[tag.Name] = true
+		if tag.Kind != entities.TagKindTag {
+			t.Errorf("expected kind to default to %s, got %s", entities.TagKindTag, tag.Kind)
+		}
+	}
+	if !names["resolution::4k"] || !names["codec::4k"] {
+		t.Errorf("expected resolution::4k and codec::4k, got %v", names)
+	}
+}
+
+func TestServiceDeriveTagsPlainRequiresDelimiter(t *testing.T) {
+	service := newTestService(t)
+	ctx := context.Background()
+
+	if _, _, err := service.DeriveTags(ctx, "movies-1080p", "", []string{"quality"}, "", "", "", ""); err == nil {
+		t.Error("expected error for plain source without a delimiter, got nil")
+	}
+}
+
+func TestServiceDeriveTagsPlainWithDelimiter(t *testing.T) {
+	service := newTestService(t)
+	ctx := context.Background()
+
+	created, failed, err := service.DeriveTags(ctx, "movies-1080p", "-", []string{"quality"}, "", "", "", "")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(failed) != 0 {
+		t.Errorf("expected no failures, got %v", failed)
+	}
+	if len(created) != 1 || created[0].Name != "quality-1080p" {
+		t.Fatalf("expected [quality-1080p], got %v", created)
+	}
+}
+
+func TestServiceDeriveTagsReportsPerNameFailureWithoutAbortingBatch(t *testing.T) {
+	service := newTestService(t)
+	ctx := context.Background()
+
+	if _, err := service.CreateTag(ctx, entities.Tag{Name: "codec::4k"}); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	created, failed, err := service.DeriveTags(ctx, "quality::4k", "", []string{"codec", "resolution"}, "", "", "", "")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(created) != 1 || created[0].Name != "resolution::4k" {
+		t.Fatalf("expected only resolution::4k to be created, got %v", created)
+	}
+	if _, ok := failed["codec::4k"]; !ok {
+		t.Errorf("expected codec::4k to be reported as failed, got %v", failed)
+	}
+}
+
+func TestServiceDeriveTagsModeSuffixKeepsPrefix(t *testing.T) {
+	service := newTestService(t)
+	ctx := context.Background()
+
+	created, failed, err := service.DeriveTags(ctx, "quality::4k", "", []string{"1080p", "720p"}, tagrules.ModeSuffix, "", "", "")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(failed) != 0 {
+		t.Errorf("expected no failures, got %v", failed)
+	}
+
+	names := map[string]bool{}
+	for _, tag := range created {
+		names[tag.Name] = true
+	}
+	if !names["quality::1080p"] || !names["quality::720p"] {
+		t.Errorf("expected quality::1080p and quality::720p, got %v", names)
+	}
+}
+
+func TestServiceDetectConflictsWithoutWorkers(t *testing.T) {
+	// With a nil workermanager, DetectConflicts skips the worker fan-out
+	// entirely and returns an empty report built from detectTagConflicts(nil)
+	// - the same pure core exercised directly in TestDetectTagConflicts.
+	service := newTestService(t)
+	ctx := context.Background()
+
+	report, err := service.DetectConflicts(ctx)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(report.ScopeConflicts) != 0 {
+		t.Errorf("expected no scope conflicts, got %v", report.ScopeConflicts)
+	}
+	if len(report.GroupedTags) != 0 {
+		t.Errorf("expected no grouped tags, got %v", report.GroupedTags)
 	}
 }
 

@@ -47,6 +47,78 @@ export function scopeOf(tag: string): string | null {
   return parsed.kind === "scoped" ? parsed.key : null;
 }
 
+/** Zero value is "prefix". */
+export type DeriveMode = "prefix" | "suffix";
+
+/**
+ * Builds new tag names that reuse one side of source's separator while
+ * varying the other across values. If source already has a built-in
+ * separator ("::" scoped or ":" grouped, per parseTag), that separator is
+ * reused automatically and delimiter is ignored. Otherwise (a plain tag)
+ * delimiter must be supplied by the caller to say where the prefix/suffix
+ * boundary is, matched against source's last occurrence of it. mode picks
+ * which side is kept from source ("prefix", the default, or "suffix").
+ * Throws on invalid input (empty source, a plain source without a usable
+ * delimiter, or zero resulting values).
+ */
+export function deriveTags(
+  source: string,
+  delimiter: string,
+  values: string[],
+  mode: DeriveMode = "prefix",
+): string[] {
+  const trimmedSource = source.trim();
+  if (!trimmedSource) {
+    throw new Error("source is required");
+  }
+
+  const { sep, fixed } = deriveSeparatorAndFixedPart(trimmedSource, delimiter, mode);
+  if (!fixed) {
+    throw new Error(mode === "suffix" ? "source has an empty prefix" : "source has an empty suffix");
+  }
+
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const rawValue of values) {
+    const value = rawValue.trim();
+    if (!value) continue;
+    const derived = mode === "suffix" ? fixed + sep + value : value + sep + fixed;
+    if (seen.has(derived)) continue;
+    seen.add(derived);
+    result.push(derived);
+  }
+
+  if (result.length === 0) {
+    throw new Error("at least one value is required");
+  }
+
+  return result;
+}
+
+function deriveSeparatorAndFixedPart(
+  source: string,
+  delimiter: string,
+  mode: DeriveMode,
+): { sep: string; fixed: string } {
+  const parsed = parseTag(source);
+  if (parsed.kind === "scoped") {
+    return { sep: "::", fixed: mode === "suffix" ? parsed.key : parsed.value };
+  }
+  if (parsed.kind === "grouped") {
+    return { sep: ":", fixed: mode === "suffix" ? parsed.key : parsed.value };
+  }
+
+  if (!delimiter) {
+    throw new Error("delimiter is required to derive from a plain tag");
+  }
+  const idx = source.lastIndexOf(delimiter);
+  if (idx < 0) {
+    throw new Error(`delimiter "${delimiter}" not found in tag "${source}"`);
+  }
+  const fixed = mode === "suffix" ? source.slice(0, idx) : source.slice(idx + delimiter.length);
+  return { sep: delimiter, fixed };
+}
+
 function splitOnce(raw: string, sep: string): { key: string; value: string } | null {
   const idx = raw.indexOf(sep);
   if (idx < 0) return null;

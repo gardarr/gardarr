@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { parseTag, scopeOf, type TagKind } from '../tagRules';
+import { parseTag, scopeOf, deriveTags, type TagKind, type DeriveMode } from '../tagRules';
 
 // Same fixture consumed by backend/internal/tagrules/tagrules_test.go, so
 // the two implementations can't silently drift apart.
@@ -44,5 +44,31 @@ describe('scopeOf', () => {
 
   it('returns null when the scope is invalid (empty key)', () => {
     expect(scopeOf('::x')).toBeNull();
+  });
+});
+
+// Same fixture consumed by backend/internal/tagrules/derive_test.go, so the
+// two implementations can't silently drift apart.
+interface DeriveFixtureCase {
+  name: string;
+  source: string;
+  delimiter: string;
+  mode?: DeriveMode | '';
+  values: string[];
+  expected?: string[];
+  error?: boolean;
+}
+
+const deriveFixturePath = path.join(__dirname, '../../../../tests/testdata/tag_derive.json');
+const deriveFixture: DeriveFixtureCase[] = JSON.parse(readFileSync(deriveFixturePath, 'utf-8'));
+
+describe('deriveTags (shared fixture)', () => {
+  it.each(deriveFixture)('$name', (tc) => {
+    const mode = tc.mode || undefined;
+    if (tc.error) {
+      expect(() => deriveTags(tc.source, tc.delimiter, tc.values, mode)).toThrow();
+      return;
+    }
+    expect(deriveTags(tc.source, tc.delimiter, tc.values, mode)).toEqual(tc.expected);
   });
 });

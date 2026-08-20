@@ -1,0 +1,120 @@
+[
+  {
+    "name": "scoped source reuses :: automatically",
+    "source": "quality::4k",
+    "delimiter": "",
+    "values": ["resolution", "codec"],
+    "expected": ["resolution::4k", "codec::4k"]
+  },
+  {
+    "name": "grouped source reuses : automatically",
+    "source": "genre:action",
+    "delimiter": "",
+    "values": ["category"],
+    "expected": ["category:action"]
+  },
+  {
+    "name": "scoped source ignores an unrelated delimiter",
+    "source": "quality::4k",
+    "delimiter": "-",
+    "values": ["codec"],
+    "expected": ["codec::4k"]
+  },
+  {
+    "name": "plain source with user delimiter",
+    "source": "movies-1080p",
+    "delimiter": "-",
+    "values": ["quality"],
+    "expected": ["quality-1080p"]
+  },
+  {
+    "name": "plain source splits on the last occurrence of the delimiter",
+    "source": "a-b-1080p",
+    "delimiter": "-",
+    "values": ["quality"],
+    "expected": ["quality-1080p"]
+  },
+  {
+    "name": "values are trimmed, deduped and empties dropped",
+    "source": "quality::4k",
+    "delimiter": "",
+    "values": ["codec", " ", "codec", " resolution "],
+    "expected": ["codec::4k", "resolution::4k"]
+  },
+  {
+    "name": "plain source without a delimiter is an error",
+    "source": "movies-1080p",
+    "delimiter": "",
+    "values": ["quality"],
+    "error": true
+  },
+  {
+    "name": "delimiter not found in plain source is an error",
+    "source": "movies-1080p",
+    "delimiter": "_",
+    "values": ["quality"],
+    "error": true
+  },
+  {
+    "name": "empty source is an error",
+    "source": "",
+    "delimiter": "-",
+    "values": ["quality"],
+    "error": true
+  },
+  {
+    "name": "no usable values is an error",
+    "source": "quality::4k",
+    "delimiter": "",
+    "values": ["", "  "],
+    "error": true
+  },
+  {
+    "name": "mode suffix on a scoped source keeps the key and varies the value",
+    "source": "quality::4k",
+    "delimiter": "",
+    "mode": "suffix",
+    "values": ["1080p", "720p"],
+    "expected": ["quality::1080p", "quality::720p"]
+  },
+  {
+    "name": "mode suffix on a grouped source keeps the key and varies the value",
+    "source": "genre:action",
+    "delimiter": "",
+    "mode": "suffix",
+    "values": ["drama"],
+    "expected": ["genre:drama"]
+  },
+  {
+    "name": "mode suffix on a plain source with user delimiter",
+    "source": "movies-1080p",
+    "delimiter": "-",
+    "mode": "suffix",
+    "values": ["720p", "4k"],
+    "expected": ["movies-720p", "movies-4k"]
+  },
+  {
+    "name": "mode suffix splits on the last occurrence of the delimiter",
+    "source": "a-b-1080p",
+    "delimiter": "-",
+    "mode": "suffix",
+    "values": ["720p"],
+    "expected": ["a-b-720p"]
+  },
+  {
+    "name": "mode suffix without a delimiter on a plain source is an error",
+    "source": "movies-1080p",
+    "delimiter": "",
+    "mode": "suffix",
+    "values": ["720p"],
+    "error": true
+  },
+  {
+    "name": "mode defaults to prefix when omitted",
+    "source": "quality::4k",
+    "delimiter": "",
+    "mode": "",
+    "values": ["resolution"],
+    "expected": ["resolution::4k"]
+  }
+]

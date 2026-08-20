@@ -7,6 +7,8 @@ import type {
   UpdateTagRequest,
   RenameTagRequest,
   MergeTagsRequest,
+  DeriveTagsRequest,
+  DeriveTagsResult,
   TagOperationResult,
   TagConflictReport,
 } from '../types/tag';
@@ -61,6 +63,16 @@ export class TagService {
    */
   async mergeTags(mergeData: MergeTagsRequest): Promise<ApiResponse<TagOperationResult>> {
     return api.post<TagOperationResult>(`${this.baseEndpoint}/merge`, mergeData);
+  }
+
+  /**
+   * Derives new tags that reuse one side of a source tag's separator
+   * (prefix or suffix, per mode) while varying the other. A source with a
+   * built-in separator ("::" scoped or ":" grouped) reuses it
+   * automatically; a plain source requires delimiter.
+   */
+  async deriveTags(deriveData: DeriveTagsRequest): Promise<ApiResponse<DeriveTagsResult>> {
+    return api.post<DeriveTagsResult>(`${this.baseEndpoint}/derive`, deriveData);
   }
 
   /**
