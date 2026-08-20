@@ -2,13 +2,13 @@ package integration
 
 import (
 	"context"
-	"os"
 	"strings"
 
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	integrationProviderConfigRepo "github.com/jfxdev/gardarr/internal/repository/integration_provider_config"
 	cryptoService "github.com/jfxdev/gardarr/internal/services/crypto"
+	"github.com/jfxdev/gardarr/pkg/env"
 )
 
 const (
@@ -38,7 +38,7 @@ func (s *ProviderConfigService) BootstrapTMDBFromEnv(ctx context.Context) error 
 }
 
 func (s *ProviderConfigService) bootstrapProviderFromEnv(ctx context.Context, provider, envVarName string) error {
-	envKey := strings.TrimSpace(os.Getenv(envVarName))
+	envKey := strings.TrimSpace(env.Get(envVarName).Value())
 	if envKey == "" {
 		return nil
 	}

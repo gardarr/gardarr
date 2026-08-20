@@ -57,10 +57,10 @@ func Get(key string) Env {
 	return v
 }
 
-// readFromFile reads content from file when key has _FILE suffix
+// readFromFile reads content from the file referenced by key's _FILE suffix.
 func readFromFile(key string) string {
 	// Get the file path using viper (respects prefix and key replacer)
-	if filePath := viper.GetString(key); filePath != "" {
+	if filePath := viper.GetString(key + "_FILE"); filePath != "" {
 		if content, err := readSecretFile(filePath); err == nil {
 			return content
 		}

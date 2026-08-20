@@ -70,7 +70,6 @@ export function TorrentDetailsModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
         className="w-[95vw] max-w-[95vw] sm:max-w-4xl h-[90vh] max-h-[90vh] flex flex-col overflow-hidden"
-        onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <DialogHeader className="sr-only">
           <DialogTitle>{t("torrentDetails.title")}</DialogTitle>

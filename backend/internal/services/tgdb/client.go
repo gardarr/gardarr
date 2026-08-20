@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"time"
+
+	"github.com/jfxdev/gardarr/pkg/env"
 )
 
 const (
@@ -77,7 +78,7 @@ func NewClient(apiKey string) *Client {
 
 // DefaultClient creates a client using the TGDB_KEY environment variable
 func DefaultClient() *Client {
-	return NewClient(os.Getenv("TGDB_KEY"))
+	return NewClient(env.Get("TGDB_KEY").Value())
 }
 
 // IsActive returns true if the integration is configured (API key is present)

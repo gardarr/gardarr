@@ -313,6 +313,16 @@ export function TorrentImageEditor({
           className="mb-3"
         />
 
+        <input
+          ref={fileInputRef}
+          id="torrent-image-upload"
+          type="file"
+          accept="image/*"
+          onChange={handleFileSelect}
+          className="peer sr-only"
+          disabled={isUploading}
+        />
+
         {imagePreview ? (
           <>
             <Label className="text-sm font-medium">
@@ -434,7 +444,7 @@ export function TorrentImageEditor({
         ) : imageSource === "Upload" && (
           <label
             htmlFor="torrent-image-upload"
-            className="block cursor-pointer rounded-lg border-2 border-dashed p-12 text-center transition-colors hover:bg-accent/50"
+            className="block cursor-pointer rounded-lg border-2 border-dashed p-12 text-center transition-colors hover:bg-accent/50 peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2"
           >
             <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
             <p className="text-sm text-muted-foreground mb-1">
@@ -448,16 +458,6 @@ export function TorrentImageEditor({
             </p>
           </label>
         )}
-
-        <input
-          ref={fileInputRef}
-          id="torrent-image-upload"
-          type="file"
-          accept="image/*"
-          onChange={handleFileSelect}
-          className="hidden"
-          disabled={isUploading}
-        />
 
         {/* Delete Image Button */}
         {metadata?.image_url && !selectedFile && (

@@ -28,7 +28,7 @@ func setupProviderConfigService(t *testing.T) *ProviderConfigService {
 func TestProviderConfigServiceBootstrapTGDBFromEnv(t *testing.T) {
 	ctx := context.Background()
 	svc := setupProviderConfigService(t)
-	os.Setenv("TGDB_KEY", "bootstrap-key")
+	t.Setenv("TGDB_KEY", "bootstrap-key")
 
 	if err := svc.BootstrapTGDBFromEnv(ctx); err != nil {
 		t.Fatalf("BootstrapTGDBFromEnv failed: %v", err)
@@ -45,6 +45,29 @@ func TestProviderConfigServiceBootstrapTGDBFromEnv(t *testing.T) {
 
 	if !summary.APIKeyConfigured {
 		t.Error("expected TGDB API key to be configured after bootstrap")
+	}
+}
+
+func TestProviderConfigServiceBootstrapsTGDBFromSecretFile(t *testing.T) {
+	ctx := context.Background()
+	svc := setupProviderConfigService(t)
+	secretFile := t.TempDir() + "/tgdb-key"
+	if err := os.WriteFile(secretFile, []byte("bootstrap-key-from-file\n"), 0o600); err != nil {
+		t.Fatalf("write secret file: %v", err)
+	}
+	t.Setenv("TGDB_KEY", "")
+	t.Setenv("TGDB_KEY_FILE", secretFile)
+
+	if err := svc.BootstrapTGDBFromEnv(ctx); err != nil {
+		t.Fatalf("BootstrapTGDBFromEnv failed: %v", err)
+	}
+
+	apiKey, err := svc.GetDecryptedAPIKey(ctx, MetadataSourceTGDB)
+	if err != nil {
+		t.Fatalf("GetDecryptedAPIKey failed: %v", err)
+	}
+	if apiKey != "bootstrap-key-from-file" {
+		t.Errorf("expected API key from secret file, got %q", apiKey)
 	}
 }
 

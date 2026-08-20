@@ -16,7 +16,7 @@ interface OverviewTabProps {
   onShare?: () => void;
 }
 
-export function OverviewTab({ torrent, onCategoryDataChange, onCategoryTagsUpdate, onShare }: OverviewTabProps) {
+export function OverviewTab({ torrent, onCategoryDataChange, onCategoryTagsUpdate, onShare }: Readonly<OverviewTabProps>) {
   const { t } = useTranslation();
   const descriptionRef = useRef<HTMLParagraphElement>(null);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);

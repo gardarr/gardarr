@@ -2,7 +2,7 @@
 
 This document lists all environment variables used by Gardarr backend.
 
-> **Docker Secrets Support**: Variables read through Gardarr's configuration helper support the `_FILE` suffix (e.g., `DATABASE_PASSWORD_FILE=/run/secrets/db_password`). `BASE_URL`, `CUSTOM_CSP`, `TGDB_KEY`, and `TMDB_KEY` are read directly from the environment.
+> **Docker Secrets Support**: Variables read through Gardarr's configuration helper support the `_FILE` suffix (e.g., `DATABASE_PASSWORD_FILE=/run/secrets/db_password`). `BASE_URL` and `CUSTOM_CSP` are read directly from the environment.
 
 ---
 
@@ -203,9 +203,10 @@ This document lists all environment variables used by Gardarr backend.
 
 ### `METRICS_PASSWORD`
 - **Description**: Password for Basic Auth on `/metrics` endpoint
-- **Default**: Not set (endpoint disabled if not set)
+- **Default**: Not set
 - **Example**: `METRICS_PASSWORD=your-secure-password`
 - **Security**: Use `METRICS_PASSWORD_FILE` with Docker secrets in production
+- **Note**: The endpoint is disabled when `METRICS_ENABLED=false`. When authentication is enabled, either missing `METRICS_USERNAME` or `METRICS_PASSWORD` disables it. `METRICS_PASSWORD` is not required when `METRICS_DISABLE_AUTH=true`.
 
 ### `METRICS_ENABLED`
 - **Description**: Enables the Prometheus-compatible `/metrics` endpoint.

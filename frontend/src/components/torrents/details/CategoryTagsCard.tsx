@@ -19,7 +19,7 @@ interface CategoryTagsCardProps {
 type SaveState = "idle" | "saving" | "saved" | "error";
 
 const normalizeTags = (values: string[] = []) => values
-  .map((tag) => tag.trim())
+  .map((tag) => tag.trim().replace(/\s+/g, ""))
   .filter((tag) => tag.length > 0);
 
 export function CategoryTagsCard({ torrent, onCategoryDataChange, onCategoryTagsUpdate }: CategoryTagsCardProps) {

@@ -8,7 +8,7 @@ interface TorrentPathFieldProps {
   onSetLocation?: (torrentId: string, location: string) => void;
 }
 
-export function TorrentPathField({ torrentId, path, onSetLocation }: TorrentPathFieldProps) {
+export function TorrentPathField({ torrentId, path, onSetLocation }: Readonly<TorrentPathFieldProps>) {
   const { t } = useTranslation();
 
   return (
