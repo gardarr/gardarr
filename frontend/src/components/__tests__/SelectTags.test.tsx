@@ -1,17 +1,41 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { SelectTags } from "@/components/SelectTags";
+import { tagService } from "@/services/tags";
 
 vi.mock("lucide-react", async (importOriginal) => {
   const actual = await importOriginal<typeof import("lucide-react")>();
   return { ...actual, Hash: () => <span aria-hidden="true" /> };
 });
 
+vi.mock("@/services/tags", () => ({
+  tagService: {
+    listTags: vi.fn(),
+  },
+}));
+
 function inputEl() {
   return document.getElementById("tagInput") as HTMLInputElement;
 }
 
+function mockKnownTags(names: string[]) {
+  vi.mocked(tagService.listTags).mockResolvedValue({
+    data: names.map((name) => ({
+      id: name,
+      name,
+      kind: "tag" as const,
+      usage_count: 0,
+      created_at: "",
+      updated_at: "",
+    })),
+  });
+}
+
 describe("SelectTags", () => {
+  beforeEach(() => {
+    vi.mocked(tagService.listTags).mockReset();
+  });
+
   it("renders the label with a required marker", () => {
     render(<SelectTags tags={[]} onTagsChange={vi.fn()} label="Tags" required />);
     expect(screen.getByText("Tags")).toBeInTheDocument();
@@ -103,5 +127,100 @@ describe("SelectTags", () => {
     );
     expect(screen.getByText("Required")).toBeInTheDocument();
     expect(screen.getByText("Press Enter to add")).toBeInTheDocument();
+  });
+
+  it("shows matching suggestions from known tags after focus and typing", async () => {
+    mockKnownTags(["alpha", "alphabet", "beta"]);
+    render(<SelectTags tags={[]} onTagsChange={vi.fn()} />);
+
+    fireEvent.focus(inputEl());
+    await waitFor(() => expect(tagService.listTags).toHaveBeenCalled());
+
+    fireEvent.change(inputEl(), { target: { value: "al" } });
+
+    expect(await screen.findByRole("option", { name: "alpha" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "alphabet" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "beta" })).not.toBeInTheDocument();
+  });
+
+  it("excludes already-selected tags from suggestions", async () => {
+    mockKnownTags(["alpha", "alphabet"]);
+    render(<SelectTags tags={["alpha"]} onTagsChange={vi.fn()} />);
+
+    fireEvent.focus(inputEl());
+    await waitFor(() => expect(tagService.listTags).toHaveBeenCalled());
+    fireEvent.change(inputEl(), { target: { value: "al" } });
+
+    expect(await screen.findByRole("option", { name: "alphabet" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "alpha" })).not.toBeInTheDocument();
+  });
+
+  it("selects the arrow-highlighted suggestion on Enter", async () => {
+    const onTagsChange = vi.fn();
+    mockKnownTags(["alpha", "zzzalpha"]);
+    render(<SelectTags tags={[]} onTagsChange={onTagsChange} />);
+
+    fireEvent.focus(inputEl());
+    await waitFor(() => expect(tagService.listTags).toHaveBeenCalled());
+    fireEvent.change(inputEl(), { target: { value: "alpha" } });
+    await screen.findByRole("option", { name: "alpha" });
+
+    fireEvent.keyDown(inputEl(), { key: "ArrowDown" });
+    fireEvent.keyDown(inputEl(), { key: "Enter" });
+
+    expect(onTagsChange).toHaveBeenCalledWith(["alpha"]);
+  });
+
+  it("selects a suggestion via click", async () => {
+    const onTagsChange = vi.fn();
+    mockKnownTags(["alpha", "alphabet"]);
+    render(<SelectTags tags={[]} onTagsChange={onTagsChange} />);
+
+    fireEvent.focus(inputEl());
+    await waitFor(() => expect(tagService.listTags).toHaveBeenCalled());
+    fireEvent.change(inputEl(), { target: { value: "al" } });
+
+    const option = await screen.findByRole("option", { name: "alphabet" });
+    fireEvent.mouseDown(option.querySelector("button")!);
+
+    expect(onTagsChange).toHaveBeenCalledWith(["alphabet"]);
+  });
+
+  it("closes suggestions on Escape without adding a tag", async () => {
+    const onTagsChange = vi.fn();
+    mockKnownTags(["alpha"]);
+    render(<SelectTags tags={[]} onTagsChange={onTagsChange} />);
+
+    fireEvent.focus(inputEl());
+    await waitFor(() => expect(tagService.listTags).toHaveBeenCalled());
+    fireEvent.change(inputEl(), { target: { value: "al" } });
+    await screen.findByRole("listbox");
+
+    fireEvent.keyDown(inputEl(), { key: "Escape" });
+
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(onTagsChange).not.toHaveBeenCalled();
+  });
+
+  it("closes suggestions when clicking outside the component", async () => {
+    mockKnownTags(["alpha"]);
+    render(<SelectTags tags={[]} onTagsChange={vi.fn()} />);
+
+    fireEvent.focus(inputEl());
+    await waitFor(() => expect(tagService.listTags).toHaveBeenCalled());
+    fireEvent.change(inputEl(), { target: { value: "al" } });
+    await screen.findByRole("listbox");
+
+    fireEvent.mouseDown(document.body);
+
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  it("does not fetch known tags on focus while disabled", () => {
+    render(<SelectTags tags={[]} onTagsChange={vi.fn()} disabled />);
+
+    fireEvent.focus(inputEl());
+
+    expect(tagService.listTags).not.toHaveBeenCalled();
   });
 });
