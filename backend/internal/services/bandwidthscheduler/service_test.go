@@ -156,7 +156,11 @@ func TestScheduleCRUDCapturesBaselineAndPreservesColor(t *testing.T) {
 	}
 	lock := service.lockFor(worker.UUID)
 	lock.Lock()
+	lastApplied := len(service.lastApplied)
 	lock.Unlock()
+	if lastApplied != 0 {
+		t.Fatalf("disabled schedule should not update scheduler state, got %d entries", lastApplied)
+	}
 	if created.Color == "" {
 		t.Fatal("expected a neutral schedule color")
 	}

@@ -25,7 +25,7 @@ export function getShareCardFileName(torrent: Task): string {
 }
 
 export async function createShareCardBlob(torrent: Task, options: ShareCardOptions): Promise<Blob> {
-  if (document.fonts?.ready) await document.fonts.ready;
+  if (document.fonts) await document.fonts.ready;
   const canvas = document.createElement("canvas");
   await renderShareCard(canvas, torrent, options);
   return canvasToBlob(canvas);

@@ -25,8 +25,6 @@ import (
 	"gorm.io/gorm"
 )
 
-const allDaysMask uint8 = 0x7f
-
 const (
 	maxSchedulesPerWorker = 5
 	uuidCondition         = "uuid = ?"

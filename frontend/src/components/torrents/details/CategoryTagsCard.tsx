@@ -84,7 +84,6 @@ export function CategoryTagsCard({ torrent, onCategoryDataChange, onCategoryTags
     const operation = ++categoryOperation.current;
     const previousCategoryID = categoryId;
     const previousCategory = currentCategory.current;
-    const previousCategoryName = torrent.category ?? "";
 
     // Optimistic UI
     setCategoryId(id);
@@ -99,7 +98,6 @@ export function CategoryTagsCard({ torrent, onCategoryDataChange, onCategoryTags
         setCategoryId(previousCategoryID);
         currentCategory.current = previousCategory;
         onCategoryDataChange?.(previousCategory);
-        onCategoryTagsUpdate?.(torrent.id, { category: previousCategoryName });
         setState("error");
         toast.error(response.error);
         return;
@@ -111,7 +109,6 @@ export function CategoryTagsCard({ torrent, onCategoryDataChange, onCategoryTags
       setCategoryId(previousCategoryID);
       currentCategory.current = previousCategory;
       onCategoryDataChange?.(previousCategory);
-      onCategoryTagsUpdate?.(torrent.id, { category: previousCategoryName });
       setState("error");
       toast.error(t("torrentDetails.toasts.categoryUpdateError", { defaultValue: "Falha ao atualizar categoria" }));
     }
