@@ -1,32 +1,63 @@
-import { AlignLeft, FolderOpen } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { AlignLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { TorrentRatioWidget } from "@/components/widgets/TorrentRatioWidget";
 import { TorrentLifetimeWidget } from "@/components/widgets/TorrentLifetimeWidget";
 import type { Task } from "@/types/torrent";
 import type { Category } from "@/types/category";
 import { DetailCard } from "./DetailCard";
-import { AutoSaveField } from "./AutoSaveField";
 import { TransferStatsCard } from "./TransferStatsCard";
 import { CategoryTagsCard } from "./CategoryTagsCard";
 
 interface OverviewTabProps {
   torrent: Task;
-  onSetLocation?: (torrentId: string, location: string) => void;
   onCategoryDataChange?: (category: Category | null) => void;
   onCategoryTagsUpdate?: (torrentId: string, patch: { category?: string; tags?: string[] }) => void;
   onShare?: () => void;
 }
 
-export function OverviewTab({ torrent, onSetLocation, onCategoryDataChange, onCategoryTagsUpdate, onShare }: OverviewTabProps) {
+export function OverviewTab({ torrent, onCategoryDataChange, onCategoryTagsUpdate, onShare }: Readonly<OverviewTabProps>) {
   const { t } = useTranslation();
+  const descriptionRef = useRef<HTMLParagraphElement>(null);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [descriptionOverflows, setDescriptionOverflows] = useState(false);
+  const description = torrent.metadata?.description;
 
-  const handleSavePath = (path: string) => onSetLocation?.(torrent.id, path);
+  useEffect(() => {
+    setIsDescriptionExpanded(false);
+
+    const frame = requestAnimationFrame(() => {
+      const element = descriptionRef.current;
+      setDescriptionOverflows(Boolean(element && element.scrollHeight > element.clientHeight));
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [description]);
 
   return (
     <div className="space-y-3 sm:space-y-4">
-      {torrent.metadata?.description && (
+      {description && (
         <DetailCard icon={AlignLeft} title={t("torrentDetails.description.label", { defaultValue: "Descrição" })}>
-          <p className="text-sm text-muted-foreground leading-relaxed">{torrent.metadata.description}</p>
+          <div>
+            <p
+              ref={descriptionRef}
+              className={`text-sm leading-relaxed text-muted-foreground ${isDescriptionExpanded ? "" : "line-clamp-3"}`}
+            >
+              {description}
+            </p>
+            {descriptionOverflows && (
+              <button
+                type="button"
+                className="mt-2 text-sm font-medium text-primary hover:underline"
+                onClick={() => setIsDescriptionExpanded((expanded) => !expanded)}
+                aria-expanded={isDescriptionExpanded}
+              >
+                {isDescriptionExpanded
+                  ? t("torrentDetails.description.showLess", { defaultValue: "Mostrar menos" })
+                  : t("torrentDetails.description.showMore", { defaultValue: "Mostrar mais" })}
+              </button>
+            )}
+          </div>
         </DetailCard>
       )}
 
@@ -40,27 +71,10 @@ export function OverviewTab({ torrent, onSetLocation, onCategoryDataChange, onCa
         <TransferStatsCard torrent={torrent} />
       </div>
 
-      <TorrentLifetimeWidget task={torrent} />
-
       <CategoryTagsCard torrent={torrent} onCategoryDataChange={onCategoryDataChange} onCategoryTagsUpdate={onCategoryTagsUpdate} />
 
-      <div className="space-y-2">
-        <h3 className="text-sm font-medium text-muted-foreground">{t("torrentDetails.path.title", { defaultValue: "Caminho" })}</h3>
-        {onSetLocation ? (
-          <AutoSaveField
-            icon={FolderOpen}
-            value={torrent.path}
-            ariaLabel={t("torrentDetails.path.edit", { defaultValue: "Editar caminho" })}
-            copyText={torrent.path}
-            onSave={handleSavePath}
-          />
-        ) : (
-          <div className="flex min-h-7 items-center gap-2 text-xs sm:text-sm">
-            <FolderOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span className="min-w-0 break-all text-muted-foreground">{torrent.path}</span>
-          </div>
-        )}
-      </div>
+      <TorrentLifetimeWidget task={torrent} />
+
     </div>
   );
 }

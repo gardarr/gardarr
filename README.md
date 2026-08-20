@@ -5,8 +5,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/license-BSL%201.1-blue" alt="License: BSL 1.1" />
-  <img src="https://img.shields.io/badge/Apache%202.0-Feb%202029-green" alt="Apache 2.0: Feb 2029" />
+  <img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="License: AGPL-3.0" />
   <img src="https://img.shields.io/github/v/release/jfxdev/gardarr" alt="Release" />
   <img src="https://img.shields.io/github/actions/workflow/status/jfxdev/gardarr/.github%2Fworkflows%2Fbuild.yml" alt="GitHub Actions" />
   <img src="https://img.shields.io/coderabbit/prs/github/jfxdev/gardarr?utm_source=oss&utm_medium=github&utm_campaign=gardarr%2Fgardarr&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews" alt="CodeRabbit Reviews" />
@@ -20,9 +19,9 @@
   <a href="https://sonarcloud.io/summary/new_code?id=jfxdev_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=jfxdev_gardarr&metric=ncloc" alt="Lines of Code" /></a>
 </p>
 
-Gardarr is a **modern, lightweight management and analytics platform for qBittorrent**, built with performance and user experience in mind. It provides a centralized interface to monitor and control multiple torrent clients, offering advanced insights and a mobile-first design.
+Gardarr is a **modern, lightweight multi-instance management platform for qBittorrent**. Connect, monitor, and control multiple qBittorrent servers from one centralized, mobile-first interface.
 
-**Source-available** project licensed under BSL 1.1, designed to be self-hosted by the community with clean and maintainable code. **Transitions to Apache 2.0 on February 2, 2029**.
+**Open-source** project licensed under the GNU Affero General Public License v3.0 (AGPLv3), designed to be self-hosted by the community with clean and maintainable code.
 
 ## 📸 Screenshots
 
@@ -92,21 +91,22 @@ Gardarr is a **modern, lightweight management and analytics platform for qBittor
 - [✨ Key Features](#-key-features)
 - [📋 Requirements](#-requirements)
 - [🚀 Getting Started](#-getting-started)
-  - [Standalone Mode](#-standalone-mode)
-- [🏗️ Architecture](#-architecture)
-- [⏱️ Bandwidth Schedules](#️-bandwidth-schedules)
+  - [Docker Run](#-docker-run)
+  - [Docker Compose](#-docker-compose)
+  - [Connect qBittorrent Workers](#-connect-qbittorrent-workers)
+- [🏗️ Architecture](#architecture)
+- [⏱️ Bandwidth Schedules](#bandwidth-schedules)
 - [🏆 Ratio Grading System](#-ratio-grading-system)
 - [🔌 Integrations & Events](#-integrations--events)
-- [📊 Metrics & Analytics](#-metrics--analytics)
+- [📊 Metrics & Monitoring](#-metrics--monitoring)
 - [🎨 Customization](#-customization)
-  - [Theme Customization](#theme-customization)
-  - [Custom Cover Art & Metadata](#custom-cover-art--metadata)
+  - [Themes](#themes)
+  - [Cover Art & Metadata](#cover-art--metadata)
   - [Categories](#categories)
   - [Tags & Composite Tags](#tags--composite-tags)
 - [🛠️ Technology Stack](#-technology-stack)
 - [⚙️ Configuration](#-configuration)
 - [🛠️ Development](#-development)
-- [📋 Roadmap](#-roadmap)
 - [📄 License](#-license)
 
 ## ✨ Key Features
@@ -116,7 +116,7 @@ Gardarr is a **modern, lightweight management and analytics platform for qBittor
 - **📊 Advanced Analytics**:
   - Real-time download/upload speed monitoring.
   - Historical data analysis.
-  - **Ratio Grading**: Gamification system (E to S++) for ratio tracking.
+  - **Ratio Grading & Sharing**: Grades from E to S++ and shareable torrent status images.
 - **⏱️ Bandwidth Schedules**: Automatically apply download and upload limits to each worker at the times you choose, with a clear weekly calendar and automatic restoration of the normal limits afterward.
 - **📝 Event System**: Comprehensive event tracking for state changes, completions, and errors, persisted in the database.
 - **🔐 Secure Authentication**: 
@@ -125,7 +125,7 @@ Gardarr is a **modern, lightweight management and analytics platform for qBittor
   - Role-based access control (RBAC).
 - **🏷️ Organization**: Smart category management with advanced tagging system supporting composite tags.
 - **📱 Mobile-First**: Responsive UI designed for seamless usage on smartphones and tablets.
-- **🐳 Docker Native**: Built for containerized environments with support for Docker secrets.
+- **🐳 Docker Native**: Built for containerized environments, with support for Docker secrets through `_FILE` variables.
 
 ### 🌟 For Seedboxes
 
@@ -138,53 +138,71 @@ Essential infrastructure for seedbox operators managing single or multiple serve
 
 ## ⏱️ Bandwidth Schedules
 
-Bandwidth schedules let Gardarr change a worker's global download and upload limits automatically during the week. They are useful when you want quieter hours during the day, full speed overnight, or different limits for weekends.
-
-Create up to five rules per worker, choose the days and start/end times, and set download and upload limits. Use `0` for an unlimited direction. All times follow the timezone configured for Gardarr, so the same schedule behaves predictably wherever the worker runs.
-
-The weekly calendar shows where each rule applies. Drag rules into the order you want: when two rules overlap, the one higher in the list wins. Gardarr shows which rule is active and records every limit change as an event, so webhook integrations and event history stay informed.
-
-Your normal limits are kept as the worker's default. When no rule is active, Gardarr restores those limits automatically. If you change limits manually while a rule is active, the change takes effect immediately but is temporary until the next schedule transition; it also becomes the new default for time outside scheduled windows.
-
-Do not configure qBittorrent's own alternative speed-limit scheduler for the same worker. Let Gardarr be the single source of truth for scheduled limits.
+Create up to five weekly rules per worker with separate download and upload limits (`0` means unlimited). Rules follow Gardarr's configured timezone; when they overlap, the higher rule wins. Outside scheduled windows, Gardarr restores the worker's saved default limits. Avoid using qBittorrent's own alternative speed-limit scheduler for the same worker.
 
 ## 📋 Requirements
 
-- **Docker** and **Docker Compose**
+- **Docker** (Docker Compose is optional)
 - **qBittorrent** v4.1+ (Web UI enabled)
-- **Resources**: <100MB RAM typical usage
 
 ## 🚀 Getting Started
 
-### 🖥️ Standalone Mode
-The easiest way to get started. Manages a single qBittorrent instance.
+### 🐋 Docker Run
+
+Create persistent named volumes, generate an encryption key, and start the container directly:
 
 ```bash
-# Copy the standalone example
-cp examples/standalone/docker-compose.yml docker-compose.yml
+docker volume create gardarr_data
+docker volume create gardarr_media
 
-# Configure credentials
-echo "QBITTORRENT_URL=http://your-qbittorrent:8080" >> .env
-echo "QBITTORRENT_USERNAME=your_username" >> .env
-echo "QBITTORRENT_PASSWORD=your_password" >> .env
+export GARDARR_ENCRYPTION_KEY="$(openssl rand -base64 32)"
+echo "Save this key securely before continuing: $GARDARR_ENCRYPTION_KEY"
 
-# Start Gardarr
-docker-compose up -d
+docker run -d \
+  --name gardarr \
+  --restart unless-stopped \
+  --env APP_URL=http://localhost:3200 \
+  --env ENCRYPTION_KEY="$GARDARR_ENCRYPTION_KEY" \
+  -p 3200:3200 \
+  -v gardarr_data:/data \
+  -v gardarr_media:/media \
+  ghcr.io/jfxdev/gardarr:latest
 ```
-Access the dashboard at `http://localhost:3200`.
 
-### 🔌 Multiple qBittorrent Instances
-For managing multiple instances, deploy a single Gardarr service and register each qBittorrent server directly in the UI using its URL, username, and password.
+The named volumes preserve the database and uploaded media when the container is recreated. Keep the generated key in a secure password manager or secret store: it is required to recreate the container and read existing worker credentials.
 
-1. **Deploy the main service**:
-   ```bash
-   cp examples/default/docker-compose.yml docker-compose.yml
-   docker-compose up -d
-   ```
+### 🐳 Docker Compose
 
-2. **Register qBittorrent instances**:
-   - Go to the UI → Settings → Workers.
-   - Add each qBittorrent server with its direct Web UI URL and credentials.
+Gardarr is a single service. The same deployment can manage one or multiple qBittorrent instances, which are added after signing in.
+
+```bash
+# Copy the Compose example
+cp examples/default/docker-compose.yml docker-compose.yml
+
+# Generate a key, then save its output as ENCRYPTION_KEY in .env
+openssl rand -base64 32
+```
+
+Create a `.env` file alongside `docker-compose.yml` with at least:
+
+```dotenv
+APP_URL=http://localhost:3200
+ENCRYPTION_KEY=paste-the-generated-value-here
+```
+
+`ENCRYPTION_KEY` is mandatory and must be a Base64-encoded 32-byte key. Keep it unchanged after the first start; changing it makes previously stored credentials unreadable.
+
+```bash
+docker compose up -d
+```
+
+Access the dashboard at `http://localhost:3200` and create the initial user.
+
+### 🔌 Connect qBittorrent Workers
+
+After signing in, go to **Settings → Workers** and add each qBittorrent server using its Web UI URL, username, and password. Gardarr encrypts these stored credentials with `ENCRYPTION_KEY`.
+
+If qBittorrent runs on the Docker host, use an address reachable from inside the Gardarr container; `localhost` refers to the container itself.
 
 ## 🏗️ Architecture
 
@@ -197,14 +215,9 @@ Gardarr now runs as a single central service that connects directly to one or mo
 
 ## 🏆 Ratio Grading System
 
-Gardarr features an intelligent **gamification system** for torrent sharing, encouraging healthy seeding behavior and community contribution. The system evaluates your share ratio and assigns grades from **E** (beginner) to **S++** (legendary), with color-coded badges, star ratings, and motivational messages.
+Gardarr converts each torrent's share ratio into a grade from **E** to **S++**, making it easy to see its seeding performance at a glance.
 
-### Benefits
-
-- **Gamification**: Makes seeding fun and rewarding
-- **Visual motivation**: Clear progress indicators encourage better ratios
-- **Community health**: Promotes sustainable sharing practices
-- **Achievement tracking**: Celebrate milestones as you climb the grades
+From the torrent details, you can generate downloadable and shareable images of its status, including the ratio and progress. Choose a layout and theme, then save or share the image directly when your browser supports it.
 
 ## 🔌 Integrations & Events
 
@@ -225,7 +238,7 @@ A comprehensive interface to monitor all torrent activity with event types: `sta
 
 ### Webhooks
 
-Connect to external services (Discord, Slack, n8n, Home Assistant) with multiple endpoints, event filtering, and delivery logging.
+Connect webhook-compatible services such as Discord, Slack, n8n, and Home Assistant with multiple endpoints, event filtering, retries, and delivery logging.
 
 ## 📊 Metrics & Monitoring
 
@@ -237,8 +250,8 @@ The application exposes Prometheus-compatible metrics at the `/metrics` endpoint
 - **Server Metrics**: Total workers count by status (ACTIVE, ERRORED, INACTIVE)
 
 **Configuration:**
-- Set `METRICS_USERNAME` and `METRICS_PASSWORD` to enable the endpoint with Basic Auth
-- If not set, the `/metrics` endpoint will not be registered
+- Set `METRICS_ENABLED=true`, `METRICS_USERNAME`, and `METRICS_PASSWORD` to enable the endpoint with Basic Auth.
+- `METRICS_DISABLE_AUTH=true` exposes the endpoint without credentials; use it only on a protected internal network.
 
 **Example Prometheus scrape configuration:**
 ```yaml
@@ -292,7 +305,7 @@ Simple tags (`movies`, `music`) and composite tags using `::` separator for hier
 
 ## ⚙️ Configuration
 
-Gardarr is configured via environment variables. Create a `.env` file in the root directory. All variables support Docker secrets using the `_FILE` suffix.
+Gardarr is configured via environment variables. Create a `.env` file beside your Compose file. Most sensitive values can be supplied with Docker secrets using the `_FILE` suffix (for example, `ENCRYPTION_KEY_FILE=/run/secrets/encryption_key`); see the detailed reference for variable-specific behavior.
 
 ### Application
 
@@ -300,7 +313,9 @@ Gardarr is configured via environment variables. Create a `.env` file in the roo
 |----------|-------------|---------|
 | `APP_PORT` | Port for the web interface | `3200` |
 | `APP_URL` | Public URL (CORS, cookies). Origin-only, no trailing slash | `http://localhost:3200` |
-| `APP_MODE` | Legacy compatibility flag. Single-process mode is now the default architecture | - |
+| `APP_DOMAINS` | Additional allowed CORS origins, separated by commas | - |
+| `BANDWIDTH_SCHEDULE_INTERVAL` | Frequency for evaluating bandwidth schedules | `1m` |
+| `WS_STATS_INTERVAL` | Frequency for WebSocket worker-stat updates | `2s` |
 | `GIN_MODE` | `debug` or `release` (enables HSTS) | `release` |
 | `LOG_LEVEL` | Log level: `DEBUG`, `INFO`, `WARN`, `ERROR` | `INFO` |
 
@@ -324,8 +339,9 @@ Gardarr is configured via environment variables. Create a `.env` file in the roo
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `ENCRYPTION_KEY` | Key for encrypting sensitive data (qBittorrent credentials) | - |
+| `ENCRYPTION_KEY` | Required Base64-encoded 32-byte key for encrypting stored credentials | - |
 | `CUSTOM_CSP` | Custom Content Security Policy override | Built-in CSP |
+| `TORRENT_IMAGE_UPLOAD_DIR` | Directory for uploaded torrent images | `/media/uploads/images` |
 
 ### Worker Connectivity
 
@@ -333,21 +349,12 @@ Gardarr is configured via environment variables. Create a `.env` file in the roo
 |----------|-------------|---------|
 | `WORKER_TIMEOUT_SECONDS` | Timeout used when validating and communicating with direct qBittorrent worker connections | `10` |
 
-### qBittorrent
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `QBITTORRENT_URL` | Base URL of qBittorrent Web UI | - |
-| `QBITTORRENT_USERNAME` | qBittorrent username | - |
-| `QBITTORRENT_PASSWORD` | qBittorrent password | - |
-| `QBITTORRENT_REQUEST_TIMEOUT_SECONDS` | Request timeout | `3` |
-| `QBITTORRENT_MAX_RETRIES` | Max retries on failure | `0` |
-| `QBITTORRENT_RETRY_BACKOFF` | Retry backoff (seconds) | `1` |
-
 ### Prometheus Metrics
 
 | Variable | Description | Default |
 |----------|-------------|---------|
+| `METRICS_ENABLED` | Enables the `/metrics` endpoint | `false` |
+| `METRICS_DISABLE_AUTH` | Exposes `/metrics` without Basic Auth | `false` |
 | `METRICS_USERNAME` | Username for /metrics Basic Auth | (not set) |
 | `METRICS_PASSWORD` | Password for /metrics Basic Auth | (not set) |
 
@@ -355,7 +362,20 @@ Gardarr is configured via environment variables. Create a `.env` file in the roo
 
 | Variable | Description | Default |
 |----------|-------------|---------|
+| `EVENT_POLL_INTERVAL` | Frequency for detecting torrent state changes | `30s` |
 | `EVENT_RETENTION_DAYS` | Days to keep event history | `7` |
+| `EVENT_SUBSCRIBER_BUFFER` | In-memory event queue size per subscriber | `256` |
+| `EVENT_CLEANUP_INTERVAL` | Frequency for cleaning expired events | `24h` |
+| `WEBHOOK_QUEUE_SIZE` | Pending events allowed per webhook | `100` |
+| `WEBHOOK_MAX_ATTEMPTS` | Delivery attempts per webhook event | `3` |
+| `WEBHOOK_RETRY_BASE_DELAY` | Base delay for webhook retry backoff | `2s` |
+
+### Advanced Integrations
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `TGDB_KEY` | API key to bootstrap TheGamesDB metadata | - |
+| `TMDB_KEY` | API key to bootstrap TMDB metadata | - |
 
 For detailed documentation, see [backend/docs/ENVIRONMENT_VARIABLES.md](backend/docs/ENVIRONMENT_VARIABLES.md).
 
@@ -370,109 +390,10 @@ cd gardarr
 make dev
 ```
 
-## 📋 Roadmap
-
-- [ ] **Integrations Page**: Support for external integrations (Jellyfin, Ntfy, etc.).
-- [ ] **Smart Speed Limits**: Schedule-based and adaptive speed limits.
-- [ ] **OIDC Authentication**: SSO support.
-- [ ] **Cross-Host Transfer**: SCP transfer between workers.
-
 ## 📄 License
 
-This project is licensed under the **Business Source License 1.1 (BSL 1.1)**.
+Gardarr is free software licensed under the **GNU Affero General Public License v3.0 (AGPLv3)**. You may use, modify, and distribute it under the license terms.
 
-### License Summary
+If you modify Gardarr and make it available for users to interact with over a network, the AGPLv3 requires you to offer those users the corresponding source code for the version you run.
 
-| Parameter | Value |
-|-----------|-------|
-| **License** | Business Source License 1.1 |
-| **Licensor** | Gardarr Contributors |
-| **Effective Date** | February 2, 2026 |
-| **Change Date** | February 2, 2029 |
-| **Change License** | Apache License 2.0 |
-
-### What You Can Do ✅
-
-- **Self-host** Gardarr for personal, business, or educational purposes
-- **Modify** the source code to fit your needs
-- **Create derivative works** based on Gardarr
-- **Distribute** the software to others
-- **Contribute** to the project through pull requests and community engagement
-- **Use commercially** as part of internal infrastructure
-- **Study** and learn from the source code
-
-### What Is Restricted ❌
-
-- Offering Gardarr or substantially similar functionality as a **commercial hosted service** or **SaaS product** that directly competes with official Gardarr offerings
-
-### License Transition Timeline
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           LICENSE TIMELINE                                   │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  2026-02-02                              2029-02-02                         │
-│      │                                       │                              │
-│      ▼                                       ▼                              │
-│  ════════════════════════════════════════════════════════════════════════   │
-│  │           BSL 1.1 Period                 │     Apache 2.0              │ │
-│  │   (Source Available License)             │    (Fully Open Source)      │ │
-│  ════════════════════════════════════════════════════════════════════════   │
-│                                                                             │
-│  ● Self-hosting: ALLOWED                    ● All commercial use: ALLOWED  │
-│  ● Modifications: ALLOWED                   ● No restrictions              │
-│  ● Contributions: ALLOWED                   ● Permissive license           │
-│  ● Competing SaaS: RESTRICTED               ● Full open source             │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-### Why BSL 1.1?
-
-The Business Source License 1.1 allows us to:
-
-1. **Protect the project** from large cloud providers offering Gardarr as a competing service without contributing back
-2. **Maintain open development** where anyone can view, modify, and contribute to the code
-3. **Support self-hosters** who can freely use Gardarr for any personal or business purpose
-4. **Guarantee open-source conversion** - the code will automatically become Apache 2.0 licensed
-
-### Frequently Asked Questions
-
-<details>
-<summary><strong>Can I use Gardarr in my company?</strong></summary>
-
-**Yes!** Self-hosting Gardarr for internal company use is explicitly allowed. The restriction only applies to offering Gardarr as a competing commercial service to third parties.
-</details>
-
-<details>
-<summary><strong>Can I fork and modify Gardarr?</strong></summary>
-
-**Yes!** You can fork, modify, and even distribute your modifications. Your fork must comply with the BSL 1.1 terms until the Change Date (February 2, 2029).
-</details>
-
-<details>
-<summary><strong>When will Gardarr become fully open source?</strong></summary>
-
-On **February 2, 2029**, this version automatically converts to the **Apache License 2.0**, a permissive open-source license with no restrictions on commercial use.
-</details>
-
-<details>
-<summary><strong>Can I contribute to Gardarr?</strong></summary>
-
-**Absolutely!** Contributions are welcome. All contributions are subject to this license and will also convert to Apache 2.0 on the Change Date.
-</details>
-
-<details>
-<summary><strong>Is BSL 1.1 an open-source license?</strong></summary>
-
-BSL 1.1 is a "source-available" license, not technically OSI-approved open source. However, it provides most of the freedoms of open source and **guarantees** automatic conversion to a true open-source license (Apache 2.0) on the Change Date.
-</details>
-
-### Full License Text
-
-See the [LICENSE](LICENSE) file for the complete license terms.
-
-### Contact
-
-For commercial licensing inquiries, please contact the Gardarr maintainers through the project's official channels.
+See [LICENSE](LICENSE) for the complete license text.

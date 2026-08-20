@@ -19,6 +19,7 @@ import { TorrentHeroHeader } from "./details/TorrentHeroHeader";
 import { TorrentActionBar } from "./details/TorrentActionBar";
 import { OverviewTab } from "./details/OverviewTab";
 import { TrackersTab } from "./details/TrackersTab";
+import { TorrentPathField } from "./details/TorrentPathField";
 import { ShareableTorrentCardDialog } from "./share/ShareableTorrentCardDialog";
 
 interface TorrentDetailsModalProps {
@@ -67,7 +68,9 @@ export function TorrentDetailsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-4xl h-[90vh] max-h-[90vh] flex flex-col overflow-hidden">
+      <DialogContent
+        className="w-[95vw] max-w-[95vw] sm:max-w-4xl h-[90vh] max-h-[90vh] flex flex-col overflow-hidden"
+      >
         <DialogHeader className="sr-only">
           <DialogTitle>{t("torrentDetails.title")}</DialogTitle>
           <DialogDescription>{t("torrentDetails.subtitle")}</DialogDescription>
@@ -93,6 +96,10 @@ export function TorrentDetailsModal({
               <FileText className="h-4 w-4 hidden sm:block" />
               {t("torrentDetails.tabs.overview", { defaultValue: "Visão Geral" })}
             </TabsTrigger>
+            <TabsTrigger value="image" className="flex items-center gap-2">
+              <Image className="h-4 w-4 hidden sm:block" />
+              {t("torrentDetails.tabs.image", { defaultValue: "Imagem" })}
+            </TabsTrigger>
             <TabsTrigger value="files" className="flex items-center gap-2">
               <Files className="h-4 w-4 hidden sm:block" />
               {t("torrentDetails.tabs.files", { defaultValue: "Arquivos" })}
@@ -101,10 +108,6 @@ export function TorrentDetailsModal({
               <Radio className="h-4 w-4 hidden sm:block" />
               {t("torrentDetails.tabs.trackers", { defaultValue: "Trackers" })}
             </TabsTrigger>
-            <TabsTrigger value="image" className="flex items-center gap-2">
-              <Image className="h-4 w-4 hidden sm:block" />
-              {t("torrentDetails.tabs.image", { defaultValue: "Imagem" })}
-            </TabsTrigger>
           </TabsList>
 
           {/* key resets scroll position when switching tabs */}
@@ -112,7 +115,6 @@ export function TorrentDetailsModal({
             <TabsContent value="overview" className="mt-4">
               <OverviewTab
                 torrent={torrent}
-                onSetLocation={onSetLocation}
                 onCategoryDataChange={setCurrentCategoryData}
                 onCategoryTagsUpdate={onCategoryTagsUpdate}
                 onShare={() => setIsShareModalOpen(true)}
@@ -120,19 +122,22 @@ export function TorrentDetailsModal({
             </TabsContent>
 
             <TabsContent value="files" className="mt-4">
-              <TorrentFilesList
-                workerId={torrent.worker?.uuid || ""}
-                taskId={torrent.id}
-                defaultOpen
-                title={t("torrentDetails.files.title", { defaultValue: "Lista de Arquivos" })}
-              />
+              <div className="space-y-4">
+                <TorrentPathField torrentId={torrent.id} path={torrent.path} onSetLocation={onSetLocation} />
+                <TorrentFilesList
+                  workerId={torrent.worker?.uuid || ""}
+                  taskId={torrent.id}
+                  defaultOpen
+                  title={t("torrentDetails.files.title", { defaultValue: "Lista de Arquivos" })}
+                />
+              </div>
             </TabsContent>
 
             <TabsContent value="trackers" className="mt-4">
               <TrackersTab torrent={torrent} />
             </TabsContent>
 
-            <TabsContent value="image" className="mt-4">
+            <TabsContent value="image" className="mt-2">
               <TorrentImageEditor
                 taskHash={torrent.hash}
                 taskName={torrent.name}

@@ -4,9 +4,24 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 )
+
+func TestDefaultClientUsesSecretFile(t *testing.T) {
+	secretFile := t.TempDir() + "/tgdb-key"
+	if err := os.WriteFile(secretFile, []byte("secret-api-key\n"), 0o600); err != nil {
+		t.Fatalf("write secret file: %v", err)
+	}
+	t.Setenv("TGDB_KEY", "")
+	t.Setenv("TGDB_KEY_FILE", secretFile)
+
+	client := DefaultClient()
+	if client.apiKey != "secret-api-key" {
+		t.Errorf("expected API key from secret file, got %q", client.apiKey)
+	}
+}
 
 func TestClientGetGameByID(t *testing.T) {
 	client := NewClient("test-key")
