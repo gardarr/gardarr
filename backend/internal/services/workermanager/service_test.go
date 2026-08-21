@@ -2,11 +2,241 @@ package workermanager
 
 import (
 	"context"
+	"sync"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/jfxdev/gardarr/internal/entities"
+	workerrepository "github.com/jfxdev/gardarr/internal/repository/worker"
 	"github.com/jfxdev/gardarr/internal/schemas"
+	"github.com/jfxdev/gardarr/internal/services/workerhealth"
 )
+
+// noopProber is a workerhealth prober that's never actually dialed in these
+// tests - it exists only so workerhealth.NewService has something to hold.
+type noopProber struct{}
+
+func (noopProber) ListWorkers() ([]*entities.Worker, error) { return nil, nil }
+func (noopProber) GetInstance(*entities.Worker) (*entities.Instance, error) {
+	return nil, nil
+}
+
+func TestListTasksSkipsConfirmedOfflineWorkerWithoutDialing(t *testing.T) {
+	health := workerhealth.NewService(noopProber{}, nil)
+	workerID := uuid.New()
+	health.Seed(workerID, nil, &workerrepository.WorkerError{
+		Code:    entities.WorkerErrorCodeConnectionRefused,
+		Message: "connection refused",
+	})
+
+	// service.repository is left nil on purpose: if the skip-offline check
+	// in ListTasks doesn't fire, dialing this worker panics on a nil
+	// repository, failing the test.
+	service := &Service{health: health}
+	worker := &entities.Worker{UUID: workerID}
+
+	result, err := service.ListTasks(context.Background(), []*entities.Worker{worker})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Tasks) != 0 {
+		t.Fatalf("expected no tasks from a skipped offline worker, got %d", len(result.Tasks))
+	}
+	msg, ok := result.Errors[workerID.String()]
+	if !ok || msg != "connection refused" {
+		t.Fatalf("expected cached error surfaced immediately, got %q (ok=%v)", msg, ok)
+	}
+}
+
+// fanOutTestRepo backs fanOutAcrossWorkers tests: ListWorkers returns a
+// fixed worker set, and CreateWorkerTags records which workers it was
+// actually dialed for, so a test can assert an offline one was skipped.
+type fanOutTestRepo struct {
+	workerrepository.RepositoryInterface
+	workers []*entities.Worker
+
+	mu     sync.Mutex
+	dialed []uuid.UUID
+}
+
+func (f *fanOutTestRepo) ListWorkers() ([]*entities.Worker, error) { return f.workers, nil }
+
+func (f *fanOutTestRepo) CreateWorkerTags(w *entities.Worker, _ []string) error {
+	f.mu.Lock()
+	f.dialed = append(f.dialed, w.UUID)
+	f.mu.Unlock()
+	return nil
+}
+
+func TestFanOutAcrossWorkersSkipsConfirmedOfflineWorkerWithoutDialing(t *testing.T) {
+	onlineID, offlineID := uuid.New(), uuid.New()
+	repo := &fanOutTestRepo{workers: []*entities.Worker{
+		{UUID: onlineID},
+		{UUID: offlineID},
+	}}
+
+	health := workerhealth.NewService(noopProber{}, nil)
+	health.Seed(offlineID, nil, &workerrepository.WorkerError{
+		Code:    entities.WorkerErrorCodeConnectionRefused,
+		Message: "connection refused",
+	})
+
+	service := &Service{repository: repo, health: health}
+
+	failed, total, err := service.CreateTagsAcrossWorkers(context.Background(), []string{"movies"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if total != 2 {
+		t.Fatalf("expected total=2, got %d", total)
+	}
+
+	msg, ok := failed[offlineID.String()]
+	if !ok || msg != "connection refused" {
+		t.Fatalf("expected offline worker reported failed with cached error, got %q (ok=%v)", msg, ok)
+	}
+	if _, ok := failed[onlineID.String()]; ok {
+		t.Fatalf("expected online worker to succeed, got it in failed: %v", failed)
+	}
+
+	repo.mu.Lock()
+	dialed := repo.dialed
+	repo.mu.Unlock()
+	if len(dialed) != 1 || dialed[0] != onlineID {
+		t.Fatalf("expected only the online worker dialed, got %v", dialed)
+	}
+}
+
+// fakeRepo satisfies workerrepository.RepositoryInterface via embedding (all
+// unused methods stay nil and would panic if called - fine, since these
+// tests only exercise GetWorkerByUUID), overriding just what GetWorker needs.
+type fakeRepo struct {
+	workerrepository.RepositoryInterface
+	worker *entities.Worker
+}
+
+func (f *fakeRepo) GetWorkerByUUID(uuid.UUID) (*entities.Worker, error) {
+	return f.worker, nil
+}
+
+// instanceProber is a workerhealth prober returning a fixed instance/error
+// pair, for tests that need a real (successful) on-demand probe outcome.
+type instanceProber struct {
+	instance *entities.Instance
+	err      error
+}
+
+func (p instanceProber) ListWorkers() ([]*entities.Worker, error) { return nil, nil }
+func (p instanceProber) GetInstance(*entities.Worker) (*entities.Instance, error) {
+	return p.instance, p.err
+}
+
+func TestGetWorkerUsesConfirmedHealthWithoutProbing(t *testing.T) {
+	workerID := uuid.New()
+	health := workerhealth.NewService(noopProber{}, nil)
+	seededInstance := &entities.Instance{}
+	health.Seed(workerID, seededInstance, nil)
+
+	// health's prober is noopProber (always nil, nil) - if GetWorker fell
+	// back to an on-demand probe instead of trusting the confirmed cache
+	// entry, the Instance below would be nil, not the seeded pointer.
+	service := &Service{
+		repository: &fakeRepo{worker: &entities.Worker{UUID: workerID}},
+		health:     health,
+	}
+
+	worker, err := service.GetWorker(context.Background(), workerID.String())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if worker.Status != entities.WorkerStatusActive {
+		t.Fatalf("expected ACTIVE from cache, got %s", worker.Status)
+	}
+	if worker.Instance != seededInstance {
+		t.Fatalf("expected the cached Instance pointer to be reused")
+	}
+}
+
+func TestGetWorkerFallsBackToOnDemandProbeWhenUnconfirmed(t *testing.T) {
+	workerID := uuid.New()
+	freshInstance := &entities.Instance{}
+	health := workerhealth.NewService(instanceProber{instance: freshInstance}, nil)
+
+	service := &Service{
+		repository: &fakeRepo{worker: &entities.Worker{UUID: workerID}},
+		health:     health,
+	}
+
+	worker, err := service.GetWorker(context.Background(), workerID.String())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if worker.Status != entities.WorkerStatusActive {
+		t.Fatalf("expected ACTIVE after on-demand probe, got %s", worker.Status)
+	}
+	if worker.Instance != freshInstance {
+		t.Fatalf("expected the freshly probed Instance")
+	}
+
+	if h, ok := health.Get(workerID); !ok || h.Status != entities.WorkerStatusActive {
+		t.Fatalf("expected health cache updated after the on-demand probe")
+	}
+}
+
+// countingFailProber always fails GetInstance and counts how many times
+// it was actually called.
+type countingFailProber struct {
+	mu    sync.Mutex
+	calls int
+}
+
+func (p *countingFailProber) ListWorkers() ([]*entities.Worker, error) { return nil, nil }
+func (p *countingFailProber) GetInstance(*entities.Worker) (*entities.Instance, error) {
+	p.mu.Lock()
+	p.calls++
+	p.mu.Unlock()
+	return nil, &workerrepository.WorkerError{Code: entities.WorkerErrorCodeConnectionRefused}
+}
+func (p *countingFailProber) callCount() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.calls
+}
+
+// TestGetWorkerDoesNotReprobeAnUnconfirmedWorkerOnEveryCall guards against
+// the bug reported against the frontend: with flap-dampening requiring 3
+// consecutive failures, a worker stays PENDING (not yet confirmed ERRORED)
+// through its first 2 failures. Before this fix, GetWorker/ListWorkers
+// treated "still PENDING" as "never probed" and re-dialed on every single
+// call, so a sequence of requests hitting an unreachable worker during that
+// window each paid their own WORKER_HEALTH_READ_TIMEOUT wait in turn - the
+// page felt permanently stuck loading. Only the very first call (a true
+// cache miss) should probe; everything after it, confirmed or not, must be
+// a cache read, leaving confirmation entirely to the background monitor.
+func TestGetWorkerDoesNotReprobeAnUnconfirmedWorkerOnEveryCall(t *testing.T) {
+	workerID := uuid.New()
+	prober := &countingFailProber{}
+	health := workerhealth.NewService(prober, nil)
+
+	service := &Service{
+		repository: &fakeRepo{worker: &entities.Worker{UUID: workerID}},
+		health:     health,
+	}
+
+	for i := range 5 {
+		worker, err := service.GetWorker(context.Background(), workerID.String())
+		if err != nil {
+			t.Fatalf("call %d: unexpected error: %v", i, err)
+		}
+		if worker.Status != entities.WorkerStatusPending {
+			t.Fatalf("call %d: expected still PENDING (below flap-dampening threshold), got %s", i, worker.Status)
+		}
+	}
+
+	if calls := prober.callCount(); calls != 1 {
+		t.Fatalf("expected exactly 1 probe across 5 GetWorker calls for an unconfirmed worker, got %d", calls)
+	}
+}
 
 func TestServiceListTasksEmptyWorkers(t *testing.T) {
 	// Create a minimal service for testing

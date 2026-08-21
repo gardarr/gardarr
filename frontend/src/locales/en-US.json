@@ -1568,7 +1568,9 @@
       "stateChange": "State Change",
       "added": "Added",
       "removed": "Removed",
-      "completed": "Completed"
+      "completed": "Completed",
+      "workerOffline": "Worker offline",
+      "workerRecovered": "Worker recovered"
     },
     "time": {
       "justNow": "Just now",
@@ -1584,7 +1586,15 @@
     "table": {
       "torrent": "Torrent",
       "change": "Change",
-      "time": "Time"
+      "time": "Time",
+      "worker": "Worker",
+      "subject": "Torrent / Worker",
+      "schedule": "Schedule"
+    },
+    "groups": {
+      "torrent": "Torrent events",
+      "worker": "Worker events",
+      "schedule": "Schedule events"
     }
   },
   "forgotPassword": {

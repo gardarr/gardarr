@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jfxdev/gardarr/internal/constants"
+	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/mappers"
 	"github.com/jfxdev/gardarr/internal/models"
 	"github.com/jfxdev/gardarr/internal/services/events"
@@ -29,6 +30,8 @@ func wsEventTypeFor(eventType string) string {
 		return "TORRENT_REMOVED"
 	case constants.EventTypeTorrentCompleted:
 		return "TORRENT_COMPLETED"
+	case constants.EventTypeWorkerOffline, constants.EventTypeWorkerRecovered:
+		return "WORKER_STATUS_CHANGED"
 	default:
 		return eventType
 	}
@@ -206,21 +209,53 @@ func (h *Hub) SendInitialState(client *Client) {
 		Errors:    workerErrors,
 	}
 
-	// Send to specific client
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				slog.Debug("recovered from send on closed client channel", "client_id", client.ID, "error", r)
-			}
-		}()
-		timer := time.NewTimer(5 * time.Second)
-		defer timer.Stop()
-		select {
-		case client.Send <- wsEvent:
-		case <-timer.C:
-			slog.Warn("timeout sending initial state to client", "client_id", client.ID)
+	h.sendToClient(client, wsEvent)
+
+	// Catch this client up on current worker health so it isn't blind to an
+	// already-down worker until the next transition fires.
+	h.sendHealthSnapshot(client)
+}
+
+// sendToClient sends event to a single client with a timeout, recovering
+// from a send on an already-closed channel (the client may disconnect
+// concurrently with this call).
+func (h *Hub) sendToClient(client *Client, event *WSEvent) {
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Debug("recovered from send on closed client channel", "client_id", client.ID, "error", r)
 		}
 	}()
+	timer := time.NewTimer(5 * time.Second)
+	defer timer.Stop()
+	select {
+	case client.Send <- event:
+	case <-timer.C:
+		slog.Warn("timeout sending event to client", "client_id", client.ID, "event_type", event.EventType)
+	}
+}
+
+// sendHealthSnapshot pushes one WORKER_STATUS_CHANGED-shaped event per
+// worker with confirmed health to a newly connected client, so it isn't
+// blind to current worker status until the next transition occurs. Workers
+// with no confirmed health yet (PENDING - no probe has completed) are
+// skipped; the client will learn their status from the next transition or
+// from a REST fetch.
+func (h *Hub) sendHealthSnapshot(client *Client) {
+	for workerID, health := range h.workerSvc.HealthSnapshot() {
+		if health.Status == "" || health.Status == entities.WorkerStatusPending {
+			continue
+		}
+		h.sendToClient(client, &WSEvent{
+			EventType: "WORKER_STATUS_CHANGED",
+			WorkerID:  workerID.String(),
+			Payload: map[string]interface{}{
+				"status":     health.Status,
+				"error":      health.Error,
+				"error_code": string(health.ErrorCode),
+				"permanent":  health.Permanent,
+			},
+		})
+	}
 }
 
 func (h *Hub) broadcastWorkerStats(ctx context.Context) {

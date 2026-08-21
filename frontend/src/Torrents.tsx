@@ -14,7 +14,7 @@ import { BulkActionBar } from "@/components/torrents/BulkActionBar";
 import { workerService } from "./services/workers";
 import { categoryService } from "./services/categories";
 import { preferencesService } from "@/services/preferences";
-import { useTorrentsWS } from "@/hooks/useTorrentsWS";
+import { useTorrentsWS, type WorkerStatusChangedPayload } from "@/hooks/useTorrentsWS";
 import {
   getStatusColor,
   getStatusIcon,
@@ -325,6 +325,13 @@ export default function TorrentsPage() {
     }, []),
     onWorkerStats: useCallback(() => {
       // Optional: Update worker stats in UI if needed
+    }, []),
+    onWorkerStatusChanged: useCallback((workerId: string, status: WorkerStatusChangedPayload) => {
+      setWorkers(prev => prev.map(w => (
+        w.uuid === workerId
+          ? { ...w, status: status.status, error: status.error, error_code: status.error_code, permanent: status.permanent }
+          : w
+      )));
     }, []),
   });
 

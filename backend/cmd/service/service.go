@@ -150,22 +150,30 @@ func Run(cmd *cobra.Command, args []string) error {
 
 	allowedOrigins := setRouter()
 
-	workerSvc, err := workermanager.NewService(db, cryptoSvc, baseURL, mediaDirectory)
-	if err != nil {
-		return err
-	}
-
-	// Events service - tracks task state changes
+	// Events service - tracks task state changes. Constructed before
+	// workerSvc so its channel can be handed to the worker health monitor,
+	// which records worker.offline/worker.recovered transitions on it.
 	eventSvc, err := eventsService.NewService(db)
 	if err != nil {
 		return fmt.Errorf("failed to initialize events service: %w", err)
 	}
 	eventChan := eventSvc.Subscribe(0) // 0 = default buffer (EVENT_SUBSCRIBER_BUFFER)
 
-	// Event poller — polls workers for task state changes to feed events system
-	eventPollerSvc := eventpoller.NewService(workerSvc, eventSvc)
+	workerSvc, err := workermanager.NewService(db, cryptoSvc, baseURL, mediaDirectory, eventSvc)
+	if err != nil {
+		return err
+	}
+
 	ctx, cancelPoller := context.WithCancel(context.Background())
 	defer cancelPoller()
+
+	// Worker health monitor — probes registered workers on its own cadence
+	// and caches status/instance data for ListWorkers/ListTasks instead of
+	// probing inline on every call.
+	workerSvc.StartHealthMonitor(ctx)
+
+	// Event poller — polls workers for task state changes to feed events system
+	eventPollerSvc := eventpoller.NewService(workerSvc, eventSvc)
 	eventPollerSvc.Start(ctx)
 
 	// Bandwidth scheduler — applies configured global rate limits in the

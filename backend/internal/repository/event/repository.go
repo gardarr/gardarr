@@ -56,8 +56,11 @@ func (r *Repository) CreateEvent(ctx context.Context, event *entities.Event) err
 	return r.db.DB.WithContext(ctx).Create(model).Error
 }
 
-// ListEvents retrieves events with optional filters
-func (r *Repository) ListEvents(ctx context.Context, workerID *uuid.UUID, eventType *string, limit int, offset int) ([]*entities.Event, int64, error) {
+// ListEvents retrieves events with optional filters. eventTypes, when
+// non-empty, restricts results to those types (IN clause) - used both for an
+// exact single-type filter and for a whole event group (e.g. all worker.*
+// types for the History page's worker table).
+func (r *Repository) ListEvents(ctx context.Context, workerID *uuid.UUID, eventTypes []string, limit int, offset int) ([]*entities.Event, int64, error) {
 	var events []models.Event
 	var total int64
 
@@ -67,8 +70,8 @@ func (r *Repository) ListEvents(ctx context.Context, workerID *uuid.UUID, eventT
 	if workerID != nil {
 		query = query.Where("worker_id = ?", workerID)
 	}
-	if eventType != nil && *eventType != "" {
-		query = query.Where("type = ?", *eventType)
+	if len(eventTypes) > 0 {
+		query = query.Where("type IN ?", eventTypes)
 	}
 
 	// Get total count

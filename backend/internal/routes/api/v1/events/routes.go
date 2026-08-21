@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jfxdev/gardarr/internal/constants"
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/mappers"
 	"github.com/jfxdev/gardarr/internal/middlewares"
@@ -48,6 +49,7 @@ func (m *Module) listEvents(c *gin.Context) {
 	// Parse query parameters
 	workerIDStr := c.Query("worker_id")
 	eventType := c.Query("type")
+	group := c.Query("group")
 	limitStr := c.DefaultQuery("limit", "50")
 	offsetStr := c.DefaultQuery("offset", "0")
 
@@ -71,13 +73,23 @@ func (m *Module) listEvents(c *gin.Context) {
 		}
 	}
 
-	var eventTypePtr *string
-	if eventType != "" {
-		eventTypePtr = &eventType
+	// An explicit type takes precedence over group; otherwise group expands
+	// to its full set of types (e.g. all worker.* types for the History
+	// page's worker table). Neither set means no type filter at all.
+	var eventTypes []string
+	switch {
+	case eventType != "":
+		eventTypes = []string{eventType}
+	case group == "worker":
+		eventTypes = constants.WorkerEventTypes
+	case group == "torrent":
+		eventTypes = constants.TorrentEventTypes
+	case group == "schedule":
+		eventTypes = constants.ScheduleEventTypes
 	}
 
 	// Get events from service
-	eventsList, total, err := m.eventService.ListEvents(c.Request.Context(), workerID, eventTypePtr, limit, offset)
+	eventsList, total, err := m.eventService.ListEvents(c.Request.Context(), workerID, eventTypes, limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to retrieve events",

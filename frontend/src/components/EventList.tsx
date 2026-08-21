@@ -6,7 +6,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { normalizeTaskStatus } from "@/utils/statusUtils";
 import { formatBytesPerSecond } from "@/utils/bytes";
-import { type EventType, EVENT_TYPES } from "@/constants/eventTypes";
+import { type EventType, type EventGroup, EVENT_TYPES_BY_GROUP } from "@/constants/eventTypes";
 import {
   Select,
   SelectContent,
@@ -31,7 +31,10 @@ import {
   ArrowRightLeft,
   Filter,
   Search,
-  HelpCircle
+  HelpCircle,
+  WifiOff,
+  Wifi,
+  Server,
 } from "lucide-react";
 
 export type FilterType = EventType | "all";
@@ -57,6 +60,8 @@ export interface Event {
 }
 
 interface EventListProps {
+  /** Which event group this table shows - scopes the filter dropdown/legend and row layout. */
+  group: EventGroup;
   events: Event[];
   isLoading: boolean;
   total: number;
@@ -67,9 +72,12 @@ interface EventListProps {
   onFilterChange: (value: FilterType) => void;
   onPageChange: (page: number) => void;
   onSearchChange?: (query: string) => void;
+  /** worker_id -> worker name, used to label worker.offline/worker.recovered rows */
+  workerNames?: Record<string, string>;
 }
 
 export function EventList({
+  group,
   events,
   isLoading,
   total,
@@ -80,6 +88,7 @@ export function EventList({
   onFilterChange,
   onPageChange,
   onSearchChange,
+  workerNames = {},
 }: EventListProps) {
   const { t, i18n } = useTranslation();
 
@@ -120,6 +129,10 @@ export function EventList({
         return <CheckCircle className="h-5 w-5" />;
       case "bandwidth.schedule_applied":
         return <ArrowRightLeft className="h-5 w-5" />;
+      case "worker.offline":
+        return <WifiOff className="h-5 w-5" />;
+      case "worker.recovered":
+        return <Wifi className="h-5 w-5" />;
     }
   };
 
@@ -135,6 +148,10 @@ export function EventList({
         return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
       case "bandwidth.schedule_applied":
         return "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20";
+      case "worker.offline":
+        return "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20";
+      case "worker.recovered":
+        return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
     }
   };
 
@@ -149,6 +166,28 @@ export function EventList({
         <StatusBadge status={oldStatus} size="sm" showTooltip={false} showLabel={true} />
         <span className="text-xs text-muted-foreground">→</span>
         <StatusBadge status={newStatus} size="sm" showTooltip={false} showLabel={true} />
+      </div>
+    );
+  };
+
+  const isWorkerEvent = (type: EventType) => type === "worker.offline" || type === "worker.recovered";
+
+  const getWorkerLabel = (event: Event) =>
+    workerNames[event.worker_id] ?? event.worker_id;
+
+  const renderWorkerStatus = (oldValue?: string, newValue?: string) => {
+    if (!oldValue || !newValue) return null;
+
+    const badgeClass = (value: string) =>
+      value === "ONLINE"
+        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+        : "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20";
+
+    return (
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className={`px-2 py-0.5 rounded-full text-xs border ${badgeClass(oldValue)}`}>{oldValue}</span>
+        <span className="text-xs text-muted-foreground">→</span>
+        <span className={`px-2 py-0.5 rounded-full text-xs border ${badgeClass(newValue)}`}>{newValue}</span>
       </div>
     );
   };
@@ -170,12 +209,14 @@ export function EventList({
       "torrent.removed": t("history.badge.removed"),
       "torrent.completed": t("history.badge.completed"),
       "bandwidth.schedule_applied": t("history.badge.bandwidthScheduleApplied", "Bandwidth schedule applied"),
+      "worker.offline": t("history.badge.workerOffline", "Worker offline"),
+      "worker.recovered": t("history.badge.workerRecovered", "Worker recovered"),
     };
 
     return typeMap[type];
   };
 
-  const sortedEventTypes = [...EVENT_TYPES].sort((a, b) =>
+  const sortedEventTypes = [...EVENT_TYPES_BY_GROUP[group]].sort((a, b) =>
     getEventBadge(a).localeCompare(getEventBadge(b), i18n.language)
   );
 
@@ -290,7 +331,15 @@ export function EventList({
               <thead>
                 <tr className="border-b bg-muted/40 text-xs text-muted-foreground uppercase">
                   <th className="text-left font-semibold px-3 py-2 w-9"></th>
-                  <th className="text-left font-semibold px-3 py-2">{t("history.table.torrent") || "Torrent"}</th>
+                  <th className="text-left font-semibold px-3 py-2">
+                    {group === "worker"
+                      ? t("history.table.worker") || "Worker"
+                      : group === "torrent"
+                        ? t("history.table.torrent") || "Torrent"
+                        : group === "schedule"
+                          ? t("history.table.schedule") || "Schedule"
+                          : t("history.table.subject") || "Torrent / Worker"}
+                  </th>
                   <th className="text-left font-semibold px-3 py-2 hidden md:table-cell">{t("history.table.change") || "Change"}</th>
                   <th className="text-right font-semibold px-3 py-2 whitespace-nowrap">{t("history.table.time") || "Time"}</th>
                 </tr>
@@ -311,7 +360,12 @@ export function EventList({
                       </Popover>
                     </td>
                     <td className="px-3 py-2 max-w-[220px]">
-                      {event.type === "bandwidth.schedule_applied" ? (
+                      {isWorkerEvent(event.type) ? (
+                        <p className="font-medium text-foreground truncate flex items-center gap-1.5" title={getWorkerLabel(event)}>
+                          <Server className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
+                          {getWorkerLabel(event)}
+                        </p>
+                      ) : event.type === "bandwidth.schedule_applied" ? (
                         <p className="font-medium text-foreground truncate" title={event.metadata?.schedule_name}>
                           {event.metadata?.schedule_name ?? t("history.badge.bandwidthScheduleApplied", "Bandwidth schedule applied")}
                         </p>
@@ -337,11 +391,13 @@ export function EventList({
                       )}
                     </td>
                     <td className="px-3 py-2 hidden md:table-cell">
-                      {event.type === "torrent.state_change"
-                        ? renderStateChange(event.old_value, event.new_value)
-                        : event.type === "bandwidth.schedule_applied"
-                          ? renderScheduleApplied(event)
-                          : <span className="text-xs text-muted-foreground">—</span>}
+                      {isWorkerEvent(event.type)
+                        ? renderWorkerStatus(event.old_value, event.new_value)
+                        : event.type === "torrent.state_change"
+                          ? renderStateChange(event.old_value, event.new_value)
+                          : event.type === "bandwidth.schedule_applied"
+                            ? renderScheduleApplied(event)
+                            : <span className="text-xs text-muted-foreground">—</span>}
                     </td>
                     <td className="px-3 py-2 text-right whitespace-nowrap">
                       <Tooltip>

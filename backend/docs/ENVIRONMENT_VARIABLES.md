@@ -152,6 +152,16 @@ This document lists all environment variables used by Gardarr backend.
 - **Default**: `10` (applied when not set or empty)
 - **Example**: `WORKER_TIMEOUT_SECONDS=15`
 
+### `WORKER_HEALTH_INTERVAL`
+- **Description**: How often the background worker health monitor probes each registered worker's connectivity/status. `ListWorkers`/`GetWorker` read from this cache instead of dialing the worker directly.
+- **Default**: `15s`
+- **Example**: `WORKER_HEALTH_INTERVAL=30s`
+
+### `WORKER_HEALTH_READ_TIMEOUT`
+- **Description**: How long a worker health probe (background tick or an on-demand check for a worker with no confirmed status yet) waits for a response before the check is treated as a failure. Independent of, and shorter than, `WORKER_TIMEOUT_SECONDS` so a slow/unreachable worker can't stall a `ListWorkers`/`GetWorker` request.
+- **Default**: `5s`
+- **Example**: `WORKER_HEALTH_READ_TIMEOUT=3s`
+
 ---
 
 ## qBittorrent
