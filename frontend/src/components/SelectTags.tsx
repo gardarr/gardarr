@@ -49,20 +49,23 @@ export function SelectTags({
     };
   }, []);
 
+  // Registered unconditionally (not gated on suggestions.length) so the
+  // listener is already attached before any suggestions can appear —
+  // gating it on suggestions.length left a window, right after the
+  // dropdown's first render, where an outside click landed before the
+  // effect had run and was silently missed.
   useEffect(() => {
-    if (suggestions.length === 0) return;
-
     const handlePointerDown = (e: MouseEvent) => {
       if (!containerRef.current?.contains(e.target as Node)) {
         if (debounceRef.current) clearTimeout(debounceRef.current);
-        setSuggestions([]);
+        setSuggestions((prev) => (prev.length > 0 ? [] : prev));
         setHighlightedIndex(-1);
       }
     };
 
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [suggestions.length]);
+  }, []);
 
   // Loaded lazily, on first focus, so forms that never get used don't
   // fetch the tag list.
