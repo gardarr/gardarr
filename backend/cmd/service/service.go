@@ -529,7 +529,7 @@ func setRoutes(dependencies routeDependencies, allowedOrigins []string) error {
 	v1 := router.Group("/v1")
 	health.NewModule(v1, dependencies.db).Register()
 	auth.NewModule(v1, dependencies.db, dependencies.websocket).Register()
-	workers.NewModule(v1, dependencies.workers, dependencies.bandwidthSchedule).Register()
+	workers.NewModule(v1, dependencies.db, dependencies.workers, dependencies.bandwidthSchedule).Register()
 	category.NewModule(v1, dependencies.db).Register()
 	tagsRoutes.NewModule(v1, dependencies.db, dependencies.workers).Register()
 	users.NewModule(v1, dependencies.db).Register()
