@@ -2,6 +2,7 @@ package workers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -9,8 +10,14 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jfxdev/gardarr/internal/infra/database"
+	"github.com/jfxdev/gardarr/internal/middlewares"
+	"github.com/jfxdev/gardarr/internal/models"
 	"github.com/jfxdev/gardarr/internal/schemas"
+	"github.com/jfxdev/gardarr/internal/services/session"
+	"github.com/jfxdev/gardarr/internal/services/user"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSetWorkerTaskTags_InvalidJSON(t *testing.T) {
@@ -184,4 +191,66 @@ func TestSetWorkerTaskCategory_ValidJSON(t *testing.T) {
 
 	// Assertions - should fail because service is nil, but JSON parsing should work
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+// setupAuthTestRouter builds a router with the real Register() middleware
+// chain wired up (session auth + admin gating), backed by an in-memory DB.
+func setupAuthTestRouter(t *testing.T) (*gin.Engine, *database.Database) {
+	gin.SetMode(gin.TestMode)
+	db := database.SetupTestDBWithCache(t, &models.User{}, &models.Session{})
+
+	router := gin.New()
+	v1 := router.Group("/v1")
+	NewModule(v1, db, nil, nil).Register()
+
+	return router, db
+}
+
+// createTestSession creates a user with the given role and an active session,
+// returning the session token to use as the session cookie value.
+func createTestSession(t *testing.T, db *database.Database, email, role string) string {
+	ctx := context.Background()
+
+	entity, err := user.NewService(db).CreateUserWithRole(ctx, email, "password123", role, false)
+	require.NoError(t, err)
+
+	sess, err := session.NewService(db).CreateSession(ctx, entity.UUID, entity.Role, "test-agent", "127.0.0.1")
+	require.NoError(t, err)
+
+	return sess.Token
+}
+
+func TestRegisterRequiresSessionAuth(t *testing.T) {
+	router, _ := setupAuthTestRouter(t)
+
+	tests := []struct {
+		name   string
+		method string
+		path   string
+	}{
+		{"session-only tier", http.MethodGet, "/v1/workers/"},
+		{"admin tier", http.MethodPost, "/v1/worker/"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(tt.method, tt.path, nil)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+			assert.Equal(t, http.StatusUnauthorized, w.Code)
+		})
+	}
+}
+
+func TestCreateWorkerRequiresAdminRole(t *testing.T) {
+	router, db := setupAuthTestRouter(t)
+	token := createTestSession(t, db, "member@example.com", "user")
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/worker/", bytes.NewBufferString("{}"))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(&http.Cookie{Name: middlewares.SessionCookieName, Value: token})
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
 }

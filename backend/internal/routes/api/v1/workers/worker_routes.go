@@ -11,7 +11,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jfxdev/gardarr/internal/entities"
+	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/mappers"
+	"github.com/jfxdev/gardarr/internal/middlewares"
 	"github.com/jfxdev/gardarr/internal/models"
 	"github.com/jfxdev/gardarr/internal/schemas"
 	"github.com/jfxdev/gardarr/internal/services/bandwidthscheduler"
@@ -24,14 +26,16 @@ const invalidScheduleIDError = "Invalid schedule ID"
 
 // Module holds worker routes configuration
 type Module struct {
+	db                 *database.Database
 	service            *workermanager.Service
 	bandwidthScheduler *bandwidthscheduler.Service
 	workersRouter      *gin.RouterGroup
 	workerRouter       *gin.RouterGroup
 }
 
-func NewModule(router *gin.RouterGroup, svc *workermanager.Service, bandwidthScheduler *bandwidthscheduler.Service) *Module {
+func NewModule(router *gin.RouterGroup, db *database.Database, svc *workermanager.Service, bandwidthScheduler *bandwidthscheduler.Service) *Module {
 	return &Module{
+		db:                 db,
 		service:            svc,
 		bandwidthScheduler: bandwidthScheduler,
 		workersRouter:      router.Group("/workers"),
@@ -40,14 +44,23 @@ func NewModule(router *gin.RouterGroup, svc *workermanager.Service, bandwidthSch
 }
 
 func (m Module) Register() {
+	m.workersRouter.Use(middlewares.SessionMiddleware(m.db))
+	m.workerRouter.Use(middlewares.SessionMiddleware(m.db))
+
 	m.workersRouter.GET("/", m.listWorkers)
 	m.workersRouter.POST("/tasks/bulk", m.bulkWorkerTaskAction)
 
-	m.workerRouter.POST("/", m.createWorker)
-	m.workerRouter.GET("/:id", m.getWorker)
-	m.workerRouter.PUT("/:id", m.updateWorker)
+	// Worker lifecycle and instance-wide configuration require admin privileges.
+	adminWorker := m.workerRouter.Group("")
+	adminWorker.Use(middlewares.RequireAdminRole())
+	adminWorker.POST("/", m.createWorker)
+	adminWorker.PUT("/:id", m.updateWorker)
+	adminWorker.DELETE("/:id", m.deleteWorker)
+	adminWorker.POST("/:id/speed/limits", m.setWorkerSpeedLimits)
+	adminWorker.POST("/:id/active/limits", m.setWorkerMaxActiveTorrents)
 
-	m.workerRouter.POST("/:id/speed/limits", m.setWorkerSpeedLimits)
+	m.workerRouter.GET("/:id", m.getWorker)
+
 	m.workerRouter.GET("/:id/schedules", m.listSchedules)
 	m.workerRouter.POST("/:id/schedules", m.createSchedule)
 	m.workerRouter.GET("/:id/schedules/preview", m.previewSchedule)
@@ -55,12 +68,10 @@ func (m Module) Register() {
 	m.workerRouter.GET("/:id/schedules/:schedule_id", m.getSchedule)
 	m.workerRouter.PUT("/:id/schedules/:schedule_id", m.updateSchedule)
 	m.workerRouter.DELETE("/:id/schedules/:schedule_id", m.deleteSchedule)
-	m.workerRouter.POST("/:id/active/limits", m.setWorkerMaxActiveTorrents)
 
 	m.workerRouter.GET("/:id/version", m.getWorkerVersion)
 	m.workerRouter.GET("/:id/preferences", m.getWorkerPreferences)
 	m.workerRouter.GET("/:id/logs", m.getWorkerLogs)
-	m.workerRouter.DELETE("/:id", m.deleteWorker)
 	m.workerRouter.POST("/:id/task", m.createWorkerTask)
 	m.workerRouter.POST("/:id/task/file", m.createWorkerTaskFromFile)
 	m.workerRouter.GET("/:id/task/:task_id", m.getWorkerTask)
