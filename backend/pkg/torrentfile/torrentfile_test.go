@@ -23,6 +23,18 @@ func TestInfoHash(t *testing.T) {
 	}
 }
 
+func TestInfoName(t *testing.T) {
+	info := "d6:lengthi1024e4:name21:The.Matrix.1999.1080pe"
+	torrent := []byte(fmt.Sprintf("d8:announce4:test4:info%se", info))
+	name, err := InfoName(torrent)
+	if err != nil {
+		t.Fatalf("InfoName() error = %v", err)
+	}
+	if name != "The.Matrix.1999.1080p" {
+		t.Fatalf("InfoName() = %q", name)
+	}
+}
+
 func TestInfoHashesIncludesV2Hash(t *testing.T) {
 	info := "d9:file treede4:name8:test.iso12:piece lengthi16384e12:meta versioni2ee"
 	torrent := []byte(fmt.Sprintf("d8:announce30:http://tracker.example.com/ann4:info%se", info))

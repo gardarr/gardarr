@@ -23,6 +23,7 @@ import (
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/models"
 	task_metadata_repo "github.com/jfxdev/gardarr/internal/repository/task_metadata"
+	"github.com/jfxdev/gardarr/internal/services/releaseparse"
 )
 
 const (
@@ -870,6 +871,12 @@ func (s *Service) SearchProvider(ctx context.Context, providerName string, query
 	}
 
 	return provider.Search(ctx, query)
+}
+
+// SearchProviderAuto turns a release name into the most useful provider query
+// before delegating to the existing provider abstraction.
+func (s *Service) SearchProviderAuto(ctx context.Context, providerName string, rawName string) ([]MetadataProviderSearchResult, error) {
+	return s.SearchProvider(ctx, providerName, releaseparse.Parse(rawName).SearchQuery())
 }
 
 // ApplyProviderSelection resolves provider-owned metadata and applies it to a task.

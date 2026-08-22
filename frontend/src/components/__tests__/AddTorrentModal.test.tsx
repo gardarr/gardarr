@@ -129,6 +129,10 @@ vi.mock("@/components/SelectTags", () => ({
 }));
 
 const createTaskMock = vi.fn();
+const parseReleaseMock = vi.fn();
+const parseReleaseFileMock = vi.fn();
+const updateNameMock = vi.fn();
+const listCategoriesMock = vi.fn();
 
 vi.mock("@/services/torrents", () => ({
   convertMagnetUriToTaskMagnetLink: (magnetUri: string) => ({
@@ -171,6 +175,20 @@ const baseWorker: Worker = {
 vi.mock("@/services/workers", () => ({
   workerService: {
     listWorkers: () => Promise.resolve({ data: [baseWorker] }),
+  },
+}));
+
+vi.mock("@/services/categories", () => ({
+  categoryService: {
+    listCategories: (...args: unknown[]) => listCategoriesMock(...args),
+  },
+}));
+
+vi.mock("@/services/taskMetadata", () => ({
+  taskMetadataService: {
+    parseRelease: (...args: unknown[]) => parseReleaseMock(...args),
+    parseReleaseFile: (...args: unknown[]) => parseReleaseFileMock(...args),
+    updateName: (...args: unknown[]) => updateNameMock(...args),
   },
 }));
 
@@ -242,6 +260,10 @@ describe("AddTorrentModal", () => {
     vi.clearAllMocks();
     currentPathname = "/workers";
     createTaskMock.mockResolvedValue({ data: baseTask });
+    parseReleaseMock.mockResolvedValue({});
+    parseReleaseFileMock.mockResolvedValue({});
+    updateNameMock.mockResolvedValue({});
+    listCategoriesMock.mockResolvedValue({ data: [] });
   });
 
   it("renders magnet and upload tabs without step navigation", async () => {
@@ -259,6 +281,8 @@ describe("AddTorrentModal", () => {
     const user = userEvent.setup();
     renderModal(buildContext());
 
+    await user.type(screen.getByPlaceholderText("torrents.addModal.magnetUri.placeholder"), "magnet:?xt=urn:btih:separate-values");
+
     await user.click(screen.getByRole("tab", { name: "torrents.addModal.source.upload" }));
 
     await waitFor(() => {
@@ -271,6 +295,21 @@ describe("AddTorrentModal", () => {
     await waitFor(() => {
       expect(screen.getByPlaceholderText("torrents.addModal.magnetUri.placeholder")).toBeInTheDocument();
     });
+    expect(screen.getByPlaceholderText("torrents.addModal.magnetUri.placeholder")).toHaveValue("");
+  });
+
+  it("shows the selected torrent file as an attachment and allows removing it", async () => {
+    const user = userEvent.setup();
+    renderModal(buildContext());
+    await user.click(screen.getByRole("tab", { name: "torrents.addModal.source.upload" }));
+
+    const file = new File(["torrent"], "release.torrent", { type: "application/x-bittorrent" });
+    fireEvent.change(screen.getByLabelText(/torrents\.addModal\.file\.label/), { target: { files: [file] } });
+
+    expect(screen.getByText("release.torrent")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "torrents.addModal.file.remove" }));
+    expect(screen.queryByText("release.torrent")).not.toBeInTheDocument();
+    expect(screen.getByText("torrents.addModal.file.placeholder")).toBeInTheDocument();
   });
 
   it("auto-fills directory and tags when a category is selected", async () => {
@@ -280,6 +319,50 @@ describe("AddTorrentModal", () => {
 
     expect(screen.getByDisplayValue("/downloads/games")).toBeInTheDocument();
     expect(screen.getByTestId("tags")).toHaveTextContent("auto-tag");
+  });
+
+  it("pre-fills high-confidence release suggestions without making them mandatory", async () => {
+    listCategoriesMock.mockResolvedValue({
+      data: [{ id: "movie", name: "Movies", release_type: "movie", default_tags: ["movie"], default_directory: "/downloads/movies" }],
+    });
+    parseReleaseMock.mockResolvedValue({
+      data: {
+        release: { type: "movie", confidence: "high", title: "The Matrix", year: "1999" },
+        display_name: "The Matrix (1999)",
+        tags: ["quality::2160p", "source::bluray", "codec::x265"],
+      },
+    });
+    renderModal(buildContext());
+    await waitFor(() => expect(screen.getAllByText("Worker 1")[0]).toBeInTheDocument());
+    const magnet = screen.getByLabelText(/torrents\.addModal\.magnetUri\.label/);
+    fireEvent.change(magnet, { target: { value: "magnet:?xt=urn:btih:test&dn=The.Matrix.1999.2160p.BluRay.x265" } });
+
+    await waitFor(() => expect(parseReleaseMock).toHaveBeenCalled());
+    expect(screen.getByDisplayValue("The Matrix (1999)")).toBeInTheDocument();
+    expect(screen.getByTestId("tags")).toHaveTextContent("movie,quality::2160p,source::bluray,codec::x265");
+    expect(screen.getByDisplayValue("/downloads/movies")).toBeInTheDocument();
+  });
+
+  it("suggests a matching game category for a high-confidence game release", async () => {
+    listCategoriesMock.mockResolvedValue({
+      data: [{ id: "game", name: "Games", release_type: "game", default_tags: ["game"], default_directory: "/downloads/games" }],
+    });
+    parseReleaseMock.mockResolvedValue({
+      data: {
+        release: { type: "game", confidence: "high", title: "Elden Ring" },
+        display_name: "Elden Ring",
+        tags: ["type::game", "platform::pc"],
+      },
+    });
+    renderModal(buildContext());
+    await waitFor(() => expect(screen.getAllByText("Worker 1")[0]).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText(/torrents\.addModal\.magnetUri\.label/), {
+      target: { value: "magnet:?xt=urn:btih:test&dn=Elden.Ring.v1.12.0.PC-RUNE" },
+    });
+
+    await waitFor(() => expect(parseReleaseMock).toHaveBeenCalled());
+    expect(screen.getByDisplayValue("/downloads/games")).toBeInTheDocument();
+    expect(screen.getByTestId("tags")).toHaveTextContent("game,type::game,platform::pc");
   });
 
   it("submits optimistically: pending placeholder, close, navigate, createTask", async () => {
@@ -332,7 +415,7 @@ describe("AddTorrentModal", () => {
     expect(context.addPendingTorrent).toHaveBeenCalled();
   });
 
-  it("blocks submission when required fields are missing", async () => {
+  it("blocks submission when the required magnet is missing", async () => {
     const context = buildContext();
     renderModal(context);
     await waitFor(() => expect(screen.getAllByText("Worker 1")[0]).toBeInTheDocument());
@@ -342,7 +425,5 @@ describe("AddTorrentModal", () => {
     expect(createTaskMock).not.toHaveBeenCalled();
     expect(context.addPendingTorrent).not.toHaveBeenCalled();
     expect(screen.getByText("torrents.addModal.errors.magnetRequired")).toBeInTheDocument();
-    expect(screen.getByText("torrents.addModal.errors.categoryRequired")).toBeInTheDocument();
-    expect(screen.getByText("torrents.addModal.errors.tagsRequired")).toBeInTheDocument();
   });
 });

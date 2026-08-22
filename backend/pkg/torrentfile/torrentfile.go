@@ -62,6 +62,59 @@ func InfoHashes(data []byte) ([]string, error) {
 	return nil, fmt.Errorf("invalid torrent file: missing info dictionary")
 }
 
+// InfoName returns the name stored in a torrent's info dictionary. It is used
+// only for pre-submit suggestions; it does not alter the torrent payload.
+func InfoName(data []byte) (string, error) {
+	info, err := infoDictionary(data)
+	if err != nil {
+		return "", err
+	}
+	if len(info) == 0 || info[0] != 'd' {
+		return "", fmt.Errorf("invalid torrent file: info is not a dictionary")
+	}
+	pos := 1
+	for pos < len(info) && info[pos] != 'e' {
+		key, next, err := parseString(info, pos)
+		if err != nil {
+			return "", fmt.Errorf("invalid torrent file: %w", err)
+		}
+		if string(key) == "name" {
+			name, _, err := parseString(info, next)
+			if err != nil {
+				return "", fmt.Errorf("invalid torrent file: %w", err)
+			}
+			return string(name), nil
+		}
+		pos, err = skipValue(info, next)
+		if err != nil {
+			return "", fmt.Errorf("invalid torrent file: %w", err)
+		}
+	}
+	return "", fmt.Errorf("invalid torrent file: missing info name")
+}
+
+func infoDictionary(data []byte) ([]byte, error) {
+	if len(data) == 0 || data[0] != 'd' {
+		return nil, fmt.Errorf("invalid torrent file: not a bencoded dictionary")
+	}
+	pos := 1
+	for pos < len(data) && data[pos] != 'e' {
+		key, next, err := parseString(data, pos)
+		if err != nil {
+			return nil, fmt.Errorf("invalid torrent file: %w", err)
+		}
+		valueEnd, err := skipValue(data, next)
+		if err != nil {
+			return nil, fmt.Errorf("invalid torrent file: %w", err)
+		}
+		if string(key) == "info" {
+			return data[next:valueEnd], nil
+		}
+		pos = valueEnd
+	}
+	return nil, fmt.Errorf("invalid torrent file: missing info dictionary")
+}
+
 // MatchesInfoHash reports whether any candidate equals one of the hashes
 // returned by InfoHashes. Callers should pass a torrent's InfoHashV1 and
 // InfoHashV2 fields (not its legacy Hash/TorrentID field, which qBittorrent

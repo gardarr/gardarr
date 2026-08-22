@@ -730,6 +730,72 @@ func Register(m *migration.Migrator) {
 				return nil
 			},
 		},
+		{
+			Version:     "039_add_release_type_to_categories",
+			Description: "Adiciona o tipo de release opcional às categorias",
+			Up: func(db *gorm.DB) error {
+				if !db.Migrator().HasColumn(&models.Category{}, "ReleaseType") {
+					if err := db.Migrator().AddColumn(&models.Category{}, "ReleaseType"); err != nil {
+						return err
+					}
+				}
+				if err := db.Table("categories").Where("release_type = '' OR release_type IS NULL").Update("release_type", "none").Error; err != nil {
+					return err
+				}
+				if err := db.Table("categories").Where("lower(name) IN ?", []string{"movies", "films"}).Update("release_type", "movie").Error; err != nil {
+					return err
+				}
+				return db.Table("categories").Where("lower(name) IN ?", []string{"shows", "series", "tv"}).Update("release_type", "series").Error
+			},
+			Down: func(db *gorm.DB) error {
+				if db.Migrator().HasColumn(&models.Category{}, "release_type") {
+					return db.Migrator().DropColumn(&models.Category{}, "release_type")
+				}
+				return nil
+			},
+		},
+		{
+			Version:     "040_map_release_types_for_default_categories",
+			Description: "Mapeia categorias padrão adicionais para sugestões de releases",
+			Up: func(db *gorm.DB) error {
+				mappings := map[string][]string{
+					"os":    {"operating systems", "os", "linux", "distros"},
+					"game":  {"games", "jogos"},
+					"book":  {"books", "livros", "ebooks", "e-books"},
+					"music": {"music", "musicas", "músicas"},
+				}
+				for releaseType, names := range mappings {
+					if err := db.Table("categories").Where("lower(name) IN ? AND (release_type = '' OR release_type IS NULL OR release_type = ?)", names, "none").Update("release_type", releaseType).Error; err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			Down: func(_ *gorm.DB) error { return nil },
+		},
+		{
+			Version:     "041_map_extended_release_types_for_default_categories",
+			Description: "Mapeia categorias padrão para os tipos estendidos de releases",
+			Up: func(db *gorm.DB) error {
+				mappings := map[string][]string{
+					"software":  {"software", "apps", "applications", "aplicativos"},
+					"audiobook": {"audiobooks", "audio books", "audiolivros"},
+					"comic":     {"comics", "comic books", "manga", "mangá", "hq", "hqs"},
+					"course":    {"courses", "cursos", "training", "treinamentos"},
+					"dataset":   {"datasets", "data sets", "dados"},
+					"rom":       {"roms", "retro games", "jogos retro"},
+					"podcast":   {"podcasts"},
+					"anime":     {"anime", "animes"},
+				}
+				for releaseType, names := range mappings {
+					if err := db.Table("categories").Where("lower(name) IN ? AND (release_type = '' OR release_type IS NULL OR release_type = ?)", names, "none").Update("release_type", releaseType).Error; err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			Down: func(_ *gorm.DB) error { return nil },
+		},
 	})
 }
 

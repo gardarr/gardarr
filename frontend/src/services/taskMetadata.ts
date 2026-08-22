@@ -2,6 +2,28 @@ import { api } from "../lib/api";
 import type { ApiResponse } from "../lib/api";
 import type { MetadataProviderSearchResult, TaskMetadata } from "../types/torrent";
 
+export interface ReleaseParseResult {
+  type: "unknown" | "movie" | "series" | "os" | "game" | "book" | "music" | "software" | "audiobook" | "comic" | "course" | "dataset" | "rom" | "podcast" | "anime";
+  confidence: "low" | "medium" | "high";
+  title?: string;
+  year?: string;
+  season?: string;
+  episode?: string;
+  format?: string;
+  platform?: string;
+  version?: string;
+  hdr?: string;
+  region?: string;
+  provider?: string;
+  package?: string;
+}
+
+export interface ReleaseParseResponse {
+  release: ReleaseParseResult;
+  display_name: string;
+  tags: string[];
+}
+
 const SEARCH_PREVIEW_TASK_HASH = "wizard-preview";
 
 interface ProviderStatusResponse {
@@ -26,6 +48,16 @@ class TaskMetadataService {
     return api.get<MetadataProviderSearchResult[]>(
       `/tasks/metadata/${SEARCH_PREVIEW_TASK_HASH}/providers/${provider}/search?q=${encodeURIComponent(query)}`
     );
+  }
+
+  async parseRelease(rawName: string): Promise<ApiResponse<ReleaseParseResponse>> {
+    return api.post<ReleaseParseResponse>("/tasks/metadata/release-parse", { raw_name: rawName });
+  }
+
+  async parseReleaseFile(file: File): Promise<ApiResponse<ReleaseParseResponse>> {
+    const formData = new FormData();
+    formData.append("torrent", file);
+    return api.post<ReleaseParseResponse>("/tasks/metadata/release-parse/file", formData);
   }
 
   async applyProvider(

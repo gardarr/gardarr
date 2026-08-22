@@ -1,6 +1,22 @@
 // Types for communication with the API v1/categories
 
 export type CategoryMetadataSource = "none" | "tgdb" | "tmdb";
+export type CategoryReleaseType =
+  | "none"
+  | "movie"
+  | "series"
+  | "os"
+  | "game"
+  | "book"
+  | "music"
+  | "software"
+  | "audiobook"
+  | "comic"
+  | "course"
+  | "dataset"
+  | "rom"
+  | "podcast"
+  | "anime";
 
 export interface Category {
   id: string;
@@ -8,6 +24,7 @@ export interface Category {
   default_tags: string[];
   default_directory: string;
   metadata_source: CategoryMetadataSource;
+  release_type?: CategoryReleaseType;
   color?: string;
   icon?: string;
   created_at: string;
@@ -19,6 +36,7 @@ export interface CreateCategoryRequest {
   default_tags?: string[];
   default_directory: string;
   metadata_source?: CategoryMetadataSource;
+  release_type?: CategoryReleaseType;
   color?: string;
   icon?: string;
 }
@@ -27,6 +45,7 @@ export interface UpdateCategoryRequest {
   default_tags?: string[];
   default_directory?: string;
   metadata_source?: CategoryMetadataSource;
+  release_type?: CategoryReleaseType;
   color?: string;
   icon?: string;
 }

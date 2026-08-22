@@ -718,15 +718,24 @@
       },
       "file": {
         "label": "Torrent file",
-        "placeholder": "Choose a .torrent file"
+        "placeholder": "Choose a .torrent file",
+        "help": "Click to browse your files",
+        "replace": "Click to choose a different file",
+        "details": "Torrent · {{size}}",
+        "remove": "Remove torrent file"
       },
       "magnetInfo": {
         "title": "Torrent information",
         "name": "Name",
-        "hash": "Hash",
         "trackers": "Trackers",
         "trackersCount": "{{count}} found",
         "size": "Size"
+      },
+      "release": {
+        "displayName": "Display name",
+        "displayNamePlaceholder": "Optional friendly name in Gardarr",
+        "suggested": "suggested",
+        "review": "Suggested from the release name. Review before adding."
       },
       "category": {
         "label": "Category"
@@ -1001,6 +1010,7 @@
       "defaultDirectory": "Default Directory",
       "directories": "Directories",
       "metadataSource": "Metadata Source",
+      "releaseType": "Release type for suggestions",
       "color": "Color",
       "icon": "Icon"
     },
@@ -1017,6 +1027,26 @@
         "none": "None",
         "tgdb": "TGDB",
         "tmdb": "TMDB"
+      }
+    },
+    "releaseType": {
+      "help": "Lets Gardarr suggest this category for parsed releases.",
+      "options": {
+        "none": "No automatic suggestion",
+        "movie": "Movie",
+        "series": "Series",
+        "os": "Operating system",
+        "game": "Game",
+        "book": "Book",
+        "music": "Music",
+        "software": "Software",
+        "audiobook": "Audiobook",
+        "comic": "Comic / manga",
+        "course": "Course",
+        "dataset": "Dataset",
+        "rom": "Game ROM",
+        "podcast": "Podcast",
+        "anime": "Anime"
       }
     },
     "tagsHint": "💡 Tip: Type \"action, adventure, genre::action, year::2024\" to create simple and hierarchical tags",

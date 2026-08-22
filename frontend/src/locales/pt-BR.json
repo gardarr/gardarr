@@ -744,15 +744,24 @@
       },
       "file": {
         "label": "Arquivo torrent",
-        "placeholder": "Escolha um arquivo .torrent"
+        "placeholder": "Escolha um arquivo .torrent",
+        "help": "Clique para procurar nos seus arquivos",
+        "replace": "Clique para escolher outro arquivo",
+        "details": "Torrent · {{size}}",
+        "remove": "Remover arquivo torrent"
       },
       "magnetInfo": {
         "title": "Informações do Torrent",
         "name": "Nome",
-        "hash": "Hash",
         "trackers": "Trackers",
         "trackersCount": "{{count}} encontrado(s)",
         "size": "Tamanho"
+      },
+      "release": {
+        "displayName": "Nome de exibição",
+        "displayNamePlaceholder": "Nome amigável opcional no Gardarr",
+        "suggested": "sugerido",
+        "review": "Sugestão baseada no nome do release. Revise antes de adicionar."
       },
       "category": {
         "label": "Categoria"
@@ -1027,6 +1036,7 @@
       "defaultDirectory": "Diretório Padrão",
       "directories": "Diretórios",
       "metadataSource": "Fonte de Metadata",
+      "releaseType": "Tipo de release para sugestões",
       "color": "Cor",
       "icon": "Ícone"
     },
@@ -1043,6 +1053,26 @@
         "none": "Nenhuma",
         "tgdb": "TGDB",
         "tmdb": "TMDB"
+      }
+    },
+    "releaseType": {
+      "help": "Permite ao Gardarr sugerir esta categoria para releases identificados.",
+      "options": {
+        "none": "Sem sugestão automática",
+        "movie": "Filme",
+        "series": "Série",
+        "os": "Sistema operacional",
+        "game": "Jogo",
+        "book": "Livro",
+        "music": "Música",
+        "software": "Software",
+        "audiobook": "Audiobook",
+        "comic": "HQ / mangá",
+        "course": "Curso",
+        "dataset": "Dataset",
+        "rom": "ROM de jogo",
+        "podcast": "Podcast",
+        "anime": "Anime"
       }
     },
     "tagsHint": "💡 Dica: Digite \"ação, aventura, gênero::ação, ano::2024\" para criar tags simples e hierárquicas",

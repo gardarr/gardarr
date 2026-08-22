@@ -13,7 +13,9 @@ import (
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/mappers"
 	"github.com/jfxdev/gardarr/internal/middlewares"
+	"github.com/jfxdev/gardarr/internal/services/releaseparse"
 	task_metadata_service "github.com/jfxdev/gardarr/internal/services/task_metadata"
+	"github.com/jfxdev/gardarr/pkg/torrentfile"
 )
 
 const (
@@ -21,6 +23,7 @@ const (
 	MaxImageUploadSize = 5 * 1024 * 1024 // 5MB
 
 	applyProviderMetadataError = "failed to apply provider metadata"
+	maxReleaseParseFileSize    = 5 << 20
 )
 
 var (
@@ -70,9 +73,51 @@ func (m *Module) Register() {
 	protected.GET("/:task_hash/thumbnail", m.getTaskThumbnail)
 
 	// External metadata providers
+	protected.POST("/release-parse", m.parseRelease)
+	protected.POST("/release-parse/file", m.parseReleaseFile)
 	protected.GET("/providers/:provider/status", m.providerStatus)
 	protected.GET("/:task_hash/providers/:provider/search", m.searchProvider)
 	protected.POST("/:task_hash/providers/:provider", m.applyProvider)
+}
+
+// parseRelease previews deterministic release-name suggestions. It does not
+// persist or contact any external metadata provider.
+func (m *Module) parseRelease(c *gin.Context) {
+	var body struct {
+		RawName string `json:"raw_name" binding:"required,max=1000"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "raw_name is required"})
+		return
+	}
+
+	result := releaseparse.Parse(body.RawName)
+	c.JSON(http.StatusOK, gin.H{
+		"release":      result,
+		"display_name": result.DisplayName(),
+		"tags":         result.SuggestedTags(),
+	})
+}
+
+func (m *Module) parseReleaseFile(c *gin.Context) {
+	file, header, err := c.Request.FormFile("torrent")
+	if err != nil || header.Size > maxReleaseParseFileSize {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "valid torrent file is required"})
+		return
+	}
+	defer file.Close()
+	data, err := io.ReadAll(io.LimitReader(file, maxReleaseParseFileSize+1))
+	if err != nil || len(data) > maxReleaseParseFileSize {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "valid torrent file is required"})
+		return
+	}
+	name, err := torrentfile.InfoName(data)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	result := releaseparse.Parse(name)
+	c.JSON(http.StatusOK, gin.H{"release": result, "display_name": result.DisplayName(), "tags": result.SuggestedTags()})
 }
 
 // uploadTaskImage handles image upload for a task
@@ -417,7 +462,7 @@ func (m *Module) searchProvider(c *gin.Context) {
 		return
 	}
 
-	results, err := m.service.SearchProvider(c.Request.Context(), provider, query)
+	results, err := m.service.SearchProviderAuto(c.Request.Context(), provider, query)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

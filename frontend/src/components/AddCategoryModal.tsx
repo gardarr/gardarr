@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Check } from "lucide-react";
 import { useState, useEffect } from "react";
-import type { Category, CategoryMetadataSource, CreateCategoryRequest, UpdateCategoryRequest } from "../types/category";
+import type { Category, CategoryMetadataSource, CategoryReleaseType, CreateCategoryRequest, UpdateCategoryRequest } from "../types/category";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { availableIcons, availableColors, getCategoryIcon } from "../utils/categoryUtils";
@@ -32,6 +32,7 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
     default_tags: [],
     default_directory: "",
     metadata_source: "none",
+    release_type: "none",
     color: "#3b82f6",
     icon: "Folder"
   });
@@ -48,6 +49,7 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
           default_tags: [...(editingCategory.default_tags || [])],
           default_directory: editingCategory.default_directory || "",
           metadata_source: editingCategory.metadata_source || "none",
+          release_type: editingCategory.release_type || "none",
           color: editingCategory.color || "#3b82f6",
           icon: editingCategory.icon || "Folder"
         });
@@ -58,6 +60,7 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
           default_tags: [],
           default_directory: "",
           metadata_source: "none",
+          release_type: "none",
           color: "#3b82f6",
           icon: "Folder"
         });
@@ -79,6 +82,7 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
           default_tags: createForm.default_tags,
           default_directory: createForm.default_directory,
           metadata_source: createForm.metadata_source,
+          release_type: createForm.release_type,
           color: createForm.color,
           icon: createForm.icon
         };
@@ -94,6 +98,7 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
         default_tags: [],
         default_directory: "",
         metadata_source: "none",
+        release_type: "none",
         color: "#3b82f6",
         icon: "Folder"
       });
@@ -145,6 +150,10 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
     });
   };
 
+  const handleReleaseTypeChange = (value: CategoryReleaseType) => {
+    setCreateForm({ ...createForm, release_type: value });
+  };
+
   const handleClose = () => {
     // Reset form when closing
     setCreateForm({
@@ -152,6 +161,7 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
       default_tags: [],
       default_directory: "",
       metadata_source: "none",
+      release_type: "none",
       color: "#3b82f6",
       icon: "Folder"
     });
@@ -236,6 +246,31 @@ export function AddCategoryModal({ open, onOpenChange, onCategoryCreated, editin
             <div className="text-xs text-muted-foreground">
               {t('categories.tagsHint')}
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="release-type" className="text-sm">{t("categories.fields.releaseType")}</Label>
+            <Select value={createForm.release_type || "none"} onValueChange={(value) => handleReleaseTypeChange(value as CategoryReleaseType)}>
+              <SelectTrigger id="release-type" className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">{t("categories.releaseType.options.none")}</SelectItem>
+                <SelectItem value="movie">{t("categories.releaseType.options.movie")}</SelectItem>
+                <SelectItem value="series">{t("categories.releaseType.options.series")}</SelectItem>
+                <SelectItem value="os">{t("categories.releaseType.options.os")}</SelectItem>
+                <SelectItem value="game">{t("categories.releaseType.options.game")}</SelectItem>
+                <SelectItem value="book">{t("categories.releaseType.options.book")}</SelectItem>
+                <SelectItem value="music">{t("categories.releaseType.options.music")}</SelectItem>
+                <SelectItem value="software">{t("categories.releaseType.options.software")}</SelectItem>
+                <SelectItem value="audiobook">{t("categories.releaseType.options.audiobook")}</SelectItem>
+                <SelectItem value="comic">{t("categories.releaseType.options.comic")}</SelectItem>
+                <SelectItem value="course">{t("categories.releaseType.options.course")}</SelectItem>
+                <SelectItem value="dataset">{t("categories.releaseType.options.dataset")}</SelectItem>
+                <SelectItem value="rom">{t("categories.releaseType.options.rom")}</SelectItem>
+                <SelectItem value="podcast">{t("categories.releaseType.options.podcast")}</SelectItem>
+                <SelectItem value="anime">{t("categories.releaseType.options.anime")}</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">{t("categories.releaseType.help")}</p>
           </div>
 
           <div className="space-y-1.5">

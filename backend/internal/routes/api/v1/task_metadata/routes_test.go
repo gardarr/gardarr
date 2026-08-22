@@ -110,6 +110,46 @@ func applyProviderRoute(t *testing.T, provider routeMockProvider, payload map[st
 	return response
 }
 
+func TestParseReleaseRoute(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	db := database.SetupTestDB(t, &models.TaskMetadata{})
+	service, err := taskmetadatasvc.NewService(db, "http://localhost:3200", t.TempDir(), nil)
+	if err != nil {
+		t.Fatalf("NewService() error = %v", err)
+	}
+	module := NewModule(router.Group("/api/v1"), db, service)
+	router.POST("/api/v1/tasks/metadata/release-parse", module.parseRelease)
+
+	w := sendTaskMetadataJSONRequest(t, router, http.MethodPost, "/api/v1/tasks/metadata/release-parse", map[string]string{
+		"raw_name": "The.Matrix.1999.2160p.BluRay.x265-GROUP",
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", w.Code, w.Body.String())
+	}
+	var response struct {
+		DisplayName string   `json:"display_name"`
+		Tags        []string `json:"tags"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if response.DisplayName != "The Matrix (1999)" {
+		t.Fatalf("display_name = %q", response.DisplayName)
+	}
+	if !maps.Equal(map[string]bool{"quality::2160p": true, "source::bluray": true, "codec::x265": true}, sliceSet(response.Tags)) {
+		t.Fatalf("tags = %v", response.Tags)
+	}
+}
+
+func sliceSet(values []string) map[string]bool {
+	result := make(map[string]bool, len(values))
+	for _, value := range values {
+		result[value] = true
+	}
+	return result
+}
+
 func TestApplyProviderRouteSuccess(t *testing.T) {
 	router := setupTaskMetadataApplyRouter(t, routeMockProvider{
 		selection: &taskmetadatasvc.MetadataProviderSelection{
