@@ -574,8 +574,8 @@ func (s *Service) DetectRemovedTasks(ctx context.Context, currentTasks []*entiti
 }
 
 // ListEvents retrieves events with optional filters
-func (s *Service) ListEvents(ctx context.Context, workerID *uuid.UUID, eventType *string, limit int, offset int) ([]*entities.Event, int64, error) {
-	return s.repo.ListEvents(ctx, workerID, eventType, limit, offset)
+func (s *Service) ListEvents(ctx context.Context, workerID *uuid.UUID, eventTypes []string, search string, limit int, offset int) ([]*entities.Event, int64, error) {
+	return s.repo.ListEvents(ctx, workerID, eventTypes, search, limit, offset)
 }
 
 // GetEventByUUID retrieves an event by its UUID

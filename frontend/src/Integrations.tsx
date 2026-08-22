@@ -8,13 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Webhook, Bell, Plug, Monitor, BookOpen, Joystick, Activity, Gamepad2, Clapperboard } from 'lucide-react';
 import { api } from '@/lib/api';
-import { EventList, type Event, type FilterType } from '@/components/EventList';
+import { EventList } from '@/components/EventList';
+import { useEventHistory } from '@/hooks/useEventHistory';
 import { toast } from 'sonner';
-
-interface EventsResponse {
-  events: Event[];
-  total: number;
-}
 
 interface ProviderIntegrationResponse {
   provider: string;
@@ -49,13 +45,7 @@ export default function IntegrationsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [showEvents, setShowEvents] = useState(false);
-  const [events, setEvents] = useState<Event[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(0);
-  const [limit] = useState(10);
-  const [filterType, setFilterType] = useState<FilterType>("all");
-  const [searchQuery, setSearchQuery] = useState<string>("");
+  const eventHistory = useEventHistory('all', 10, showEvents);
   const [showTGDBConfig, setShowTGDBConfig] = useState(false);
   const [isLoadingTGDB, setIsLoadingTGDB] = useState(false);
   const [isSavingTGDB, setIsSavingTGDB] = useState(false);
@@ -68,39 +58,6 @@ export default function IntegrationsPage() {
   const [tmdbEnabled, setTMDBEnabled] = useState(false);
   const [tmdbConfigured, setTMDBConfigured] = useState(false);
   const [tmdbApiKey, setTMDBApiKey] = useState("");
-
-  const loadEvents = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const offset = page * limit;
-      let url = `/events?limit=${limit}&offset=${offset}`;
-      
-      if (filterType && filterType !== "all") {
-        url += `&type=${encodeURIComponent(filterType)}`;
-      }
-      
-      if (searchQuery) {
-        url += `&search=${encodeURIComponent(searchQuery)}`;
-      }
-      
-      const response = await api.get<EventsResponse>(url);
-
-      if (response.data) {
-        setEvents(response.data.events || []);
-        setTotal(response.data.total || 0);
-      }
-    } catch (error) {
-      console.error("Failed to load events:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [page, limit, filterType, searchQuery]);
-
-  useEffect(() => {
-    if (showEvents) {
-      loadEvents();
-    }
-  }, [showEvents, loadEvents]);
 
   const loadTGDBConfig = useCallback(async () => {
     setIsLoadingTGDB(true);
@@ -467,18 +424,7 @@ export default function IntegrationsPage() {
               {t('history.subtitle')}
             </SheetDescription>
           </SheetHeader>
-          <EventList
-              events={events}
-              isLoading={isLoading}
-              total={total}
-              page={page}
-              limit={limit}
-              filterType={filterType}
-              searchQuery={searchQuery}
-              onFilterChange={setFilterType}
-              onPageChange={setPage}
-              onSearchChange={setSearchQuery}
-            />
+          <EventList group="all" {...eventHistory} />
         </SheetContent>
       </Sheet>
 

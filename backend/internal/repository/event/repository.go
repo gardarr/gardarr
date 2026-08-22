@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -56,8 +57,13 @@ func (r *Repository) CreateEvent(ctx context.Context, event *entities.Event) err
 	return r.db.DB.WithContext(ctx).Create(model).Error
 }
 
-// ListEvents retrieves events with optional filters
-func (r *Repository) ListEvents(ctx context.Context, workerID *uuid.UUID, eventType *string, limit int, offset int) ([]*entities.Event, int64, error) {
+// ListEvents retrieves events with optional filters. eventTypes, when
+// non-empty, restricts results to those types (IN clause) - used both for an
+// exact single-type filter and for a whole event group (e.g. all worker.*
+// types for the History page's worker table). search, when non-empty,
+// case-insensitively matches the task hash or the raw metadata JSON (which
+// carries the torrent/worker/schedule name shown in the UI).
+func (r *Repository) ListEvents(ctx context.Context, workerID *uuid.UUID, eventTypes []string, search string, limit int, offset int) ([]*entities.Event, int64, error) {
 	var events []models.Event
 	var total int64
 
@@ -67,8 +73,12 @@ func (r *Repository) ListEvents(ctx context.Context, workerID *uuid.UUID, eventT
 	if workerID != nil {
 		query = query.Where("worker_id = ?", workerID)
 	}
-	if eventType != nil && *eventType != "" {
-		query = query.Where("type = ?", *eventType)
+	if len(eventTypes) > 0 {
+		query = query.Where("type IN ?", eventTypes)
+	}
+	if search != "" {
+		like := "%" + strings.ToLower(search) + "%"
+		query = query.Where("LOWER(task_hash) LIKE ? OR LOWER(metadata) LIKE ?", like, like)
 	}
 
 	// Get total count

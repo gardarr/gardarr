@@ -6,13 +6,17 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 
+	"github.com/google/uuid"
 	"github.com/jfxdev/gardarr/internal/entities"
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	workerrepository "github.com/jfxdev/gardarr/internal/repository/worker"
 	"github.com/jfxdev/gardarr/internal/schemas"
 	"github.com/jfxdev/gardarr/internal/services/crypto"
+	"github.com/jfxdev/gardarr/internal/services/events"
 	metadata "github.com/jfxdev/gardarr/internal/services/task_metadata"
+	"github.com/jfxdev/gardarr/internal/services/workerhealth"
 	"github.com/jfxdev/gardarr/pkg/logger"
 	"github.com/jfxdev/go-qbt"
 )
@@ -20,9 +24,10 @@ import (
 type Service struct {
 	repository      workerrepository.RepositoryInterface
 	metadataService *metadata.Service
+	health          *workerhealth.Service
 }
 
-func NewService(db *database.Database, c *crypto.CryptoService, baseURL, uploadDir string) (*Service, error) {
+func NewService(db *database.Database, c *crypto.CryptoService, baseURL, uploadDir string, eventSvc *events.Service) (*Service, error) {
 	repository, err := workerrepository.NewRepository(db, c)
 	if err != nil {
 		return nil, err
@@ -36,18 +41,47 @@ func NewService(db *database.Database, c *crypto.CryptoService, baseURL, uploadD
 	return &Service{
 		repository:      repository,
 		metadataService: meta,
+		health:          workerhealth.NewService(repository, eventSvc),
 	}, nil
 }
 
-// extractWorkerError extracts error code and permanent flag from an error.
-// Returns WorkerErrorCodeUnknown and false if the error is not a WorkerError.
-// Supports wrapped errors using errors.As.
-func extractWorkerError(err error) (entities.WorkerErrorCode, bool) {
-	var workerErr *workerrepository.WorkerError
-	if errors.As(err, &workerErr) {
-		return workerErr.Code, workerErr.Permanent
+// StartHealthMonitor begins the background worker health probe loop. It
+// stops when ctx is canceled. Callers that need worker status/instance data
+// (ListWorkers, ListTasks) read from the cache this loop maintains instead
+// of probing qBittorrent inline.
+func (s *Service) StartHealthMonitor(ctx context.Context) {
+	s.health.Start(ctx)
+}
+
+// HealthSnapshot returns a copy of the current worker health cache, keyed by
+// worker UUID. Used to catch a newly connected websocket client up on
+// current worker status without waiting for the next transition.
+func (s *Service) HealthSnapshot() map[uuid.UUID]workerhealth.Health {
+	return s.health.Snapshot()
+}
+
+// cachedHealthError builds the error reported for a worker that's skipped
+// because its health is confirmed ERRORED. Falls back to ErrorCode, then a
+// fixed message, so a health record with an empty Error string still yields
+// a non-empty, useful error instead of an empty one.
+func cachedHealthError(h workerhealth.Health) error {
+	if h.Error != "" {
+		return errors.New(h.Error)
 	}
-	return entities.WorkerErrorCodeUnknown, false
+	if h.ErrorCode != "" {
+		return errors.New(string(h.ErrorCode))
+	}
+	return errors.New("worker is offline")
+}
+
+// applyHealth copies a cached/refreshed health snapshot onto a worker entity
+// for API responses.
+func applyHealth(w *entities.Worker, h workerhealth.Health) {
+	w.Status = h.Status
+	w.Error = h.Error
+	w.ErrorCode = h.ErrorCode
+	w.Permanent = h.Permanent
+	w.Instance = h.Instance
 }
 
 func (s *Service) CreateWorker(ctx context.Context, schema *schemas.WorkerCreateSchema) (*entities.Worker, error) {
@@ -74,74 +108,46 @@ func (s *Service) CreateWorker(ctx context.Context, schema *schemas.WorkerCreate
 		return nil, err
 	}
 
-	// Set status and instance data
-	worker.Status = entities.WorkerStatusActive
-	worker.Instance = instance
+	// Seed the health cache with the connectivity check already performed
+	// above, so the new worker reads as ACTIVE immediately instead of
+	// sitting at PENDING until the next background probe tick.
+	applyHealth(worker, s.health.Seed(worker.UUID, instance, nil))
 
 	return worker, nil
 }
 
+// ListWorkers returns every registered worker with its current health
+// (Status/Error/ErrorCode/Permanent/Instance) overlaid from the background
+// health cache. Only a worker that has NEVER been probed at all (a true
+// cache miss - not merely "not yet confirmed ERRORED", which stays PENDING
+// under the flap-dampening threshold) is probed synchronously on the spot,
+// as a cold-start fallback so it doesn't render as offline before its very
+// first check. Once that first probe lands, this is always a pure cache
+// read: subsequent confirmation (or not) of ERRORED is left entirely to the
+// background monitor, so a run of requests during the still-unconfirmed
+// window doesn't each pay their own read-timeout wait in turn.
 func (s *Service) ListWorkers() ([]*entities.Worker, error) {
-	workers, err := s.repository.ListWorkers()
+	workers, err := s.ListWorkersBasic()
 	if err != nil {
 		return nil, err
 	}
 
-	// Create a channel to receive processed workers
-	workerChan := make(chan *entities.Worker, len(workers))
-
-	// Process each worker concurrently
+	var wg sync.WaitGroup
 	for _, worker := range workers {
+		if h, ok := s.health.Get(worker.UUID); ok {
+			applyHealth(worker, h)
+			continue
+		}
+
+		wg.Add(1)
 		go func(w *entities.Worker) {
-			w.Status = entities.WorkerStatusActive
-
-			// Try to get instance
-			// GetInstance internally calls isAvailable first - if that fails, it aborts and returns error
-			// If error occurs (including isAvailable failure), abort and return worker with error status
-			instance, err := s.repository.GetInstance(w)
-			if err != nil {
-				// isAvailable failed or GetInstance failed - abort execution
-				w.ErrorCode, w.Permanent = extractWorkerError(err)
-				w.Instance = nil
-				w.Error = err.Error()
-
-				if w.ErrorCode == entities.WorkerErrorCodeServiceUnavailable && strings.Contains(strings.ToLower(w.Error), "starting up") {
-					w.Status = entities.WorkerStatusInitializing
-				} else {
-					w.Status = entities.WorkerStatusErrored
-				}
-
-				logger.Error("failed to get worker instance during list",
-					"worker", w.Name,
-					"error", err.Error(),
-					"code", w.ErrorCode,
-				)
-
-				workerChan <- w
-				return
-			}
-
-			// Success - set instance and clear any previous errors
-			w.Instance = instance
-			w.ErrorCode = entities.WorkerErrorCodeNone
-			w.Permanent = false
-
-			// Send the processed worker to the channel
-			workerChan <- w
+			defer wg.Done()
+			applyHealth(w, s.health.Refresh(w))
 		}(worker)
 	}
+	wg.Wait()
 
-	// Collect all processed workers from the channel
-	result := make([]*entities.Worker, 0, len(workers))
-	for range len(workers) {
-		processedWorker := <-workerChan
-		result = append(result, processedWorker)
-	}
-
-	// Close the channel
-	close(workerChan)
-
-	return result, nil
+	return workers, nil
 }
 
 // ListWorkersBasic returns workers straight from the database, with no live
@@ -213,8 +219,16 @@ func (s *Service) ListTasks(ctx context.Context, workers []*entities.Worker) (*e
 	// Create channel to receive results
 	resultChan := make(chan workerResult, len(workers))
 
-	// Process each worker concurrently
+	// Process each worker concurrently. A worker whose health is confirmed
+	// ERRORED is skipped entirely instead of dialed - its cached error is
+	// reported immediately rather than waiting up to WORKER_TIMEOUT_SECONDS
+	// for the same outcome the health monitor already knows.
 	for _, worker := range workers {
+		if h, ok := s.health.Get(worker.UUID); ok && h.Status == entities.WorkerStatusErrored {
+			resultChan <- workerResult{workerID: worker.UUID.String(), err: cachedHealthError(h)}
+			continue
+		}
+
 		go func(w *entities.Worker) {
 			// Check context before starting work
 			select {
@@ -267,8 +281,14 @@ func (s *Service) ListTasks(ctx context.Context, workers []*entities.Worker) (*e
 	}, nil
 }
 
+// GetWorker returns a single worker with its current health overlaid from
+// the background health cache - like ListWorkers, it no longer dials the
+// worker directly on every call. Only a worker that has never been probed
+// at all falls back to an on-demand probe (bounded by
+// WORKER_HEALTH_READ_TIMEOUT, default 5s); once any probe has landed, even
+// an unconfirmed one, this is a pure cache read - see ListWorkers for why
+// that distinction matters.
 func (s *Service) GetWorker(ctx context.Context, id string) (*entities.Worker, error) {
-	// Check if context is already cancelled
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -280,45 +300,12 @@ func (s *Service) GetWorker(ctx context.Context, id string) (*entities.Worker, e
 		return nil, err
 	}
 
-	// Set default status to ACTIVE
-	worker.Status = entities.WorkerStatusActive
-
-	// GetInstance internally calls isAvailable (CheckWorkerAvailability) first.
-	// No need for a separate CheckWorkerAvailability call — that would double
-	// the HTTP round-trips to the worker per request.
-	instance, err := s.repository.GetInstance(worker)
-	if err != nil {
-		// Check if context was cancelled during the call
-		select {
-		case <-ctx.Done():
-			// Context was cancelled - abort execution
-			worker.Status = entities.WorkerStatusErrored
-			worker.Instance = nil
-			worker.Error = "request cancelled or timeout"
-			worker.ErrorCode = entities.WorkerErrorCodeTimeout
-			worker.Permanent = false
-			return worker, nil
-		default:
-			// Error from GetInstance (could be from isAvailable or instance fetch)
-			// Abort execution and return worker with error status and instance = nil
-			worker.Instance = nil
-			worker.Error = err.Error()
-			worker.ErrorCode, worker.Permanent = extractWorkerError(err)
-
-			if worker.ErrorCode == entities.WorkerErrorCodeServiceUnavailable && strings.Contains(strings.ToLower(worker.Error), "starting up") {
-				worker.Status = entities.WorkerStatusInitializing
-			} else {
-				worker.Status = entities.WorkerStatusErrored
-			}
-			return worker, nil
-		}
+	if h, ok := s.health.Get(worker.UUID); ok {
+		applyHealth(worker, h)
+		return worker, nil
 	}
 
-	// Success - set instance and clear any previous errors
-	worker.Instance = instance
-	worker.ErrorCode = entities.WorkerErrorCodeNone
-	worker.Permanent = false
-
+	applyHealth(worker, s.health.Refresh(worker))
 	return worker, nil
 }
 
@@ -361,18 +348,18 @@ func (s *Service) UpdateWorker(ctx context.Context, id string, schema *schemas.W
 
 	// Best-effort connectivity check purely to populate the response status.
 	// A failure here reflects the worker's reachability, it never rolls back
-	// or blocks the update that already landed in the database.
+	// or blocks the update that already landed in the database. Seed the
+	// health cache with the result immediately - an explicit user-triggered
+	// update shouldn't wait out the background probe's flap-dampening
+	// threshold before reflecting a fixed (or newly broken) connection.
 	instance, err := s.repository.GetInstance(worker)
 	if err != nil {
-		worker.Instance = nil
-		worker.Error = err.Error()
-		worker.ErrorCode, worker.Permanent = extractWorkerError(err)
-		worker.Status = entities.WorkerStatusErrored
-		return worker, nil
+		logger.Debug("worker update: connectivity check failed",
+			"worker_id", worker.UUID.String(),
+			"error", err.Error(),
+		)
 	}
-
-	worker.Status = entities.WorkerStatusActive
-	worker.Instance = instance
+	applyHealth(worker, s.health.Seed(worker.UUID, instance, err))
 
 	return worker, nil
 }
@@ -385,7 +372,12 @@ func (s *Service) DeleteWorker(ctx context.Context, id string) error {
 	}
 	parsedID := currentWorker.UUID
 
-	return s.repository.DeleteWorker(parsedID)
+	if err := s.repository.DeleteWorker(parsedID); err != nil {
+		return err
+	}
+
+	s.health.Delete(parsedID)
+	return nil
 }
 
 func (s *Service) CreateWorkerTask(ctx context.Context, id string, schema schemas.TaskCreateSchema) (*entities.Task, error) {
@@ -809,8 +801,17 @@ func (s *Service) fanOutAcrossWorkers(ctx context.Context, logMsg string, op fun
 		return nil, 0, err
 	}
 
+	// A worker whose health is confirmed ERRORED is skipped entirely instead
+	// of dialed - same treatment as ListTasks, so a tag op (create/delete/
+	// rename/merge) doesn't wait up to WORKER_TIMEOUT_SECONDS per offline
+	// worker before reporting the failure everyone already knows about.
 	resultChan := make(chan workerOutcome, len(workers))
 	for _, worker := range workers {
+		if h, ok := s.health.Get(worker.UUID); ok && h.Status == entities.WorkerStatusErrored {
+			resultChan <- workerOutcome{workerID: worker.UUID.String(), err: cachedHealthError(h)}
+			continue
+		}
+
 		go func(w *entities.Worker) {
 			resultChan <- workerOutcome{workerID: w.UUID.String(), err: op(w)}
 		}(worker)

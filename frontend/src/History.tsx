@@ -1,63 +1,38 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Activity, RefreshCw } from 'lucide-react';
+import { Activity, RefreshCw, Download, Server, Gauge } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { EventList, type Event, type FilterType } from '@/components/EventList';
-import { api } from '@/lib/api';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { EventList } from '@/components/EventList';
 import { Button } from '@/components/ui/button';
-
-interface EventsResponse {
-  events: Event[];
-  total: number;
-}
+import { workerService } from '@/services/workers';
+import { useEventHistory } from '@/hooks/useEventHistory';
 
 export default function HistoryPage() {
   const { t } = useTranslation();
-  const [events, setEvents] = useState<Event[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(0);
-  const [limit] = useState(10);
-  const [filterType, setFilterType] = useState<FilterType>("all");
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>("");
+  const [workerNames, setWorkerNames] = useState<Record<string, string>>({});
 
-  // Debounce the search box so typing doesn't fire a request per keystroke.
-  useEffect(() => {
-    const handle = setTimeout(() => setDebouncedSearchQuery(searchQuery), 350);
-    return () => clearTimeout(handle);
-  }, [searchQuery]);
-
-  const loadEvents = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const offset = page * limit;
-      let url = `/events?limit=${limit}&offset=${offset}`;
-
-      if (filterType && filterType !== "all") {
-        url += `&type=${encodeURIComponent(filterType)}`;
-      }
-
-      if (debouncedSearchQuery) {
-        url += `&search=${encodeURIComponent(debouncedSearchQuery)}`;
-      }
-
-      const response = await api.get<EventsResponse>(url);
-
-      if (response.data) {
-        setEvents(response.data.events || []);
-        setTotal(response.data.total || 0);
-      }
-    } catch (error) {
-      console.error("Failed to load events:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [page, limit, filterType, debouncedSearchQuery]);
+  const torrentEvents = useEventHistory('torrent');
+  const workerEvents = useEventHistory('worker');
+  const scheduleEvents = useEventHistory('schedule');
 
   useEffect(() => {
-    loadEvents();
-  }, [loadEvents]);
+    workerService.listWorkersBasic().then((response) => {
+      if (!response.data) return;
+      setWorkerNames(
+        Object.fromEntries(response.data.map((worker) => [worker.uuid, worker.name]))
+      );
+    }).catch((error) => {
+      console.error("Failed to load workers:", error);
+    });
+  }, []);
+
+  const isRefreshing = torrentEvents.isLoading || workerEvents.isLoading || scheduleEvents.isLoading;
+  const refreshAll = () => {
+    torrentEvents.refresh();
+    workerEvents.refresh();
+    scheduleEvents.refresh();
+  };
 
   return (
     <div className="space-y-6">
@@ -76,27 +51,42 @@ export default function HistoryPage() {
             </p>
           </div>
         </div>
-        <Button onClick={loadEvents} variant="outline" disabled={isLoading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+        <Button onClick={refreshAll} variant="outline" disabled={isRefreshing}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
           {t('history.refresh')}
         </Button>
       </div>
 
-      {/* Event List */}
       <Card>
         <CardContent className="p-4 sm:p-6">
-          <EventList
-            events={events}
-            isLoading={isLoading}
-            total={total}
-            page={page}
-            limit={limit}
-            filterType={filterType}
-            searchQuery={searchQuery}
-            onFilterChange={setFilterType}
-            onPageChange={setPage}
-            onSearchChange={setSearchQuery}
-          />
+          <Tabs defaultValue="torrent">
+            <TabsList className="grid w-full grid-cols-3 max-w-lg">
+              <TabsTrigger value="torrent" className="gap-2">
+                <Download className="h-4 w-4" />
+                {t('history.groups.torrent') || 'Torrent events'}
+              </TabsTrigger>
+              <TabsTrigger value="worker" className="gap-2">
+                <Server className="h-4 w-4" />
+                {t('history.groups.worker') || 'Worker events'}
+              </TabsTrigger>
+              <TabsTrigger value="schedule" className="gap-2">
+                <Gauge className="h-4 w-4" />
+                {t('history.groups.schedule') || 'Schedule events'}
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="torrent" className="mt-4">
+              <EventList group="torrent" {...torrentEvents} />
+            </TabsContent>
+
+            <TabsContent value="worker" className="mt-4">
+              <EventList group="worker" {...workerEvents} workerNames={workerNames} />
+            </TabsContent>
+
+            <TabsContent value="schedule" className="mt-4">
+              <EventList group="schedule" {...scheduleEvents} />
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>

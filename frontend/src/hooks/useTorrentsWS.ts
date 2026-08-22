@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { Task } from '@/types/torrent';
+import type { WorkerErrorCode, WorkerStatus } from '@/types/worker';
 
-export type WSEventType = 'INITIAL_STATE' | 'WORKER_STATS_UPDATED' | 'TORRENT_ADDED' | 'TORRENT_STATE_CHANGE' | 'TORRENT_COMPLETED' | 'TORRENT_REMOVED';
+export type WSEventType = 'INITIAL_STATE' | 'WORKER_STATS_UPDATED' | 'TORRENT_ADDED' | 'TORRENT_STATE_CHANGE' | 'TORRENT_COMPLETED' | 'TORRENT_REMOVED' | 'WORKER_STATUS_CHANGED';
 
 export interface WSEvent {
   event_type: WSEventType;
@@ -10,11 +11,19 @@ export interface WSEvent {
   errors?: Record<string, string>;
 }
 
+export interface WorkerStatusChangedPayload {
+  status: WorkerStatus;
+  error?: string;
+  error_code?: WorkerErrorCode;
+  permanent?: boolean;
+}
+
 interface UseTorrentsWSOptions {
   onInitialState?: (tasks: Task[], errors?: Record<string, string>) => void;
   onWorkerStats?: (workerId: string, stats: Record<string, unknown>) => void;
   onTaskUpdated?: (task: Partial<Task> & { hash: string, worker_id: string }) => void;
   onTaskRemoved?: (hash: string, workerId: string) => void;
+  onWorkerStatusChanged?: (workerId: string, status: WorkerStatusChangedPayload) => void;
 }
 
 export function useTorrentsWS(options: UseTorrentsWSOptions = {}) {
@@ -98,6 +107,14 @@ export function useTorrentsWS(options: UseTorrentsWSOptions = {}) {
               optionsRef.current.onTaskRemoved(payload.hash as string, data.worker_id);
             }
             break;
+
+          case 'WORKER_STATUS_CHANGED': {
+            const payload = data.payload as Record<string, unknown> | null;
+            if (optionsRef.current.onWorkerStatusChanged && data.worker_id && typeof payload?.status === 'string') {
+              optionsRef.current.onWorkerStatusChanged(data.worker_id, payload as unknown as WorkerStatusChangedPayload);
+            }
+            break;
+          }
 
           default:
             console.warn('[WS] Unknown event_type received', data.event_type);

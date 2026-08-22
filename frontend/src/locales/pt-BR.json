@@ -1624,7 +1624,9 @@
       "stateChange": "Mudança de Estado",
       "added": "Adicionado",
       "removed": "Removido",
-      "completed": "Completo"
+      "completed": "Completo",
+      "workerOffline": "Worker offline",
+      "workerRecovered": "Worker recuperado"
     },
     "time": {
       "justNow": "Agora mesmo",
@@ -1640,7 +1642,15 @@
     "table": {
       "torrent": "Torrent",
       "change": "Mudança",
-      "time": "Hora"
+      "time": "Hora",
+      "worker": "Worker",
+      "subject": "Assunto",
+      "schedule": "Agendamento"
+    },
+    "groups": {
+      "torrent": "Eventos de Torrent",
+      "worker": "Eventos de Worker",
+      "schedule": "Eventos de Agendamento"
     }
   },
   "forgotPassword": {
