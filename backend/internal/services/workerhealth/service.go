@@ -10,7 +10,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -97,9 +96,19 @@ func NewService(repository prober, eventSvc eventRecorder) *Service {
 	}
 }
 
+// defaultInterval is used by Start when s.interval is zero or negative
+// (env.Get's Default doesn't parse a malformed value, so a bad
+// WORKER_HEALTH_INTERVAL could otherwise reach time.NewTicker, which panics
+// on a non-positive duration).
+const defaultInterval = 15 * time.Second
+
 // Start begins the periodic probing loop. It stops when ctx is canceled.
 func (s *Service) Start(ctx context.Context) {
-	ticker := time.NewTicker(s.interval)
+	interval := s.interval
+	if interval <= 0 {
+		interval = defaultInterval
+	}
+	ticker := time.NewTicker(interval)
 	go func() {
 		defer ticker.Stop()
 		for {
@@ -343,11 +352,14 @@ func (s *Service) notifyTransition(workerID uuid.UUID, prevStatus string, result
 
 // classifyProbeError maps a probe error into the status/code/permanent
 // triple used to populate Health, including the INITIALIZING special case
-// (qBittorrent reachable but still starting up - not an outage).
+// (qBittorrent reachable but still starting up - not an outage). A 503 is
+// treated as INITIALIZING unconditionally: qBittorrent's WebUI returns it
+// with an empty body while starting up, so gating on a "starting up"
+// substring in the error message missed the common case entirely.
 func classifyProbeError(err error) (status string, code entities.WorkerErrorCode, permanent bool) {
 	code, permanent = extractWorkerError(err)
 	status = entities.WorkerStatusErrored
-	if code == entities.WorkerErrorCodeServiceUnavailable && strings.Contains(strings.ToLower(err.Error()), "starting up") {
+	if code == entities.WorkerErrorCodeServiceUnavailable {
 		status = entities.WorkerStatusInitializing
 	}
 	return status, code, permanent

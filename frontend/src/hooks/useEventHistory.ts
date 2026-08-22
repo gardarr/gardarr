@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 import type { Event, FilterType } from '@/components/EventList';
 import type { EventGroup } from '@/constants/eventTypes';
@@ -30,8 +30,13 @@ export function useEventHistory(group: EventGroup, limit = 10, enabled = true) {
     return () => clearTimeout(handle);
   }, [searchQuery]);
 
+  // Guards against an in-flight request from a stale page/filter/search
+  // combination resolving after a newer one and overwriting its results.
+  const requestSeqRef = useRef(0);
+
   const loadEvents = useCallback(async () => {
     if (!enabled) return;
+    const seq = ++requestSeqRef.current;
     setIsLoading(true);
     try {
       const offset = page * limit;
@@ -47,6 +52,8 @@ export function useEventHistory(group: EventGroup, limit = 10, enabled = true) {
 
       const response = await api.get<EventsResponse>(url);
 
+      if (seq !== requestSeqRef.current) return;
+
       if (response.data) {
         setEvents(response.data.events || []);
         setTotal(response.data.total || 0);
@@ -54,7 +61,9 @@ export function useEventHistory(group: EventGroup, limit = 10, enabled = true) {
     } catch (error) {
       console.error(`Failed to load ${group} events:`, error);
     } finally {
-      setIsLoading(false);
+      if (seq === requestSeqRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [group, page, limit, filterType, debouncedSearchQuery, enabled]);
 

@@ -37,6 +37,28 @@ func wsEventTypeFor(eventType string) string {
 	}
 }
 
+// eventPayload builds the WS payload for an internal event. Worker status
+// transitions (worker.offline/worker.recovered) expose status/error/
+// error_code/permanent at the top level, matching sendHealthSnapshot's
+// shape, so the frontend can handle both the same way. Other event types
+// keep the generic hash/old_value/new_value/metadata shape.
+func eventPayload(e *entities.Event) map[string]interface{} {
+	if e.Type == constants.EventTypeWorkerOffline || e.Type == constants.EventTypeWorkerRecovered {
+		return map[string]interface{}{
+			"status":     e.Metadata["status"],
+			"error":      e.Metadata["error"],
+			"error_code": e.Metadata["error_code"],
+			"permanent":  e.Metadata["permanent"],
+		}
+	}
+	return map[string]interface{}{
+		"hash":      e.TaskHash,
+		"old_value": e.OldValue,
+		"new_value": e.NewValue,
+		"metadata":  e.Metadata,
+	}
+}
+
 // WSEvent defines the structure of events sent to the client
 type WSEvent struct {
 	EventType string            `json:"event_type"`
@@ -148,12 +170,7 @@ func (h *Hub) Start(ctx context.Context) {
 			wsEvent := &WSEvent{
 				EventType: wsEventTypeFor(e.Type),
 				WorkerID:  e.WorkerID.String(),
-				Payload: map[string]interface{}{
-					"hash":      e.TaskHash,
-					"old_value": e.OldValue,
-					"new_value": e.NewValue,
-					"metadata":  e.Metadata,
-				},
+				Payload:   eventPayload(e),
 			}
 			h.broadcastEvent(wsEvent)
 

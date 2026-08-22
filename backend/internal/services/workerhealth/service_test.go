@@ -2,6 +2,7 @@ package workerhealth
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -21,17 +22,28 @@ type fakeProber struct {
 	// blockCh, if set, makes GetInstance wait to be released - used to widen
 	// the race window in concurrency tests.
 	blockCh chan struct{}
+	// entered, if set, is closed the moment GetInstance is called (before
+	// waiting on blockCh), so a test can synchronize on "the probe has
+	// actually started" instead of guessing with a fixed sleep.
+	entered   chan struct{}
+	enterOnce sync.Once
 }
 
 func (f *fakeProber) ListWorkers() ([]*entities.Worker, error) { return nil, nil }
 
 func (f *fakeProber) GetInstance(worker *entities.Worker) (*entities.Instance, error) {
+	if f.entered != nil {
+		f.enterOnce.Do(func() { close(f.entered) })
+	}
 	if f.blockCh != nil {
 		<-f.blockCh
 	}
 
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if len(f.outcomes) == 0 {
+		return nil, errors.New("fakeProber: no outcomes configured")
+	}
 	idx := f.calls
 	if idx >= len(f.outcomes) {
 		idx = len(f.outcomes) - 1
@@ -245,9 +257,9 @@ func TestReadTimeoutClassifiesSlowProbeAsTimeout(t *testing.T) {
 // singleflight, every concurrent on-demand caller for an unconfirmed
 // worker paid its own full readTimeout wait instead of sharing one probe.
 func TestRefreshDedupesConcurrentCallsForSameWorker(t *testing.T) {
-	started := make(chan struct{})
 	block := make(chan struct{})
-	repo := &fakeProber{outcomes: []error{nil}, blockCh: block}
+	entered := make(chan struct{})
+	repo := &fakeProber{outcomes: []error{nil}, blockCh: block, entered: entered}
 	svc := newTestService(repo, nil)
 	worker := &entities.Worker{UUID: uuid.New()}
 
@@ -255,13 +267,11 @@ func TestRefreshDedupesConcurrentCallsForSameWorker(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		close(started)
 		svc.Refresh(worker)
 	}()
-	<-started
-	// Give the leader call time to actually enter GetInstance and start
+	// Wait for the leader call to actually enter GetInstance and start
 	// waiting on blockCh before the followers join the same in-flight key.
-	time.Sleep(20 * time.Millisecond)
+	<-entered
 
 	const followers = 5
 	wg.Add(followers)

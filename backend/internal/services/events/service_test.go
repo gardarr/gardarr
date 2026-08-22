@@ -418,7 +418,7 @@ func TestDetectRemovedTasks_MetadataIncludesName(t *testing.T) {
 			err = svc.DetectRemovedTasks(ctx, []*entities.Task{}, workerID, time.Now())
 			require.NoError(t, err)
 
-			events, _, err := svc.repo.ListEvents(ctx, &workerID, []string{constants.EventTypeTorrentRemoved}, 10, 0)
+			events, _, err := svc.repo.ListEvents(ctx, &workerID, []string{constants.EventTypeTorrentRemoved}, "", 10, 0)
 			require.NoError(t, err)
 			require.Len(t, events, 1)
 

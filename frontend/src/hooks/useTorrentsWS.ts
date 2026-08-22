@@ -108,11 +108,13 @@ export function useTorrentsWS(options: UseTorrentsWSOptions = {}) {
             }
             break;
 
-          case 'WORKER_STATUS_CHANGED':
-            if (optionsRef.current.onWorkerStatusChanged && data.worker_id) {
-              optionsRef.current.onWorkerStatusChanged(data.worker_id, data.payload as WorkerStatusChangedPayload);
+          case 'WORKER_STATUS_CHANGED': {
+            const payload = data.payload as Record<string, unknown> | null;
+            if (optionsRef.current.onWorkerStatusChanged && data.worker_id && typeof payload?.status === 'string') {
+              optionsRef.current.onWorkerStatusChanged(data.worker_id, payload as unknown as WorkerStatusChangedPayload);
             }
             break;
+          }
 
           default:
             console.warn('[WS] Unknown event_type received', data.event_type);

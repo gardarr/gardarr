@@ -332,6 +332,16 @@ export default function TorrentsPage() {
           ? { ...w, status: status.status, error: status.error, error_code: status.error_code, permanent: status.permanent }
           : w
       )));
+      // Tasks already joined to this worker hold their own copy of the
+      // Worker object (see reattachTaskWorker/joinedTasks), so updating the
+      // `workers` list above doesn't reach mapTaskToTorrent's
+      // task.worker?.status read - rebuild each affected task's worker ref
+      // too, or the UI keeps showing the torrent's stale worker status.
+      setOriginalTasks(prev => prev.map(task => (
+        (task.worker_id === workerId || task.worker?.uuid === workerId) && task.worker
+          ? { ...task, worker: { ...task.worker, status: status.status, error: status.error, error_code: status.error_code, permanent: status.permanent } }
+          : task
+      )));
     }, []),
   });
 

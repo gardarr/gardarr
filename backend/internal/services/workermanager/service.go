@@ -60,6 +60,20 @@ func (s *Service) HealthSnapshot() map[uuid.UUID]workerhealth.Health {
 	return s.health.Snapshot()
 }
 
+// cachedHealthError builds the error reported for a worker that's skipped
+// because its health is confirmed ERRORED. Falls back to ErrorCode, then a
+// fixed message, so a health record with an empty Error string still yields
+// a non-empty, useful error instead of an empty one.
+func cachedHealthError(h workerhealth.Health) error {
+	if h.Error != "" {
+		return errors.New(h.Error)
+	}
+	if h.ErrorCode != "" {
+		return errors.New(string(h.ErrorCode))
+	}
+	return errors.New("worker is offline")
+}
+
 // applyHealth copies a cached/refreshed health snapshot onto a worker entity
 // for API responses.
 func applyHealth(w *entities.Worker, h workerhealth.Health) {
@@ -211,7 +225,7 @@ func (s *Service) ListTasks(ctx context.Context, workers []*entities.Worker) (*e
 	// for the same outcome the health monitor already knows.
 	for _, worker := range workers {
 		if h, ok := s.health.Get(worker.UUID); ok && h.Status == entities.WorkerStatusErrored {
-			resultChan <- workerResult{workerID: worker.UUID.String(), err: errors.New(h.Error)}
+			resultChan <- workerResult{workerID: worker.UUID.String(), err: cachedHealthError(h)}
 			continue
 		}
 
@@ -339,6 +353,12 @@ func (s *Service) UpdateWorker(ctx context.Context, id string, schema *schemas.W
 	// update shouldn't wait out the background probe's flap-dampening
 	// threshold before reflecting a fixed (or newly broken) connection.
 	instance, err := s.repository.GetInstance(worker)
+	if err != nil {
+		logger.Debug("worker update: connectivity check failed",
+			"worker_id", worker.UUID.String(),
+			"error", err.Error(),
+		)
+	}
 	applyHealth(worker, s.health.Seed(worker.UUID, instance, err))
 
 	return worker, nil
@@ -788,7 +808,7 @@ func (s *Service) fanOutAcrossWorkers(ctx context.Context, logMsg string, op fun
 	resultChan := make(chan workerOutcome, len(workers))
 	for _, worker := range workers {
 		if h, ok := s.health.Get(worker.UUID); ok && h.Status == entities.WorkerStatusErrored {
-			resultChan <- workerOutcome{workerID: worker.UUID.String(), err: errors.New(h.Error)}
+			resultChan <- workerOutcome{workerID: worker.UUID.String(), err: cachedHealthError(h)}
 			continue
 		}
 

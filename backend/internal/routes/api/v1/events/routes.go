@@ -50,6 +50,7 @@ func (m *Module) listEvents(c *gin.Context) {
 	workerIDStr := c.Query("worker_id")
 	eventType := c.Query("type")
 	group := c.Query("group")
+	search := c.Query("search")
 	limitStr := c.DefaultQuery("limit", "50")
 	offsetStr := c.DefaultQuery("offset", "0")
 
@@ -89,7 +90,7 @@ func (m *Module) listEvents(c *gin.Context) {
 	}
 
 	// Get events from service
-	eventsList, total, err := m.eventService.ListEvents(c.Request.Context(), workerID, eventTypes, limit, offset)
+	eventsList, total, err := m.eventService.ListEvents(c.Request.Context(), workerID, eventTypes, search, limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to retrieve events",
