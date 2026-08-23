@@ -934,3 +934,120 @@ func (s *Service) GetWorkerLogs(ctx context.Context, workerID string, normal, in
 
 	return s.repository.GetWorkerLogs(worker, normal, info, warning, critical, lastKnownID)
 }
+
+func (s *Service) ListWorkerRSSFeeds(ctx context.Context, workerID string, withData bool) (map[string]*entities.RSSFeed, error) {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.repository.ListWorkerRSSFeeds(worker, withData)
+}
+
+func (s *Service) AddWorkerRSSFeed(ctx context.Context, workerID, feedURL, path string) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	return s.repository.AddWorkerRSSFeed(worker, feedURL, path)
+}
+
+func (s *Service) RemoveWorkerRSSFeed(ctx context.Context, workerID, path string) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	return s.repository.RemoveWorkerRSSFeed(worker, path)
+}
+
+func (s *Service) SetWorkerRSSFeedURL(ctx context.Context, workerID, path, feedURL string) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	return s.repository.SetWorkerRSSFeedURL(worker, path, feedURL)
+}
+
+func (s *Service) AddWorkerRSSFolder(ctx context.Context, workerID, path string) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	return s.repository.AddWorkerRSSFolder(worker, path)
+}
+
+func (s *Service) MoveWorkerRSSItem(ctx context.Context, workerID, itemPath, destPath string) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	return s.repository.MoveWorkerRSSItem(worker, itemPath, destPath)
+}
+
+func (s *Service) RefreshWorkerRSSItem(ctx context.Context, workerID, itemPath string) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	return s.repository.RefreshWorkerRSSItem(worker, itemPath)
+}
+
+func (s *Service) MarkWorkerRSSItemAsRead(ctx context.Context, workerID, itemPath, articleID string) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	return s.repository.MarkWorkerRSSItemAsRead(worker, itemPath, articleID)
+}
+
+func (s *Service) ListWorkerRSSRules(ctx context.Context, workerID string) (map[string]*entities.RSSRule, error) {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.repository.ListWorkerRSSRules(worker)
+}
+
+func (s *Service) SetWorkerRSSRule(ctx context.Context, workerID, ruleName string, rule entities.RSSRule) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	return s.repository.SetWorkerRSSRule(worker, ruleName, rule)
+}
+
+func (s *Service) RenameWorkerRSSRule(ctx context.Context, workerID, ruleName, newRuleName string) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	return s.repository.RenameWorkerRSSRule(worker, ruleName, newRuleName)
+}
+
+func (s *Service) RemoveWorkerRSSRule(ctx context.Context, workerID, ruleName string) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	return s.repository.RemoveWorkerRSSRule(worker, ruleName)
+}
+
+func (s *Service) GetWorkerRSSMatchingArticles(ctx context.Context, workerID, ruleName string) (map[string][]string, error) {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.repository.GetWorkerRSSMatchingArticles(worker, ruleName)
+}

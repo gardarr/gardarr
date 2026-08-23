@@ -92,6 +92,20 @@ func (m Module) Register() {
 	m.workerRouter.PUT("/:id/task/:task_id/tags", m.setWorkerTaskTags)
 	m.workerRouter.PUT("/:id/task/:task_id/category", m.setWorkerTaskCategory)
 	m.workerRouter.GET("/:id/task/:task_id/files", m.listWorkerTaskFiles)
+
+	m.workerRouter.GET("/:id/rss/feeds", m.listWorkerRSSFeeds)
+	m.workerRouter.POST("/:id/rss/feeds", m.addWorkerRSSFeed)
+	m.workerRouter.DELETE("/:id/rss/feeds", m.removeWorkerRSSFeed)
+	m.workerRouter.PUT("/:id/rss/feeds/url", m.setWorkerRSSFeedURL)
+	m.workerRouter.POST("/:id/rss/folders", m.addWorkerRSSFolder)
+	m.workerRouter.POST("/:id/rss/items/move", m.moveWorkerRSSItem)
+	m.workerRouter.POST("/:id/rss/items/refresh", m.refreshWorkerRSSItem)
+	m.workerRouter.POST("/:id/rss/items/mark_read", m.markWorkerRSSItemAsRead)
+	m.workerRouter.GET("/:id/rss/rules", m.listWorkerRSSRules)
+	m.workerRouter.PUT("/:id/rss/rules/:rule_name", m.setWorkerRSSRule)
+	m.workerRouter.POST("/:id/rss/rules/:rule_name/rename", m.renameWorkerRSSRule)
+	m.workerRouter.DELETE("/:id/rss/rules/:rule_name", m.removeWorkerRSSRule)
+	m.workerRouter.GET("/:id/rss/rules/:rule_name/matching_articles", m.getWorkerRSSMatchingArticles)
 }
 
 func (m *Module) createWorker(c *gin.Context) {
@@ -865,4 +879,246 @@ func (m *Module) getWorkerLogs(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, result)
+}
+
+// listWorkerRSSFeeds lists every feed registered on the instance.
+// with_data=true also includes each feed's articles.
+func (m *Module) listWorkerRSSFeeds(c *gin.Context) {
+	workerID := c.Param("id")
+	withData := c.Query("with_data") == "true"
+
+	feeds, err := m.service.ListWorkerRSSFeeds(c.Request.Context(), workerID, withData)
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, mappers.ToRSSFeedsResponse(feeds))
+}
+
+func (m *Module) addWorkerRSSFeed(c *gin.Context) {
+	workerID := c.Param("id")
+
+	var body schemas.RSSAddFeedSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	if err := m.service.AddWorkerRSSFeed(c.Request.Context(), workerID, body.URL, body.Path); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "RSS feed added successfully"})
+}
+
+func (m *Module) removeWorkerRSSFeed(c *gin.Context) {
+	workerID := c.Param("id")
+
+	var body schemas.RSSRemoveFeedSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	if err := m.service.RemoveWorkerRSSFeed(c.Request.Context(), workerID, body.Path); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusNoContent, nil)
+}
+
+// setWorkerRSSFeedURL edits a feed's URL in place. Requires qBittorrent
+// 4.6.0+ (WebAPI v2.9.1+); on older servers, remove and re-add the feed instead.
+func (m *Module) setWorkerRSSFeedURL(c *gin.Context) {
+	workerID := c.Param("id")
+
+	var body schemas.RSSSetFeedURLSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	if err := m.service.SetWorkerRSSFeedURL(c.Request.Context(), workerID, body.Path, body.URL); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "RSS feed URL updated successfully"})
+}
+
+func (m *Module) addWorkerRSSFolder(c *gin.Context) {
+	workerID := c.Param("id")
+
+	var body schemas.RSSAddFolderSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	if err := m.service.AddWorkerRSSFolder(c.Request.Context(), workerID, body.Path); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "RSS folder added successfully"})
+}
+
+// moveWorkerRSSItem moves or renames a feed/folder - qBittorrent uses the
+// same endpoint for both.
+func (m *Module) moveWorkerRSSItem(c *gin.Context) {
+	workerID := c.Param("id")
+
+	var body schemas.RSSMoveItemSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	if err := m.service.MoveWorkerRSSItem(c.Request.Context(), workerID, body.ItemPath, body.DestPath); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "RSS item moved successfully"})
+}
+
+// refreshWorkerRSSItem forces an immediate refresh instead of waiting for
+// qBittorrent's own poll interval.
+func (m *Module) refreshWorkerRSSItem(c *gin.Context) {
+	workerID := c.Param("id")
+
+	var body schemas.RSSRefreshItemSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	if err := m.service.RefreshWorkerRSSItem(c.Request.Context(), workerID, body.ItemPath); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "RSS item refresh requested successfully"})
+}
+
+func (m *Module) markWorkerRSSItemAsRead(c *gin.Context) {
+	workerID := c.Param("id")
+
+	var body schemas.RSSMarkAsReadSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	if err := m.service.MarkWorkerRSSItemAsRead(c.Request.Context(), workerID, body.ItemPath, body.ArticleID); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "RSS item marked as read successfully"})
+}
+
+func (m *Module) listWorkerRSSRules(c *gin.Context) {
+	workerID := c.Param("id")
+
+	rules, err := m.service.ListWorkerRSSRules(c.Request.Context(), workerID)
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, mappers.ToRSSRulesResponse(rules))
+}
+
+// setWorkerRSSRule creates or updates an auto-downloading rule - qBittorrent's
+// API doesn't distinguish the two.
+func (m *Module) setWorkerRSSRule(c *gin.Context) {
+	workerID := c.Param("id")
+	ruleName := c.Param("rule_name")
+
+	var body schemas.RSSSetRuleSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	rule := entities.RSSRule{
+		Enabled:              body.Enabled,
+		MustContain:          body.MustContain,
+		MustNotContain:       body.MustNotContain,
+		UseRegex:             body.UseRegex,
+		EpisodeFilter:        body.EpisodeFilter,
+		SmartFilter:          body.SmartFilter,
+		AffectedFeeds:        body.AffectedFeeds,
+		IgnoreDays:           body.IgnoreDays,
+		AddPaused:            body.AddPaused,
+		AssignedCategory:     body.AssignedCategory,
+		SavePath:             body.SavePath,
+		TorrentContentLayout: body.TorrentContentLayout,
+	}
+
+	if err := m.service.SetWorkerRSSRule(c.Request.Context(), workerID, ruleName, rule); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "RSS rule saved successfully"})
+}
+
+func (m *Module) renameWorkerRSSRule(c *gin.Context) {
+	workerID := c.Param("id")
+	ruleName := c.Param("rule_name")
+
+	var body schemas.RSSRenameRuleSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	if err := m.service.RenameWorkerRSSRule(c.Request.Context(), workerID, ruleName, body.NewRuleName); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "RSS rule renamed successfully"})
+}
+
+func (m *Module) removeWorkerRSSRule(c *gin.Context) {
+	workerID := c.Param("id")
+	ruleName := c.Param("rule_name")
+
+	if err := m.service.RemoveWorkerRSSRule(c.Request.Context(), workerID, ruleName); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusNoContent, nil)
+}
+
+// getWorkerRSSMatchingArticles previews which currently-known articles a
+// rule would match, grouped by feed - lets the caller test a rule before
+// saving it.
+func (m *Module) getWorkerRSSMatchingArticles(c *gin.Context) {
+	workerID := c.Param("id")
+	ruleName := c.Param("rule_name")
+
+	matches, err := m.service.GetWorkerRSSMatchingArticles(c.Request.Context(), workerID, ruleName)
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, matches)
 }
