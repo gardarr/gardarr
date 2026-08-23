@@ -7,10 +7,6 @@ type RSSAddFeedSchema struct {
 	Path string `json:"path"`
 }
 
-type RSSRemoveFeedSchema struct {
-	Path string `json:"path" binding:"required"`
-}
-
 type RSSSetFeedURLSchema struct {
 	Path string `json:"path" binding:"required"`
 	URL  string `json:"url" binding:"required"`

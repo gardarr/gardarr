@@ -8,6 +8,7 @@ type RSSFeedResponse struct {
 	IsLoading bool                 `json:"is_loading"`
 	HasError  bool                 `json:"has_error"`
 	Articles  []RSSArticleResponse `json:"articles,omitempty"`
+	WorkerID  string               `json:"worker_id,omitempty"`
 }
 
 type RSSArticleResponse struct {
@@ -34,4 +35,5 @@ type RSSRuleResponse struct {
 	AssignedCategory          string   `json:"assigned_category,omitempty"`
 	SavePath                  string   `json:"save_path,omitempty"`
 	TorrentContentLayout      string   `json:"torrent_content_layout,omitempty"`
+	WorkerID                  string   `json:"worker_id,omitempty"`
 }

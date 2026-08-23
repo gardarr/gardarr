@@ -3,6 +3,7 @@ package mappers
 import (
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/jfxdev/gardarr/internal/entities"
 )
 
@@ -81,5 +82,69 @@ func TestToRSSFeedResponse_MapsArticles(t *testing.T) {
 	}
 	if got.Articles[0].ID != "1" || got.Articles[1].IsRead != true {
 		t.Fatalf("articles not mapped correctly: %+v", got.Articles)
+	}
+}
+
+func TestToRSSFeedResponse_WorkerID(t *testing.T) {
+	t.Parallel()
+
+	if got := ToRSSFeedResponse(&entities.RSSFeed{Path: "Anime"}); got.WorkerID != "" {
+		t.Fatalf("expected empty worker_id for a zero UUID, got %q", got.WorkerID)
+	}
+
+	workerID := uuid.New()
+	got := ToRSSFeedResponse(&entities.RSSFeed{Path: "Anime", WorkerID: workerID})
+	if got.WorkerID != workerID.String() {
+		t.Fatalf("got worker_id %q, want %q", got.WorkerID, workerID.String())
+	}
+}
+
+func TestToRSSFeedListResponse_SortedByWorkerThenPath(t *testing.T) {
+	t.Parallel()
+
+	workerA := uuid.MustParse("00000000-0000-0000-0000-000000000001")
+	workerB := uuid.MustParse("00000000-0000-0000-0000-000000000002")
+
+	feeds := []*entities.RSSFeed{
+		{Path: "Zulu", WorkerID: workerB},
+		{Path: "Bravo", WorkerID: workerA},
+		{Path: "Alpha", WorkerID: workerA},
+	}
+
+	got := ToRSSFeedListResponse(feeds)
+	if len(got) != 3 {
+		t.Fatalf("expected 3 feeds, got %d", len(got))
+	}
+
+	wantOrder := []string{"Alpha", "Bravo", "Zulu"}
+	for i, path := range wantOrder {
+		if got[i].Path != path {
+			t.Fatalf("position %d: got path %q, want %q", i, got[i].Path, path)
+		}
+	}
+}
+
+func TestToRSSRuleListResponse_SortedByWorkerThenName(t *testing.T) {
+	t.Parallel()
+
+	workerA := uuid.MustParse("00000000-0000-0000-0000-000000000001")
+	workerB := uuid.MustParse("00000000-0000-0000-0000-000000000002")
+
+	rules := []*entities.RSSRule{
+		{Name: "zulu", WorkerID: workerB},
+		{Name: "bravo", WorkerID: workerA},
+		{Name: "alpha", WorkerID: workerA},
+	}
+
+	got := ToRSSRuleListResponse(rules)
+	if len(got) != 3 {
+		t.Fatalf("expected 3 rules, got %d", len(got))
+	}
+
+	wantOrder := []string{"alpha", "bravo", "zulu"}
+	for i, name := range wantOrder {
+		if got[i].Name != name {
+			t.Fatalf("position %d: got name %q, want %q", i, got[i].Name, name)
+		}
 	}
 }

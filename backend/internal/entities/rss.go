@@ -1,9 +1,13 @@
 package entities
 
+import "github.com/google/uuid"
+
 // RSSFeed represents an RSS feed registered on a qBittorrent instance,
 // addressed by its Path (folder-qualified, e.g. "Movies\1080p"). qBittorrent
 // itself owns polling and article storage; Gardarr only reads and manages
-// this state through the WebUI API.
+// this state through the WebUI API. WorkerID is set by workermanager.Service
+// (zero-valued when a caller already knows the worker, e.g. a single-worker
+// repository call) so a feed can be identified in a cross-instance listing.
 type RSSFeed struct {
 	Path      string
 	URL       string
@@ -12,6 +16,7 @@ type RSSFeed struct {
 	IsLoading bool
 	HasError  bool
 	Articles  []RSSArticle
+	WorkerID  uuid.UUID
 }
 
 // RSSArticle is a single item within an RSS feed.
@@ -43,4 +48,19 @@ type RSSRule struct {
 	AssignedCategory          string
 	SavePath                  string
 	TorrentContentLayout      string
+	WorkerID                  uuid.UUID
+}
+
+// RSSFeedListResult aggregates feeds across every worker, mirroring
+// TaskListResult: partial per-worker failures don't fail the whole read.
+type RSSFeedListResult struct {
+	Feeds  []*RSSFeed
+	Errors map[string]string // WorkerUUID -> ErrorMessage
+}
+
+// RSSRuleListResult aggregates rules across every worker, mirroring
+// TaskListResult.
+type RSSRuleListResult struct {
+	Rules  []*RSSRule
+	Errors map[string]string // WorkerUUID -> ErrorMessage
 }

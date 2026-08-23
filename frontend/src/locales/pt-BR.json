@@ -64,7 +64,8 @@
       "system": "Sistema",
       "administration": "Administração"
     },
-    "tags": "Tags"
+    "tags": "Tags",
+    "rss": "RSS"
   },
   "profile": {
     "title": "Perfil",
@@ -1917,6 +1918,64 @@
     },
     "success": {
       "applied": "Metadata aplicada com sucesso"
+    }
+  },
+  "rss": {
+    "title": "RSS",
+    "subtitle": "Gerencie feeds e regras de download automático do qBittorrent",
+    "loading": "Carregando RSS...",
+    "addFeed": "Adicionar Feed",
+    "addRule": "Adicionar Regra",
+    "editRule": "Editar Regra",
+    "testRule": "Testar regra",
+    "refreshFeed": "Atualizar feed",
+    "feedError": "Erro",
+    "feedLoading": "Carregando",
+    "noFeeds": "Nenhum feed encontrado",
+    "noFeedsDesc": "Adicione um feed RSS para o qBittorrent monitorar",
+    "noRules": "Nenhuma regra encontrada",
+    "noRulesDesc": "Crie uma regra de download automático para o qBittorrent baixar releases que combinem com os filtros",
+    "noMatchingArticles": "Nenhum artigo corresponde a esta regra no momento",
+    "matchingArticlesTitle": "Artigos correspondentes: {{name}}",
+    "removeFeedConfirmTitle": "Remover Feed",
+    "removeFeedConfirmMessage": "Tem certeza que deseja remover o feed \"{{name}}\"?",
+    "deleteRuleConfirmTitle": "Excluir Regra",
+    "deleteRuleConfirmMessage": "Tem certeza que deseja excluir a regra \"{{name}}\"?",
+    "tabs": {
+      "feeds": "Feeds",
+      "rules": "Regras"
+    },
+    "fields": {
+      "worker": "Instância",
+      "workerPlaceholder": "Selecione uma instância",
+      "feedUrl": "URL do feed",
+      "feedPath": "Pasta (opcional)",
+      "feedPathPlaceholder": "ex: Filmes\\1080p",
+      "feedPathHelp": "Use \\ para organizar o feed dentro de uma pasta no qBittorrent",
+      "ruleName": "Nome da regra",
+      "enabled": "Ativada",
+      "mustContain": "Deve conter",
+      "mustNotContain": "Não deve conter",
+      "useRegex": "Regex",
+      "affectedFeeds": "Feeds afetados",
+      "affectedFeedsPlaceholder": "Uma URL de feed por linha",
+      "affectedFeedsHelp": "Deixe em branco para aplicar a todos os feeds da instância",
+      "assignedCategory": "Categoria",
+      "savePath": "Diretório de destino",
+      "addPaused": "Adicionar pausado",
+      "ignoreDays": "Ignorar por (dias)"
+    },
+    "notifications": {
+      "feedAdded": "Feed adicionado com sucesso!",
+      "feedRemoved": "Feed removido com sucesso!",
+      "feedRefreshRequested": "Atualização do feed solicitada!",
+      "ruleSaved": "Regra salva com sucesso!",
+      "ruleDeleted": "Regra excluída com sucesso!"
+    },
+    "errors": {
+      "loadFailed": "Falha ao carregar dados de RSS",
+      "feedFieldsRequired": "Selecione uma instância e informe a URL do feed",
+      "ruleFieldsRequired": "Selecione uma instância e informe o nome da regra"
     }
   }
 }

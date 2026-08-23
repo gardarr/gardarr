@@ -64,7 +64,8 @@
       "system": "System",
       "administration": "Administration"
     },
-    "tags": "Tags"
+    "tags": "Tags",
+    "rss": "RSS"
   },
   "profile": {
     "title": "Profile",
@@ -1861,6 +1862,64 @@
     },
     "success": {
       "applied": "Metadata applied successfully"
+    }
+  },
+  "rss": {
+    "title": "RSS",
+    "subtitle": "Manage qBittorrent's RSS feeds and auto-download rules",
+    "loading": "Loading RSS...",
+    "addFeed": "Add Feed",
+    "addRule": "Add Rule",
+    "editRule": "Edit Rule",
+    "testRule": "Test rule",
+    "refreshFeed": "Refresh feed",
+    "feedError": "Error",
+    "feedLoading": "Loading",
+    "noFeeds": "No feeds found",
+    "noFeedsDesc": "Add an RSS feed for qBittorrent to monitor",
+    "noRules": "No rules found",
+    "noRulesDesc": "Create an auto-download rule for qBittorrent to download releases matching your filters",
+    "noMatchingArticles": "No articles currently match this rule",
+    "matchingArticlesTitle": "Matching articles: {{name}}",
+    "removeFeedConfirmTitle": "Remove Feed",
+    "removeFeedConfirmMessage": "Are you sure you want to remove the feed \"{{name}}\"?",
+    "deleteRuleConfirmTitle": "Delete Rule",
+    "deleteRuleConfirmMessage": "Are you sure you want to delete the rule \"{{name}}\"?",
+    "tabs": {
+      "feeds": "Feeds",
+      "rules": "Rules"
+    },
+    "fields": {
+      "worker": "Instance",
+      "workerPlaceholder": "Select an instance",
+      "feedUrl": "Feed URL",
+      "feedPath": "Folder (optional)",
+      "feedPathPlaceholder": "e.g. Movies\\1080p",
+      "feedPathHelp": "Use \\ to organize the feed inside a folder in qBittorrent",
+      "ruleName": "Rule name",
+      "enabled": "Enabled",
+      "mustContain": "Must contain",
+      "mustNotContain": "Must not contain",
+      "useRegex": "Regex",
+      "affectedFeeds": "Affected feeds",
+      "affectedFeedsPlaceholder": "One feed URL per line",
+      "affectedFeedsHelp": "Leave empty to apply to every feed on the instance",
+      "assignedCategory": "Category",
+      "savePath": "Save path",
+      "addPaused": "Add paused",
+      "ignoreDays": "Ignore for (days)"
+    },
+    "notifications": {
+      "feedAdded": "Feed added successfully!",
+      "feedRemoved": "Feed removed successfully!",
+      "feedRefreshRequested": "Feed refresh requested!",
+      "ruleSaved": "Rule saved successfully!",
+      "ruleDeleted": "Rule deleted successfully!"
+    },
+    "errors": {
+      "loadFailed": "Failed to load RSS data",
+      "feedFieldsRequired": "Select an instance and enter the feed URL",
+      "ruleFieldsRequired": "Select an instance and enter the rule name"
     }
   }
 }

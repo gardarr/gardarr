@@ -49,6 +49,8 @@ func (m Module) Register() {
 
 	m.workersRouter.GET("/", m.listWorkers)
 	m.workersRouter.POST("/tasks/bulk", m.bulkWorkerTaskAction)
+	m.workersRouter.GET("/rss/feeds", m.listAllRSSFeeds)
+	m.workersRouter.GET("/rss/rules", m.listAllRSSRules)
 
 	// Worker lifecycle and instance-wide configuration require admin privileges.
 	adminWorker := m.workerRouter.Group("")
@@ -881,6 +883,36 @@ func (m *Module) getWorkerLogs(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// listAllRSSFeeds aggregates feeds across every registered worker - the
+// cross-instance view, tagged per feed with its worker_id.
+func (m *Module) listAllRSSFeeds(c *gin.Context) {
+	result, err := m.service.ListAllRSSFeeds(c.Request.Context())
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"feeds":  mappers.ToRSSFeedListResponse(result.Feeds),
+		"errors": result.Errors,
+	})
+}
+
+// listAllRSSRules aggregates auto-downloading rules across every registered
+// worker - the cross-instance view, tagged per rule with its worker_id.
+func (m *Module) listAllRSSRules(c *gin.Context) {
+	result, err := m.service.ListAllRSSRules(c.Request.Context())
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"rules":  mappers.ToRSSRuleListResponse(result.Rules),
+		"errors": result.Errors,
+	})
+}
+
 // listWorkerRSSFeeds lists every feed registered on the instance.
 // with_data=true also includes each feed's articles.
 func (m *Module) listWorkerRSSFeeds(c *gin.Context) {
@@ -916,15 +948,14 @@ func (m *Module) addWorkerRSSFeed(c *gin.Context) {
 
 func (m *Module) removeWorkerRSSFeed(c *gin.Context) {
 	workerID := c.Param("id")
-
-	var body schemas.RSSRemoveFeedSchema
-	if err := c.ShouldBindJSON(&body); err != nil {
-		respErr := errors.NewBadRequestError("Invalid request body", err)
+	path := c.Query("path")
+	if path == "" {
+		respErr := errors.NewBadRequestError("path is required", nil)
 		c.JSON(respErr.StatusCode, respErr)
 		return
 	}
 
-	if err := m.service.RemoveWorkerRSSFeed(c.Request.Context(), workerID, body.Path); err != nil {
+	if err := m.service.RemoveWorkerRSSFeed(c.Request.Context(), workerID, path); err != nil {
 		errors.HandleError(c, err)
 		return
 	}
