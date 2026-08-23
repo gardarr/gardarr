@@ -917,6 +917,7 @@
     },
     "notifications": {
       "addSuccess": "Torrent added successfully!",
+      "addSuccessDisplayNameFailed": "Torrent added successfully! Display name was not saved.",
       "addError": "Error creating torrent: {{error}}",
       "deleteSuccess": "Torrent removed successfully!",
       "deleteWithFilesSuccess": "Torrent and files removed successfully!",

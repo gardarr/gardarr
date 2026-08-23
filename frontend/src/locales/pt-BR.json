@@ -943,6 +943,7 @@
     },
     "notifications": {
       "addSuccess": "Torrent adicionado com sucesso!",
+      "addSuccessDisplayNameFailed": "Torrent adicionado com sucesso! O nome de exibição não foi salvo.",
       "addError": "Erro ao criar torrent: {{error}}",
       "deleteSuccess": "Torrent removido com sucesso!",
       "deleteWithFilesSuccess": "Torrent e arquivos removidos com sucesso!",

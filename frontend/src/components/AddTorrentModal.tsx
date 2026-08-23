@@ -400,10 +400,11 @@ export function AddTorrentModal() {
     }
     let nameResponse = await taskMetadataService.updateName(hash, displayName.trim());
     if (nameResponse.error) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
       nameResponse = await taskMetadataService.updateName(hash, displayName.trim());
     }
     if (nameResponse.error) {
-      toast.warning(t("torrents.notifications.addSuccess") + ". Display name was not saved.", { duration: Infinity });
+      toast.warning(t("torrents.notifications.addSuccessDisplayNameFailed"), { duration: Infinity });
     }
   };
 

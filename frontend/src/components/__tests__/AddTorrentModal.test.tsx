@@ -7,6 +7,7 @@ import type {
 } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AddTorrentModal } from "@/components/AddTorrentModal";
 import { AddTorrentContext, type AddTorrentContextValue } from "@/contexts/add-torrent-context";
@@ -25,6 +26,7 @@ vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
+    warning: vi.fn(),
   },
 }));
 
@@ -508,6 +510,22 @@ describe("AddTorrentModal", () => {
     expect(context.closeAddModal).toHaveBeenCalled();
     expect(navigateMock).toHaveBeenCalledWith("/torrents");
     expect(context.removePendingTorrent).not.toHaveBeenCalled();
+  });
+
+  it("retries once and shows a localized warning when the post-create name update keeps failing", async () => {
+    createTaskMock.mockResolvedValue({ data: { ...baseTask, was_created: true } });
+    updateNameMock.mockResolvedValue({ error: "failed" });
+    const context = buildContext();
+    renderModal(context);
+    await fillForm();
+    fireEvent.change(screen.getByPlaceholderText("torrents.addModal.release.displayNamePlaceholder"), {
+      target: { value: "Custom Name" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "torrents.addModal.actions.add" }));
+
+    await waitFor(() => expect(updateNameMock).toHaveBeenCalledTimes(2));
+    expect(toast.warning).toHaveBeenCalledWith("torrents.notifications.addSuccessDisplayNameFailed", { duration: Infinity });
   });
 
   it("does not overwrite metadata when the torrent already exists", async () => {
