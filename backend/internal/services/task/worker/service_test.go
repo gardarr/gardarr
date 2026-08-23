@@ -63,7 +63,7 @@ func (m *mockRepository) Add(schema schemas.TaskCreateSchema) (*entities.Task, e
 	return task, nil
 }
 
-func (m *mockRepository) AddFile(fileName string, fileData []byte, schema schemas.TaskCreateFromFileSchema) (*entities.Task, error) {
+func (m *mockRepository) AddFile(fileName string, fileData []byte, hashes []string, schema schemas.TaskCreateFromFileSchema) (*entities.Task, error) {
 	if m.createError != nil {
 		return nil, m.createError
 	}
@@ -449,6 +449,9 @@ func TestServiceCreateTask(t *testing.T) {
 	if task.Category != schema.Category {
 		t.Errorf("Expected category %s, got %s", schema.Category, task.Category)
 	}
+	if !task.WasCreated {
+		t.Error("Expected a newly added task to be marked as created")
+	}
 
 	// Test create with repository error
 	mockRepo.createError = errors.New("repository error")
@@ -478,6 +481,35 @@ func TestServiceCreateTaskFromFileDedupesV2InfoHash(t *testing.T) {
 	}
 	if task != existing {
 		t.Fatalf("expected existing v2 task, got %#v", task)
+	}
+	if task.WasCreated {
+		t.Error("Expected a deduplicated task not to be marked as created")
+	}
+}
+
+func TestServiceCreateTaskMarksDeduplicatedTaskAsNotCreated(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := newMockRepository()
+	service := &service{repository: mockRepo}
+	existing := &entities.Task{
+		ID:         "existing-hash",
+		Hash:       "existing-hash",
+		WasCreated: true,
+		MagnetLink: entities.TaskMagnetLink{Hash: "existing-hash"},
+	}
+	mockRepo.tasks[existing.Hash] = existing
+
+	task, err := service.CreateTask(ctx, schemas.TaskCreateSchema{
+		MagnetURI: "magnet:?xt=urn:btih:existing-hash",
+	})
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if task != existing {
+		t.Fatalf("expected existing task, got %#v", task)
+	}
+	if task.WasCreated {
+		t.Error("Expected a deduplicated task to be marked as not created")
 	}
 }
 

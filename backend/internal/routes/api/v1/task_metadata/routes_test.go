@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -137,8 +138,42 @@ func TestParseReleaseRoute(t *testing.T) {
 	if response.DisplayName != "The Matrix (1999)" {
 		t.Fatalf("display_name = %q", response.DisplayName)
 	}
-	if !maps.Equal(map[string]bool{"quality::2160p": true, "source::bluray": true, "codec::x265": true}, sliceSet(response.Tags)) {
+	if !maps.Equal(map[string]bool{"quality::2160p": true, "source::bluray": true, "codec::x265": true, "group::group": true}, sliceSet(response.Tags)) {
 		t.Fatalf("tags = %v", response.Tags)
+	}
+}
+
+func TestParseReleaseFileRouteRejectsOversizedMultipartBody(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	db := database.SetupTestDB(t, &models.TaskMetadata{})
+	service, err := taskmetadatasvc.NewService(db, "http://localhost:3200", t.TempDir(), nil)
+	if err != nil {
+		t.Fatalf("NewService() error = %v", err)
+	}
+	module := NewModule(router.Group("/api/v1"), db, service)
+	router.POST("/api/v1/tasks/metadata/release-parse/file", module.parseReleaseFile)
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	file, err := writer.CreateFormFile("torrent", "large.torrent")
+	if err != nil {
+		t.Fatalf("CreateFormFile() error = %v", err)
+	}
+	if _, err := file.Write(bytes.Repeat([]byte{'x'}, maxReleaseParseRequestSize)); err != nil {
+		t.Fatalf("write multipart file: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close multipart writer: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/tasks/metadata/release-parse/file", &body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, body = %s", w.Code, w.Body.String())
 	}
 }
 

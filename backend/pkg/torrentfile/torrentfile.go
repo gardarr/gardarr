@@ -28,38 +28,17 @@ func InfoHash(data []byte) (string, error) {
 // for this torrent. v1 and hybrid torrents include the v1 SHA-1 hash first; v2
 // torrents also include the v2 SHA-256 hash so callers can find v2-only uploads.
 func InfoHashes(data []byte) ([]string, error) {
-	if len(data) == 0 || data[0] != 'd' {
-		return nil, fmt.Errorf("invalid torrent file: not a bencoded dictionary")
+	info, err := infoDictionary(data)
+	if err != nil {
+		return nil, err
 	}
-
-	pos := 1 // skip top-level 'd'
-	for pos < len(data) && data[pos] != 'e' {
-		key, next, err := parseString(data, pos)
-		if err != nil {
-			return nil, fmt.Errorf("invalid torrent file: %w", err)
-		}
-
-		valueStart := next
-		valueEnd, err := skipValue(data, valueStart)
-		if err != nil {
-			return nil, fmt.Errorf("invalid torrent file: %w", err)
-		}
-
-		if string(key) == "info" {
-			info := data[valueStart:valueEnd]
-			v1Sum := sha1.Sum(info) // NOSONAR go:S4790 -- BitTorrent v1 info-hash is defined by the protocol as SHA-1, not a sensitive-context digest
-			hashes := []string{hex.EncodeToString(v1Sum[:])}
-			if isV2Info(info) {
-				v2Sum := sha256.Sum256(info)
-				hashes = append(hashes, hex.EncodeToString(v2Sum[:]))
-			}
-			return hashes, nil
-		}
-
-		pos = valueEnd
+	v1Sum := sha1.Sum(info) // NOSONAR go:S4790 -- BitTorrent v1 info-hash is defined by the protocol as SHA-1, not a sensitive-context digest
+	hashes := []string{hex.EncodeToString(v1Sum[:])}
+	if isV2Info(info) {
+		v2Sum := sha256.Sum256(info)
+		hashes = append(hashes, hex.EncodeToString(v2Sum[:]))
 	}
-
-	return nil, fmt.Errorf("invalid torrent file: missing info dictionary")
+	return hashes, nil
 }
 
 // InfoName returns the name stored in a torrent's info dictionary. It is used
@@ -69,28 +48,201 @@ func InfoName(data []byte) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if len(info) == 0 || info[0] != 'd' {
-		return "", fmt.Errorf("invalid torrent file: info is not a dictionary")
+	name, _, _, err := walkInfoDict(info)
+	if err != nil {
+		return "", err
 	}
+	if name == "" {
+		return "", fmt.Errorf("invalid torrent file: missing info name")
+	}
+	return name, nil
+}
+
+// FileExtensions returns the lowercase file extensions (without the leading
+// dot) of every file described in a torrent's info dictionary: the "name"
+// field for a single-file torrent, or the last path segment of each entry in
+// "files" for a multi-file torrent. It is used only for pre-submit release
+// type suggestions when the torrent's own name carries no format hint (e.g.
+// a generically named batch of ebooks or comics).
+func FileExtensions(data []byte) ([]string, error) {
+	info, err := infoDictionary(data)
+	if err != nil {
+		return nil, err
+	}
+	_, _, extensions, err := walkInfoDict(info)
+	return extensions, err
+}
+
+// InspectInfo returns both the "name" and the file extensions of a torrent's
+// info dictionary in a single walk, for callers (like a pre-submit release
+// type suggestion) that need both and would otherwise parse the same bytes
+// twice via InfoName and FileExtensions.
+func InspectInfo(data []byte) (name string, extensions []string, err error) {
+	info, err := infoDictionary(data)
+	if err != nil {
+		return "", nil, err
+	}
+	name, _, extensions, err = walkInfoDict(info)
+	if err != nil {
+		return "", nil, err
+	}
+	if name == "" {
+		return "", nil, fmt.Errorf("invalid torrent file: missing info name")
+	}
+	return name, extensions, nil
+}
+
+// walkInfoDict walks an info dictionary's top-level keys once and extracts
+// both "name" and the file extensions implied by "name"/"files": "name" is
+// only a real filename extension for a single-file torrent (no "files" key);
+// for a multi-file torrent it is the shared payload folder and must not be
+// treated as one of the file extensions (dict key order is not guaranteed by
+// the bencode spec, so both keys are collected before deciding).
+func walkInfoDict(info []byte) (name string, hasFiles bool, extensions []string, err error) {
+	if len(info) == 0 || info[0] != 'd' {
+		return "", false, nil, fmt.Errorf("invalid torrent file: info is not a dictionary")
+	}
+
+	var nameExtension string
 	pos := 1
 	for pos < len(info) && info[pos] != 'e' {
 		key, next, err := parseString(info, pos)
 		if err != nil {
-			return "", fmt.Errorf("invalid torrent file: %w", err)
+			return "", false, nil, fmt.Errorf("invalid torrent file: %w", err)
 		}
-		if string(key) == "name" {
-			name, _, err := parseString(info, next)
+
+		switch string(key) {
+		case "name":
+			nameBytes, valueEnd, err := parseString(info, next)
 			if err != nil {
-				return "", fmt.Errorf("invalid torrent file: %w", err)
+				return "", false, nil, fmt.Errorf("invalid torrent file: %w", err)
 			}
-			return string(name), nil
-		}
-		pos, err = skipValue(info, next)
-		if err != nil {
-			return "", fmt.Errorf("invalid torrent file: %w", err)
+			name = string(nameBytes)
+			nameExtension = fileExtension(name)
+			pos = valueEnd
+		case "files":
+			fileExts, valueEnd, err := parseFileListExtensions(info, next)
+			if err != nil {
+				return "", false, nil, fmt.Errorf("invalid torrent file: %w", err)
+			}
+			hasFiles = true
+			extensions = append(extensions, fileExts...)
+			pos = valueEnd
+		default:
+			valueEnd, err := skipValue(info, next)
+			if err != nil {
+				return "", false, nil, fmt.Errorf("invalid torrent file: %w", err)
+			}
+			pos = valueEnd
 		}
 	}
-	return "", fmt.Errorf("invalid torrent file: missing info name")
+	if !hasFiles && nameExtension != "" {
+		extensions = []string{nameExtension}
+	}
+	return name, hasFiles, extensions, nil
+}
+
+// fileExtension returns the lowercase extension (without the dot) of a
+// filename, or "" if it has none.
+func fileExtension(name string) string {
+	idx := strings.LastIndex(name, ".")
+	if idx < 0 || idx == len(name)-1 {
+		return ""
+	}
+	return strings.ToLower(name[idx+1:])
+}
+
+// parseFileListExtensions parses a bencoded list of file dictionaries (the
+// "files" key of a multi-file torrent's info dict) and returns the file
+// extension of each entry's path.
+func parseFileListExtensions(data []byte, pos int) ([]string, int, error) {
+	if pos >= len(data) || data[pos] != 'l' {
+		end, err := skipValue(data, pos)
+		return nil, end, err
+	}
+
+	var extensions []string
+	i := pos + 1
+	for i < len(data) && data[i] != 'e' {
+		if data[i] != 'd' {
+			end, err := skipValue(data, i)
+			if err != nil {
+				return nil, 0, err
+			}
+			i = end
+			continue
+		}
+		ext, end, err := parseFileDictExtension(data, i)
+		if err != nil {
+			return nil, 0, err
+		}
+		if ext != "" {
+			extensions = append(extensions, ext)
+		}
+		i = end
+	}
+	if i >= len(data) {
+		return nil, 0, fmt.Errorf("unterminated files list")
+	}
+	return extensions, i + 1, nil
+}
+
+// parseFileDictExtension parses a single "files" entry and returns the
+// extension of the last element of its "path" (or "path.utf-8") list.
+func parseFileDictExtension(data []byte, pos int) (string, int, error) {
+	i := pos + 1
+	var lastPathElement string
+	for i < len(data) && data[i] != 'e' {
+		key, next, err := parseString(data, i)
+		if err != nil {
+			return "", 0, err
+		}
+
+		keyStr := string(key)
+		if keyStr == "path" || keyStr == "path.utf-8" {
+			element, valueEnd, err := lastListString(data, next)
+			if err != nil {
+				return "", 0, err
+			}
+			lastPathElement = element
+			i = valueEnd
+			continue
+		}
+
+		valueEnd, err := skipValue(data, next)
+		if err != nil {
+			return "", 0, err
+		}
+		i = valueEnd
+	}
+	if i >= len(data) {
+		return "", 0, fmt.Errorf("unterminated file dictionary")
+	}
+	return fileExtension(lastPathElement), i + 1, nil
+}
+
+// lastListString parses a bencoded list of strings and returns the last one
+// (used for the "path" segments of a multi-file torrent entry).
+func lastListString(data []byte, pos int) (string, int, error) {
+	if pos >= len(data) || data[pos] != 'l' {
+		end, err := skipValue(data, pos)
+		return "", end, err
+	}
+
+	var last string
+	i := pos + 1
+	for i < len(data) && data[i] != 'e' {
+		value, next, err := parseString(data, i)
+		if err != nil {
+			return "", 0, err
+		}
+		last = string(value)
+		i = next
+	}
+	if i >= len(data) {
+		return "", 0, fmt.Errorf("unterminated path list")
+	}
+	return last, i + 1, nil
 }
 
 func infoDictionary(data []byte) ([]byte, error) {

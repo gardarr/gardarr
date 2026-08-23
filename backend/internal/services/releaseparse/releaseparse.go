@@ -79,7 +79,7 @@ var (
 	sourceRE          = regexp.MustCompile(`(?i)\b(web[ -]?(?:dl|rip)|blu[ -]?ray|bdrip|brrip|dvdrip|hdtv|uhd|remux)\b`)
 	codecRE           = regexp.MustCompile(`(?i)\b(x265|x264|h\.?265|h\.?264|hevc|av1|avc)\b`)
 	audioRE           = regexp.MustCompile(`(?i)\b(dts[ -]?hd|dts|truehd|atmos|eac3|ddp|ac3|aac(?:[ .-]?[257]\.1)?)\b`)
-	languageRE        = regexp.MustCompile(`(?i)\b(multi|dual(?:[ -]?audio)?|dubbed)\b`)
+	languageRE        = regexp.MustCompile(`(?i)\b(multi|dual(?:[ -]?audio)?|dubbed|subbed|legendado|dublado|pt[ -]?br|latino|castellano|vostfr|itasub|ita|french|german|spanish|russian|korean|japanese)\b`)
 	editionRE         = regexp.MustCompile(`(?i)\b(director[' ]?s[ -]?cut|extended|unrated|proper|repack|remastered|anniversary|deluxe|collector(?:'?s)?(?:\s+edition)?|criterion|theatrical|ultimate)\b`)
 	distroRE          = regexp.MustCompile(`(?i)\b(ubuntu|debian|fedora|arch(?:\s*linux)?|linux\s+mint|opensuse|kali|windows|macos)\b`)
 	platformRE        = regexp.MustCompile(`(?i)\b(pc|windows|linux|macos|ps[345]|playstation[ -]?[345]|xbox(?:[ -]?(?:one|series))?|switch|nes|snes|n64|gamecube|wii(?:[ -]?u)?|game[ -]?boy(?:[ -]?advance)?|genesis|dreamcast|psp|ps[ -]?vita|arcade|mame)\b`)
@@ -104,21 +104,54 @@ var (
 	podcastMarkerRE   = regexp.MustCompile(`(?i)\bpodcast\b`)
 	podcastEpisodeRE  = regexp.MustCompile(`(?i)\b(?:episode|ep)\s*(\d{1,4})\b`)
 	animeMarkerRE     = regexp.MustCompile(`(?i)\b(?:anime|fansub|anidb|crunchyroll)\b`)
+	fansubBracketRE   = regexp.MustCompile(`^\[([A-Za-z0-9][A-Za-z0-9_ .'-]{1,24})\]\s*`)
+	animeEpisodeRE    = regexp.MustCompile(`(?i)\s-\s(\d{1,3})(?:\s|\[|\(|$)`)
 	groupRE           = regexp.MustCompile(`-([A-Za-z0-9][A-Za-z0-9_-]{1,})\s*$`)
 )
+
+// weakConfidenceFields carry a real but ambiguous signal on their own (a bare
+// year, a language marker, a region code can all appear coincidentally), so
+// a single one of them is not enough to call a parse "high confidence".
+func weakConfidenceFields(r Result) []string {
+	return []string{r.Year, r.Language, r.Region}
+}
+
+// strongConfidenceFields are vocabulary that is very unlikely to appear by
+// coincidence (resolution, codec, format, ...); any one of them is enough to
+// trust the rest of the parse.
+func strongConfidenceFields(r Result) []string {
+	return []string{
+		r.Season, r.Episode, r.Resolution, r.Source, r.Codec, r.Audio, r.Edition,
+		r.Distro, r.Platform, r.Format, r.Version, r.Architecture, r.Volume,
+		r.Issue, r.HDR, r.Provider, r.Package,
+	}
+}
 
 // Parse returns partial data for imperfect names. Consumers should use
 // Confidence to decide whether to pre-fill user-facing fields.
 func Parse(raw string) Result {
 	result := Result{Raw: raw, Type: ReleaseTypeMovie, Confidence: ConfidenceLow}
 	decodedRaw := html.UnescapeString(raw)
-	input := normalize(decodedRaw)
+	trimmedRaw := strings.TrimSpace(decodedRaw)
+
+	fansubGroup := ""
+	hasFansubBracket := false
+	if match := fansubBracketRE.FindStringSubmatch(trimmedRaw); len(match) == 2 {
+		fansubGroup = strings.TrimSpace(match[1])
+		hasFansubBracket = true
+		trimmedRaw = strings.TrimSpace(trimmedRaw[len(match[0]):])
+	}
+
+	input := normalize(trimmedRaw)
 	if input == "" {
 		return result
 	}
 
-	if match := groupRE.FindStringSubmatch(strings.TrimSpace(decodedRaw)); len(match) == 2 {
+	if match := groupRE.FindStringSubmatch(strings.TrimSpace(decodedRaw)); len(match) == 2 && !isMetadataToken(match[1]) {
 		result.Group = match[1]
+	}
+	if result.Group == "" && fansubGroup != "" {
+		result.Group = fansubGroup
 	}
 	if match := yearRE.FindString(input); match != "" {
 		result.Year = match
@@ -130,14 +163,20 @@ func Parse(raw string) Result {
 	} else if match := seasonWordRE.FindStringSubmatch(input); len(match) == 2 {
 		result.Season, result.Type = match[1], ReleaseTypeSeries
 	}
-	if match := podcastEpisodeRE.FindStringSubmatch(input); result.Episode == "" && len(match) == 2 {
-		result.Episode = match[1]
-	}
 	result.Resolution = canonical(resolutionRE.FindString(input))
 	result.Source = canonicalSource(sourceRE.FindString(input))
 	result.Codec = canonicalCodec(codecRE.FindString(input))
+	// A bare "Episode N" / "Volume N" / "Issue N" is only trustworthy
+	// metadata when the release carries no video-specific signal; otherwise
+	// it is very likely part of a movie's own title (e.g. "Star Wars
+	// Episode 4", "Kill Bill Volume 1") and must not truncate the title or
+	// change Type.
+	hasVideoSignal := result.Resolution != "" || result.Source != "" || result.Codec != ""
+	if match := podcastEpisodeRE.FindStringSubmatch(input); result.Episode == "" && !hasVideoSignal && len(match) == 2 {
+		result.Episode = match[1]
+	}
 	result.Audio = canonical(audioRE.FindString(input))
-	result.Language = canonical(languageRE.FindString(input))
+	result.Language = canonicalLanguage(languageRE.FindString(input))
 	result.Edition = canonical(editionRE.FindString(input))
 	result.Distro = canonicalDistro(distroRE.FindString(input))
 	result.Platform = canonicalPlatform(platformRE.FindString(input))
@@ -146,10 +185,10 @@ func Parse(raw string) Result {
 	if match := versionRE.FindStringSubmatch(decodedRaw); len(match) == 2 {
 		result.Version = match[1]
 	}
-	if match := volumeRE.FindStringSubmatch(input); len(match) == 2 {
+	if match := volumeRE.FindStringSubmatch(input); !hasVideoSignal && len(match) == 2 {
 		result.Volume = match[1]
 	}
-	if match := issueRE.FindStringSubmatch(input); len(match) == 2 {
+	if match := issueRE.FindStringSubmatch(input); !hasVideoSignal && len(match) == 2 {
 		result.Issue = match[1]
 	}
 	result.HDR = canonicalHDR(hdrRE.FindString(input))
@@ -157,28 +196,45 @@ func Parse(raw string) Result {
 	result.Provider = canonicalProvider(providerRE.FindString(input))
 	result.Package = canonical(packageRE.FindString(input))
 
-	result.Type = detectType(result, input)
-	if result.Type != ReleaseTypeOS && result.Type != ReleaseTypeGame && result.Type != ReleaseTypeSoftware {
-		result.Version = ""
+	isAnimeSignal := hasFansubBracket || animeMarkerRE.MatchString(input)
+	if result.Episode == "" && isAnimeSignal {
+		if match := animeEpisodeRE.FindStringSubmatch(input); len(match) == 2 {
+			result.Episode = match[1]
+		}
 	}
 
-	result.Title = titleBeforeMetadata(input)
+	result.Type = detectType(result, input, isAnimeSignal)
+	result = withVersionCleared(result)
+
+	result.Title = titleBeforeMetadata(input, hasVideoSignal)
 	if result.Type == ReleaseTypeOS {
 		result.Title = displayDistro(result.Distro)
+	}
+	if result.Type == ReleaseTypeAnime {
+		if loc := animeEpisodeRE.FindStringSubmatchIndex(result.Title); loc != nil {
+			result.Title = strings.TrimSpace(result.Title[:loc[0]])
+		}
 	}
 	if result.Title == "" {
 		return result
 	}
 
-	markers := 0
-	for _, value := range []string{result.Year, result.Season, result.Episode, result.Resolution, result.Source, result.Codec, result.Audio, result.Language, result.Edition, result.Distro, result.Platform, result.Format, result.Version, result.Architecture, result.Volume, result.Issue, result.HDR, result.Region, result.Provider, result.Package} {
+	strongCount := 0
+	for _, value := range strongConfidenceFields(result) {
 		if value != "" {
-			markers++
+			strongCount++
 		}
 	}
-	if markers >= 1 {
+	weakCount := 0
+	for _, value := range weakConfidenceFields(result) {
+		if value != "" {
+			weakCount++
+		}
+	}
+	switch {
+	case strongCount >= 1 || weakCount >= 2:
 		result.Confidence = ConfidenceHigh
-	} else if len([]rune(result.Title)) >= 2 {
+	case weakCount >= 1 || len([]rune(result.Title)) >= 2:
 		result.Confidence = ConfidenceMedium
 	}
 	return result
@@ -236,7 +292,80 @@ func (r Result) SuggestedTags() []string {
 	add("region", r.Region)
 	add("provider", r.Provider)
 	add("package", r.Package)
+	add("group", r.Group)
 	return tags
+}
+
+// ignorableFileExtensions are torrent payload files that carry no format
+// signal (subtitles, checksums, screenshots, release notes) and should not
+// count toward the dominant-format vote in RefineWithFileExtensions.
+var ignorableFileExtensions = map[string]bool{
+	"nfo": true, "txt": true, "jpg": true, "jpeg": true, "png": true, "gif": true,
+	"sfv": true, "md5": true, "url": true, "srt": true, "sub": true, "idx": true, "ass": true,
+}
+
+// RefineWithFileExtensions upgrades a low-signal parse using the file
+// extensions found inside a multi-file torrent, for cases where the release
+// name itself carries no format hint (e.g. a generically named batch of
+// ebooks or comics). It is a no-op when the name already yielded a format.
+func (r Result) RefineWithFileExtensions(extensions []string) Result {
+	if r.Format != "" || len(extensions) == 0 {
+		return r
+	}
+
+	counts := make(map[string]int, len(extensions))
+	for _, ext := range extensions {
+		ext = strings.ToLower(strings.TrimPrefix(ext, "."))
+		if ext == "" || ignorableFileExtensions[ext] {
+			continue
+		}
+		counts[ext]++
+	}
+
+	dominant, dominantCount := "", 0
+	for ext, count := range counts {
+		if count > dominantCount || (count == dominantCount && ext < dominant) {
+			dominant, dominantCount = ext, count
+		}
+	}
+	if dominant == "" || !formatRE.MatchString(dominant) {
+		return r
+	}
+
+	r.Format = dominant
+	r.Type = detectType(r, strings.ToLower(r.Title), r.Type == ReleaseTypeAnime)
+	r = withVersionCleared(r)
+	r.Confidence = ConfidenceHigh
+	return r
+}
+
+// withVersionCleared drops a detected version number for release types where
+// a bare number is more likely a volume/edition artifact than a real
+// software version (only OS/Game/Software releases keep it).
+func withVersionCleared(r Result) Result {
+	if r.Type != ReleaseTypeOS && r.Type != ReleaseTypeGame && r.Type != ReleaseTypeSoftware {
+		r.Version = ""
+	}
+	return r
+}
+
+// isMetadataToken reports whether value is itself a recognized metadata
+// keyword (resolution, codec, source, ...) rather than a plausible release
+// group name. It guards groupRE against trailing tokens like "1080p" or
+// "REMUX" being mistaken for a scene group.
+func isMetadataToken(value string) bool {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return false
+	}
+	fullMatch := func(re *regexp.Regexp) bool {
+		loc := re.FindStringIndex(trimmed)
+		return loc != nil && loc[0] == 0 && loc[1] == len(trimmed)
+	}
+	return fullMatch(resolutionRE) || fullMatch(sourceRE) || fullMatch(codecRE) ||
+		fullMatch(audioRE) || fullMatch(languageRE) || fullMatch(editionRE) ||
+		fullMatch(hdrRE) || fullMatch(formatRE) || fullMatch(architectureRE) ||
+		fullMatch(regionRE) || fullMatch(packageRE) || fullMatch(yearRE)
 }
 
 func normalize(raw string) string {
@@ -245,11 +374,27 @@ func normalize(raw string) string {
 	return spaceRE.ReplaceAllString(value, " ")
 }
 
-func titleBeforeMetadata(input string) string {
-	positions := make([]int, 0, 8)
-	for _, re := range []*regexp.Regexp{yearRE, seasonRE, xEpisodeRE, seasonWordRE, podcastEpisodeRE, resolutionRE, sourceRE, codecRE, audioRE, languageRE, editionRE, hdrRE, formatRE, versionMarkerRE, gameMarkerRE, audiobookMarkerRE, comicMarkerRE, courseMarkerRE, datasetMarkerRE, romMarkerRE, romPlatformRE, podcastMarkerRE, animeMarkerRE, volumeRE, issueRE, regionRE, providerRE, packageRE} {
+// titleCutRegexes are always-reliable metadata markers: wherever the
+// earliest one starts, the release title ends.
+var titleCutRegexes = []*regexp.Regexp{yearRE, seasonRE, xEpisodeRE, seasonWordRE, resolutionRE, sourceRE, codecRE, audioRE, languageRE, editionRE, hdrRE, formatRE, versionMarkerRE, gameMarkerRE, audiobookMarkerRE, comicMarkerRE, courseMarkerRE, datasetMarkerRE, romMarkerRE, romPlatformRE, podcastMarkerRE, animeMarkerRE, regionRE, providerRE, packageRE}
+
+// titleCutRegexesWeak (bare "Episode/Volume/Issue N") only count as a title
+// boundary when the release has no video signal — see hasVideoSignal in
+// Parse for why they are ambiguous otherwise.
+var titleCutRegexesWeak = []*regexp.Regexp{podcastEpisodeRE, volumeRE, issueRE}
+
+func titleBeforeMetadata(input string, hasVideoSignal bool) string {
+	positions := make([]int, 0, len(titleCutRegexes)+len(titleCutRegexesWeak))
+	for _, re := range titleCutRegexes {
 		if index := re.FindStringIndex(input); index != nil {
 			positions = append(positions, index[0])
+		}
+	}
+	if !hasVideoSignal {
+		for _, re := range titleCutRegexesWeak {
+			if index := re.FindStringIndex(input); index != nil {
+				positions = append(positions, index[0])
+			}
 		}
 	}
 	cut := len(input)
@@ -276,6 +421,14 @@ func canonicalSource(value string) string {
 	}
 	return value
 }
+func canonicalLanguage(value string) string {
+	value = canonical(value)
+	value = strings.ReplaceAll(value, " ", "-")
+	if value == "ptbr" || value == "pt-br" {
+		return "pt-br"
+	}
+	return value
+}
 func canonicalCodec(value string) string {
 	value = strings.ReplaceAll(canonical(value), ".", "")
 	if value == "h265" {
@@ -284,45 +437,48 @@ func canonicalCodec(value string) string {
 	return value
 }
 
-func detectType(result Result, input string) ReleaseType {
-	if isDataset(result.Format) || datasetMarkerRE.MatchString(input) {
-		return ReleaseTypeDataset
-	}
-	if courseMarkerRE.MatchString(input) {
-		return ReleaseTypeCourse
-	}
-	if result.Format == "m4b" || result.Format == "aax" || result.Format == "aaxc" || audiobookMarkerRE.MatchString(input) {
-		return ReleaseTypeAudiobook
-	}
-	if result.Format == "cbz" || result.Format == "cbr" || comicMarkerRE.MatchString(input) {
-		return ReleaseTypeComic
-	}
-	if romMarkerRE.MatchString(input) || romPlatformRE.MatchString(input) {
-		return ReleaseTypeROM
-	}
-	if isSoftwarePackage(result.Format) || softwareMarkerRE.MatchString(input) {
-		return ReleaseTypeSoftware
-	}
-	if result.Distro != "" {
-		return ReleaseTypeOS
-	}
-	if podcastMarkerRE.MatchString(input) || (result.Episode != "" && isAudioFormat(result.Format)) {
-		return ReleaseTypePodcast
-	}
-	if animeMarkerRE.MatchString(input) {
-		return ReleaseTypeAnime
-	}
-	if result.Format == "epub" || result.Format == "mobi" || result.Format == "azw3" || result.Format == "pdf" || result.Format == "cbz" || result.Format == "cbr" || result.Volume != "" {
-		return ReleaseTypeBook
-	}
-	if isAudioFormat(result.Format) {
-		return ReleaseTypeMusic
-	}
-	if result.Platform != "" || gameMarkerRE.MatchString(input) {
-		return ReleaseTypeGame
-	}
-	if result.Season != "" || result.Episode != "" {
-		return ReleaseTypeSeries
+// typeRules is an explicit priority table: the first matching rule wins.
+// Order is significant (e.g. a "kaggle tutorial" matches both Dataset and
+// Course) and is spelled out here as data instead of buried in control flow,
+// so priority is visible and easy to adjust when a new type is added.
+var typeRules = []struct {
+	match func(r Result, input string, isAnimeSignal bool) bool
+	typ   ReleaseType
+}{
+	{func(r Result, input string, _ bool) bool {
+		return isDataset(r.Format) || datasetMarkerRE.MatchString(input)
+	}, ReleaseTypeDataset},
+	{func(_ Result, input string, _ bool) bool { return courseMarkerRE.MatchString(input) }, ReleaseTypeCourse},
+	{func(r Result, input string, _ bool) bool {
+		return r.Format == "m4b" || r.Format == "aax" || r.Format == "aaxc" || audiobookMarkerRE.MatchString(input)
+	}, ReleaseTypeAudiobook},
+	{func(r Result, input string, _ bool) bool {
+		return r.Format == "cbz" || r.Format == "cbr" || comicMarkerRE.MatchString(input)
+	}, ReleaseTypeComic},
+	{func(_ Result, input string, _ bool) bool {
+		return romMarkerRE.MatchString(input) || romPlatformRE.MatchString(input)
+	}, ReleaseTypeROM},
+	{func(r Result, input string, _ bool) bool {
+		return isSoftwarePackage(r.Format) || softwareMarkerRE.MatchString(input)
+	}, ReleaseTypeSoftware},
+	{func(r Result, _ string, _ bool) bool { return r.Distro != "" }, ReleaseTypeOS},
+	{func(r Result, input string, _ bool) bool {
+		return podcastMarkerRE.MatchString(input) || (r.Episode != "" && isAudioFormat(r.Format))
+	}, ReleaseTypePodcast},
+	{func(_ Result, _ string, isAnimeSignal bool) bool { return isAnimeSignal }, ReleaseTypeAnime},
+	{func(r Result, _ string, _ bool) bool {
+		return r.Format == "epub" || r.Format == "mobi" || r.Format == "azw3" || r.Format == "pdf" || r.Format == "cbz" || r.Format == "cbr" || r.Volume != ""
+	}, ReleaseTypeBook},
+	{func(r Result, _ string, _ bool) bool { return isAudioFormat(r.Format) }, ReleaseTypeMusic},
+	{func(r Result, input string, _ bool) bool { return r.Platform != "" || gameMarkerRE.MatchString(input) }, ReleaseTypeGame},
+	{func(r Result, _ string, _ bool) bool { return r.Season != "" || r.Episode != "" }, ReleaseTypeSeries},
+}
+
+func detectType(result Result, input string, isAnimeSignal bool) ReleaseType {
+	for _, rule := range typeRules {
+		if rule.match(result, input, isAnimeSignal) {
+			return rule.typ
+		}
 	}
 	return ReleaseTypeMovie
 }

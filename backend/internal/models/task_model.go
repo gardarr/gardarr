@@ -25,6 +25,7 @@ type TaskResponseModel struct {
 	Network      TaskNetworkResponseModel `json:"network"`
 	Tags         []string                 `json:"tags,omitempty"`
 	Metadata     *TaskMetadataResponse    `json:"metadata,omitempty"`
+	WasCreated   bool                     `json:"was_created"`
 }
 
 type TaskMagnetLinkResponse struct {

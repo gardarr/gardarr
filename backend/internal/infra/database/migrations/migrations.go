@@ -742,10 +742,10 @@ func Register(m *migration.Migrator) {
 				if err := db.Table("categories").Where("release_type = '' OR release_type IS NULL").Update("release_type", "none").Error; err != nil {
 					return err
 				}
-				if err := db.Table("categories").Where("lower(name) IN ?", []string{"movies", "films"}).Update("release_type", "movie").Error; err != nil {
+				if err := db.Table("categories").Where("lower(name) IN ?", []string{"movies", "films", "filmes"}).Update("release_type", "movie").Error; err != nil {
 					return err
 				}
-				return db.Table("categories").Where("lower(name) IN ?", []string{"shows", "series", "tv"}).Update("release_type", "series").Error
+				return db.Table("categories").Where("lower(name) IN ?", []string{"shows", "series", "séries", "tv"}).Update("release_type", "series").Error
 			},
 			Down: func(db *gorm.DB) error {
 				if db.Migrator().HasColumn(&models.Category{}, "release_type") {

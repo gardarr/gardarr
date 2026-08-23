@@ -24,6 +24,7 @@ export interface Task {
   network: TaskNetwork;
   tags?: string[];
   metadata?: TaskMetadata | null;
+  was_created?: boolean;
 }
 
 export interface TaskDownload {

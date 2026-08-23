@@ -74,6 +74,55 @@ func TestInfoHashSkipsNestedStructures(t *testing.T) {
 	}
 }
 
+func TestFileExtensionsSingleFile(t *testing.T) {
+	info := "d6:lengthi1024e4:name8:test.isoe"
+	torrent := []byte(fmt.Sprintf("d8:announce4:test4:info%se", info))
+
+	extensions, err := FileExtensions(torrent)
+	if err != nil {
+		t.Fatalf("FileExtensions() error = %v", err)
+	}
+	if len(extensions) != 1 || extensions[0] != "iso" {
+		t.Fatalf("FileExtensions() = %v, want [iso]", extensions)
+	}
+}
+
+func TestFileExtensionsMultiFile(t *testing.T) {
+	info := "d4:name5:books5:filesl" +
+		"d6:lengthi100e4:pathl10:book1.epubee" +
+		"d6:lengthi200e4:pathl6:images9:cover.jpgee" +
+		"ee"
+	torrent := []byte(fmt.Sprintf("d8:announce4:test4:info%se", info))
+
+	extensions, err := FileExtensions(torrent)
+	if err != nil {
+		t.Fatalf("FileExtensions() error = %v", err)
+	}
+	if len(extensions) != 2 || extensions[0] != "epub" || extensions[1] != "jpg" {
+		t.Fatalf("FileExtensions() = %v, want [epub jpg]", extensions)
+	}
+}
+
+func TestFileExtensionsMultiFileIgnoresDottedFolderName(t *testing.T) {
+	// The top-level "name" is the shared payload folder for a multi-file
+	// torrent, not a filename — a dot in the folder name (e.g. a season
+	// pack named "Season.1.Complete") must not be counted as a file
+	// extension alongside the real per-file extensions.
+	info := "d4:name13:Season.1.Comp5:filesl" +
+		"d6:lengthi100e4:pathl8:ep01.mkvee" +
+		"d6:lengthi100e4:pathl8:ep02.mkvee" +
+		"ee"
+	torrent := []byte(fmt.Sprintf("d8:announce4:test4:info%se", info))
+
+	extensions, err := FileExtensions(torrent)
+	if err != nil {
+		t.Fatalf("FileExtensions() error = %v", err)
+	}
+	if len(extensions) != 2 || extensions[0] != "mkv" || extensions[1] != "mkv" {
+		t.Fatalf("FileExtensions() = %v, want [mkv mkv] (folder name extension must be excluded)", extensions)
+	}
+}
+
 func TestInfoHashErrors(t *testing.T) {
 	tests := []struct {
 		name string

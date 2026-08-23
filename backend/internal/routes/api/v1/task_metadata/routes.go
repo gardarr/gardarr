@@ -13,9 +13,7 @@ import (
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/mappers"
 	"github.com/jfxdev/gardarr/internal/middlewares"
-	"github.com/jfxdev/gardarr/internal/services/releaseparse"
 	task_metadata_service "github.com/jfxdev/gardarr/internal/services/task_metadata"
-	"github.com/jfxdev/gardarr/pkg/torrentfile"
 )
 
 const (
@@ -24,6 +22,7 @@ const (
 
 	applyProviderMetadataError = "failed to apply provider metadata"
 	maxReleaseParseFileSize    = 5 << 20
+	maxReleaseParseRequestSize = maxReleaseParseFileSize + (1 << 20)
 )
 
 var (
@@ -91,7 +90,7 @@ func (m *Module) parseRelease(c *gin.Context) {
 		return
 	}
 
-	result := releaseparse.Parse(body.RawName)
+	result := m.service.ParseRelease(body.RawName)
 	c.JSON(http.StatusOK, gin.H{
 		"release":      result,
 		"display_name": result.DisplayName(),
@@ -100,6 +99,9 @@ func (m *Module) parseRelease(c *gin.Context) {
 }
 
 func (m *Module) parseReleaseFile(c *gin.Context) {
+	// FormFile parses the whole multipart body before returning its header, so
+	// bound the request itself as well as the extracted torrent file.
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxReleaseParseRequestSize)
 	file, header, err := c.Request.FormFile("torrent")
 	if err != nil || header.Size > maxReleaseParseFileSize {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "valid torrent file is required"})
@@ -111,12 +113,11 @@ func (m *Module) parseReleaseFile(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "valid torrent file is required"})
 		return
 	}
-	name, err := torrentfile.InfoName(data)
+	result, err := m.service.ParseReleaseFile(data)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	result := releaseparse.Parse(name)
 	c.JSON(http.StatusOK, gin.H{"release": result, "display_name": result.DisplayName(), "tags": result.SuggestedTags()})
 }
 
@@ -462,7 +463,18 @@ func (m *Module) searchProvider(c *gin.Context) {
 		return
 	}
 
-	results, err := m.service.SearchProviderAuto(c.Request.Context(), provider, query)
+	// "auto" is only set by callers doing an initial search from the
+	// torrent's raw release name, which release-parsing turns into a
+	// cleaner query; a manually typed/edited re-search must be sent to the
+	// provider verbatim, or the parser can silently drop words the user
+	// intentionally typed.
+	var results []task_metadata_service.MetadataProviderSearchResult
+	var err error
+	if c.Query("auto") == "true" {
+		results, err = m.service.SearchProviderAuto(c.Request.Context(), provider, query)
+	} else {
+		results, err = m.service.SearchProvider(c.Request.Context(), provider, query)
+	}
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

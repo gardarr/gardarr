@@ -343,6 +343,32 @@ describe("AddTorrentModal", () => {
     expect(screen.getByDisplayValue("/downloads/movies")).toBeInTheDocument();
   });
 
+  it("does not re-parse the release name when an unrelated field is edited", async () => {
+    listCategoriesMock.mockResolvedValue({
+      data: [{ id: "movie", name: "Movies", release_type: "movie", default_tags: ["movie"], default_directory: "/downloads/movies" }],
+    });
+    parseReleaseMock.mockResolvedValue({
+      data: {
+        release: { type: "movie", confidence: "high", title: "The Matrix", year: "1999" },
+        display_name: "The Matrix (1999)",
+        tags: ["quality::2160p"],
+      },
+    });
+    renderModal(buildContext());
+    await waitFor(() => expect(screen.getAllByText("Worker 1")[0]).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText(/torrents\.addModal\.magnetUri\.label/), {
+      target: { value: "magnet:?xt=urn:btih:test&dn=The.Matrix.1999.2160p.BluRay.x265" },
+    });
+    await waitFor(() => expect(parseReleaseMock).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(screen.getByLabelText(/torrents\.addModal\.directory\.label/), {
+      target: { value: "/downloads/custom" },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    expect(parseReleaseMock).toHaveBeenCalledTimes(1);
+  });
+
   it("suggests a matching game category for a high-confidence game release", async () => {
     listCategoriesMock.mockResolvedValue({
       data: [{ id: "game", name: "Games", release_type: "game", default_tags: ["game"], default_directory: "/downloads/games" }],
@@ -363,6 +389,30 @@ describe("AddTorrentModal", () => {
     await waitFor(() => expect(parseReleaseMock).toHaveBeenCalled());
     expect(screen.getByDisplayValue("/downloads/games")).toBeInTheDocument();
     expect(screen.getByTestId("tags")).toHaveTextContent("game,type::game,platform::pc");
+  });
+
+  it("prefers the category with the most overlapping tags when several share a release_type", async () => {
+    listCategoriesMock.mockResolvedValue({
+      data: [
+        { id: "generic", name: "Shows", release_type: "anime", default_tags: ["misc"], default_directory: "/downloads/shows" },
+        { id: "anime", name: "Anime", release_type: "anime", default_tags: ["type::anime"], default_directory: "/downloads/anime" },
+      ],
+    });
+    parseReleaseMock.mockResolvedValue({
+      data: {
+        release: { type: "anime", confidence: "high", title: "Frieren" },
+        display_name: "Frieren",
+        tags: ["type::anime", "season::01"],
+      },
+    });
+    renderModal(buildContext());
+    await waitFor(() => expect(screen.getAllByText("Worker 1")[0]).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText(/torrents\.addModal\.magnetUri\.label/), {
+      target: { value: "magnet:?xt=urn:btih:test&dn=Frieren.S01E01" },
+    });
+
+    await waitFor(() => expect(parseReleaseMock).toHaveBeenCalled());
+    expect(screen.getByDisplayValue("/downloads/anime")).toBeInTheDocument();
   });
 
   it("submits optimistically: pending placeholder, close, navigate, createTask", async () => {
@@ -389,6 +439,29 @@ describe("AddTorrentModal", () => {
     expect(context.closeAddModal).toHaveBeenCalled();
     expect(navigateMock).toHaveBeenCalledWith("/torrents");
     expect(context.removePendingTorrent).not.toHaveBeenCalled();
+  });
+
+  it("does not overwrite metadata when the torrent already exists", async () => {
+    createTaskMock.mockResolvedValue({ data: { ...baseTask, was_created: false } });
+    parseReleaseMock.mockResolvedValue({
+      data: {
+        release: { type: "movie", confidence: "high" },
+        display_name: "The Matrix (1999)",
+        tags: [],
+      },
+    });
+    const context = buildContext();
+    renderModal(context);
+    await waitFor(() => expect(screen.getAllByText("Worker 1")[0]).toBeInTheDocument());
+    fireEvent.change(screen.getByPlaceholderText("torrents.addModal.magnetUri.placeholder"), {
+      target: { value: "magnet:?xt=urn:btih:test-hash&dn=The.Matrix.1999.1080p" },
+    });
+    await waitFor(() => expect(screen.getByDisplayValue("The Matrix (1999)")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "torrents.addModal.actions.add" }));
+
+    await waitFor(() => expect(createTaskMock).toHaveBeenCalledTimes(1));
+    expect(updateNameMock).not.toHaveBeenCalled();
   });
 
   it("does not navigate when already on /torrents", async () => {

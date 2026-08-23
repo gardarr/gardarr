@@ -79,7 +79,7 @@ func TestParseDomainReleases(t *testing.T) {
 			version:   "1.12.0",
 			platform:  "pc",
 			typeValue: ReleaseTypeGame,
-			wantTags:  []string{"type::game", "platform::pc", "version::1.12.0"},
+			wantTags:  []string{"type::game", "platform::pc", "version::1.12.0", "group::rune"},
 		},
 		{
 			name:      "book",
@@ -252,4 +252,98 @@ func hasTag(tags []string, want string) bool {
 		}
 	}
 	return false
+}
+
+func TestParseBareYearIsMediumConfidence(t *testing.T) {
+	got := Parse("Some Old Home Video 2004")
+	if got.Confidence != ConfidenceMedium {
+		t.Fatalf("Parse() confidence = %v, want medium", got.Confidence)
+	}
+}
+
+func TestParseTwoWeakMarkersUpgradeToHighConfidence(t *testing.T) {
+	got := Parse("Voyage.2004.MULTI")
+	if got.Confidence != ConfidenceHigh {
+		t.Fatalf("Parse() confidence = %v, want high", got.Confidence)
+	}
+}
+
+func TestParseMovieTitleWithBareEpisodeWordStaysMovie(t *testing.T) {
+	got := Parse("Star Wars Episode 4 A New Hope 1080p BluRay x264")
+	if got.Type != ReleaseTypeMovie {
+		t.Fatalf("Type = %v, want movie (bare 'Episode N' in a movie title should not force series)", got.Type)
+	}
+	if got.Episode != "" {
+		t.Fatalf("Episode = %q, want empty when a video signal is present", got.Episode)
+	}
+}
+
+func TestParseMovieTitleWithBareVolumeWordStaysMovie(t *testing.T) {
+	got := Parse("Kill.Bill.Volume.1.2003.1080p.BluRay.x264")
+	if got.Type != ReleaseTypeMovie {
+		t.Fatalf("Type = %v, want movie (bare 'Volume N' in a movie title should not force book)", got.Type)
+	}
+	if got.Volume != "" {
+		t.Fatalf("Volume = %q, want empty when a video signal is present", got.Volume)
+	}
+}
+
+func TestParseGroupRejectsMetadataLookingTokens(t *testing.T) {
+	got := Parse("Movie.2020-1080p")
+	if got.Group != "" {
+		t.Fatalf("Group = %q, want empty (resolution token should not be treated as a group)", got.Group)
+	}
+}
+
+func TestParseLanguageCodes(t *testing.T) {
+	tests := []struct{ raw, language string }{
+		{"Filme.2020.Dublado", "dublado"},
+		{"Filme.2020.PT-BR", "pt-br"},
+		{"Film.2020.VOSTFR", "vostfr"},
+		{"Film.2020.FRENCH", "french"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.raw, func(t *testing.T) {
+			got := Parse(tt.raw)
+			if got.Language != tt.language {
+				t.Fatalf("Parse(%q).Language = %q, want %q", tt.raw, got.Language, tt.language)
+			}
+		})
+	}
+}
+
+func TestParseFansubBracketDetectsAnime(t *testing.T) {
+	got := Parse("[SubsPlease] Frieren - 12 [1080p].mkv")
+	if got.Type != ReleaseTypeAnime {
+		t.Fatalf("Type = %v, want anime", got.Type)
+	}
+	if got.Title != "Frieren" {
+		t.Fatalf("Title = %q, want %q", got.Title, "Frieren")
+	}
+	if got.Episode != "12" {
+		t.Fatalf("Episode = %q, want %q", got.Episode, "12")
+	}
+	if got.Group != "SubsPlease" {
+		t.Fatalf("Group = %q, want %q", got.Group, "SubsPlease")
+	}
+}
+
+func TestResultRefineWithFileExtensions(t *testing.T) {
+	got := Parse("My Comic Collection")
+	if got.Format != "" {
+		t.Fatalf("precondition failed: Format = %q, want empty", got.Format)
+	}
+
+	refined := got.RefineWithFileExtensions([]string{"nfo", "cbz", "cbz", "jpg"})
+	if refined.Format != "cbz" || refined.Type != ReleaseTypeComic || refined.Confidence != ConfidenceHigh {
+		t.Fatalf("RefineWithFileExtensions() = %#v", refined)
+	}
+}
+
+func TestResultRefineWithFileExtensionsNoopWhenFormatAlreadyKnown(t *testing.T) {
+	got := Parse("Movie.2020.EPUB")
+	refined := got.RefineWithFileExtensions([]string{"cbz"})
+	if refined.Format != got.Format {
+		t.Fatalf("RefineWithFileExtensions() should not override an existing format: got %q", refined.Format)
+	}
 }

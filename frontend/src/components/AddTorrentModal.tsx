@@ -72,6 +72,23 @@ export function AddTorrentModal() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isFileMode = mode === "file";
 
+  // Read via refs (not as effect deps) inside applySuggestion below: editing
+  // an unrelated field (tags, directory, category) must not re-trigger the
+  // debounced release-parse network call — in file mode that would re-upload
+  // the whole .torrent file — for a rawName/torrentFile that hasn't changed.
+  const categoriesRef = useRef(categories);
+  const selectedCategoryIdRef = useRef(selectedCategoryId);
+  const userEditedRef = useRef(userEdited);
+  useEffect(() => {
+    categoriesRef.current = categories;
+  }, [categories]);
+  useEffect(() => {
+    selectedCategoryIdRef.current = selectedCategoryId;
+  }, [selectedCategoryId]);
+  useEffect(() => {
+    userEditedRef.current = userEdited;
+  }, [userEdited]);
+
   const activeWorkers = useMemo(() => workers.filter((worker) => worker.status === "ACTIVE"), [workers]);
   const selectedWorker = useMemo(
     () => activeWorkers.find((worker) => worker.uuid === selectedWorkerId),
@@ -155,10 +172,26 @@ export function AddTorrentModal() {
     return [...plain, ...byScope.values()];
   };
 
+  // When multiple categories share a release_type, prefer the one whose
+  // default_tags overlap the most with the parsed release's suggested tags
+  // (e.g. an "Anime" category with tag "type::anime" beats a generic "Series"
+  // one for the same release_type), falling back to the first match.
+  const pickBestCategoryMatch = (candidates: Category[], suggestedTags: string[]): Category => {
+    const suggestedSet = new Set(suggestedTags.map((tag) => tag.toLowerCase()));
+    return candidates.reduce((best, candidate) => {
+      const candidateScore = (candidate.default_tags || []).filter((tag) => suggestedSet.has(tag.toLowerCase())).length;
+      const bestScore = (best.default_tags || []).filter((tag) => suggestedSet.has(tag.toLowerCase())).length;
+      return candidateScore > bestScore ? candidate : best;
+    }, candidates[0]);
+  };
+
   const applySuggestion = (suggestion: ReleaseParseResponse) => {
     if (suggestion.release.confidence !== "high") {
       return;
     }
+    const categories = categoriesRef.current;
+    const selectedCategoryId = selectedCategoryIdRef.current;
+    const userEdited = userEditedRef.current;
     setReleaseSuggestion(suggestion);
     if (!userEdited.displayName) {
       setDisplayName(suggestion.display_name);
@@ -168,7 +201,8 @@ export function AddTorrentModal() {
       setTags(mergeTags(selectedCategory?.default_tags || [], suggestion.tags));
     }
     if (!userEdited.category && suggestion.release.type !== "unknown") {
-      const categoryMatch = categories.find((item) => item.release_type === suggestion.release.type);
+      const candidates = categories.filter((item) => item.release_type === suggestion.release.type);
+      const categoryMatch = candidates.length > 0 ? pickBestCategoryMatch(candidates, suggestion.tags) : undefined;
       if (categoryMatch) {
         setSelectedCategoryId(categoryMatch.id);
         setCategory(categoryMatch.name);
@@ -201,7 +235,8 @@ export function AddTorrentModal() {
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [mode, parsedMagnetLink?.display_name, categories, selectedCategoryId, userEdited]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- categories/selectedCategoryId/userEdited are read via refs so editing an unrelated field doesn't re-trigger this parse
+  }, [mode, parsedMagnetLink?.display_name]);
 
   useEffect(() => {
     if (mode !== "file" || !torrentFile) {
@@ -214,7 +249,8 @@ export function AddTorrentModal() {
       }
     }).catch((error) => console.error("Failed to parse torrent file:", error));
     return () => { cancelled = true; };
-  }, [mode, torrentFile, categories, selectedCategoryId, userEdited]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- categories/selectedCategoryId/userEdited are read via refs so editing an unrelated field doesn't re-upload the file
+  }, [mode, torrentFile]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -310,6 +346,25 @@ export function AddTorrentModal() {
     }
   };
 
+  // Applies the user-edited display name after a torrent is created
+  // (was_created=false means it was a dedupe match against an existing
+  // task, which must keep its own name). One retry covers a fresh task's
+  // metadata record not being registered yet; if it still fails the
+  // warning stays visible until dismissed since the torrent itself did
+  // get added and nothing else will retry the rename for the user.
+  const applyDisplayName = async (hash: string, wasCreated: boolean) => {
+    if (!wasCreated || !displayName.trim()) {
+      return;
+    }
+    let nameResponse = await taskMetadataService.updateName(hash, displayName.trim());
+    if (nameResponse.error) {
+      nameResponse = await taskMetadataService.updateName(hash, displayName.trim());
+    }
+    if (nameResponse.error) {
+      toast.warning(t("torrents.notifications.addSuccess") + ". Display name was not saved.", { duration: Infinity });
+    }
+  };
+
   const handleSubmitFile = async () => {
     if (!torrentFile) {
       return;
@@ -334,11 +389,8 @@ export function AddTorrentModal() {
         throw new Error(response.error);
       }
 
-      if (displayName.trim() && response.data?.hash) {
-        const nameResponse = await taskMetadataService.updateName(response.data.hash, displayName.trim());
-        if (nameResponse.error) {
-          toast.warning(t("torrents.notifications.addSuccess") + ". Display name was not saved.");
-        }
+      if (response.data?.hash) {
+        await applyDisplayName(response.data.hash, !!response.data.was_created);
       }
 
       // Sem hash conhecido de antemão: o card real chega via evento WS
@@ -394,12 +446,7 @@ export function AddTorrentModal() {
         throw new Error(response.error || t("torrents.addModal.errors.taskHashMissing"));
       }
 
-      if (displayName.trim()) {
-        const nameResponse = await taskMetadataService.updateName(response.data.hash, displayName.trim());
-        if (nameResponse.error) {
-          toast.warning(t("torrents.notifications.addSuccess") + ". Display name was not saved.");
-        }
-      }
+      await applyDisplayName(response.data.hash, !!response.data.was_created);
 
       toast.success(t("torrents.notifications.addSuccess"));
     } catch (error) {
