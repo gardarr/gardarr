@@ -20,7 +20,7 @@ import {
   AlertTriangle,
   Rows3,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { rssService } from "./services/rss";
@@ -57,7 +57,14 @@ function Rss() {
     return map;
   }, [workers]);
 
+  // load() can be triggered concurrently (initial render, the refresh
+  // button, and every mutation handler below). loadRequestId guards against
+  // an older, slower call overwriting state with stale data after a newer
+  // call already resolved.
+  const loadRequestId = useRef(0);
+
   const load = useCallback(async () => {
+    const requestId = ++loadRequestId.current;
     setLoading(true);
     try {
       const [workersRes, feedsRes, rulesRes] = await Promise.all([
@@ -65,6 +72,8 @@ function Rss() {
         rssService.listAllFeeds(),
         rssService.listAllRules(),
       ]);
+
+      if (requestId !== loadRequestId.current) return;
 
       if (workersRes.data) setWorkers(workersRes.data);
       if (feedsRes.data) {
@@ -80,9 +89,13 @@ function Rss() {
         toast.error(rulesRes.error);
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("rss.errors.loadFailed"));
+      if (requestId === loadRequestId.current) {
+        toast.error(err instanceof Error ? err.message : t("rss.errors.loadFailed"));
+      }
     } finally {
-      setLoading(false);
+      if (requestId === loadRequestId.current) {
+        setLoading(false);
+      }
     }
   }, [t]);
 
@@ -167,15 +180,24 @@ function Rss() {
     }
   };
 
+  // matchingRequestId guards against a stale response (from testing a
+  // previous rule, or a slow retry) landing after a newer test started -
+  // otherwise it could display the wrong rule's results, or overwrite a
+  // newer success with an older failure.
+  const matchingRequestId = useRef(0);
+
   const handleTestRule = async (rule: RSSRule) => {
     if (!rule.worker_id) return;
+    const requestId = ++matchingRequestId.current;
     setMatchingRule(rule);
     setMatches(null);
     setMatchingLoading(true);
     const response = await rssService.matchingArticles(rule.worker_id, rule.name);
+    if (requestId !== matchingRequestId.current) return;
     setMatchingLoading(false);
     if (response.error) {
       toast.error(response.error);
+      setMatchingRule(null);
     } else if (response.data) {
       setMatches(response.data);
     }

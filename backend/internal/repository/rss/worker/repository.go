@@ -18,10 +18,12 @@ func New(client *qbt.Client) *Repository {
 }
 
 // ListFeeds returns every configured feed, keyed by its qBittorrent path.
-// Note: qBittorrent's rss/items response nests feeds inside folders; a feed
-// living inside a folder is still returned as a top-level path entry, but
-// folders themselves don't currently decode into meaningful RSSFeed data
-// (go-qbt's RSSFeed type models a leaf feed, not a folder).
+// Known limitation: qBittorrent's rss/items response nests feeds inside
+// folders as recursive JSON objects, but go-qbt's GetRSSFeeds decodes the
+// response into a flat map[string]RSSFeed - a folder entry decodes to a
+// zero-value RSSFeed and any feed nested inside it is silently dropped,
+// never appearing here at all. Only feeds registered at the root are
+// currently visible. Tracked upstream in jfxdev/go-qbt#11.
 func (r *Repository) ListFeeds(withData bool) (map[string]*entities.RSSFeed, error) {
 	items, err := r.client.GetRSSFeeds(withData)
 	if err != nil {
@@ -79,8 +81,31 @@ func (r *Repository) ListRules() (map[string]*entities.RSSRule, error) {
 	return result, nil
 }
 
+// SetRule creates or updates a rule. qBittorrent's setRule call replaces the
+// whole rule definition, so updating an existing rule must first carry over
+// its PreviouslyMatchedEpisodes/LastMatch - qBittorrent doesn't recompute
+// them on its own, it only accumulates them as new articles match. Losing
+// them on every edit would let a smart-filter rule re-match (and
+// re-download) episodes it already handled.
 func (r *Repository) SetRule(ruleName string, rule entities.RSSRule) error {
-	return r.client.SetRSSRule(ruleName, toQbtRSSRule(rule))
+	existing, err := r.client.GetRSSRules()
+	if err != nil {
+		return err
+	}
+
+	qbtRule := withPreservedHistory(toQbtRSSRule(rule), existing[ruleName])
+	return r.client.SetRSSRule(ruleName, qbtRule)
+}
+
+// withPreservedHistory copies PreviouslyMatchedEpisodes/LastMatch from
+// current onto qbtRule. current is the zero qbt.RSSRule (via a missing-key
+// map lookup) when ruleName doesn't exist yet, which leaves qbtRule's own
+// zero values in place - exactly the clean history a brand new rule should
+// start with.
+func withPreservedHistory(qbtRule, current qbt.RSSRule) qbt.RSSRule {
+	qbtRule.PreviouslyMatchedEpisodes = current.PreviouslyMatchedEpisodes
+	qbtRule.LastMatch = current.LastMatch
+	return qbtRule
 }
 
 func (r *Repository) RenameRule(ruleName, newRuleName string) error {
@@ -140,9 +165,10 @@ func toRSSRule(name string, rule qbt.RSSRule) *entities.RSSRule {
 	}
 }
 
-// toQbtRSSRule converts a rule for a setRule call. PreviouslyMatchedEpisodes
-// and LastMatch are omitted: they're server-maintained state qBittorrent
-// recomputes itself as the rule matches new articles over time.
+// toQbtRSSRule converts the user-settable fields of a rule for a setRule
+// call. PreviouslyMatchedEpisodes and LastMatch are deliberately left zero
+// here - SetRule fills them back in from the existing rule when there is
+// one, so a new rule still starts with a clean history.
 func toQbtRSSRule(rule entities.RSSRule) qbt.RSSRule {
 	return qbt.RSSRule{
 		Enabled:              rule.Enabled,

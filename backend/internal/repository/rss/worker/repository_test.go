@@ -61,8 +61,9 @@ func TestToRSSRule(t *testing.T) {
 	}
 }
 
-// toQbtRSSRule must never round-trip PreviouslyMatchedEpisodes/LastMatch:
-// those are server-maintained state, not something a save should overwrite.
+// toQbtRSSRule must never round-trip PreviouslyMatchedEpisodes/LastMatch on
+// its own - SetRule is responsible for restoring them via
+// withPreservedHistory, so a fresh rule with no prior history stays clean.
 func TestToQbtRSSRule_OmitsServerManagedFields(t *testing.T) {
 	t.Parallel()
 
@@ -84,5 +85,45 @@ func TestToQbtRSSRule_OmitsServerManagedFields(t *testing.T) {
 	}
 	if got.MustContain != "1080p" || !got.Enabled {
 		t.Fatalf("expected user-settable fields to be preserved, got %+v", got)
+	}
+}
+
+func TestWithPreservedHistory_CarriesOverExistingMatchState(t *testing.T) {
+	t.Parallel()
+
+	incoming := qbt.RSSRule{Enabled: true, MustContain: "1080p"}
+	current := qbt.RSSRule{
+		PreviouslyMatchedEpisodes: []string{"S01E01", "S01E02"},
+		LastMatch:                 "2026-08-20T00:00:00Z",
+	}
+
+	got := withPreservedHistory(incoming, current)
+
+	if !reflect.DeepEqual(got.PreviouslyMatchedEpisodes, current.PreviouslyMatchedEpisodes) {
+		t.Fatalf("expected PreviouslyMatchedEpisodes to carry over, got %v", got.PreviouslyMatchedEpisodes)
+	}
+	if got.LastMatch != current.LastMatch {
+		t.Fatalf("expected LastMatch to carry over, got %q", got.LastMatch)
+	}
+	if got.MustContain != "1080p" || !got.Enabled {
+		t.Fatalf("expected incoming user-settable fields to be preserved, got %+v", got)
+	}
+}
+
+// A missing-key map lookup for a brand new rule yields the zero qbt.RSSRule,
+// which must leave a fresh rule's own zero history untouched rather than
+// somehow producing non-nil/non-empty values.
+func TestWithPreservedHistory_NewRuleStaysClean(t *testing.T) {
+	t.Parallel()
+
+	incoming := qbt.RSSRule{Enabled: true, MustContain: "1080p"}
+
+	got := withPreservedHistory(incoming, qbt.RSSRule{})
+
+	if got.PreviouslyMatchedEpisodes != nil {
+		t.Fatalf("expected a new rule to start with no matched episodes, got %v", got.PreviouslyMatchedEpisodes)
+	}
+	if got.LastMatch != "" {
+		t.Fatalf("expected a new rule to start with no last match, got %q", got.LastMatch)
 	}
 }
