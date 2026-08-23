@@ -32,6 +32,7 @@ type Task struct {
 	SuperSeeding bool
 	Network      TaskNetwork
 	Metadata     *TaskMetadata // Optional task metadata
+	WasCreated   bool
 }
 
 type TaskMagnetLink struct {

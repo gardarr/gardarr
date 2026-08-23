@@ -23,6 +23,18 @@ func TestInfoHash(t *testing.T) {
 	}
 }
 
+func TestInfoName(t *testing.T) {
+	info := "d6:lengthi1024e4:name21:The.Matrix.1999.1080pe"
+	torrent := []byte(fmt.Sprintf("d8:announce4:test4:info%se", info))
+	name, err := InfoName(torrent)
+	if err != nil {
+		t.Fatalf("InfoName() error = %v", err)
+	}
+	if name != "The.Matrix.1999.1080p" {
+		t.Fatalf("InfoName() = %q", name)
+	}
+}
+
 func TestInfoHashesIncludesV2Hash(t *testing.T) {
 	info := "d9:file treede4:name8:test.iso12:piece lengthi16384e12:meta versioni2ee"
 	torrent := []byte(fmt.Sprintf("d8:announce30:http://tracker.example.com/ann4:info%se", info))
@@ -59,6 +71,90 @@ func TestInfoHashSkipsNestedStructures(t *testing.T) {
 	}
 	if hash != hex.EncodeToString(expected[:]) {
 		t.Errorf("expected %s, got %s", hex.EncodeToString(expected[:]), hash)
+	}
+}
+
+func TestFileExtensionsSingleFile(t *testing.T) {
+	info := "d6:lengthi1024e4:name8:test.isoe"
+	torrent := []byte(fmt.Sprintf("d8:announce4:test4:info%se", info))
+
+	extensions, err := FileExtensions(torrent)
+	if err != nil {
+		t.Fatalf("FileExtensions() error = %v", err)
+	}
+	if len(extensions) != 1 || extensions[0] != "iso" {
+		t.Fatalf("FileExtensions() = %v, want [iso]", extensions)
+	}
+}
+
+func TestFileExtensionsMultiFile(t *testing.T) {
+	info := "d4:name5:books5:filesl" +
+		"d6:lengthi100e4:pathl10:book1.epubee" +
+		"d6:lengthi200e4:pathl6:images9:cover.jpgee" +
+		"ee"
+	torrent := []byte(fmt.Sprintf("d8:announce4:test4:info%se", info))
+
+	extensions, err := FileExtensions(torrent)
+	if err != nil {
+		t.Fatalf("FileExtensions() error = %v", err)
+	}
+	if len(extensions) != 2 || extensions[0] != "epub" || extensions[1] != "jpg" {
+		t.Fatalf("FileExtensions() = %v, want [epub jpg]", extensions)
+	}
+}
+
+func TestFileExtensionsMultiFileIgnoresDottedFolderName(t *testing.T) {
+	// The top-level "name" is the shared payload folder for a multi-file
+	// torrent, not a filename — a dot in the folder name (e.g. a season
+	// pack named "Season.1.Complete") must not be counted as a file
+	// extension alongside the real per-file extensions.
+	info := "d4:name13:Season.1.Comp5:filesl" +
+		"d6:lengthi100e4:pathl8:ep01.mkvee" +
+		"d6:lengthi100e4:pathl8:ep02.mkvee" +
+		"ee"
+	torrent := []byte(fmt.Sprintf("d8:announce4:test4:info%se", info))
+
+	extensions, err := FileExtensions(torrent)
+	if err != nil {
+		t.Fatalf("FileExtensions() error = %v", err)
+	}
+	if len(extensions) != 2 || extensions[0] != "mkv" || extensions[1] != "mkv" {
+		t.Fatalf("FileExtensions() = %v, want [mkv mkv] (folder name extension must be excluded)", extensions)
+	}
+}
+
+func TestFileExtensionsV2MultiFile(t *testing.T) {
+	// BitTorrent v2 (BEP 52) torrents describe payload files via "file tree"
+	// instead of v1's "files" list: a leaf is a dict whose only key is "".
+	info := "d4:name6:MyShow9:file treed" +
+		"8:ep01.mkvd0:d6:lengthi100eee" +
+		"8:ep02.mkvd0:d6:lengthi100eee" +
+		"e12:meta versioni2ee"
+	torrent := []byte(fmt.Sprintf("d8:announce4:test4:info%se", info))
+
+	extensions, err := FileExtensions(torrent)
+	if err != nil {
+		t.Fatalf("FileExtensions() error = %v", err)
+	}
+	if len(extensions) != 2 || extensions[0] != "mkv" || extensions[1] != "mkv" {
+		t.Fatalf("FileExtensions() = %v, want [mkv mkv]", extensions)
+	}
+}
+
+func TestFileExtensionsV2SingleFileUsesName(t *testing.T) {
+	// A v2 single-file torrent's "file tree" has exactly one leaf mirroring
+	// "name"; extensions must still come from "name", not double-count.
+	info := "d4:name9:movie.mp49:file treed" +
+		"9:movie.mp4d0:d6:lengthi100eee" +
+		"e12:meta versioni2ee"
+	torrent := []byte(fmt.Sprintf("d8:announce4:test4:info%se", info))
+
+	extensions, err := FileExtensions(torrent)
+	if err != nil {
+		t.Fatalf("FileExtensions() error = %v", err)
+	}
+	if len(extensions) != 1 || extensions[0] != "mp4" {
+		t.Fatalf("FileExtensions() = %v, want [mp4]", extensions)
 	}
 }
 

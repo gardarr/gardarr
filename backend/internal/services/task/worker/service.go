@@ -57,11 +57,16 @@ func (s *service) CreateTask(ctx context.Context, schema schemas.TaskCreateSchem
 
 	for _, item := range list {
 		if strings.EqualFold(item.MagnetLink.Hash, uri.Hash) {
+			item.WasCreated = false
 			return item, nil
 		}
 	}
 
-	return s.repository.Add(schema)
+	task, err := s.repository.Add(schema)
+	if err == nil && task != nil {
+		task.WasCreated = true
+	}
+	return task, err
 }
 
 // CreateTaskFromFile adds a torrent from an uploaded .torrent file. Dedupe by
@@ -79,11 +84,16 @@ func (s *service) CreateTaskFromFile(ctx context.Context, fileName string, fileD
 
 	for _, item := range list {
 		if torrentfile.MatchesInfoHash(hashes, item.InfoHashV1, item.InfoHashV2) {
+			item.WasCreated = false
 			return item, nil
 		}
 	}
 
-	return s.repository.AddFile(fileName, fileData, schema)
+	task, err := s.repository.AddFile(fileName, fileData, hashes, schema)
+	if err == nil && task != nil {
+		task.WasCreated = true
+	}
+	return task, err
 }
 
 func (s *service) StopTask(ctx context.Context, hash string) error {

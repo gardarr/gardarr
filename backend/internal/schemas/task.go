@@ -2,15 +2,15 @@ package schemas
 
 type TaskCreateSchema struct {
 	MagnetURI string   `json:"magnet_uri" binding:"required"`
-	Category  string   `json:"category" binding:"required"`
+	Category  string   `json:"category"`
 	Directory string   `json:"directory"`
-	Tags      []string `json:"tags" binding:"required"`
+	Tags      []string `json:"tags"`
 }
 
 // TaskCreateFromFileSchema carries the multipart form fields that accompany
 // an uploaded .torrent file (the file itself arrives as the "torrent" part).
 type TaskCreateFromFileSchema struct {
-	Category  string   `form:"category" binding:"required"`
+	Category  string   `form:"category"`
 	Directory string   `form:"directory"`
 	Tags      []string `form:"tags"`
 }

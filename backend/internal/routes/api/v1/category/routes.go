@@ -56,6 +56,7 @@ func (m *Module) createCategory(c *gin.Context) {
 		DefaultTags:      body.DefaultTags,
 		DefaultDirectory: body.DefaultDirectory,
 		MetadataSource:   defaultMetadataSource(body.MetadataSource),
+		ReleaseType:      defaultReleaseType(body.ReleaseType),
 		Color:            body.Color,
 		Icon:             body.Icon,
 	}
@@ -145,6 +146,7 @@ func (m *Module) updateCategory(c *gin.Context) {
 		DefaultTags:      existing.DefaultTags,
 		DefaultDirectory: existing.DefaultDirectory,
 		MetadataSource:   existing.MetadataSource,
+		ReleaseType:      existing.ReleaseType,
 		Color:            existing.Color,
 		Icon:             existing.Icon,
 	}
@@ -158,6 +160,9 @@ func (m *Module) updateCategory(c *gin.Context) {
 	}
 	if body.MetadataSource != "" {
 		updated.MetadataSource = body.MetadataSource
+	}
+	if body.ReleaseType != "" {
+		updated.ReleaseType = body.ReleaseType
 	}
 	if body.Color != "" {
 		updated.Color = body.Color
@@ -207,6 +212,7 @@ func (m *Module) toResponse(cat *entities.Category) models.CategoryResponse {
 		DefaultTags:      cat.DefaultTags,
 		DefaultDirectory: cat.DefaultDirectory,
 		MetadataSource:   defaultMetadataSource(cat.MetadataSource),
+		ReleaseType:      defaultReleaseType(cat.ReleaseType),
 		Color:            cat.Color,
 		Icon:             cat.Icon,
 		CreatedAt:        cat.CreatedAt,
@@ -216,6 +222,24 @@ func (m *Module) toResponse(cat *entities.Category) models.CategoryResponse {
 
 func defaultMetadataSource(value string) string {
 	if value == "" {
+		return "none"
+	}
+	return value
+}
+
+// validReleaseTypes mirrors the schema's oneof binding for release_type.
+var validReleaseTypes = map[string]bool{
+	"none": true, "movie": true, "series": true, "os": true, "game": true,
+	"book": true, "music": true, "software": true, "audiobook": true,
+	"comic": true, "course": true, "dataset": true, "rom": true,
+	"podcast": true, "anime": true,
+}
+
+// defaultReleaseType falls back to "none" for both an empty value and any
+// value outside the schema's allowed set, guarding responses against stale
+// release_type data left behind by a schema change or a direct DB edit.
+func defaultReleaseType(value string) string {
+	if !validReleaseTypes[value] {
 		return "none"
 	}
 	return value

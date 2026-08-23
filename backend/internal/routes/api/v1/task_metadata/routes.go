@@ -21,6 +21,8 @@ const (
 	MaxImageUploadSize = 5 * 1024 * 1024 // 5MB
 
 	applyProviderMetadataError = "failed to apply provider metadata"
+	maxReleaseParseFileSize    = 5 << 20
+	maxReleaseParseRequestSize = maxReleaseParseFileSize + (1 << 20)
 )
 
 var (
@@ -70,9 +72,53 @@ func (m *Module) Register() {
 	protected.GET("/:task_hash/thumbnail", m.getTaskThumbnail)
 
 	// External metadata providers
+	protected.POST("/release-parse", m.parseRelease)
+	protected.POST("/release-parse/file", m.parseReleaseFile)
 	protected.GET("/providers/:provider/status", m.providerStatus)
 	protected.GET("/:task_hash/providers/:provider/search", m.searchProvider)
 	protected.POST("/:task_hash/providers/:provider", m.applyProvider)
+}
+
+// parseRelease previews deterministic release-name suggestions. It does not
+// persist or contact any external metadata provider.
+func (m *Module) parseRelease(c *gin.Context) {
+	var body struct {
+		RawName string `json:"raw_name" binding:"required,max=1000"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "raw_name is required"})
+		return
+	}
+
+	result := m.service.ParseRelease(body.RawName)
+	c.JSON(http.StatusOK, gin.H{
+		"release":      result,
+		"display_name": result.DisplayName(),
+		"tags":         result.SuggestedTags(),
+	})
+}
+
+func (m *Module) parseReleaseFile(c *gin.Context) {
+	// FormFile parses the whole multipart body before returning its header, so
+	// bound the request itself as well as the extracted torrent file.
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxReleaseParseRequestSize)
+	file, header, err := c.Request.FormFile("torrent")
+	if err != nil || header.Size > maxReleaseParseFileSize {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "valid torrent file is required"})
+		return
+	}
+	defer file.Close()
+	data, err := io.ReadAll(io.LimitReader(file, maxReleaseParseFileSize+1))
+	if err != nil || len(data) > maxReleaseParseFileSize {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "valid torrent file is required"})
+		return
+	}
+	result, err := m.service.ParseReleaseFile(data)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"release": result, "display_name": result.DisplayName(), "tags": result.SuggestedTags()})
 }
 
 // uploadTaskImage handles image upload for a task
@@ -417,7 +463,18 @@ func (m *Module) searchProvider(c *gin.Context) {
 		return
 	}
 
-	results, err := m.service.SearchProvider(c.Request.Context(), provider, query)
+	// "auto" is only set by callers doing an initial search from the
+	// torrent's raw release name, which release-parsing turns into a
+	// cleaner query; a manually typed/edited re-search must be sent to the
+	// provider verbatim, or the parser can silently drop words the user
+	// intentionally typed.
+	var results []task_metadata_service.MetadataProviderSearchResult
+	var err error
+	if c.Query("auto") == "true" {
+		results, err = m.service.SearchProviderAuto(c.Request.Context(), provider, query)
+	} else {
+		results, err = m.service.SearchProvider(c.Request.Context(), provider, query)
+	}
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

@@ -128,7 +128,7 @@ describe("TaskMetadataSearchSheet", () => {
 
     const { onApplied, onClose } = renderSearchSheet();
 
-    await waitFor(() => expect(taskMetadataService.searchProvider).toHaveBeenCalledWith("tgdb", "Halo"));
+    await waitFor(() => expect(taskMetadataService.searchProvider).toHaveBeenCalledWith("tgdb", "Halo", true));
 
     fireEvent.click(screen.getByRole("button", { name: "torrents.addModal.actions.finish" }));
 
@@ -146,7 +146,7 @@ describe("TaskMetadataSearchSheet", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it("shows and searches with a sanitized torrent release name", async () => {
+  it("passes a raw torrent release name to the backend parser", async () => {
     renderSearchSheet({
       task: {
         name: "Super.Mario.Galaxy.O.Filme.2026.WEB-DL.1080p.x264.DUAL.5.1",
@@ -157,10 +157,11 @@ describe("TaskMetadataSearchSheet", () => {
     await waitFor(() =>
       expect(taskMetadataService.searchProvider).toHaveBeenCalledWith(
         "tgdb",
-        "Super Mario Galaxy O Filme 2026"
+        "Super.Mario.Galaxy.O.Filme.2026.WEB-DL.1080p.x264.DUAL.5.1",
+        true
       )
     );
-    expect(screen.getByDisplayValue("Super Mario Galaxy O Filme 2026")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Super.Mario.Galaxy.O.Filme.2026.WEB-DL.1080p.x264.DUAL.5.1")).toBeInTheDocument();
   });
 
   it("shows a toast and resets the loading state when apply fails", async () => {
@@ -172,7 +173,7 @@ describe("TaskMetadataSearchSheet", () => {
 
     const { onApplied, onClose } = renderSearchSheet();
 
-    await waitFor(() => expect(taskMetadataService.searchProvider).toHaveBeenCalledWith("tgdb", "Halo"));
+    await waitFor(() => expect(taskMetadataService.searchProvider).toHaveBeenCalledWith("tgdb", "Halo", true));
 
     await user.click(screen.getByRole("button", { name: "torrents.addModal.actions.finish" }));
 

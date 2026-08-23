@@ -97,14 +97,10 @@ func (s *Repository) Add(schema schemas.TaskCreateSchema) (*entities.Task, error
 }
 
 // AddFile adds a torrent from an uploaded .torrent file, mirroring Add's
-// magnet flow: the info-hash is parsed locally from the file so the created
-// task can be located for tag application and returned to the caller.
-func (s *Repository) AddFile(fileName string, fileData []byte, schema schemas.TaskCreateFromFileSchema) (*entities.Task, error) {
-	hashes, err := torrentfile.InfoHashes(fileData)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse torrent file")
-	}
-
+// magnet flow: hashes (the file's info-hashes, already parsed by the caller
+// for the pre-add dedupe check) are used to locate the created task for tag
+// application and the response.
+func (s *Repository) AddFile(fileName string, fileData []byte, hashes []string, schema schemas.TaskCreateFromFileSchema) (*entities.Task, error) {
 	if err := s.client.AddTorrentFile(qbt.TorrentFileConfig{
 		FileName:  fileName,
 		FileData:  fileData,

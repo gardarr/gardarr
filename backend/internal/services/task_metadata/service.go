@@ -23,6 +23,8 @@ import (
 	"github.com/jfxdev/gardarr/internal/infra/database"
 	"github.com/jfxdev/gardarr/internal/models"
 	task_metadata_repo "github.com/jfxdev/gardarr/internal/repository/task_metadata"
+	"github.com/jfxdev/gardarr/internal/services/releaseparse"
+	"github.com/jfxdev/gardarr/pkg/torrentfile"
 )
 
 const (
@@ -870,6 +872,35 @@ func (s *Service) SearchProvider(ctx context.Context, providerName string, query
 	}
 
 	return provider.Search(ctx, query)
+}
+
+// SearchProviderAuto turns a release name into the most useful provider query
+// before delegating to the existing provider abstraction.
+func (s *Service) SearchProviderAuto(ctx context.Context, providerName string, rawName string) ([]MetadataProviderSearchResult, error) {
+	return s.SearchProvider(ctx, providerName, releaseparse.Parse(rawName).SearchQuery())
+}
+
+// ParseRelease previews deterministic release-name suggestions from a raw
+// name (magnet display name or arbitrary text). It does not contact any
+// external metadata provider.
+func (s *Service) ParseRelease(rawName string) releaseparse.Result {
+	return releaseparse.Parse(rawName)
+}
+
+// ParseReleaseFile previews release-name suggestions from an uploaded
+// .torrent file: it parses the torrent's own name and refines the guess
+// using its payload file extensions when the name alone carries no format
+// hint (e.g. a generically named batch of ebooks or comics).
+func (s *Service) ParseReleaseFile(data []byte) (releaseparse.Result, error) {
+	name, extensions, err := torrentfile.InspectInfo(data)
+	if err != nil {
+		return releaseparse.Result{}, err
+	}
+	result := releaseparse.Parse(name)
+	if len(extensions) > 0 {
+		result = result.RefineWithFileExtensions(extensions)
+	}
+	return result, nil
 }
 
 // ApplyProviderSelection resolves provider-owned metadata and applies it to a task.

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { TagBadge } from "@/components/ui/TagBadge";
 import { Hash } from "lucide-react";
@@ -19,6 +19,7 @@ interface SelectTagsProps {
   disabled?: boolean;
   showHelp?: boolean;
   helpText?: string;
+  labelAccessory?: ReactNode;
   /** Compact height for dense layouts. */
   dense?: boolean;
 }
@@ -34,6 +35,7 @@ export function SelectTags({
   disabled = false,
   showHelp = false,
   helpText,
+  labelAccessory,
   dense = false
 }: SelectTagsProps) {
   const [tagInput, setTagInput] = useState("");
@@ -192,6 +194,7 @@ export function SelectTags({
         <Label className="flex items-center gap-2">
           <Hash className="h-4 w-4" />
           {label} {required && <span className="text-destructive">*</span>}
+          {labelAccessory}
         </Label>
       )}
 

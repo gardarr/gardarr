@@ -51,7 +51,7 @@ type TaskRepositoryInterface interface {
 	Get(hash string) (*entities.Task, error)
 	GetLimits(hash string) (*entities.TaskLimits, error)
 	Add(schema schemas.TaskCreateSchema) (*entities.Task, error)
-	AddFile(fileName string, fileData []byte, schema schemas.TaskCreateFromFileSchema) (*entities.Task, error)
+	AddFile(fileName string, fileData []byte, hashes []string, schema schemas.TaskCreateFromFileSchema) (*entities.Task, error)
 	Stop(hash string) error
 	Start(hash string) error
 	ForceResume(hash string) error

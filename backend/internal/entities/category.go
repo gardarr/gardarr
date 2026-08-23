@@ -8,6 +8,7 @@ type Category struct {
 	DefaultTags      []string
 	DefaultDirectory string
 	MetadataSource   string
+	ReleaseType      string
 	Color            string // Optional color for frontend display
 	Icon             string // Optional icon for frontend display
 	CreatedAt        time.Time

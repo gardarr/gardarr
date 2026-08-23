@@ -12,12 +12,12 @@ import {
   Link,
   Loader2,
   Server,
-  Sparkles,
   X,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Attachment } from "@/components/ui/attachment";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -29,6 +29,8 @@ import { SelectCategory } from "@/components/SelectCategory";
 import { SelectTags } from "@/components/SelectTags";
 import { convertMagnetUriToTaskMagnetLink, torrentService } from "@/services/torrents";
 import { workerService } from "@/services/workers";
+import { categoryService } from "@/services/categories";
+import { taskMetadataService, type ReleaseParseResponse } from "@/services/taskMetadata";
 import { useAddTorrent } from "@/contexts/add-torrent-hooks";
 import type { AddTorrentMode } from "@/contexts/add-torrent-context";
 import { useIsPortraitMobileOrTablet } from "@/hooks/use-portrait-mobile-tablet";
@@ -49,6 +51,7 @@ export function AddTorrentModal() {
   const { isAddModalOpen, addModalMode, closeAddModal, addPendingTorrent, removePendingTorrent } = useAddTorrent();
 
   const [workers, setWorkers] = useState<Worker[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [mode, setMode] = useState<AddTorrentMode>("magnet");
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState("");
@@ -59,12 +62,36 @@ export function AddTorrentModal() {
   const [category, setCategory] = useState("");
   const [directory, setDirectory] = useState("");
   const [tags, setTags] = useState<string[]>([]);
+  const [displayName, setDisplayName] = useState("");
+  const [releaseSuggestion, setReleaseSuggestion] = useState<ReleaseParseResponse | null>(null);
+  const [userEdited, setUserEdited] = useState({ category: false, directory: false, tags: false, displayName: false });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [workerDropdownOpen, setWorkerDropdownOpen] = useState(false);
   const [parsedMagnetLink, setParsedMagnetLink] = useState<TaskMagnetLink | null>(null);
   const workerDropdownRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isFileMode = mode === "file";
+
+  // Read via refs (not as effect deps) inside applySuggestion below: editing
+  // an unrelated field (tags, directory, category) must not re-trigger the
+  // debounced release-parse network call — in file mode that would re-upload
+  // the whole .torrent file — for a rawName/torrentFile that hasn't changed.
+  const categoriesRef = useRef(categories);
+  const selectedCategoryIdRef = useRef(selectedCategoryId);
+  const userEditedRef = useRef(userEdited);
+  const releaseSuggestionRef = useRef(releaseSuggestion);
+  useEffect(() => {
+    categoriesRef.current = categories;
+  }, [categories]);
+  useEffect(() => {
+    selectedCategoryIdRef.current = selectedCategoryId;
+  }, [selectedCategoryId]);
+  useEffect(() => {
+    userEditedRef.current = userEdited;
+  }, [userEdited]);
+  useEffect(() => {
+    releaseSuggestionRef.current = releaseSuggestion;
+  }, [releaseSuggestion]);
 
   const activeWorkers = useMemo(() => workers.filter((worker) => worker.status === "ACTIVE"), [workers]);
   const selectedWorker = useMemo(
@@ -86,6 +113,9 @@ export function AddTorrentModal() {
     setCategory("");
     setDirectory("");
     setTags([]);
+    setDisplayName("");
+    setReleaseSuggestion(null);
+    setUserEdited({ category: false, directory: false, tags: false, displayName: false });
     setErrors({});
     setParsedMagnetLink(null);
     setCreateError("");
@@ -104,9 +134,26 @@ export function AddTorrentModal() {
         console.error("Failed to load workers:", error);
       });
 
+    categoryService.listCategories().then((response) => {
+      if (!cancelled && response.data) {
+        setCategories(response.data);
+        // Categories can still be loading when a magnet/file finishes
+        // parsing (e.g. the user pastes a magnet immediately on open), so
+        // that first applySuggestion() call ran against an empty category
+        // list and couldn't match one. Update the ref in-place (the effect
+        // that normally syncs it hasn't run yet) and reapply the stored
+        // high-confidence suggestion now that categories are here.
+        categoriesRef.current = response.data;
+        if (releaseSuggestionRef.current) {
+          applySuggestion(releaseSuggestionRef.current);
+        }
+      }
+    }).catch((error) => console.error("Failed to load categories:", error));
+
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- applySuggestion is intentionally excluded: it's recreated every render, and this effect must only run when the modal opens/changes mode, not on every render
   }, [isAddModalOpen, addModalMode]);
 
   useEffect(() => {
@@ -118,13 +165,134 @@ export function AddTorrentModal() {
   }, [isAddModalOpen, activeWorkers, selectedWorkerId]);
 
   useEffect(() => {
-    if (magnetUri.trim() && magnetUri.startsWith("magnet:")) {
+    if (mode === "magnet" && magnetUri.trim() && magnetUri.startsWith("magnet:")) {
       setParsedMagnetLink(convertMagnetUriToTaskMagnetLink(magnetUri.trim()));
       return;
     }
 
     setParsedMagnetLink(null);
-  }, [magnetUri]);
+  }, [magnetUri, mode]);
+
+  const mergeTags = (base: string[], suggested: string[]): string[] => {
+    const byScope = new Map<string, string>();
+    const plain: string[] = [];
+    for (const tag of [...base, ...suggested]) {
+      const separator = tag.indexOf("::");
+      if (separator > 0) {
+        byScope.set(tag.slice(0, separator).toLowerCase(), tag);
+      } else if (!plain.includes(tag)) {
+        plain.push(tag);
+      }
+    }
+    return [...plain, ...byScope.values()];
+  };
+
+  // When multiple categories share a release_type, prefer the one whose
+  // default_tags overlap the most with the parsed release's suggested tags
+  // (e.g. an "Anime" category with tag "type::anime" beats a generic "Series"
+  // one for the same release_type), falling back to the first match.
+  const pickBestCategoryMatch = (candidates: Category[], suggestedTags: string[]): Category => {
+    const suggestedSet = new Set(suggestedTags.map((tag) => tag.toLowerCase()));
+    return candidates.reduce((best, candidate) => {
+      const candidateScore = (candidate.default_tags || []).filter((tag) => suggestedSet.has(tag.toLowerCase())).length;
+      const bestScore = (best.default_tags || []).filter((tag) => suggestedSet.has(tag.toLowerCase())).length;
+      return candidateScore > bestScore ? candidate : best;
+    }, candidates[0]);
+  };
+
+  // Resets any fields that were auto-filled from a previous parse suggestion
+  // and haven't been hand-edited by the user, so switching to a different
+  // magnet/file (or one that no longer parses with high confidence) doesn't
+  // leave stale values attributed to the wrong release.
+  const clearAutoFilledFields = () => {
+    const userEdited = userEditedRef.current;
+    setReleaseSuggestion(null);
+    if (!userEdited.displayName) {
+      setDisplayName("");
+    }
+    if (!userEdited.category) {
+      setSelectedCategoryId("");
+      setCategory("");
+    }
+    if (!userEdited.tags) {
+      setTags([]);
+    }
+    if (!userEdited.directory) {
+      setDirectory("");
+    }
+  };
+
+  const applySuggestion = (suggestion: ReleaseParseResponse) => {
+    if (suggestion.release.confidence !== "high") {
+      clearAutoFilledFields();
+      return;
+    }
+    const categories = categoriesRef.current;
+    const selectedCategoryId = selectedCategoryIdRef.current;
+    const userEdited = userEditedRef.current;
+    setReleaseSuggestion(suggestion);
+    if (!userEdited.displayName) {
+      setDisplayName(suggestion.display_name);
+    }
+    const selectedCategory = categories.find((item) => item.id === selectedCategoryId);
+    if (!userEdited.tags) {
+      setTags(mergeTags(selectedCategory?.default_tags || [], suggestion.tags));
+    }
+    if (!userEdited.category && suggestion.release.type !== "unknown") {
+      const candidates = categories.filter((item) => item.release_type === suggestion.release.type);
+      const categoryMatch = candidates.length > 0 ? pickBestCategoryMatch(candidates, suggestion.tags) : undefined;
+      if (categoryMatch) {
+        setSelectedCategoryId(categoryMatch.id);
+        setCategory(categoryMatch.name);
+        if (!userEdited.tags) setTags(mergeTags(categoryMatch.default_tags || [], suggestion.tags));
+        if (!userEdited.directory) {
+          setDirectory(categoryMatch.default_directory || "");
+        }
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (mode !== "magnet") {
+      return;
+    }
+    const rawName = parsedMagnetLink?.display_name.trim();
+    if (!rawName) {
+      clearAutoFilledFields();
+      return;
+    }
+    let cancelled = false;
+    const timeout = window.setTimeout(() => {
+      taskMetadataService.parseRelease(rawName).then((response) => {
+        if (!cancelled && response.data) {
+          applySuggestion(response.data);
+        }
+      }).catch((error) => console.error("Failed to parse release name:", error));
+    }, 250);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- categories/selectedCategoryId/userEdited are read via refs so editing an unrelated field doesn't re-trigger this parse
+  }, [mode, parsedMagnetLink?.display_name]);
+
+  useEffect(() => {
+    if (mode !== "file") {
+      return;
+    }
+    if (!torrentFile) {
+      clearAutoFilledFields();
+      return;
+    }
+    let cancelled = false;
+    taskMetadataService.parseReleaseFile(torrentFile).then((response) => {
+      if (!cancelled && response.data) {
+        applySuggestion(response.data);
+      }
+    }).catch((error) => console.error("Failed to parse torrent file:", error));
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- categories/selectedCategoryId/userEdited are read via refs so editing an unrelated field doesn't re-upload the file
+  }, [mode, torrentFile]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -160,16 +328,8 @@ export function AddTorrentModal() {
       nextErrors.magnetUri = t("torrents.addModal.errors.magnetInvalidPrefix");
     }
 
-    if (!selectedCategoryId) {
-      nextErrors.category = t("torrents.addModal.errors.categoryRequired");
-    }
-
     if (!selectedWorkerId) {
       nextErrors.worker = t("torrents.addModal.errors.workerRequired");
-    }
-
-    if (tags.length === 0) {
-      nextErrors.tags = t("torrents.addModal.errors.tagsRequired");
     }
 
     setErrors({
@@ -183,12 +343,13 @@ export function AddTorrentModal() {
   };
 
   const handleCategoryChange = (categoryId: string, nextCategory?: Category) => {
+    setUserEdited((current) => ({ ...current, category: true }));
     setSelectedCategoryId(categoryId);
     setErrors((current) => ({ ...current, category: "" }));
 
     if (categoryId && nextCategory) {
       setCategory(nextCategory.name);
-      setTags([...(nextCategory.default_tags || [])]);
+      setTags(mergeTags([...(nextCategory.default_tags || [])], releaseSuggestion?.tags || []));
       setDirectory(nextCategory.default_directory || "");
       return;
     }
@@ -205,8 +366,46 @@ export function AddTorrentModal() {
   };
 
   const handleModeChange = (nextMode: string) => {
-    setMode(nextMode as AddTorrentMode);
-    setErrors((current) => ({ ...current, magnetUri: "" }));
+    const next = nextMode as AddTorrentMode;
+    if (next === mode) {
+      return;
+    }
+
+    setMode(next);
+    setMagnetUri("");
+    setTorrentFile(null);
+    setParsedMagnetLink(null);
+    setSelectedCategoryId("");
+    setCategory("");
+    setDirectory("");
+    setTags([]);
+    setDisplayName("");
+    setReleaseSuggestion(null);
+    setUserEdited({ category: false, directory: false, tags: false, displayName: false });
+    setErrors({});
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  // Applies the user-edited display name after a torrent is created
+  // (was_created=false means it was a dedupe match against an existing
+  // task, which must keep its own name). One retry covers a fresh task's
+  // metadata record not being registered yet; if it still fails the
+  // warning stays visible until dismissed since the torrent itself did
+  // get added and nothing else will retry the rename for the user.
+  const applyDisplayName = async (hash: string, wasCreated: boolean) => {
+    if (!wasCreated || !displayName.trim()) {
+      return;
+    }
+    let nameResponse = await taskMetadataService.updateName(hash, displayName.trim());
+    if (nameResponse.error) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      nameResponse = await taskMetadataService.updateName(hash, displayName.trim());
+    }
+    if (nameResponse.error) {
+      toast.warning(t("torrents.notifications.addSuccessDisplayNameFailed"), { duration: Infinity });
+    }
   };
 
   const handleSubmitFile = async () => {
@@ -231,6 +430,10 @@ export function AddTorrentModal() {
 
       if (response.error) {
         throw new Error(response.error);
+      }
+
+      if (response.data?.hash) {
+        await applyDisplayName(response.data.hash, !!response.data.was_created);
       }
 
       // Sem hash conhecido de antemão: o card real chega via evento WS
@@ -285,6 +488,8 @@ export function AddTorrentModal() {
       if (response.error || !response.data?.hash) {
         throw new Error(response.error || t("torrents.addModal.errors.taskHashMissing"));
       }
+
+      await applyDisplayName(response.data.hash, !!response.data.was_created);
 
       toast.success(t("torrents.notifications.addSuccess"));
     } catch (error) {
@@ -396,18 +601,25 @@ export function AddTorrentModal() {
                   setErrors((current) => ({ ...current, magnetUri: "" }));
                 }}
               />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
+              <Attachment
                 disabled={isBusy}
-                className={`w-full justify-start gap-2 ${errors.magnetUri ? "border-destructive" : ""}`}
+                aria-invalid={!!errors.magnetUri}
+                selected={!!torrentFile}
+                onClick={() => fileInputRef.current?.click()}
+                onRemove={() => {
+                  setTorrentFile(null);
+                  setReleaseSuggestion(null);
+                  if (fileInputRef.current) {
+                    fileInputRef.current.value = "";
+                  }
+                }}
+                removeLabel={t("torrents.addModal.file.remove")}
+                className={errors.magnetUri ? "border-destructive" : ""}
+                icon={torrentFile ? <FileText className="h-7 w-7" /> : <FileUp className="h-5 w-5" />}
+                description={torrentFile ? t("torrents.addModal.file.details", { size: formatBytes(torrentFile.size) }) : t("torrents.addModal.file.help")}
               >
-                <FileUp className="h-4 w-4" />
-                <span className="truncate">
-                  {torrentFile ? torrentFile.name : t("torrents.addModal.file.placeholder")}
-                </span>
-              </Button>
+                {torrentFile ? torrentFile.name : t("torrents.addModal.file.placeholder")}
+              </Attachment>
               {errors.magnetUri && <p className="text-sm text-destructive">{errors.magnetUri}</p>}
             </TabsContent>
 
@@ -437,9 +649,21 @@ export function AddTorrentModal() {
 
               {parsedMagnetLink && (
                 <div className="mt-3 min-w-0 space-y-3 overflow-hidden rounded-lg border bg-muted/50 p-4">
-                  <div className="mb-2 flex items-center gap-2">
-                    <Database className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium text-foreground">{t("torrents.addModal.magnetInfo.title")}</span>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <Database className="h-4 w-4 shrink-0 text-primary" />
+                      <span className="text-sm font-medium text-foreground">{t("torrents.addModal.magnetInfo.title")}</span>
+                    </div>
+                    {parsedMagnetLink.trackers.length > 0 && (
+                      <span
+                        aria-label={t("torrents.addModal.magnetInfo.trackersCount", { count: parsedMagnetLink.trackers.length })}
+                        className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground"
+                        title={t("torrents.addModal.magnetInfo.trackers")}
+                      >
+                        <Globe className="h-3.5 w-3.5" aria-hidden="true" />
+                        {parsedMagnetLink.trackers.length}
+                      </span>
+                    )}
                   </div>
 
                 {parsedMagnetLink.display_name && (
@@ -448,28 +672,6 @@ export function AddTorrentModal() {
                     <div className="min-w-0">
                       <span className="block text-muted-foreground">{t("torrents.addModal.magnetInfo.name")}:</span>
                       <span className="block break-words font-medium text-foreground">{parsedMagnetLink.display_name}</span>
-                    </div>
-                  </div>
-                )}
-
-                {parsedMagnetLink.hash && !isPortraitMobileOrTablet && (
-                  <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-2 text-xs">
-                    <Sparkles className="h-3 w-3 text-muted-foreground" />
-                    <div className="min-w-0">
-                      <span className="block text-muted-foreground">{t("torrents.addModal.magnetInfo.hash")}:</span>
-                      <span className="block break-all font-mono text-foreground">{parsedMagnetLink.hash}</span>
-                    </div>
-                  </div>
-                )}
-
-                {parsedMagnetLink.trackers.length > 0 && (
-                  <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-2 text-xs">
-                    <Globe className="h-3 w-3 text-muted-foreground" />
-                    <div className="min-w-0">
-                      <span className="block text-muted-foreground">{t("torrents.addModal.magnetInfo.trackers")}:</span>
-                      <span className="block break-words font-medium text-foreground">
-                        {t("torrents.addModal.magnetInfo.trackersCount", { count: parsedMagnetLink.trackers.length })}
-                      </span>
                     </div>
                   </div>
                 )}
@@ -487,14 +689,34 @@ export function AddTorrentModal() {
                 )}
                 </div>
               )}
+              {releaseSuggestion?.release.confidence === "high" && (
+                <p className="text-xs text-muted-foreground">{t("torrents.addModal.release.review")}</p>
+              )}
             </TabsContent>
           </Tabs>
+
+          <div className="space-y-2">
+            <Label htmlFor="displayName" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" /> {t("torrents.addModal.release.displayName")}
+              {releaseSuggestion?.release.confidence === "high" && <span className="text-xs text-blue-600">({t("torrents.addModal.release.suggested")})</span>}
+            </Label>
+            <Input
+              id="displayName"
+              value={displayName}
+              placeholder={t("torrents.addModal.release.displayNamePlaceholder")}
+              onChange={(event) => {
+                setUserEdited((current) => ({ ...current, displayName: true }));
+                setDisplayName(event.target.value);
+              }}
+              disabled={isBusy}
+            />
+          </div>
 
           <SelectCategory
             selectedCategoryId={selectedCategoryId}
             onCategoryChange={handleCategoryChange}
             label={t("torrents.addModal.category.label")}
-            required={true}
+            required={false}
             error={errors.category}
             showAddButton={true}
           />
@@ -513,7 +735,10 @@ export function AddTorrentModal() {
               type="text"
               placeholder={t("torrents.addModal.directory.placeholder")}
               value={directory}
-              onChange={(event) => setDirectory(event.target.value)}
+              onChange={(event) => {
+                setUserEdited((current) => ({ ...current, directory: true }));
+                setDirectory(event.target.value);
+              }}
               disabled={isBusy}
             />
           </div>
@@ -521,17 +746,19 @@ export function AddTorrentModal() {
           <SelectTags
             tags={tags}
             onTagsChange={(nextTags) => {
+              setUserEdited((current) => ({ ...current, tags: true }));
               setTags(nextTags);
               if (nextTags.length > 0) {
                 setErrors((current) => ({ ...current, tags: "" }));
               }
             }}
             label={t("torrents.addModal.tags.label")}
-            required={true}
+            required={false}
             error={errors.tags}
             placeholder={t("torrents.addModal.tags.placeholder")}
-            showHelp={!!(selectedCategoryId && tags.length > 0)}
-            helpText={`(${t("torrents.addModal.tags.autoFilled")})`}
+            labelAccessory={selectedCategoryId && tags.length > 0 ? (
+              <span className="text-xs font-normal text-blue-600">({t("torrents.addModal.tags.autoFilled")})</span>
+            ) : undefined}
             disabled={isBusy}
           />
 
@@ -539,6 +766,12 @@ export function AddTorrentModal() {
             <Label htmlFor="worker" className="flex items-center gap-2">
               <Server className="h-4 w-4" />
               {t("torrents.addModal.worker.label")} <span className="text-destructive">*</span>
+              {selectedWorkerId && freeSpace > 0 && (
+                <span className="ml-1 inline-flex items-center gap-1 text-xs font-normal text-muted-foreground">
+                  <HardDrive className="h-3 w-3" />
+                  {t("torrents.addModal.worker.freeSpace")} {formatBytes(freeSpace)}
+                </span>
+              )}
             </Label>
             <div className="relative" ref={workerDropdownRef}>
               <Button
@@ -583,13 +816,6 @@ export function AddTorrentModal() {
             </div>
 
             {errors.worker && <p className="text-sm text-destructive">{errors.worker}</p>}
-
-            {selectedWorkerId && freeSpace > 0 && (
-              <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                <HardDrive className="h-3 w-3" />
-                <span>{t("torrents.addModal.worker.freeSpace")} {formatBytes(freeSpace)}</span>
-              </div>
-            )}
           </div>
         </div>
       </ScrollArea>

@@ -11,7 +11,6 @@ import { toast } from "sonner";
 import { Calendar, Check, Image as ImageIcon, Loader2, Search, X } from "lucide-react";
 import type { Category } from "@/types/category";
 import type { MetadataProviderSearchResult, Task, TaskMetadata } from "@/types/torrent";
-import { sanitizeProviderSearchQuery } from "@/utils/providerSearch";
 
 interface TaskMetadataSearchSheetProps {
   isOpen: boolean;
@@ -60,7 +59,7 @@ export function TaskMetadataSearchSheet({
   const provider = category?.metadata_source || "none";
   const isSupportedProvider = provider === "tgdb" || provider === "tmdb";
   const initialQuery = useMemo(
-    () => sanitizeProviderSearchQuery(task?.metadata?.name?.trim() || task?.name?.trim() || ""),
+    () => task?.metadata?.name?.trim() || task?.name?.trim() || "",
     [task?.metadata?.name, task?.name]
   );
   const selectedResult = useMemo(
@@ -85,8 +84,8 @@ export function TaskMetadataSearchSheet({
     setApplyError("");
   }, [initialQuery, isOpen, task?.id]);
 
-  const runSearch = useCallback(async (searchQuery: string) => {
-    const trimmedQuery = sanitizeProviderSearchQuery(searchQuery);
+  const runSearch = useCallback(async (searchQuery: string, auto = false) => {
+    const trimmedQuery = searchQuery.trim();
 
     if (!isSupportedProvider) {
       return;
@@ -105,7 +104,7 @@ export function TaskMetadataSearchSheet({
     setApplyError("");
 
     try {
-      const response = await taskMetadataService.searchProvider(provider, trimmedQuery);
+      const response = await taskMetadataService.searchProvider(provider, trimmedQuery, auto);
 
       if (response.error) {
         setResults([]);
@@ -157,7 +156,7 @@ export function TaskMetadataSearchSheet({
         setStatusMessage("");
 
         if (initialQuery.trim().length >= 2) {
-          void runSearch(initialQuery);
+          void runSearch(initialQuery, true);
         }
         return;
       }
@@ -235,12 +234,6 @@ export function TaskMetadataSearchSheet({
           <div className="space-y-6 p-4 sm:p-6">
             <div className="space-y-2">
               <Label htmlFor="metadata-search-query">{t("torrents.addModal.metadata.fields.name")}</Label>
-              <p className="text-xs text-muted-foreground">
-                {t("torrents.addModal.metadata.sanitizedQuery", {
-                  defaultValue: "Sanitized search name: {{name}}",
-                  name: sanitizeProviderSearchQuery(query) || "-",
-                })}
-              </p>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <div className="relative flex-1">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

@@ -29,6 +29,7 @@ func (r *Repository) CreateCategory(ctx context.Context, category entities.Categ
 		DefaultTags:      models.StringArray(category.DefaultTags),
 		DefaultDirectory: category.DefaultDirectory,
 		MetadataSource:   category.MetadataSource,
+		ReleaseType:      category.ReleaseType,
 		Color:            category.Color,
 		Icon:             category.Icon,
 	}
@@ -93,6 +94,7 @@ func (r *Repository) UpdateCategory(ctx context.Context, category entities.Categ
 		"default_tags":      models.StringArray(category.DefaultTags),
 		"default_directory": category.DefaultDirectory,
 		"metadata_source":   category.MetadataSource,
+		"release_type":      category.ReleaseType,
 		"color":             category.Color,
 		"icon":              category.Icon,
 	}
@@ -129,6 +131,7 @@ func toCategory(model models.Category) *entities.Category {
 		DefaultTags:      []string(model.DefaultTags),
 		DefaultDirectory: model.DefaultDirectory,
 		MetadataSource:   model.MetadataSource,
+		ReleaseType:      model.ReleaseType,
 		Color:            model.Color,
 		Icon:             model.Icon,
 		CreatedAt:        model.CreatedAt,

@@ -108,7 +108,7 @@ describe("TGDBSearch", () => {
     );
   });
 
-  it("displays the sanitized initial torrent name in the search field", () => {
+  it("passes the raw initial torrent name to the backend parser", () => {
     render(
       <TGDBSearch
         taskHash="task-1"
@@ -118,6 +118,6 @@ describe("TGDBSearch", () => {
       />
     );
 
-    expect(screen.getByDisplayValue("Super Mario Galaxy O Filme 2026")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Super.Mario.Galaxy.O.Filme.2026.WEB-DL.1080p.x264.DUAL.5.1")).toBeInTheDocument();
   });
 });
