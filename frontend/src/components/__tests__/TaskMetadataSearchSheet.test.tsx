@@ -128,7 +128,7 @@ describe("TaskMetadataSearchSheet", () => {
 
     const { onApplied, onClose } = renderSearchSheet();
 
-    await waitFor(() => expect(taskMetadataService.searchProvider).toHaveBeenCalledWith("tgdb", "Halo"));
+    await waitFor(() => expect(taskMetadataService.searchProvider).toHaveBeenCalledWith("tgdb", "Halo", true));
 
     fireEvent.click(screen.getByRole("button", { name: "torrents.addModal.actions.finish" }));
 
@@ -157,7 +157,8 @@ describe("TaskMetadataSearchSheet", () => {
     await waitFor(() =>
       expect(taskMetadataService.searchProvider).toHaveBeenCalledWith(
         "tgdb",
-        "Super.Mario.Galaxy.O.Filme.2026.WEB-DL.1080p.x264.DUAL.5.1"
+        "Super.Mario.Galaxy.O.Filme.2026.WEB-DL.1080p.x264.DUAL.5.1",
+        true
       )
     );
     expect(screen.getByDisplayValue("Super.Mario.Galaxy.O.Filme.2026.WEB-DL.1080p.x264.DUAL.5.1")).toBeInTheDocument();
@@ -172,7 +173,7 @@ describe("TaskMetadataSearchSheet", () => {
 
     const { onApplied, onClose } = renderSearchSheet();
 
-    await waitFor(() => expect(taskMetadataService.searchProvider).toHaveBeenCalledWith("tgdb", "Halo"));
+    await waitFor(() => expect(taskMetadataService.searchProvider).toHaveBeenCalledWith("tgdb", "Halo", true));
 
     await user.click(screen.getByRole("button", { name: "torrents.addModal.actions.finish" }));
 

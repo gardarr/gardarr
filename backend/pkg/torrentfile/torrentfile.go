@@ -104,6 +104,7 @@ func walkInfoDict(info []byte) (name string, hasFiles bool, extensions []string,
 	}
 
 	var nameExtension string
+	var fileTreeExtensions []string
 	pos := 1
 	for pos < len(info) && info[pos] != 'e' {
 		key, next, err := parseString(info, pos)
@@ -121,12 +122,23 @@ func walkInfoDict(info []byte) (name string, hasFiles bool, extensions []string,
 			nameExtension = fileExtension(name)
 			pos = valueEnd
 		case "files":
+			// BitTorrent v1 (and the v1 side of a hybrid torrent).
 			fileExts, valueEnd, err := parseFileListExtensions(info, next)
 			if err != nil {
 				return "", false, nil, fmt.Errorf("invalid torrent file: %w", err)
 			}
 			hasFiles = true
 			extensions = append(extensions, fileExts...)
+			pos = valueEnd
+		case "file tree":
+			// BitTorrent v2 (BEP 52); only used when "files" (v1) is absent,
+			// since a hybrid torrent's v1 "files" and v2 "file tree"
+			// describe the same payload and must not be counted twice.
+			fileTreeExts, valueEnd, err := parseFileTreeExtensions(info, next)
+			if err != nil {
+				return "", false, nil, fmt.Errorf("invalid torrent file: %w", err)
+			}
+			fileTreeExtensions = fileTreeExts
 			pos = valueEnd
 		default:
 			valueEnd, err := skipValue(info, next)
@@ -136,10 +148,77 @@ func walkInfoDict(info []byte) (name string, hasFiles bool, extensions []string,
 			pos = valueEnd
 		}
 	}
-	if !hasFiles && nameExtension != "" {
-		extensions = []string{nameExtension}
+	if hasFiles {
+		return name, true, extensions, nil
 	}
-	return name, hasFiles, extensions, nil
+	// A v2 "file tree" with a single leaf just mirrors "name" for a
+	// single-file torrent; more than one leaf means a real multi-file
+	// payload, matching v1's "files" semantics.
+	if len(fileTreeExtensions) > 1 {
+		return name, true, fileTreeExtensions, nil
+	}
+	if nameExtension == "" {
+		return name, false, nil, nil
+	}
+	return name, false, []string{nameExtension}, nil
+}
+
+// parseFileTreeExtensions walks a BitTorrent v2 "file tree" dictionary
+// (BEP 52) and returns the extension of every leaf file. Each level is a
+// dict keyed by a path segment; a leaf is identified by its value dict's
+// first (and only) key being the empty string, which holds the file's
+// properties ("length", "pieces root", ...) rather than another path
+// segment.
+func parseFileTreeExtensions(data []byte, pos int) ([]string, int, error) {
+	if pos >= len(data) || data[pos] != 'd' {
+		end, err := skipValue(data, pos)
+		return nil, end, err
+	}
+
+	var extensions []string
+	i := pos + 1
+	for i < len(data) && data[i] != 'e' {
+		key, next, err := parseString(data, i)
+		if err != nil {
+			return nil, 0, err
+		}
+
+		if isFileTreeLeaf(data, next) {
+			if ext := fileExtension(string(key)); ext != "" {
+				extensions = append(extensions, ext)
+			}
+			valueEnd, err := skipValue(data, next)
+			if err != nil {
+				return nil, 0, err
+			}
+			i = valueEnd
+			continue
+		}
+
+		childExtensions, valueEnd, err := parseFileTreeExtensions(data, next)
+		if err != nil {
+			return nil, 0, err
+		}
+		extensions = append(extensions, childExtensions...)
+		i = valueEnd
+	}
+	if i >= len(data) {
+		return nil, 0, fmt.Errorf("unterminated file tree dictionary")
+	}
+	return extensions, i + 1, nil
+}
+
+// isFileTreeLeaf reports whether the dict at pos is a file-tree leaf's
+// properties dict, identified by its first key being the empty string.
+func isFileTreeLeaf(data []byte, pos int) bool {
+	if pos >= len(data) || data[pos] != 'd' {
+		return false
+	}
+	if pos+1 >= len(data) || data[pos+1] == 'e' {
+		return false
+	}
+	key, _, err := parseString(data, pos+1)
+	return err == nil && len(key) == 0
 }
 
 // fileExtension returns the lowercase extension (without the dot) of a

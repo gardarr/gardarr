@@ -40,7 +40,11 @@ export function ProviderSearch({ provider, taskHash, initialQuery, onSelect, onC
     );
   }, [initialQuery]);
 
-  const handleSearch = useCallback(async (searchQuery: string) => {
+  // auto=true tells the backend to run the query through release-name
+  // parsing first (needed for the raw torrent name on the initial
+  // auto-search); a manually typed/edited re-search must be sent verbatim,
+  // or the parser can silently drop words the user intentionally typed.
+  const handleSearch = useCallback(async (searchQuery: string, auto = false) => {
     const trimmedQuery = searchQuery.trim();
     if (!trimmedQuery) return;
 
@@ -49,7 +53,8 @@ export function ProviderSearch({ provider, taskHash, initialQuery, onSelect, onC
       currentQuery === trimmedQuery ? currentQuery : trimmedQuery
     );
     try {
-      const response = await api.get<ProviderSearchResult[]>(`/tasks/metadata/${taskHash}/providers/${provider}/search?q=${encodeURIComponent(trimmedQuery)}`);
+      const autoParam = auto ? "&auto=true" : "";
+      const response = await api.get<ProviderSearchResult[]>(`/tasks/metadata/${taskHash}/providers/${provider}/search?q=${encodeURIComponent(trimmedQuery)}${autoParam}`);
       setResults(response.data || []);
     } catch {
       toast.error(t(`${provider}.errors.searchFailed`));
@@ -61,7 +66,7 @@ export function ProviderSearch({ provider, taskHash, initialQuery, onSelect, onC
   // Auto-search on open using the torrent's own name, so the tab isn't a
   // blank results grid behind a pre-filled input the user has to re-submit.
   useEffect(() => {
-    handleSearch(initialQuery);
+    handleSearch(initialQuery, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

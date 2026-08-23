@@ -44,9 +44,10 @@ class TaskMetadataService {
     return api.get<ProviderStatusResponse>(`/tasks/metadata/providers/${provider}/status`);
   }
 
-  async searchProvider(provider: string, query: string): Promise<ApiResponse<MetadataProviderSearchResult[]>> {
+  async searchProvider(provider: string, query: string, auto = false): Promise<ApiResponse<MetadataProviderSearchResult[]>> {
+    const autoParam = auto ? "&auto=true" : "";
     return api.get<MetadataProviderSearchResult[]>(
-      `/tasks/metadata/${SEARCH_PREVIEW_TASK_HASH}/providers/${provider}/search?q=${encodeURIComponent(query)}`
+      `/tasks/metadata/${SEARCH_PREVIEW_TASK_HASH}/providers/${provider}/search?q=${encodeURIComponent(query)}${autoParam}`
     );
   }
 

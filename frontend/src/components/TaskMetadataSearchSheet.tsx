@@ -84,7 +84,7 @@ export function TaskMetadataSearchSheet({
     setApplyError("");
   }, [initialQuery, isOpen, task?.id]);
 
-  const runSearch = useCallback(async (searchQuery: string) => {
+  const runSearch = useCallback(async (searchQuery: string, auto = false) => {
     const trimmedQuery = searchQuery.trim();
 
     if (!isSupportedProvider) {
@@ -104,7 +104,7 @@ export function TaskMetadataSearchSheet({
     setApplyError("");
 
     try {
-      const response = await taskMetadataService.searchProvider(provider, trimmedQuery);
+      const response = await taskMetadataService.searchProvider(provider, trimmedQuery, auto);
 
       if (response.error) {
         setResults([]);
@@ -156,7 +156,7 @@ export function TaskMetadataSearchSheet({
         setStatusMessage("");
 
         if (initialQuery.trim().length >= 2) {
-          void runSearch(initialQuery);
+          void runSearch(initialQuery, true);
         }
         return;
       }

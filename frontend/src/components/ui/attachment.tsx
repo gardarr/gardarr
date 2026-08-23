@@ -4,11 +4,11 @@ import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface AttachmentProps extends React.ComponentProps<"button"> {
-  description?: React.ReactNode
-  icon?: React.ReactNode
-  onRemove?: () => void
-  removeLabel?: string
-  selected?: boolean
+  readonly description?: React.ReactNode
+  readonly icon?: React.ReactNode
+  readonly onRemove?: () => void
+  readonly removeLabel?: string
+  readonly selected?: boolean
 }
 
 function Attachment({

@@ -79,6 +79,7 @@ export function AddTorrentModal() {
   const categoriesRef = useRef(categories);
   const selectedCategoryIdRef = useRef(selectedCategoryId);
   const userEditedRef = useRef(userEdited);
+  const releaseSuggestionRef = useRef(releaseSuggestion);
   useEffect(() => {
     categoriesRef.current = categories;
   }, [categories]);
@@ -88,6 +89,9 @@ export function AddTorrentModal() {
   useEffect(() => {
     userEditedRef.current = userEdited;
   }, [userEdited]);
+  useEffect(() => {
+    releaseSuggestionRef.current = releaseSuggestion;
+  }, [releaseSuggestion]);
 
   const activeWorkers = useMemo(() => workers.filter((worker) => worker.status === "ACTIVE"), [workers]);
   const selectedWorker = useMemo(
@@ -133,12 +137,23 @@ export function AddTorrentModal() {
     categoryService.listCategories().then((response) => {
       if (!cancelled && response.data) {
         setCategories(response.data);
+        // Categories can still be loading when a magnet/file finishes
+        // parsing (e.g. the user pastes a magnet immediately on open), so
+        // that first applySuggestion() call ran against an empty category
+        // list and couldn't match one. Update the ref in-place (the effect
+        // that normally syncs it hasn't run yet) and reapply the stored
+        // high-confidence suggestion now that categories are here.
+        categoriesRef.current = response.data;
+        if (releaseSuggestionRef.current) {
+          applySuggestion(releaseSuggestionRef.current);
+        }
       }
     }).catch((error) => console.error("Failed to load categories:", error));
 
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- applySuggestion is intentionally excluded: it's recreated every render, and this effect must only run when the modal opens/changes mode, not on every render
   }, [isAddModalOpen, addModalMode]);
 
   useEffect(() => {
@@ -185,8 +200,31 @@ export function AddTorrentModal() {
     }, candidates[0]);
   };
 
+  // Resets any fields that were auto-filled from a previous parse suggestion
+  // and haven't been hand-edited by the user, so switching to a different
+  // magnet/file (or one that no longer parses with high confidence) doesn't
+  // leave stale values attributed to the wrong release.
+  const clearAutoFilledFields = () => {
+    const userEdited = userEditedRef.current;
+    setReleaseSuggestion(null);
+    if (!userEdited.displayName) {
+      setDisplayName("");
+    }
+    if (!userEdited.category) {
+      setSelectedCategoryId("");
+      setCategory("");
+    }
+    if (!userEdited.tags) {
+      setTags([]);
+    }
+    if (!userEdited.directory) {
+      setDirectory("");
+    }
+  };
+
   const applySuggestion = (suggestion: ReleaseParseResponse) => {
     if (suggestion.release.confidence !== "high") {
+      clearAutoFilledFields();
       return;
     }
     const categories = categoriesRef.current;
@@ -220,7 +258,7 @@ export function AddTorrentModal() {
     }
     const rawName = parsedMagnetLink?.display_name.trim();
     if (!rawName) {
-      setReleaseSuggestion(null);
+      clearAutoFilledFields();
       return;
     }
     let cancelled = false;
@@ -239,7 +277,11 @@ export function AddTorrentModal() {
   }, [mode, parsedMagnetLink?.display_name]);
 
   useEffect(() => {
-    if (mode !== "file" || !torrentFile) {
+    if (mode !== "file") {
+      return;
+    }
+    if (!torrentFile) {
+      clearAutoFilledFields();
       return;
     }
     let cancelled = false;

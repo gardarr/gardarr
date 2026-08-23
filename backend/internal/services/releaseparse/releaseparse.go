@@ -107,6 +107,7 @@ var (
 	fansubBracketRE   = regexp.MustCompile(`^\[([A-Za-z0-9][A-Za-z0-9_ .'-]{1,24})\]\s*`)
 	animeEpisodeRE    = regexp.MustCompile(`(?i)\s-\s(\d{1,3})(?:\s|\[|\(|$)`)
 	groupRE           = regexp.MustCompile(`-([A-Za-z0-9][A-Za-z0-9_-]{1,})\s*$`)
+	videoExtensionRE  = regexp.MustCompile(`(?i)\.(mkv|mp4|avi|mov|wmv|webm|ts|m2ts|flv|vob|mpe?g|m4v)$`)
 )
 
 // weakConfidenceFields carry a real but ambiguous signal on their own (a bare
@@ -134,47 +135,25 @@ func Parse(raw string) Result {
 	decodedRaw := html.UnescapeString(raw)
 	trimmedRaw := strings.TrimSpace(decodedRaw)
 
-	fansubGroup := ""
-	hasFansubBracket := false
-	if match := fansubBracketRE.FindStringSubmatch(trimmedRaw); len(match) == 2 {
-		fansubGroup = strings.TrimSpace(match[1])
-		hasFansubBracket = true
-		trimmedRaw = strings.TrimSpace(trimmedRaw[len(match[0]):])
-	}
+	trimmedRaw, fansubGroup, hasFansubBracket := stripFansubBracket(trimmedRaw)
 
 	input := normalize(trimmedRaw)
 	if input == "" {
 		return result
 	}
 
-	if match := groupRE.FindStringSubmatch(strings.TrimSpace(decodedRaw)); len(match) == 2 && !isMetadataToken(match[1]) {
-		result.Group = match[1]
-	}
-	if result.Group == "" && fansubGroup != "" {
-		result.Group = fansubGroup
-	}
+	result.Group = extractGroup(decodedRaw, fansubGroup)
 	if match := yearRE.FindString(input); match != "" {
 		result.Year = match
 	}
-	if match := seasonRE.FindStringSubmatch(input); len(match) > 1 {
-		result.Season, result.Episode, result.Type = match[1], match[2], ReleaseTypeSeries
-	} else if match := xEpisodeRE.FindStringSubmatch(input); len(match) == 3 {
-		result.Season, result.Episode, result.Type = match[1], match[2], ReleaseTypeSeries
-	} else if match := seasonWordRE.FindStringSubmatch(input); len(match) == 2 {
-		result.Season, result.Type = match[1], ReleaseTypeSeries
-	}
+	result.Season, result.Episode = extractSeasonEpisode(input)
+
 	result.Resolution = canonical(resolutionRE.FindString(input))
 	result.Source = canonicalSource(sourceRE.FindString(input))
 	result.Codec = canonicalCodec(codecRE.FindString(input))
-	// A bare "Episode N" / "Volume N" / "Issue N" is only trustworthy
-	// metadata when the release carries no video-specific signal; otherwise
-	// it is very likely part of a movie's own title (e.g. "Star Wars
-	// Episode 4", "Kill Bill Volume 1") and must not truncate the title or
-	// change Type.
-	hasVideoSignal := result.Resolution != "" || result.Source != "" || result.Codec != ""
-	if match := podcastEpisodeRE.FindStringSubmatch(input); result.Episode == "" && !hasVideoSignal && len(match) == 2 {
-		result.Episode = match[1]
-	}
+	hasVideoSignal := result.Resolution != "" || result.Source != "" || result.Codec != "" || videoExtensionRE.MatchString(trimmedRaw)
+	applyWeakNumberMarkers(&result, input, hasVideoSignal)
+
 	result.Audio = canonical(audioRE.FindString(input))
 	result.Language = canonicalLanguage(languageRE.FindString(input))
 	result.Edition = canonical(editionRE.FindString(input))
@@ -185,40 +164,114 @@ func Parse(raw string) Result {
 	if match := versionRE.FindStringSubmatch(decodedRaw); len(match) == 2 {
 		result.Version = match[1]
 	}
-	if match := volumeRE.FindStringSubmatch(input); !hasVideoSignal && len(match) == 2 {
-		result.Volume = match[1]
-	}
-	if match := issueRE.FindStringSubmatch(input); !hasVideoSignal && len(match) == 2 {
-		result.Issue = match[1]
-	}
 	result.HDR = canonicalHDR(hdrRE.FindString(input))
 	result.Region = canonicalRegion(regionRE.FindString(decodedRaw))
 	result.Provider = canonicalProvider(providerRE.FindString(input))
 	result.Package = canonical(packageRE.FindString(input))
 
-	isAnimeSignal := hasFansubBracket || animeMarkerRE.MatchString(input)
-	if result.Episode == "" && isAnimeSignal {
-		if match := animeEpisodeRE.FindStringSubmatch(input); len(match) == 2 {
-			result.Episode = match[1]
-		}
-	}
+	isAnimeSignal, episode := extractAnimeEpisode(input, hasFansubBracket, result.Episode)
+	result.Episode = episode
 
 	result.Type = detectType(result, input, isAnimeSignal)
 	result = withVersionCleared(result)
-
-	result.Title = titleBeforeMetadata(input, hasVideoSignal)
-	if result.Type == ReleaseTypeOS {
-		result.Title = displayDistro(result.Distro)
-	}
-	if result.Type == ReleaseTypeAnime {
-		if loc := animeEpisodeRE.FindStringSubmatchIndex(result.Title); loc != nil {
-			result.Title = strings.TrimSpace(result.Title[:loc[0]])
-		}
-	}
+	result.Title = finalizeTitle(result, input, hasVideoSignal)
 	if result.Title == "" {
 		return result
 	}
 
+	result.Confidence = computeConfidence(result)
+	return result
+}
+
+// stripFansubBracket removes a leading "[Group]" fansub tag from raw and
+// returns the remaining text along with the extracted group name.
+func stripFansubBracket(raw string) (rest string, fansubGroup string, hasFansubBracket bool) {
+	match := fansubBracketRE.FindStringSubmatch(raw)
+	if len(match) != 2 {
+		return raw, "", false
+	}
+	return strings.TrimSpace(raw[len(match[0]):]), strings.TrimSpace(match[1]), true
+}
+
+// extractGroup returns the scene/release group from decodedRaw's trailing
+// "-GROUP" suffix, falling back to a fansub bracket group when present.
+func extractGroup(decodedRaw, fansubGroup string) string {
+	if match := groupRE.FindStringSubmatch(strings.TrimSpace(decodedRaw)); len(match) == 2 && !isMetadataToken(match[1]) {
+		return match[1]
+	}
+	return fansubGroup
+}
+
+// extractSeasonEpisode reads a season/episode pair from any of the three
+// season marker forms (S01E04, 1x04, "Season 1").
+func extractSeasonEpisode(input string) (season, episode string) {
+	if match := seasonRE.FindStringSubmatch(input); len(match) > 1 {
+		return match[1], match[2]
+	}
+	if match := xEpisodeRE.FindStringSubmatch(input); len(match) == 3 {
+		return match[1], match[2]
+	}
+	if match := seasonWordRE.FindStringSubmatch(input); len(match) == 2 {
+		return match[1], ""
+	}
+	return "", ""
+}
+
+// applyWeakNumberMarkers fills Episode (if not already known)/Volume/Issue
+// from bare "Episode N"/"Volume N"/"Issue N" markers. These are only
+// trustworthy when the release carries no video-specific signal; otherwise
+// they are very likely part of a movie's own title (e.g. "Star Wars
+// Episode 4", "Kill Bill Volume 1") and must not change Type or truncate
+// the title.
+func applyWeakNumberMarkers(result *Result, input string, hasVideoSignal bool) {
+	if hasVideoSignal {
+		return
+	}
+	if match := podcastEpisodeRE.FindStringSubmatch(input); result.Episode == "" && len(match) == 2 {
+		result.Episode = match[1]
+	}
+	if match := volumeRE.FindStringSubmatch(input); len(match) == 2 {
+		result.Volume = match[1]
+	}
+	if match := issueRE.FindStringSubmatch(input); len(match) == 2 {
+		result.Issue = match[1]
+	}
+}
+
+// extractAnimeEpisode reports whether input looks like an anime release
+// (fansub bracket or an anime marker word) and, if so and episode is not
+// already known, fills it from the "- NN" suffix pattern common to fansub
+// releases.
+func extractAnimeEpisode(input string, hasFansubBracket bool, episode string) (isAnimeSignal bool, resolvedEpisode string) {
+	isAnimeSignal = hasFansubBracket || animeMarkerRE.MatchString(input)
+	if episode != "" || !isAnimeSignal {
+		return isAnimeSignal, episode
+	}
+	if match := animeEpisodeRE.FindStringSubmatch(input); len(match) == 2 {
+		return isAnimeSignal, match[1]
+	}
+	return isAnimeSignal, episode
+}
+
+// finalizeTitle extracts the release title and applies type-specific title
+// overrides (an OS release uses its distro's display name; an anime
+// release's title excludes the "- NN" episode suffix).
+func finalizeTitle(result Result, input string, hasVideoSignal bool) string {
+	title := titleBeforeMetadata(input, hasVideoSignal)
+	if result.Type == ReleaseTypeOS {
+		return displayDistro(result.Distro)
+	}
+	if result.Type == ReleaseTypeAnime {
+		if loc := animeEpisodeRE.FindStringSubmatchIndex(title); loc != nil {
+			return strings.TrimSpace(title[:loc[0]])
+		}
+	}
+	return title
+}
+
+// computeConfidence scores how trustworthy the parse is: any single strong
+// marker, or two weak markers together, means high confidence.
+func computeConfidence(result Result) Confidence {
 	strongCount := 0
 	for _, value := range strongConfidenceFields(result) {
 		if value != "" {
@@ -233,11 +286,11 @@ func Parse(raw string) Result {
 	}
 	switch {
 	case strongCount >= 1 || weakCount >= 2:
-		result.Confidence = ConfidenceHigh
+		return ConfidenceHigh
 	case weakCount >= 1 || len([]rune(result.Title)) >= 2:
-		result.Confidence = ConfidenceMedium
+		return ConfidenceMedium
 	}
-	return result
+	return ConfidenceLow
 }
 
 func (r Result) SearchQuery() string {
@@ -333,7 +386,12 @@ func (r Result) RefineWithFileExtensions(extensions []string) Result {
 	}
 
 	r.Format = dominant
-	r.Type = detectType(r, strings.ToLower(r.Title), r.Type == ReleaseTypeAnime)
+	// Re-detect from the full normalized raw name, not just Title: a marker
+	// word like "Audiobook" is a title-cut point (see titleCutRegexes) and
+	// so is already gone from Title by this point, but detectType still
+	// needs it to keep classifying the release as an audiobook/comic/etc.
+	// rather than falling back to whatever the new format alone implies.
+	r.Type = detectType(r, normalize(html.UnescapeString(r.Raw)), r.Type == ReleaseTypeAnime)
 	r = withVersionCleared(r)
 	r.Confidence = ConfidenceHigh
 	return r

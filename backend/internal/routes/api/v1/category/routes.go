@@ -227,8 +227,19 @@ func defaultMetadataSource(value string) string {
 	return value
 }
 
+// validReleaseTypes mirrors the schema's oneof binding for release_type.
+var validReleaseTypes = map[string]bool{
+	"none": true, "movie": true, "series": true, "os": true, "game": true,
+	"book": true, "music": true, "software": true, "audiobook": true,
+	"comic": true, "course": true, "dataset": true, "rom": true,
+	"podcast": true, "anime": true,
+}
+
+// defaultReleaseType falls back to "none" for both an empty value and any
+// value outside the schema's allowed set, guarding responses against stale
+// release_type data left behind by a schema change or a direct DB edit.
 func defaultReleaseType(value string) string {
-	if value == "" {
+	if !validReleaseTypes[value] {
 		return "none"
 	}
 	return value

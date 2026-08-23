@@ -123,6 +123,41 @@ func TestFileExtensionsMultiFileIgnoresDottedFolderName(t *testing.T) {
 	}
 }
 
+func TestFileExtensionsV2MultiFile(t *testing.T) {
+	// BitTorrent v2 (BEP 52) torrents describe payload files via "file tree"
+	// instead of v1's "files" list: a leaf is a dict whose only key is "".
+	info := "d4:name6:MyShow9:file treed" +
+		"8:ep01.mkvd0:d6:lengthi100eee" +
+		"8:ep02.mkvd0:d6:lengthi100eee" +
+		"e12:meta versioni2ee"
+	torrent := []byte(fmt.Sprintf("d8:announce4:test4:info%se", info))
+
+	extensions, err := FileExtensions(torrent)
+	if err != nil {
+		t.Fatalf("FileExtensions() error = %v", err)
+	}
+	if len(extensions) != 2 || extensions[0] != "mkv" || extensions[1] != "mkv" {
+		t.Fatalf("FileExtensions() = %v, want [mkv mkv]", extensions)
+	}
+}
+
+func TestFileExtensionsV2SingleFileUsesName(t *testing.T) {
+	// A v2 single-file torrent's "file tree" has exactly one leaf mirroring
+	// "name"; extensions must still come from "name", not double-count.
+	info := "d4:name9:movie.mp49:file treed" +
+		"9:movie.mp4d0:d6:lengthi100eee" +
+		"e12:meta versioni2ee"
+	torrent := []byte(fmt.Sprintf("d8:announce4:test4:info%se", info))
+
+	extensions, err := FileExtensions(torrent)
+	if err != nil {
+		t.Fatalf("FileExtensions() error = %v", err)
+	}
+	if len(extensions) != 1 || extensions[0] != "mp4" {
+		t.Fatalf("FileExtensions() = %v, want [mp4]", extensions)
+	}
+}
+
 func TestInfoHashErrors(t *testing.T) {
 	tests := []struct {
 		name string

@@ -288,6 +288,19 @@ func TestParseMovieTitleWithBareVolumeWordStaysMovie(t *testing.T) {
 	}
 }
 
+func TestParseVideoFileExtensionSuppressesBareVolumeWord(t *testing.T) {
+	// No resolution/source/codec marker here, but a video container
+	// extension alone must be enough to treat "Volume 2" as part of the
+	// title (e.g. a home-video series), not a book/comic volume number.
+	got := Parse("Vacation.Volume.2.2020.mkv")
+	if got.Type != ReleaseTypeMovie {
+		t.Fatalf("Type = %v, want movie (a .mkv file is a video signal even without resolution/source/codec)", got.Type)
+	}
+	if got.Volume != "" {
+		t.Fatalf("Volume = %q, want empty when the filename has a video extension", got.Volume)
+	}
+}
+
 func TestParseGroupRejectsMetadataLookingTokens(t *testing.T) {
 	got := Parse("Movie.2020-1080p")
 	if got.Group != "" {
@@ -337,6 +350,18 @@ func TestResultRefineWithFileExtensions(t *testing.T) {
 	refined := got.RefineWithFileExtensions([]string{"nfo", "cbz", "cbz", "jpg"})
 	if refined.Format != "cbz" || refined.Type != ReleaseTypeComic || refined.Confidence != ConfidenceHigh {
 		t.Fatalf("RefineWithFileExtensions() = %#v", refined)
+	}
+}
+
+func TestResultRefineWithFileExtensionsKeepsAudiobookType(t *testing.T) {
+	got := Parse("Dune.Audiobook")
+	if got.Type != ReleaseTypeAudiobook {
+		t.Fatalf("precondition failed: Type = %v, want audiobook", got.Type)
+	}
+
+	refined := got.RefineWithFileExtensions([]string{"mp3"})
+	if refined.Type != ReleaseTypeAudiobook {
+		t.Fatalf("RefineWithFileExtensions() Type = %v, want audiobook (mp3 is also a music format, but the marker word must still win)", refined.Type)
 	}
 }
 

@@ -369,6 +369,75 @@ describe("AddTorrentModal", () => {
     expect(parseReleaseMock).toHaveBeenCalledTimes(1);
   });
 
+  it("clears auto-filled fields when a later parse drops to low confidence", async () => {
+    listCategoriesMock.mockResolvedValue({
+      data: [{ id: "movie", name: "Movies", release_type: "movie", default_tags: ["movie"], default_directory: "/downloads/movies" }],
+    });
+    parseReleaseMock.mockResolvedValueOnce({
+      data: {
+        release: { type: "movie", confidence: "high", title: "The Matrix", year: "1999" },
+        display_name: "The Matrix (1999)",
+        tags: ["quality::2160p"],
+      },
+    });
+    renderModal(buildContext());
+    await waitFor(() => expect(screen.getAllByText("Worker 1")[0]).toBeInTheDocument());
+    fireEvent.change(screen.getByPlaceholderText("torrents.addModal.magnetUri.placeholder"), {
+      target: { value: "magnet:?xt=urn:btih:test&dn=The.Matrix.1999.2160p.BluRay.x265" },
+    });
+    await screen.findByDisplayValue("The Matrix (1999)");
+    expect(screen.getByDisplayValue("/downloads/movies")).toBeInTheDocument();
+    expect(screen.getByTestId("tags")).toHaveTextContent("quality::2160p");
+
+    parseReleaseMock.mockResolvedValueOnce({
+      data: {
+        release: { type: "unknown", confidence: "low" },
+        display_name: "",
+        tags: [],
+      },
+    });
+    fireEvent.change(screen.getByPlaceholderText("torrents.addModal.magnetUri.placeholder"), {
+      target: { value: "magnet:?xt=urn:btih:test2&dn=asdf" },
+    });
+
+    await waitFor(() => expect(parseReleaseMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByPlaceholderText("torrents.addModal.release.displayNamePlaceholder")).toHaveValue(""));
+    expect(screen.getByPlaceholderText("torrents.addModal.directory.placeholder")).toHaveValue("");
+    expect(screen.getByTestId("tags")).toHaveTextContent("");
+  });
+
+  it("applies a high-confidence category match once categories finish loading after the parse", async () => {
+    let resolveCategories: (value: { data: unknown[] }) => void = () => {};
+    listCategoriesMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveCategories = resolve;
+      })
+    );
+    parseReleaseMock.mockResolvedValue({
+      data: {
+        release: { type: "movie", confidence: "high", title: "The Matrix", year: "1999" },
+        display_name: "The Matrix (1999)",
+        tags: ["quality::2160p"],
+      },
+    });
+    renderModal(buildContext());
+    await waitFor(() => expect(screen.getAllByText("Worker 1")[0]).toBeInTheDocument());
+    fireEvent.change(screen.getByPlaceholderText("torrents.addModal.magnetUri.placeholder"), {
+      target: { value: "magnet:?xt=urn:btih:test&dn=The.Matrix.1999.2160p.BluRay.x265" },
+    });
+
+    // Parse resolves (and applySuggestion runs) while categories are still loading.
+    await screen.findByDisplayValue("The Matrix (1999)");
+    expect(screen.queryByDisplayValue("/downloads/movies")).not.toBeInTheDocument();
+
+    resolveCategories({
+      data: [{ id: "movie", name: "Movies", release_type: "movie", default_tags: ["movie"], default_directory: "/downloads/movies" }],
+    });
+
+    await waitFor(() => expect(screen.getByDisplayValue("/downloads/movies")).toBeInTheDocument());
+    expect(screen.getByTestId("tags")).toHaveTextContent("movie,quality::2160p");
+  });
+
   it("suggests a matching game category for a high-confidence game release", async () => {
     listCategoriesMock.mockResolvedValue({
       data: [{ id: "game", name: "Games", release_type: "game", default_tags: ["game"], default_directory: "/downloads/games" }],
@@ -456,7 +525,7 @@ describe("AddTorrentModal", () => {
     fireEvent.change(screen.getByPlaceholderText("torrents.addModal.magnetUri.placeholder"), {
       target: { value: "magnet:?xt=urn:btih:test-hash&dn=The.Matrix.1999.1080p" },
     });
-    await waitFor(() => expect(screen.getByDisplayValue("The Matrix (1999)")).toBeInTheDocument());
+    await screen.findByDisplayValue("The Matrix (1999)");
 
     fireEvent.click(screen.getByRole("button", { name: "torrents.addModal.actions.add" }));
 
