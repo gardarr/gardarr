@@ -18,6 +18,7 @@ import (
 	"github.com/jfxdev/gardarr/internal/schemas"
 	"github.com/jfxdev/gardarr/internal/services/crypto"
 	instanceservice "github.com/jfxdev/gardarr/internal/services/instance/worker"
+	rssservice "github.com/jfxdev/gardarr/internal/services/rss/worker"
 	taskservice "github.com/jfxdev/gardarr/internal/services/task/worker"
 	"github.com/jfxdev/gardarr/pkg/env"
 	"github.com/jfxdev/gardarr/pkg/logger"
@@ -396,6 +397,123 @@ func (r *Repository) GetWorkerLogs(worker *entities.Worker, normal, info, warnin
 	}
 
 	return instanceservice.New(client).GetLogs(context.Background(), normal, info, warning, critical, lastKnownID)
+}
+
+func (r *Repository) ListWorkerRSSFeeds(worker *entities.Worker, withData bool) (map[string]*entities.RSSFeed, error) {
+	client, err := r.getClient(worker)
+	if err != nil {
+		return nil, err
+	}
+
+	return rssservice.New(client).ListFeeds(context.Background(), withData)
+}
+
+func (r *Repository) AddWorkerRSSFeed(worker *entities.Worker, feedURL, path string) error {
+	client, err := r.getClient(worker)
+	if err != nil {
+		return err
+	}
+
+	return rssservice.New(client).AddFeed(context.Background(), feedURL, path)
+}
+
+func (r *Repository) RemoveWorkerRSSFeed(worker *entities.Worker, path string) error {
+	client, err := r.getClient(worker)
+	if err != nil {
+		return err
+	}
+
+	return rssservice.New(client).RemoveFeed(context.Background(), path)
+}
+
+func (r *Repository) SetWorkerRSSFeedURL(worker *entities.Worker, path, feedURL string) error {
+	client, err := r.getClient(worker)
+	if err != nil {
+		return err
+	}
+
+	return rssservice.New(client).SetFeedURL(context.Background(), path, feedURL)
+}
+
+func (r *Repository) AddWorkerRSSFolder(worker *entities.Worker, path string) error {
+	client, err := r.getClient(worker)
+	if err != nil {
+		return err
+	}
+
+	return rssservice.New(client).AddFolder(context.Background(), path)
+}
+
+func (r *Repository) MoveWorkerRSSItem(worker *entities.Worker, itemPath, destPath string) error {
+	client, err := r.getClient(worker)
+	if err != nil {
+		return err
+	}
+
+	return rssservice.New(client).MoveItem(context.Background(), itemPath, destPath)
+}
+
+func (r *Repository) RefreshWorkerRSSItem(worker *entities.Worker, itemPath string) error {
+	client, err := r.getClient(worker)
+	if err != nil {
+		return err
+	}
+
+	return rssservice.New(client).RefreshItem(context.Background(), itemPath)
+}
+
+func (r *Repository) MarkWorkerRSSItemAsRead(worker *entities.Worker, itemPath, articleID string) error {
+	client, err := r.getClient(worker)
+	if err != nil {
+		return err
+	}
+
+	return rssservice.New(client).MarkAsRead(context.Background(), itemPath, articleID)
+}
+
+func (r *Repository) ListWorkerRSSRules(worker *entities.Worker) (map[string]*entities.RSSRule, error) {
+	client, err := r.getClient(worker)
+	if err != nil {
+		return nil, err
+	}
+
+	return rssservice.New(client).ListRules(context.Background())
+}
+
+func (r *Repository) SetWorkerRSSRule(worker *entities.Worker, ruleName string, rule entities.RSSRule) error {
+	client, err := r.getClient(worker)
+	if err != nil {
+		return err
+	}
+
+	return rssservice.New(client).SetRule(context.Background(), ruleName, rule)
+}
+
+func (r *Repository) RenameWorkerRSSRule(worker *entities.Worker, ruleName, newRuleName string) error {
+	client, err := r.getClient(worker)
+	if err != nil {
+		return err
+	}
+
+	return rssservice.New(client).RenameRule(context.Background(), ruleName, newRuleName)
+}
+
+func (r *Repository) RemoveWorkerRSSRule(worker *entities.Worker, ruleName string) error {
+	client, err := r.getClient(worker)
+	if err != nil {
+		return err
+	}
+
+	return rssservice.New(client).RemoveRule(context.Background(), ruleName)
+}
+
+func (r *Repository) GetWorkerRSSMatchingArticles(worker *entities.Worker, ruleName string) (map[string][]string, error) {
+	client, err := r.getClient(worker)
+	if err != nil {
+		return nil, err
+	}
+
+	return rssservice.New(client).MatchingArticles(context.Background(), ruleName)
 }
 
 func (r *Repository) ListWorkerTasks(worker *entities.Worker) ([]*entities.Task, error) {

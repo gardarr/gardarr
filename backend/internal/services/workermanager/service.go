@@ -934,3 +934,235 @@ func (s *Service) GetWorkerLogs(ctx context.Context, workerID string, normal, in
 
 	return s.repository.GetWorkerLogs(worker, normal, info, warning, critical, lastKnownID)
 }
+
+func (s *Service) ListWorkerRSSFeeds(ctx context.Context, workerID string, withData bool) (map[string]*entities.RSSFeed, error) {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return nil, err
+	}
+
+	feeds, err := s.repository.ListWorkerRSSFeeds(worker, withData)
+	if err != nil {
+		return nil, err
+	}
+	for _, feed := range feeds {
+		feed.WorkerID = worker.UUID
+	}
+
+	return feeds, nil
+}
+
+func (s *Service) AddWorkerRSSFeed(ctx context.Context, workerID, feedURL, path string) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	return s.repository.AddWorkerRSSFeed(worker, feedURL, path)
+}
+
+func (s *Service) RemoveWorkerRSSFeed(ctx context.Context, workerID, path string) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	return s.repository.RemoveWorkerRSSFeed(worker, path)
+}
+
+func (s *Service) SetWorkerRSSFeedURL(ctx context.Context, workerID, path, feedURL string) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	return s.repository.SetWorkerRSSFeedURL(worker, path, feedURL)
+}
+
+func (s *Service) AddWorkerRSSFolder(ctx context.Context, workerID, path string) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	return s.repository.AddWorkerRSSFolder(worker, path)
+}
+
+func (s *Service) MoveWorkerRSSItem(ctx context.Context, workerID, itemPath, destPath string) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	return s.repository.MoveWorkerRSSItem(worker, itemPath, destPath)
+}
+
+func (s *Service) RefreshWorkerRSSItem(ctx context.Context, workerID, itemPath string) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	return s.repository.RefreshWorkerRSSItem(worker, itemPath)
+}
+
+func (s *Service) MarkWorkerRSSItemAsRead(ctx context.Context, workerID, itemPath, articleID string) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	return s.repository.MarkWorkerRSSItemAsRead(worker, itemPath, articleID)
+}
+
+func (s *Service) ListWorkerRSSRules(ctx context.Context, workerID string) (map[string]*entities.RSSRule, error) {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return nil, err
+	}
+
+	rules, err := s.repository.ListWorkerRSSRules(worker)
+	if err != nil {
+		return nil, err
+	}
+	for _, rule := range rules {
+		rule.WorkerID = worker.UUID
+	}
+
+	return rules, nil
+}
+
+func (s *Service) SetWorkerRSSRule(ctx context.Context, workerID, ruleName string, rule entities.RSSRule) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	return s.repository.SetWorkerRSSRule(worker, ruleName, rule)
+}
+
+func (s *Service) RenameWorkerRSSRule(ctx context.Context, workerID, ruleName, newRuleName string) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	return s.repository.RenameWorkerRSSRule(worker, ruleName, newRuleName)
+}
+
+func (s *Service) RemoveWorkerRSSRule(ctx context.Context, workerID, ruleName string) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	return s.repository.RemoveWorkerRSSRule(worker, ruleName)
+}
+
+func (s *Service) GetWorkerRSSMatchingArticles(ctx context.Context, workerID, ruleName string) (map[string][]string, error) {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.repository.GetWorkerRSSMatchingArticles(worker, ruleName)
+}
+
+// ListAllRSSFeeds aggregates RSS feeds across every registered worker - the
+// cross-instance view that makes Gardarr an RSS manager rather than just a
+// proxy to one instance's feeds. Mirrors ListTasks: a worker whose health is
+// confirmed ERRORED is skipped instead of dialed, and a failing worker's
+// error is reported per-worker without failing the whole read.
+func (s *Service) ListAllRSSFeeds(ctx context.Context) (*entities.RSSFeedListResult, error) {
+	workers, err := s.ListWorkersBasic()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list workers: %w", err)
+	}
+
+	type workerResult struct {
+		workerID string
+		feeds    map[string]*entities.RSSFeed
+		err      error
+	}
+
+	resultChan := make(chan workerResult, len(workers))
+	for _, worker := range workers {
+		if h, ok := s.health.Get(worker.UUID); ok && h.Status == entities.WorkerStatusErrored {
+			resultChan <- workerResult{workerID: worker.UUID.String(), err: cachedHealthError(h)}
+			continue
+		}
+
+		go func(w *entities.Worker) {
+			feeds, err := s.repository.ListWorkerRSSFeeds(w, false)
+			resultChan <- workerResult{workerID: w.UUID.String(), feeds: feeds, err: err}
+		}(worker)
+	}
+
+	result := &entities.RSSFeedListResult{Feeds: []*entities.RSSFeed{}, Errors: make(map[string]string)}
+	for range workers {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case res := <-resultChan:
+			if res.err != nil {
+				result.Errors[res.workerID] = res.err.Error()
+				continue
+			}
+			workerUUID, _ := uuid.Parse(res.workerID)
+			for _, feed := range res.feeds {
+				feed.WorkerID = workerUUID
+				result.Feeds = append(result.Feeds, feed)
+			}
+		}
+	}
+
+	return result, nil
+}
+
+// ListAllRSSRules aggregates RSS auto-downloading rules across every
+// registered worker. See ListAllRSSFeeds.
+func (s *Service) ListAllRSSRules(ctx context.Context) (*entities.RSSRuleListResult, error) {
+	workers, err := s.ListWorkersBasic()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list workers: %w", err)
+	}
+
+	type workerResult struct {
+		workerID string
+		rules    map[string]*entities.RSSRule
+		err      error
+	}
+
+	resultChan := make(chan workerResult, len(workers))
+	for _, worker := range workers {
+		if h, ok := s.health.Get(worker.UUID); ok && h.Status == entities.WorkerStatusErrored {
+			resultChan <- workerResult{workerID: worker.UUID.String(), err: cachedHealthError(h)}
+			continue
+		}
+
+		go func(w *entities.Worker) {
+			rules, err := s.repository.ListWorkerRSSRules(w)
+			resultChan <- workerResult{workerID: w.UUID.String(), rules: rules, err: err}
+		}(worker)
+	}
+
+	result := &entities.RSSRuleListResult{Rules: []*entities.RSSRule{}, Errors: make(map[string]string)}
+	for range workers {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case res := <-resultChan:
+			if res.err != nil {
+				result.Errors[res.workerID] = res.err.Error()
+				continue
+			}
+			workerUUID, _ := uuid.Parse(res.workerID)
+			for _, rule := range res.rules {
+				rule.WorkerID = workerUUID
+				result.Rules = append(result.Rules, rule)
+			}
+		}
+	}
+
+	return result, nil
+}

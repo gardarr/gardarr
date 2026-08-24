@@ -49,4 +49,18 @@ type RepositoryInterface interface {
 	SetWorkerGlobalSpeedLimits(worker *entities.Worker, schema schemas.InstanceSetSpeedLimitSchema) error
 	SetWorkerGlobalActiveLimits(worker *entities.Worker, schema schemas.InstanceSetMaxActiveTorrentLimitsSchema) error
 	GetWorkerLogs(worker *entities.Worker, normal, info, warning, critical bool, lastKnownID int) ([]*qbt.LogEntry, error)
+
+	ListWorkerRSSFeeds(worker *entities.Worker, withData bool) (map[string]*entities.RSSFeed, error)
+	AddWorkerRSSFeed(worker *entities.Worker, feedURL, path string) error
+	RemoveWorkerRSSFeed(worker *entities.Worker, path string) error
+	SetWorkerRSSFeedURL(worker *entities.Worker, path, feedURL string) error
+	AddWorkerRSSFolder(worker *entities.Worker, path string) error
+	MoveWorkerRSSItem(worker *entities.Worker, itemPath, destPath string) error
+	RefreshWorkerRSSItem(worker *entities.Worker, itemPath string) error
+	MarkWorkerRSSItemAsRead(worker *entities.Worker, itemPath, articleID string) error
+	ListWorkerRSSRules(worker *entities.Worker) (map[string]*entities.RSSRule, error)
+	SetWorkerRSSRule(worker *entities.Worker, ruleName string, rule entities.RSSRule) error
+	RenameWorkerRSSRule(worker *entities.Worker, ruleName, newRuleName string) error
+	RemoveWorkerRSSRule(worker *entities.Worker, ruleName string) error
+	GetWorkerRSSMatchingArticles(worker *entities.Worker, ruleName string) (map[string][]string, error)
 }

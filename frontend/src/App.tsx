@@ -17,6 +17,7 @@ const TorrentsPage = lazy(() => import('./Torrents'))
 const WorkersPage = lazy(() => import('./Workers'))
 const CategoriesPage = lazy(() => import('./Categories'))
 const TagsPage = lazy(() => import('./Tags'))
+const RssPage = lazy(() => import('./Rss'))
 const DashboardPage = lazy(() => import('./Dashboard'))
 const HistoryPage = lazy(() => import('./History'))
 const IntegrationsPage = lazy(() => import('./Integrations'))
@@ -85,6 +86,7 @@ function App() {
                   <Route path="workers" element={<WorkersPage />} />
                   <Route path="categories" element={<CategoriesPage />} />
                   <Route path="tags" element={<TagsPage />} />
+                  <Route path="rss" element={<RssPage />} />
                   <Route path="history" element={<HistoryPage />} />
                   <Route path="integrations" element={<IntegrationsPage />} />
                   <Route path="integrations/webhooks" element={<IntegrationWebhookPage />} />
