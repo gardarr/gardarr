@@ -87,6 +87,15 @@ func (r *Repository) ListRules() (map[string]*entities.RSSRule, error) {
 // them on its own, it only accumulates them as new articles match. Losing
 // them on every edit would let a smart-filter rule re-match (and
 // re-download) episodes it already handled.
+//
+// Known limitation: the read (GetRSSRules) and write (SetRSSRule) aren't
+// atomic. qBittorrent's API has no compare-and-swap/patch semantics for
+// rules - setRule always replaces the whole definition - so if qBittorrent's
+// own background refresh records a new match in the narrow window between
+// the two calls here, this write clobbers it. Unlike the bug this function
+// fixes (which clobbered history on every single edit), that requires a
+// feed to refresh in a sub-second window and isn't something a REST client
+// can close without qBittorrent adding real CAS support to this endpoint.
 func (r *Repository) SetRule(ruleName string, rule entities.RSSRule) error {
 	existing, err := r.client.GetRSSRules()
 	if err != nil {
