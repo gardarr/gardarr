@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CheckSquare, Play, Pause, RefreshCw, RadioTower, Folder, Tag, Gauge, Trash2, X } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { CheckSquare, Play, Pause, RefreshCw, RadioTower, Folder, Tag, Gauge, Trash2, X, Link2 } from "lucide-react";
 import type { BulkTaskAction } from "@/services/torrents";
 import type { Category } from "@/types/category";
 
@@ -10,7 +11,7 @@ interface BulkActionBarProps {
   selectedCount: number;
   categories: Category[];
   availableTags: string[];
-  onAction: (action: BulkTaskAction, options?: { category?: string; tags?: string[] }) => void;
+  onAction: (action: BulkTaskAction, options?: { category?: string; tags?: string[]; trackers?: string[] }) => void;
   onLimits: () => void;
   onDelete: () => void;
   onClear: () => void;
@@ -31,6 +32,8 @@ export function BulkActionBar({
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [tagsOpen, setTagsOpen] = useState(false);
   const [pendingTags, setPendingTags] = useState<Set<string>>(new Set());
+  const [trackerOpen, setTrackerOpen] = useState(false);
+  const [trackerUrls, setTrackerUrls] = useState("");
 
   const disabled = selectedCount === 0;
 
@@ -58,6 +61,18 @@ export function BulkActionBar({
       if (next.has(tag)) next.delete(tag); else next.add(tag);
       return next;
     });
+  };
+
+  const parsedTrackerUrls = trackerUrls
+    .split("\n")
+    .map((url) => url.trim())
+    .filter((url) => url.length > 0);
+
+  const applyTrackerAction = (action: "add_tracker" | "remove_tracker") => {
+    if (parsedTrackerUrls.length === 0) return;
+    setTrackerOpen(false);
+    onAction(action, { trackers: parsedTrackerUrls });
+    setTrackerUrls("");
   };
 
   return (
@@ -160,6 +175,55 @@ export function BulkActionBar({
             >
               {t('torrents.bulk.apply')}
             </Button>
+          </PopoverContent>
+        </Popover>
+
+        <Popover
+          open={trackerOpen}
+          onOpenChange={(open) => {
+            setTrackerOpen(open);
+            if (!open) setTrackerUrls("");
+          }}
+        >
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full hover:bg-primary-foreground/20"
+              disabled={disabled}
+              aria-label={t('torrents.bulk.trackers')}
+              title={t('torrents.bulk.trackers')}
+            >
+              <Link2 className="h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent side="top" align="center" className="w-64 p-2 space-y-2">
+            <Textarea
+              value={trackerUrls}
+              onChange={(e) => setTrackerUrls(e.target.value)}
+              placeholder={t('torrents.bulk.trackerPlaceholder')}
+              rows={3}
+              className="text-xs font-mono resize-none"
+            />
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                className="flex-1"
+                disabled={parsedTrackerUrls.length === 0}
+                onClick={() => applyTrackerAction('add_tracker')}
+              >
+                {t('torrents.bulk.addTracker')}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1"
+                disabled={parsedTrackerUrls.length === 0}
+                onClick={() => applyTrackerAction('remove_tracker')}
+              >
+                {t('torrents.bulk.removeTracker')}
+              </Button>
+            </div>
           </PopoverContent>
         </Popover>
 

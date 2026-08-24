@@ -68,6 +68,17 @@ type TaskFileResponse struct {
 	Availability float64 `json:"availability"`
 }
 
+type TaskTrackerResponse struct {
+	URL           string `json:"url"`
+	Status        int    `json:"status"`
+	Tier          int    `json:"tier"`
+	NumPeers      int    `json:"num_peers"`
+	NumSeeds      int    `json:"num_seeds"`
+	NumLeeches    int    `json:"num_leeches"`
+	NumDownloaded int    `json:"num_downloaded"`
+	Message       string `json:"message,omitempty"`
+}
+
 type TaskStatsResponse struct {
 	TotalDiskSize        int64          `json:"total_disk_size"`
 	CurrentUploadSpeed   int            `json:"current_upload_speed"`

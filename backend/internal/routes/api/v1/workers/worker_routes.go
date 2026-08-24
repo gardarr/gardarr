@@ -94,6 +94,10 @@ func (m Module) Register() {
 	m.workerRouter.PUT("/:id/task/:task_id/tags", m.setWorkerTaskTags)
 	m.workerRouter.PUT("/:id/task/:task_id/category", m.setWorkerTaskCategory)
 	m.workerRouter.GET("/:id/task/:task_id/files", m.listWorkerTaskFiles)
+	m.workerRouter.GET("/:id/task/:task_id/trackers", m.listWorkerTaskTrackers)
+	m.workerRouter.POST("/:id/task/:task_id/trackers", m.addWorkerTaskTrackers)
+	m.workerRouter.DELETE("/:id/task/:task_id/trackers", m.removeWorkerTaskTrackers)
+	m.workerRouter.PUT("/:id/task/:task_id/trackers", m.editWorkerTaskTracker)
 
 	m.workerRouter.GET("/:id/rss/feeds", m.listWorkerRSSFeeds)
 	m.workerRouter.POST("/:id/rss/feeds", m.addWorkerRSSFeed)
@@ -559,6 +563,81 @@ func (m *Module) listWorkerTaskFiles(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, mappers.ToTaskFilesResponse(files))
+}
+
+func (m *Module) listWorkerTaskTrackers(c *gin.Context) {
+	workerID := c.Param("id")
+	taskID := c.Param("task_id")
+
+	trackers, err := m.service.ListWorkerTaskTrackers(c.Request.Context(), workerID, taskID)
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, mappers.ToTaskTrackersResponse(trackers))
+}
+
+func (m *Module) addWorkerTaskTrackers(c *gin.Context) {
+	workerID := c.Param("id")
+	taskID := c.Param("task_id")
+
+	var body schemas.TaskAddTrackersSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	if err := m.service.AddWorkerTaskTrackers(c.Request.Context(), workerID, taskID, body.Urls); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Trackers added successfully"})
+}
+
+// removeWorkerTaskTrackers accepts the tracker URLs to remove as repeated
+// query params (?url=a&url=b) rather than a body, matching this route
+// group's convention for DELETE requests.
+func (m *Module) removeWorkerTaskTrackers(c *gin.Context) {
+	workerID := c.Param("id")
+	taskID := c.Param("task_id")
+
+	urls := c.QueryArray("url")
+	if len(urls) == 0 {
+		respErr := errors.NewBadRequestError("at least one url query param is required", nil)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	if err := m.service.RemoveWorkerTaskTrackers(c.Request.Context(), workerID, taskID, urls); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusNoContent, nil)
+}
+
+// editWorkerTaskTracker swaps a tracker's URL in place, preserving
+// per-tracker state (like tier) that a remove+add pair would lose.
+func (m *Module) editWorkerTaskTracker(c *gin.Context) {
+	workerID := c.Param("id")
+	taskID := c.Param("task_id")
+
+	var body schemas.TaskEditTrackerSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	if err := m.service.EditWorkerTaskTracker(c.Request.Context(), workerID, taskID, body.OrigURL, body.NewURL); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Tracker updated successfully"})
 }
 
 func (m *Module) setWorkerTaskTags(c *gin.Context) {

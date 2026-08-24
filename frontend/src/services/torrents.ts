@@ -9,7 +9,9 @@ export type BulkTaskAction =
   | 'force_reannounce'
   | 'set_category'
   | 'add_tags'
-  | 'delete';
+  | 'delete'
+  | 'add_tracker'
+  | 'remove_tracker';
 
 export interface BulkTaskItem {
   worker_id: string;
@@ -25,12 +27,14 @@ export interface BulkTaskActionOptions {
   category?: string;
   tags?: string[];
   purge?: boolean;
+  trackers?: string[];
 }
 import type {
   Task,
   CreateTaskRequest,
   TaskMagnetLink,
   TaskFile,
+  TaskTracker,
   TaskLimits,
   TaskListResponse
 } from '../types/torrent';
@@ -151,6 +155,43 @@ export class TorrentService {
    */
   async listTaskFiles(workerId: string, taskId: string): Promise<ApiResponse<TaskFile[]>> {
     return api.get<TaskFile[]>(`/worker/${workerId}/task/${taskId}/files`);
+  }
+
+  /**
+   * Lista os trackers de uma task/torrent específica
+   */
+  async listTaskTrackers(workerId: string, taskId: string): Promise<ApiResponse<TaskTracker[]>> {
+    return api.get<TaskTracker[]>(`/worker/${workerId}/task/${taskId}/trackers`);
+  }
+
+  /**
+   * Adiciona trackers a uma task/torrent
+   */
+  async addTaskTrackers(workerId: string, taskId: string, urls: string[]): Promise<ApiResponse<null>> {
+    return api.post<null>(`/worker/${workerId}/task/${taskId}/trackers`, { urls });
+  }
+
+  /**
+   * Remove trackers de uma task/torrent
+   */
+  async removeTaskTrackers(workerId: string, taskId: string, urls: string[]): Promise<ApiResponse<null>> {
+    const query = urls.map((url) => `url=${encodeURIComponent(url)}`).join('&');
+    return api.delete<null>(`/worker/${workerId}/task/${taskId}/trackers?${query}`);
+  }
+
+  /**
+   * Edita a URL de um tracker de uma task/torrent
+   */
+  async editTaskTracker(
+    workerId: string,
+    taskId: string,
+    origUrl: string,
+    newUrl: string
+  ): Promise<ApiResponse<null>> {
+    return api.put<null>(`/worker/${workerId}/task/${taskId}/trackers`, {
+      orig_url: origUrl,
+      new_url: newUrl,
+    });
   }
 
   /**

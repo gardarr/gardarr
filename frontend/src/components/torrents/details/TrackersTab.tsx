@@ -1,8 +1,24 @@
-import { Check, Copy, Hash, Link2, Radio } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  Check,
+  Copy,
+  Hash,
+  Link2,
+  Loader2,
+  Pencil,
+  Plus,
+  Radio,
+  Trash2,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { formatBytes } from "@/utils/bytes";
-import type { Task } from "@/types/torrent";
+import type { Task, TaskTracker } from "@/types/torrent";
+import { torrentService } from "@/services/torrents";
 import { DetailCard } from "./DetailCard";
 import { useCopyToClipboard } from "./useCopyToClipboard";
 
@@ -10,9 +26,126 @@ interface TrackersTabProps {
   torrent: Task;
 }
 
+// qBittorrent tracker status codes (torrents/trackers "status" field).
+const STATUS_VARIANT: Record<number, "default" | "secondary" | "destructive" | "outline"> = {
+  0: "outline", // disabled
+  1: "secondary", // not contacted
+  2: "default", // working
+  3: "secondary", // updating
+  4: "destructive", // not working
+};
+
 export function TrackersTab({ torrent }: TrackersTabProps) {
   const { t } = useTranslation();
   const { copiedField, copyToClipboard } = useCopyToClipboard();
+  const workerId = torrent.worker?.uuid || "";
+
+  const [trackers, setTrackers] = useState<TaskTracker[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [newUrl, setNewUrl] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [pendingUrl, setPendingUrl] = useState<string | null>(null);
+  const [editingUrl, setEditingUrl] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+
+  const statusLabel = (status: number) =>
+    t(`torrentDetails.trackersLive.status.${status}`, { defaultValue: t("torrentDetails.trackersLive.status.unknown", { defaultValue: "Unknown" }) });
+
+  const loadTrackers = async () => {
+    if (!workerId || !torrent.id) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await torrentService.listTaskTrackers(workerId, torrent.id);
+      if (response.error) {
+        setError(response.error);
+      } else {
+        setTrackers(response.data ?? []);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load trackers");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTrackers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workerId, torrent.id]);
+
+  const handleAdd = async () => {
+    const url = newUrl.trim();
+    if (!url || !workerId) return;
+    setAdding(true);
+    try {
+      const response = await torrentService.addTaskTrackers(workerId, torrent.id, [url]);
+      if (response.error) {
+        toast.error(response.error);
+        return;
+      }
+      setNewUrl("");
+      toast.success(t("torrentDetails.toasts.trackerAddSuccess", { defaultValue: "Tracker added" }));
+      await loadTrackers();
+    } catch {
+      toast.error(t("torrentDetails.toasts.trackerAddError", { defaultValue: "Failed to add tracker" }));
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleRemove = async (url: string) => {
+    if (!workerId) return;
+    setPendingUrl(url);
+    try {
+      const response = await torrentService.removeTaskTrackers(workerId, torrent.id, [url]);
+      if (response.error) {
+        toast.error(response.error);
+        return;
+      }
+      toast.success(t("torrentDetails.toasts.trackerRemoveSuccess", { defaultValue: "Tracker removed" }));
+      setTrackers((prev) => prev.filter((tracker) => tracker.url !== url));
+    } catch {
+      toast.error(t("torrentDetails.toasts.trackerRemoveError", { defaultValue: "Failed to remove tracker" }));
+    } finally {
+      setPendingUrl(null);
+    }
+  };
+
+  const startEdit = (url: string) => {
+    setEditingUrl(url);
+    setEditValue(url);
+  };
+
+  const cancelEdit = () => {
+    setEditingUrl(null);
+    setEditValue("");
+  };
+
+  const handleEditSave = async (origUrl: string) => {
+    const newValue = editValue.trim();
+    if (!newValue || !workerId) return;
+    if (newValue === origUrl) {
+      cancelEdit();
+      return;
+    }
+    setPendingUrl(origUrl);
+    try {
+      const response = await torrentService.editTaskTracker(workerId, torrent.id, origUrl, newValue);
+      if (response.error) {
+        toast.error(response.error);
+        return;
+      }
+      toast.success(t("torrentDetails.toasts.trackerEditSuccess", { defaultValue: "Tracker updated" }));
+      cancelEdit();
+      await loadTrackers();
+    } catch {
+      toast.error(t("torrentDetails.toasts.trackerEditError", { defaultValue: "Failed to update tracker" }));
+    } finally {
+      setPendingUrl(null);
+    }
+  };
 
   const copyButton = (text: string, field: string) => (
     <Button
@@ -25,8 +158,154 @@ export function TrackersTab({ torrent }: TrackersTabProps) {
     </Button>
   );
 
+  const renderTrackersList = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center py-6">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-sm text-muted-foreground">
+            {t("torrentDetails.trackersLive.loading", { defaultValue: "Loading trackers..." })}
+          </span>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="text-center py-6">
+          <div className="text-sm text-red-600 dark:text-red-400 mb-2">
+            {t("torrentDetails.trackersLive.loadError", { defaultValue: "Failed to load trackers" })}
+          </div>
+          <div className="text-xs text-muted-foreground mb-3">{error}</div>
+          <Button variant="outline" size="sm" onClick={loadTrackers} className="h-8">
+            {t("torrentDetails.trackersLive.retry", { defaultValue: "Try again" })}
+          </Button>
+        </div>
+      );
+    }
+
+    if (trackers.length === 0) {
+      return (
+        <div className="text-center py-6 text-sm text-muted-foreground">
+          {t("torrentDetails.trackersLive.empty", { defaultValue: "No trackers found" })}
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-2">
+        {trackers.map((tracker) => (
+          <div key={tracker.url} className="p-2 container-content-background/50 rounded-md border space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Badge variant={STATUS_VARIANT[tracker.status] ?? "outline"} className="shrink-0">
+                {statusLabel(tracker.status)}
+              </Badge>
+
+              {editingUrl === tracker.url ? (
+                <div className="flex-1 flex items-center gap-1.5 min-w-0">
+                  <Input
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    className="h-8 text-xs font-mono"
+                    autoFocus
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 flex-shrink-0"
+                    disabled={pendingUrl === tracker.url}
+                    onClick={() => handleEditSave(tracker.url)}
+                  >
+                    <Check className="h-4 w-4 text-green-600" />
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 flex-shrink-0" onClick={cancelEdit}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <span className="flex-1 font-mono text-xs break-all min-w-0" title={tracker.url}>
+                  {tracker.url}
+                </span>
+              )}
+
+              {editingUrl !== tracker.url && (
+                <div className="flex items-center gap-0.5 flex-shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={() => startEdit(tracker.url)}
+                    title={t("torrentDetails.trackersLive.edit", { defaultValue: "Edit" }) as string}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    disabled={pendingUrl === tracker.url}
+                    onClick={() => handleRemove(tracker.url)}
+                    title={t("torrentDetails.trackersLive.remove", { defaultValue: "Remove" }) as string}
+                  >
+                    {pendingUrl === tracker.url ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    )}
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground pl-1">
+              <span>{t("torrentDetails.trackersLive.tier", { defaultValue: "Tier" })}: {tracker.tier}</span>
+              <span>{t("torrentDetails.trackersLive.seeds", { defaultValue: "Seeds" })}: {tracker.num_seeds}</span>
+              <span>{t("torrentDetails.trackersLive.peers", { defaultValue: "Peers" })}: {tracker.num_peers}</span>
+              <span>{t("torrentDetails.trackersLive.leeches", { defaultValue: "Leeches" })}: {tracker.num_leeches}</span>
+              {tracker.message && (
+                <span className="break-all" title={tracker.message}>{tracker.message}</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-3 sm:space-y-4">
+      <DetailCard icon={Radio} title={t("torrentDetails.trackersLive.title", { defaultValue: "Trackers" })}>
+        <div className="space-y-3">
+          {renderTrackersList()}
+
+          <div className="flex items-center gap-1.5">
+            <Input
+              value={newUrl}
+              onChange={(e) => setNewUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAdd();
+                }
+              }}
+              placeholder={t("torrentDetails.trackersLive.addPlaceholder", { defaultValue: "Add tracker URL" })}
+              className="h-8 text-xs font-mono"
+              disabled={adding}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 flex-shrink-0"
+              disabled={adding || !newUrl.trim()}
+              onClick={handleAdd}
+            >
+              {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              <span className="ml-1">{t("torrentDetails.trackersLive.add", { defaultValue: "Add" })}</span>
+            </Button>
+          </div>
+        </div>
+      </DetailCard>
+
       <DetailCard
         icon={Hash}
         title={t("torrentDetails.magnet.hash", { defaultValue: "Hash:" }).replace(/:\s*$/, "")}

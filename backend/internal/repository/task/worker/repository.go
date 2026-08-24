@@ -566,6 +566,56 @@ func (s *Repository) ListFiles(hash string) ([]*entities.TaskFile, error) {
 	return result, nil
 }
 
+func (s *Repository) ListTrackers(hash string) ([]*entities.TaskTracker, error) {
+	trackers, err := s.client.GetTorrentTrackers(hash)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to list torrent trackers")
+	}
+
+	result := make([]*entities.TaskTracker, len(trackers))
+	for i, t := range trackers {
+		result[i] = &entities.TaskTracker{
+			URL:           t.URL,
+			Status:        t.Status,
+			Tier:          t.Tier,
+			NumPeers:      t.NumPeers,
+			NumSeeds:      t.NumSeeds,
+			NumLeeches:    t.NumLeeches,
+			NumDownloaded: t.NumDownloaded,
+			Message:       t.Msg,
+		}
+	}
+
+	return result, nil
+}
+
+// AddTrackers adds one or more trackers to a torrent. Adding a tracker
+// that's already present is a no-op on qBittorrent's side.
+func (s *Repository) AddTrackers(hash string, urls []string) error {
+	if err := s.client.AddTrackers(hash, urls); err != nil {
+		return errors.Wrap(err, "failed to add trackers")
+	}
+	return nil
+}
+
+// RemoveTrackers removes one or more trackers from a torrent. Removing a
+// tracker that isn't present is a no-op on qBittorrent's side.
+func (s *Repository) RemoveTrackers(hash string, urls []string) error {
+	if err := s.client.RemoveTrackers(hash, urls); err != nil {
+		return errors.Wrap(err, "failed to remove trackers")
+	}
+	return nil
+}
+
+// EditTracker swaps a tracker's URL in place, preserving per-tracker state
+// (like tier) that a RemoveTrackers+AddTrackers pair would lose.
+func (s *Repository) EditTracker(hash, origURL, newURL string) error {
+	if err := s.client.EditTracker(hash, origURL, newURL); err != nil {
+		return errors.Wrap(err, "failed to edit tracker")
+	}
+	return nil
+}
+
 func (s *Repository) GetLimits(hash string) (*entities.TaskLimits, error) {
 	dlLimit, err := s.client.GetTorrentDownloadLimit(hash)
 	if err != nil {

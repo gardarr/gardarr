@@ -106,6 +106,17 @@ export interface TaskFile {
   availability: number;
 }
 
+export interface TaskTracker {
+  url: string;
+  status: number;
+  tier: number;
+  num_peers: number;
+  num_seeds: number;
+  num_leeches: number;
+  num_downloaded: number;
+  message?: string;
+}
+
 export interface TaskLimits {
   download_limit: number;
   upload_limit: number;

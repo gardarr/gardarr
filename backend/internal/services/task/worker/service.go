@@ -156,6 +156,22 @@ func (s *service) ListTaskFiles(ctx context.Context, hash string) ([]*entities.T
 	return s.repository.ListFiles(hash)
 }
 
+func (s *service) ListTaskTrackers(ctx context.Context, hash string) ([]*entities.TaskTracker, error) {
+	return s.repository.ListTrackers(hash)
+}
+
+func (s *service) AddTaskTrackers(ctx context.Context, hash string, urls []string) error {
+	return s.repository.AddTrackers(hash, urls)
+}
+
+func (s *service) RemoveTaskTrackers(ctx context.Context, hash string, urls []string) error {
+	return s.repository.RemoveTrackers(hash, urls)
+}
+
+func (s *service) EditTaskTracker(ctx context.Context, hash, origURL, newURL string) error {
+	return s.repository.EditTracker(hash, origURL, newURL)
+}
+
 func (s *service) GetTasksStats(ctx context.Context) (*entities.TaskStats, error) {
 	tasks, err := s.repository.List()
 	if err != nil {
