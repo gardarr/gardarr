@@ -249,25 +249,23 @@ func (m *mockRepository) ListTrackers(hash string) ([]*entities.TaskTracker, err
 	return nil, errors.New("task not found")
 }
 
-func (m *mockRepository) AddTrackers(hash string, urls []string) error {
+func (m *mockRepository) requireExistingTask(hash string) error {
 	if _, exists := m.tasks[hash]; exists {
 		return nil
 	}
 	return errors.New("task not found")
+}
+
+func (m *mockRepository) AddTrackers(hash string, urls []string) error {
+	return m.requireExistingTask(hash)
 }
 
 func (m *mockRepository) RemoveTrackers(hash string, urls []string) error {
-	if _, exists := m.tasks[hash]; exists {
-		return nil
-	}
-	return errors.New("task not found")
+	return m.requireExistingTask(hash)
 }
 
 func (m *mockRepository) EditTracker(hash, origURL, newURL string) error {
-	if _, exists := m.tasks[hash]; exists {
-		return nil
-	}
-	return errors.New("task not found")
+	return m.requireExistingTask(hash)
 }
 
 func (m *mockRepository) GetLimits(hash string) (*entities.TaskLimits, error) {

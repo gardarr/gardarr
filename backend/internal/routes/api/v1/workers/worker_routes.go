@@ -23,6 +23,7 @@ import (
 )
 
 const invalidScheduleIDError = "Invalid schedule ID"
+const taskTrackersPath = "/:id/task/:task_id/trackers"
 
 // Module holds worker routes configuration
 type Module struct {
@@ -94,10 +95,10 @@ func (m Module) Register() {
 	m.workerRouter.PUT("/:id/task/:task_id/tags", m.setWorkerTaskTags)
 	m.workerRouter.PUT("/:id/task/:task_id/category", m.setWorkerTaskCategory)
 	m.workerRouter.GET("/:id/task/:task_id/files", m.listWorkerTaskFiles)
-	m.workerRouter.GET("/:id/task/:task_id/trackers", m.listWorkerTaskTrackers)
-	m.workerRouter.POST("/:id/task/:task_id/trackers", m.addWorkerTaskTrackers)
-	m.workerRouter.DELETE("/:id/task/:task_id/trackers", m.removeWorkerTaskTrackers)
-	m.workerRouter.PUT("/:id/task/:task_id/trackers", m.editWorkerTaskTracker)
+	m.workerRouter.GET(taskTrackersPath, m.listWorkerTaskTrackers)
+	m.workerRouter.POST(taskTrackersPath, m.addWorkerTaskTrackers)
+	m.workerRouter.DELETE(taskTrackersPath, m.removeWorkerTaskTrackers)
+	m.workerRouter.PUT(taskTrackersPath, m.editWorkerTaskTracker)
 
 	m.workerRouter.GET("/:id/rss/feeds", m.listWorkerRSSFeeds)
 	m.workerRouter.POST("/:id/rss/feeds", m.addWorkerRSSFeed)
