@@ -54,16 +54,12 @@ type TaskSetTagsSchema struct {
 }
 
 type TaskAddTrackersSchema struct {
-	Urls []string `json:"urls" binding:"required,min=1"`
-}
-
-type TaskRemoveTrackersSchema struct {
-	Urls []string `json:"urls" binding:"required,min=1"`
+	Urls []string `json:"urls" binding:"required,min=1,dive,url"`
 }
 
 type TaskEditTrackerSchema struct {
-	OrigURL string `json:"orig_url" binding:"required"`
-	NewURL  string `json:"new_url" binding:"required"`
+	OrigURL string `json:"orig_url" binding:"required,url"`
+	NewURL  string `json:"new_url" binding:"required,url"`
 }
 
 type TaskSetCategorySchema struct {
@@ -90,5 +86,5 @@ type BulkTaskActionSchema struct {
 	// Purge deletes downloaded files too when Action is "delete".
 	Purge bool `json:"purge,omitempty"`
 	// Trackers is required (non-empty) when Action is "add_tracker" or "remove_tracker".
-	Trackers []string `json:"trackers,omitempty"`
+	Trackers []string `json:"trackers,omitempty" binding:"omitempty,dive,url"`
 }

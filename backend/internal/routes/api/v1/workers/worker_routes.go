@@ -4,6 +4,7 @@ import (
 	stdErrors "errors"
 	"io"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -24,6 +25,17 @@ import (
 
 const invalidScheduleIDError = "Invalid schedule ID"
 const taskTrackersPath = "/:id/task/:task_id/trackers"
+
+// isValidTrackerURL mirrors the go-playground/validator "url" binding tag
+// used on the JSON tracker schemas, for the DELETE route's query params
+// (which bypass ShouldBindJSON and so aren't covered by struct tags).
+func isValidTrackerURL(raw string) bool {
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Scheme == "" {
+		return false
+	}
+	return parsed.Host != "" || parsed.Opaque != ""
+}
 
 // Module holds worker routes configuration
 type Module struct {
@@ -610,6 +622,13 @@ func (m *Module) removeWorkerTaskTrackers(c *gin.Context) {
 		respErr := errors.NewBadRequestError("at least one url query param is required", nil)
 		c.JSON(respErr.StatusCode, respErr)
 		return
+	}
+	for _, trackerURL := range urls {
+		if !isValidTrackerURL(trackerURL) {
+			respErr := errors.NewBadRequestError("invalid tracker url: "+trackerURL, nil)
+			c.JSON(respErr.StatusCode, respErr)
+			return
+		}
 	}
 
 	if err := m.service.RemoveWorkerTaskTrackers(c.Request.Context(), workerID, taskID, urls); err != nil {

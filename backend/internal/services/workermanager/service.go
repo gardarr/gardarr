@@ -803,19 +803,34 @@ func (s *Service) runBulkAction(workerID string, hashes []string, schema schemas
 		})
 	case "remove_tracker":
 		return runPerHash(hashes, func(hash string) error {
-			return s.repository.RemoveWorkerTaskTrackers(worker, hash, schema.Trackers)
+			err := s.repository.RemoveWorkerTaskTrackers(worker, hash, schema.Trackers)
+			if isTrackerAlreadyRemovedError(err) {
+				return nil
+			}
+			return err
 		})
 	default:
 		return fmt.Errorf("unsupported bulk action: %s", schema.Action)
 	}
 }
 
+// isTrackerAlreadyRemovedError reports whether err is qBittorrent's HTTP 409
+// response for removeTrackers, returned when none of the requested URLs are
+// present on the torrent. This is expected on a retry after a partial bulk
+// failure already removed them on an earlier hash - despite go-qbt's
+// RemoveTrackers doc comment describing that case as a no-op, the client
+// still surfaces the 409 as an error, so it's treated as success here.
+func isTrackerAlreadyRemovedError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "Status: 409")
+}
+
 // runPerHash calls op once per hash instead of joining them into
 // qBittorrent's native multi-hash form - needed for the tracker endpoints,
 // which (unlike the rest of the bulk actions) only accept a single hash per
-// call. Both AddTrackers and RemoveTrackers are idempotent on qBittorrent's
-// side, so a caller can safely retry the whole batch after a partial
-// failure here without side effects on the hashes that already succeeded.
+// call. AddTrackers is idempotent on qBittorrent's side, and remove_tracker's
+// caller above normalizes the "already removed" 409 to success, so a caller
+// can safely retry the whole batch after a partial failure here without
+// side effects on the hashes that already succeeded.
 func runPerHash(hashes []string, op func(hash string) error) error {
 	for _, hash := range hashes {
 		if err := op(hash); err != nil {

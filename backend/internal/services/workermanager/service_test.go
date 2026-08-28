@@ -2,6 +2,7 @@ package workermanager
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -347,6 +348,66 @@ func TestBulkTaskActionReportsInvalidWorkerAsFailed(t *testing.T) {
 	}
 	if _, ok := result.Failed["not-a-uuid"]; !ok {
 		t.Error("expected failure entry for invalid worker id")
+	}
+}
+
+// trackerRetryTestRepo simulates qBittorrent's removeTrackers behavior
+// across a retried bulk remove_tracker call: a retry re-issues the removal
+// for every hash in the batch, including ones that already succeeded -
+// which qBittorrent answers with an HTTP 409 "not found" rather than
+// treating as a no-op.
+type trackerRetryTestRepo struct {
+	workerrepository.RepositoryInterface
+	worker *entities.Worker
+
+	mu      sync.Mutex
+	removed map[string]bool
+	calls   []string
+}
+
+func (r *trackerRetryTestRepo) GetWorkerByUUID(uuid.UUID) (*entities.Worker, error) {
+	return r.worker, nil
+}
+
+func (r *trackerRetryTestRepo) RemoveWorkerTaskTrackers(_ *entities.Worker, hash string, _ []string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.calls = append(r.calls, hash)
+	if r.removed[hash] {
+		return fmt.Errorf("failed to remove trackers. Status: 409, Response: no matching trackers found")
+	}
+	r.removed[hash] = true
+	return nil
+}
+
+func TestBulkRemoveTrackerRetrySucceedsAfterPartialFailure(t *testing.T) {
+	workerID := uuid.New()
+	worker := &entities.Worker{UUID: workerID}
+	repo := &trackerRetryTestRepo{worker: worker, removed: map[string]bool{}}
+	svc := &Service{repository: repo}
+
+	schema := schemas.BulkTaskActionSchema{
+		Action:   "remove_tracker",
+		Trackers: []string{"http://tracker.example/announce"},
+	}
+
+	// First attempt only reaches h1 (simulating h2 failing for some other
+	// reason, e.g. a transient network error, before a caller retries).
+	if err := svc.runBulkAction(workerID.String(), []string{"h1"}, schema); err != nil {
+		t.Fatalf("unexpected error on first attempt: %v", err)
+	}
+
+	// Retry the full batch: h1 is now already removed (409 from
+	// qBittorrent) and must not stop h2 from being processed.
+	if err := svc.runBulkAction(workerID.String(), []string{"h1", "h2"}, schema); err != nil {
+		t.Fatalf("expected retry to succeed despite h1 already being removed, got: %v", err)
+	}
+
+	if !repo.removed["h2"] {
+		t.Error("expected h2 to be removed on retry")
+	}
+	if len(repo.calls) != 3 {
+		t.Errorf("expected 3 total RemoveWorkerTaskTrackers calls, got %d", len(repo.calls))
 	}
 }
 

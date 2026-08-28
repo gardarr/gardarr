@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Check,
   Copy,
@@ -38,7 +38,7 @@ const STATUS_VARIANT: Record<number, "default" | "secondary" | "destructive" | "
 export function TrackersTab({ torrent }: TrackersTabProps) {
   const { t } = useTranslation();
   const { copiedField, copyToClipboard } = useCopyToClipboard();
-  const workerId = torrent.worker?.uuid || "";
+  const workerId = torrent.worker?.uuid || torrent.worker_id || "";
 
   const [trackers, setTrackers] = useState<TaskTracker[]>([]);
   const [loading, setLoading] = useState(false);
@@ -48,25 +48,33 @@ export function TrackersTab({ torrent }: TrackersTabProps) {
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const [editingUrl, setEditingUrl] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const loadOperation = useRef(0);
 
   const statusLabel = (status: number) =>
     t(`torrentDetails.trackersLive.status.${status}`, { defaultValue: t("torrentDetails.trackersLive.status.unknown", { defaultValue: "Unknown" }) });
 
   const loadTrackers = async () => {
     if (!workerId || !torrent.id) return;
+    // Guard against a response for a previous torrent/worker landing after
+    // the component has already switched to a different one.
+    const operation = ++loadOperation.current;
     setLoading(true);
     setError(null);
     try {
       const response = await torrentService.listTaskTrackers(workerId, torrent.id);
+      if (operation !== loadOperation.current) return;
       if (response.error) {
         setError(response.error);
       } else {
         setTrackers(response.data ?? []);
       }
     } catch (err) {
+      if (operation !== loadOperation.current) return;
       setError(err instanceof Error ? err.message : "Failed to load trackers");
     } finally {
-      setLoading(false);
+      if (operation === loadOperation.current) {
+        setLoading(false);
+      }
     }
   };
 
