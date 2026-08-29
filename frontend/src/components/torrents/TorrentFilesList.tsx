@@ -188,8 +188,18 @@ export function TorrentFilesList({
       groups.set(priority, indexes);
     }
 
+    // Apply every non-skip priority first, and the skip group last. Applying
+    // skip first could transiently leave zero files selected mid-batch (if
+    // the newly-included files haven't been applied yet), which the worker
+    // rejects.
+    const orderedGroups = Array.from(groups.entries()).sort(([a], [b]) => {
+      if (a === PRIORITY_SKIP) return 1;
+      if (b === PRIORITY_SKIP) return -1;
+      return 0;
+    });
+
     try {
-      for (const [priority, indexes] of groups) {
+      for (const [priority, indexes] of orderedGroups) {
         const response = await torrentService.setTaskFilePriority(workerId, taskId, indexes, priority);
         if (response.error) {
           setApplyError(response.error);
@@ -397,8 +407,18 @@ export function TorrentFilesList({
     );
   };
 
-  const skipCount = Array.from(pendingChanges.values()).filter((p) => p === PRIORITY_SKIP).length;
-  const downloadCount = pendingChanges.size - skipCount;
+  // Only count a file as newly "included"/"skipped" if its priority actually
+  // crosses that line - a priority-only edit on an already-included file
+  // (e.g. Normal -> High) is neither.
+  let skipCount = 0;
+  let downloadCount = 0;
+  for (const [index, pendingPriority] of pendingChanges) {
+    const originalPriority = files.find((file) => file.index === index)?.priority;
+    const wasSkipped = originalPriority === PRIORITY_SKIP;
+    const isSkipped = pendingPriority === PRIORITY_SKIP;
+    if (wasSkipped && !isSkipped) downloadCount++;
+    else if (!wasSkipped && isSkipped) skipCount++;
+  }
 
   const confirmDialog = (
     <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>

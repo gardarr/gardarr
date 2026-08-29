@@ -49,6 +49,7 @@ describe("TransferStatsCard", () => {
     // Values render as "0" for seeders/leechers, but no "(n)" connected
     // sub-label and no speed sub-label should appear anywhere.
     expect(container.textContent).not.toMatch(/\(\d+\)/);
+    expect(screen.queryByText(/0 B\/s/)).not.toBeInTheDocument();
     expect(screen.getAllByText("0").length).toBeGreaterThan(0);
   });
 

@@ -742,6 +742,12 @@ html[data-color-variant="custom"] {
   animation: progress-stripes 0.75s linear infinite;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .animate-progress-stripes {
+    animation: none;
+  }
+}
+
 .torrent-progress-track {
   overflow: hidden;
   background: rgb(255 255 255 / 35%);

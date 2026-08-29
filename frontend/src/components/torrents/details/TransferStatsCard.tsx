@@ -52,14 +52,14 @@ export function TransferStatsCard({ torrent }: TransferStatsCardProps) {
           icon={Download}
           label={t("torrentDetails.download.title", { defaultValue: "Download" })}
           value={formatBytes(downAmount)}
-          sub={formatBytesPerSecond(torrent.network?.download?.speed || 0)}
+          sub={torrent.network?.download?.speed ? formatBytesPerSecond(torrent.network.download.speed) : undefined}
           colorClass="text-blue-500"
         />
         <StatTile
           icon={Upload}
           label={t("torrentDetails.upload.title", { defaultValue: "Upload" })}
           value={formatBytes(upAmount)}
-          sub={formatBytesPerSecond(torrent.network?.upload?.speed || 0)}
+          sub={torrent.network?.upload?.speed ? formatBytesPerSecond(torrent.network.upload.speed) : undefined}
           colorClass="text-green-500"
         />
         <StatTile
