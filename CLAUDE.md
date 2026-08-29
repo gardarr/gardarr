@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Gardarr — self-hosted management/analytics platform for qBittorrent. Go backend (Gin + GORM, SQLite/Postgres), React 19 + Vite frontend. Single-process architecture: one Gardarr service connects directly to one or more registered qBittorrent Web UI endpoints (no separate worker process).
+Gardarr — self-hosted management platform for qBittorrent. Go backend (Gin + GORM, SQLite/Postgres), React 19 + Vite frontend. Single-process architecture: one Gardarr service connects directly to one or more registered qBittorrent Web UI endpoints (no separate worker process).
 
 ## Commands
 
