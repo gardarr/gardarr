@@ -63,33 +63,13 @@ describe("TorrentLifetimeWidget", () => {
     expect(screen.getByText("1 duration.day")).toBeInTheDocument();
   });
 
-  it("formats a sub-day duration in hours", () => {
-    render(
-      <TorrentLifetimeWidget
-        task={buildTask({ created_at: "2026-08-20T10:00:00Z" })}
-      />
-    );
+  it.each([
+    { name: "hours", createdAt: "2026-08-20T10:00:00Z", expected: "2 duration.hour" },
+    { name: "minutes", createdAt: "2026-08-20T11:55:00Z", expected: "5 duration.minute" },
+    { name: "seconds", createdAt: "2026-08-20T11:59:50Z", expected: "10 duration.second" },
+  ])("formats a sub-day duration in $name", ({ createdAt, expected }) => {
+    render(<TorrentLifetimeWidget task={buildTask({ created_at: createdAt })} />);
 
-    expect(screen.getByText("2 duration.hour")).toBeInTheDocument();
-  });
-
-  it("formats a sub-hour duration in minutes", () => {
-    render(
-      <TorrentLifetimeWidget
-        task={buildTask({ created_at: "2026-08-20T11:55:00Z" })}
-      />
-    );
-
-    expect(screen.getByText("5 duration.minute")).toBeInTheDocument();
-  });
-
-  it("formats a sub-minute duration in seconds", () => {
-    render(
-      <TorrentLifetimeWidget
-        task={buildTask({ created_at: "2026-08-20T11:59:50Z" })}
-      />
-    );
-
-    expect(screen.getByText("10 duration.second")).toBeInTheDocument();
+    expect(screen.getByText(expected)).toBeInTheDocument();
   });
 });

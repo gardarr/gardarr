@@ -18,7 +18,7 @@ interface StatTileProps {
   colorClass: string;
 }
 
-function StatTile({ icon: Icon, label, value, sub, colorClass }: StatTileProps) {
+function StatTile({ icon: Icon, label, value, sub, colorClass }: Readonly<StatTileProps>) {
   return (
     <div className="flex h-full items-center gap-1.5 rounded-md bg-muted/40 py-1.5 px-2">
       <Icon className={`h-3.5 w-3.5 flex-shrink-0 ${colorClass}`} />

@@ -128,10 +128,10 @@ export function TorrentLifetimeWidget({ task }: TorrentLifetimeWidgetProps) {
             }}
           />
 
-          {points.map((point, index) => {
+          {points.map((point) => {
 
             return (
-              <div key={index} className="flex flex-col items-center min-w-0">
+              <div key={point.label} className="flex flex-col items-center min-w-0">
                 {/* Timeline bullet */}
                 <div
                   className={cn(
