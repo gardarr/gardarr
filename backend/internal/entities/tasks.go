@@ -73,6 +73,7 @@ type TaskCreationConfig struct {
 }
 
 type TaskFile struct {
+	Index        int
 	Name         string
 	Size         int64
 	Progress     float64

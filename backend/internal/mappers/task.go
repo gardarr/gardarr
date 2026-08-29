@@ -120,6 +120,7 @@ func ToTaskResponse(e *entities.Task) models.TaskResponseModel {
 
 func ToTaskFileResponse(e *entities.TaskFile) models.TaskFileResponse {
 	return models.TaskFileResponse{
+		Index:        e.Index,
 		Name:         e.Name,
 		Size:         e.Size,
 		Progress:     e.Progress,

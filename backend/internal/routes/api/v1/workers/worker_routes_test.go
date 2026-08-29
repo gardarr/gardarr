@@ -193,6 +193,65 @@ func TestSetWorkerTaskCategory_ValidJSON(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
+func TestSetWorkerTaskFilePriority_InvalidJSON(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+
+	module := &Module{
+		service: nil,
+	}
+
+	router.PUT("/worker/:id/task/:task_id/files/priority", module.setWorkerTaskFilePriority)
+
+	req, _ := http.NewRequest("PUT", "/worker/test-worker-id/task/test-task-id/files/priority", bytes.NewBufferString("invalid json"))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "Invalid request body")
+}
+
+func TestSetWorkerTaskFilePriority_MissingPriorityRejected(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+
+	module := &Module{
+		service: nil,
+	}
+
+	router.PUT("/worker/:id/task/:task_id/files/priority", module.setWorkerTaskFilePriority)
+
+	// priority omitted entirely - must be rejected, not silently treated as 0
+	req, _ := http.NewRequest("PUT", "/worker/test-worker-id/task/test-task-id/files/priority", bytes.NewBufferString(`{"indexes":[0,1]}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestSetWorkerTaskFilePriority_ValidJSON(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+
+	module := &Module{
+		service: nil,
+	}
+
+	router.PUT("/worker/:id/task/:task_id/files/priority", module.setWorkerTaskFilePriority)
+
+	// priority: 0 ("do not download") must survive binding despite being the
+	// JSON zero value - this is the whole point of the feature.
+	req, _ := http.NewRequest("PUT", "/worker/test-worker-id/task/test-task-id/files/priority", bytes.NewBufferString(`{"indexes":[0,1],"priority":0}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Should fail because service is nil, but JSON parsing/validation should pass
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
 // setupAuthTestRouter builds a router with the real Register() middleware
 // chain wired up (session auth + admin gating), backed by an in-memory DB.
 func setupAuthTestRouter(t *testing.T) (*gin.Engine, *database.Database) {

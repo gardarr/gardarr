@@ -42,6 +42,7 @@ type RepositoryInterface interface {
 	DeleteWorkerTags(worker *entities.Worker, tags []string) error
 	SetWorkerTaskCategory(worker *entities.Worker, taskID string, schema schemas.TaskSetCategorySchema) error
 	ListWorkerTaskFiles(worker *entities.Worker, taskID string) ([]*entities.TaskFile, error)
+	SetWorkerTaskFilePriority(worker *entities.Worker, taskID string, schema schemas.TaskSetFilePrioritySchema) error
 	ListWorkerTaskTrackers(worker *entities.Worker, taskID string) ([]*entities.TaskTracker, error)
 	AddWorkerTaskTrackers(worker *entities.Worker, taskID string, urls []string) error
 	RemoveWorkerTaskTrackers(worker *entities.Worker, taskID string, urls []string) error

@@ -17,6 +17,7 @@ import (
 	"github.com/jfxdev/gardarr/internal/services/events"
 	metadata "github.com/jfxdev/gardarr/internal/services/task_metadata"
 	"github.com/jfxdev/gardarr/internal/services/workerhealth"
+	apierrors "github.com/jfxdev/gardarr/pkg/errors"
 	"github.com/jfxdev/gardarr/pkg/logger"
 	"github.com/jfxdev/go-qbt"
 )
@@ -601,6 +602,46 @@ func (s *Service) ListWorkerTaskFiles(ctx context.Context, workerID, taskID stri
 	})
 
 	return files, nil
+}
+
+// SetWorkerTaskFilePriority sets the download priority of one or more files
+// within a torrent. Setting every file's priority to 0 is rejected -
+// qBittorrent handles a torrent with no selected files poorly, and the user
+// should remove the torrent instead.
+func (s *Service) SetWorkerTaskFilePriority(ctx context.Context, workerID, taskID string, schema schemas.TaskSetFilePrioritySchema) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	if *schema.Priority == 0 {
+		files, err := s.repository.ListWorkerTaskFiles(worker, taskID)
+		if err != nil {
+			return fmt.Errorf("failed to list task files: %w", err)
+		}
+
+		zeroed := make(map[int]bool, len(schema.Indexes))
+		for _, idx := range schema.Indexes {
+			zeroed[idx] = true
+		}
+
+		allZero := true
+		for _, file := range files {
+			priority := file.Priority
+			if zeroed[file.Index] {
+				priority = 0
+			}
+			if priority != 0 {
+				allZero = false
+				break
+			}
+		}
+		if allZero {
+			return apierrors.ErrAllFilesDeselected
+		}
+	}
+
+	return s.repository.SetWorkerTaskFilePriority(worker, taskID, schema)
 }
 
 func (s *Service) ListWorkerTaskTrackers(ctx context.Context, workerID, taskID string) ([]*entities.TaskTracker, error) {

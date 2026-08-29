@@ -132,6 +132,95 @@ func (p instanceProber) GetInstance(*entities.Worker) (*entities.Instance, error
 	return p.instance, p.err
 }
 
+// filePriorityTestRepo backs SetWorkerTaskFilePriority tests: ListWorkerTaskFiles
+// returns a fixed file set (with Index preserved regardless of any display
+// ordering), and SetWorkerTaskFilePriority records whether it was actually
+// called, so a test can assert the all-zero guard blocked the call.
+type filePriorityTestRepo struct {
+	workerrepository.RepositoryInterface
+	worker *entities.Worker
+	files  []*entities.TaskFile
+
+	called bool
+}
+
+func (f *filePriorityTestRepo) GetWorkerByUUID(uuid.UUID) (*entities.Worker, error) {
+	return f.worker, nil
+}
+
+func (f *filePriorityTestRepo) ListWorkerTaskFiles(*entities.Worker, string) ([]*entities.TaskFile, error) {
+	return f.files, nil
+}
+
+func (f *filePriorityTestRepo) SetWorkerTaskFilePriority(*entities.Worker, string, schemas.TaskSetFilePrioritySchema) error {
+	f.called = true
+	return nil
+}
+
+func intPtr(v int) *int { return &v }
+
+func TestSetWorkerTaskFilePriorityRejectsDeselectingEveryFile(t *testing.T) {
+	workerID := uuid.New()
+	repo := &filePriorityTestRepo{
+		worker: &entities.Worker{UUID: workerID},
+		files: []*entities.TaskFile{
+			{Index: 0, Priority: 1},
+			{Index: 1, Priority: 0}, // already deselected
+		},
+	}
+	service := &Service{repository: repo}
+
+	// Zeroing out the one remaining selected file (index 0) would leave
+	// nothing selected - must be rejected.
+	schema := schemas.TaskSetFilePrioritySchema{Indexes: []int{0}, Priority: intPtr(0)}
+	err := service.SetWorkerTaskFilePriority(context.Background(), workerID.String(), "task-1", schema)
+	if err == nil {
+		t.Fatal("expected error when deselecting the last selected file, got nil")
+	}
+	if repo.called {
+		t.Fatal("expected repository setter not to be called when the guard rejects the request")
+	}
+}
+
+func TestSetWorkerTaskFilePrioritySucceedsWhenSomeFilesRemainSelected(t *testing.T) {
+	workerID := uuid.New()
+	repo := &filePriorityTestRepo{
+		worker: &entities.Worker{UUID: workerID},
+		files: []*entities.TaskFile{
+			{Index: 0, Priority: 1},
+			{Index: 1, Priority: 1},
+		},
+	}
+	service := &Service{repository: repo}
+
+	schema := schemas.TaskSetFilePrioritySchema{Indexes: []int{0}, Priority: intPtr(0)}
+	err := service.SetWorkerTaskFilePriority(context.Background(), workerID.String(), "task-1", schema)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !repo.called {
+		t.Fatal("expected repository setter to be called")
+	}
+}
+
+func TestSetWorkerTaskFilePrioritySkipsGuardForNonZeroPriority(t *testing.T) {
+	workerID := uuid.New()
+	// files is left nil on purpose: ListWorkerTaskFiles must not be called
+	// when the request isn't deselecting anything, since the guard only
+	// applies to priority == 0.
+	repo := &filePriorityTestRepo{worker: &entities.Worker{UUID: workerID}}
+	service := &Service{repository: repo}
+
+	schema := schemas.TaskSetFilePrioritySchema{Indexes: []int{0}, Priority: intPtr(6)}
+	err := service.SetWorkerTaskFilePriority(context.Background(), workerID.String(), "task-1", schema)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !repo.called {
+		t.Fatal("expected repository setter to be called")
+	}
+}
+
 func TestGetWorkerUsesConfirmedHealthWithoutProbing(t *testing.T) {
 	workerID := uuid.New()
 	health := workerhealth.NewService(noopProber{}, nil)

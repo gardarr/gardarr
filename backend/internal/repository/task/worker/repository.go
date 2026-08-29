@@ -553,6 +553,7 @@ func (s *Repository) ListFiles(hash string) ([]*entities.TaskFile, error) {
 	result := make([]*entities.TaskFile, len(files))
 	for i, file := range files {
 		result[i] = &entities.TaskFile{
+			Index:        file.Index,
 			Name:         file.Name,
 			Size:         file.Size,
 			Progress:     file.Progress,
@@ -564,6 +565,13 @@ func (s *Repository) ListFiles(hash string) ([]*entities.TaskFile, error) {
 	}
 
 	return result, nil
+}
+
+func (s *Repository) SetFilePriority(hash string, schema schemas.TaskSetFilePrioritySchema) error {
+	if err := s.client.SetFilePriority(hash, schema.Indexes, *schema.Priority); err != nil {
+		return errors.Wrap(err, "failed to set torrent file priority")
+	}
+	return nil
 }
 
 func (s *Repository) ListTrackers(hash string) ([]*entities.TaskTracker, error) {

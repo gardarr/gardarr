@@ -1536,7 +1536,22 @@
       "retry": "Tentar novamente",
       "empty": "Nenhum arquivo encontrado",
       "count_one": "{{count}} arquivo",
-      "count_other": "{{count}} arquivos"
+      "count_other": "{{count}} arquivos",
+      "selectAll": "Selecionar todos",
+      "selectNone": "Selecionar nenhum",
+      "apply": "Aplicar",
+      "applying": "Aplicando...",
+      "deselectNote": "Desmarcar um arquivo interrompe o download, mas não apaga o que já foi baixado. O progresso do torrent é recalculado após aplicar.",
+      "toggleAria": "Incluir {{name}} no download",
+      "confirmTitle": "Aplicar alterações de arquivos?",
+      "confirmDescription": "{{skip}} arquivo(s) deixarão de ser baixados e {{download}} arquivo(s) serão incluídos no download. Arquivos já baixados não são apagados do disco, e o progresso do torrent será recalculado.",
+      "confirmCancel": "Cancelar",
+      "confirmApply": "Confirmar",
+      "priority": {
+        "normal": "Normal",
+        "high": "Alta",
+        "maximum": "Máxima"
+      }
     },
     "network": {
       "title": "Rede e Pares",

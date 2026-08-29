@@ -6,11 +6,12 @@ import (
 )
 
 var (
-	ErrTaskNotFound      = errors.New("task not found")
-	ErrWorkerNotFound    = errors.New("worker not found")
-	ErrInvalidUUID       = errors.New("invalid UUID format")
-	ErrInvalidInput      = errors.New("invalid input data")
-	ErrWorkerUnavailable = errors.New("worker unavailable")
+	ErrTaskNotFound       = errors.New("task not found")
+	ErrWorkerNotFound     = errors.New("worker not found")
+	ErrInvalidUUID        = errors.New("invalid UUID format")
+	ErrInvalidInput       = errors.New("invalid input data")
+	ErrWorkerUnavailable  = errors.New("worker unavailable")
+	ErrAllFilesDeselected = errors.New("cannot deselect every file in a torrent - remove the torrent instead")
 )
 
 // ResponseError represents an HTTP error response with status code and message
@@ -73,6 +74,8 @@ func ToResponseError(err error) *ResponseError {
 		return NewBadRequestError("Invalid request", err)
 	case errors.Is(err, ErrWorkerUnavailable):
 		return NewServiceUnavailableError("Worker is unavailable", err)
+	case errors.Is(err, ErrAllFilesDeselected):
+		return NewBadRequestError(ErrAllFilesDeselected.Error(), err)
 	}
 
 	// Check error message patterns for wrapped errors
