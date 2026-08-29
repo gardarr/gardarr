@@ -697,7 +697,7 @@ export default function TorrentsPage() {
   // Aplica uma ação em lote aos torrents selecionados via endpoint bulk
   const handleBulkAction = useCallback(async (
     action: BulkTaskAction,
-    options?: { category?: string; tags?: string[] }
+    options?: { category?: string; tags?: string[]; trackers?: string[] }
   ) => {
     const source = torrentsRef.current.length > 0 ? torrentsRef.current : lastNonEmptyTorrentsRef.current;
     const items = Array.from(selectedIdsRef.current)

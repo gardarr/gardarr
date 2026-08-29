@@ -18,12 +18,9 @@ func New(client *qbt.Client) *Repository {
 }
 
 // ListFeeds returns every configured feed, keyed by its qBittorrent path.
-// Known limitation: qBittorrent's rss/items response nests feeds inside
-// folders as recursive JSON objects, but go-qbt's GetRSSFeeds decodes the
-// response into a flat map[string]RSSFeed - a folder entry decodes to a
-// zero-value RSSFeed and any feed nested inside it is silently dropped,
-// never appearing here at all. Only feeds registered at the root are
-// currently visible. Tracked upstream in jfxdev/go-qbt#11.
+// A feed nested inside a folder is keyed by its full path (e.g.
+// "Shows\Anime"), matching how AddFeed/RemoveFeed/MoveItem already address
+// items (go-qbt jfxdev/go-qbt#11 fixed the underlying decode).
 func (r *Repository) ListFeeds(withData bool) (map[string]*entities.RSSFeed, error) {
 	items, err := r.client.GetRSSFeeds(withData)
 	if err != nil {

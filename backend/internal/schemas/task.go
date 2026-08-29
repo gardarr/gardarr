@@ -53,6 +53,15 @@ type TaskSetTagsSchema struct {
 	Tags []string `json:"tags" binding:"required"`
 }
 
+type TaskAddTrackersSchema struct {
+	Urls []string `json:"urls" binding:"required,min=1,dive,url"`
+}
+
+type TaskEditTrackerSchema struct {
+	OrigURL string `json:"orig_url" binding:"required,url"`
+	NewURL  string `json:"new_url" binding:"required,url"`
+}
+
 type TaskSetCategorySchema struct {
 	Category string `json:"category" binding:"required,min=1"`
 }
@@ -67,7 +76,7 @@ type BulkTaskItemSchema struct {
 // multiple workers. Hashes are grouped per worker and sent to qBittorrent in
 // a single batched call (hashes separated by "|").
 type BulkTaskActionSchema struct {
-	Action string               `json:"action" binding:"required,oneof=stop start force_resume force_recheck force_reannounce set_category add_tags delete"`
+	Action string               `json:"action" binding:"required,oneof=stop start force_resume force_recheck force_reannounce set_category add_tags delete add_tracker remove_tracker"`
 	Items  []BulkTaskItemSchema `json:"items" binding:"required,min=1,max=500,dive"`
 
 	// Category is required when Action is "set_category" (empty string removes the category).
@@ -76,4 +85,6 @@ type BulkTaskActionSchema struct {
 	Tags []string `json:"tags,omitempty"`
 	// Purge deletes downloaded files too when Action is "delete".
 	Purge bool `json:"purge,omitempty"`
+	// Trackers is required (non-empty) when Action is "add_tracker" or "remove_tracker".
+	Trackers []string `json:"trackers,omitempty" binding:"omitempty,dive,url"`
 }

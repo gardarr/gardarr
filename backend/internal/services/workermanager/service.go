@@ -603,6 +603,47 @@ func (s *Service) ListWorkerTaskFiles(ctx context.Context, workerID, taskID stri
 	return files, nil
 }
 
+func (s *Service) ListWorkerTaskTrackers(ctx context.Context, workerID, taskID string) ([]*entities.TaskTracker, error) {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return nil, err
+	}
+
+	trackers, err := s.repository.ListWorkerTaskTrackers(worker, taskID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list task trackers: %w", err)
+	}
+
+	return trackers, nil
+}
+
+func (s *Service) AddWorkerTaskTrackers(ctx context.Context, workerID, taskID string, urls []string) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	return s.repository.AddWorkerTaskTrackers(worker, taskID, urls)
+}
+
+func (s *Service) RemoveWorkerTaskTrackers(ctx context.Context, workerID, taskID string, urls []string) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	return s.repository.RemoveWorkerTaskTrackers(worker, taskID, urls)
+}
+
+func (s *Service) EditWorkerTaskTracker(ctx context.Context, workerID, taskID, origURL, newURL string) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	return s.repository.EditWorkerTaskTracker(worker, taskID, origURL, newURL)
+}
+
 func (s *Service) GetWorkerTasksStats(ctx context.Context, id string) (*entities.TaskStats, error) {
 	worker, err := s.fetchWorker(id)
 	if err != nil {
@@ -634,6 +675,8 @@ var validBulkTaskActions = map[string]struct{}{
 	"set_category":     {},
 	"add_tags":         {},
 	"delete":           {},
+	"add_tracker":      {},
+	"remove_tracker":   {},
 }
 
 // validateBulkTaskAction checks that schema.Action is a supported action and
@@ -647,6 +690,10 @@ func validateBulkTaskAction(schema schemas.BulkTaskActionSchema) error {
 	case "add_tags":
 		if len(schema.Tags) == 0 {
 			return fmt.Errorf("tags are required for add_tags action")
+		}
+	case "add_tracker", "remove_tracker":
+		if len(schema.Trackers) == 0 {
+			return fmt.Errorf("trackers are required for %s action", schema.Action)
 		}
 	default:
 		if _, ok := validBulkTaskActions[schema.Action]; !ok {
@@ -750,9 +797,47 @@ func (s *Service) runBulkAction(workerID string, hashes []string, schema schemas
 		return s.repository.AddWorkerTaskTags(worker, joined, schema.Tags)
 	case "delete":
 		return s.repository.DeleteWorkerTask(worker, joined, schema.Purge)
+	case "add_tracker":
+		return runPerHash(hashes, func(hash string) error {
+			return s.repository.AddWorkerTaskTrackers(worker, hash, schema.Trackers)
+		})
+	case "remove_tracker":
+		return runPerHash(hashes, func(hash string) error {
+			err := s.repository.RemoveWorkerTaskTrackers(worker, hash, schema.Trackers)
+			if isTrackerAlreadyRemovedError(err) {
+				return nil
+			}
+			return err
+		})
 	default:
 		return fmt.Errorf("unsupported bulk action: %s", schema.Action)
 	}
+}
+
+// isTrackerAlreadyRemovedError reports whether err is qBittorrent's HTTP 409
+// response for removeTrackers, returned when none of the requested URLs are
+// present on the torrent. This is expected on a retry after a partial bulk
+// failure already removed them on an earlier hash - despite go-qbt's
+// RemoveTrackers doc comment describing that case as a no-op, the client
+// still surfaces the 409 as an error, so it's treated as success here.
+func isTrackerAlreadyRemovedError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "Status: 409")
+}
+
+// runPerHash calls op once per hash instead of joining them into
+// qBittorrent's native multi-hash form - needed for the tracker endpoints,
+// which (unlike the rest of the bulk actions) only accept a single hash per
+// call. AddTrackers is idempotent on qBittorrent's side, and remove_tracker's
+// caller above normalizes the "already removed" 409 to success, so a caller
+// can safely retry the whole batch after a partial failure here without
+// side effects on the hashes that already succeeded.
+func runPerHash(hashes []string, op func(hash string) error) error {
+	for _, hash := range hashes {
+		if err := op(hash); err != nil {
+			return fmt.Errorf("hash %s: %w", hash, err)
+		}
+	}
+	return nil
 }
 
 func (s *Service) GetWorkerVersion(ctx context.Context, id string) (*entities.WorkerVersion, error) {

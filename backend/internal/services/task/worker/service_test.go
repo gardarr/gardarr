@@ -240,6 +240,34 @@ func (m *mockRepository) ListFiles(hash string) ([]*entities.TaskFile, error) {
 	return nil, errors.New("task not found")
 }
 
+func (m *mockRepository) ListTrackers(hash string) ([]*entities.TaskTracker, error) {
+	if _, exists := m.tasks[hash]; exists {
+		return []*entities.TaskTracker{
+			{URL: "https://tracker.example/announce", Status: 2, Tier: 0, NumPeers: 5, NumSeeds: 3, NumLeeches: 2, NumDownloaded: 10},
+		}, nil
+	}
+	return nil, errors.New("task not found")
+}
+
+func (m *mockRepository) requireExistingTask(hash string) error {
+	if _, exists := m.tasks[hash]; exists {
+		return nil
+	}
+	return errors.New("task not found")
+}
+
+func (m *mockRepository) AddTrackers(hash string, urls []string) error {
+	return m.requireExistingTask(hash)
+}
+
+func (m *mockRepository) RemoveTrackers(hash string, urls []string) error {
+	return m.requireExistingTask(hash)
+}
+
+func (m *mockRepository) EditTracker(hash, origURL, newURL string) error {
+	return m.requireExistingTask(hash)
+}
+
 func (m *mockRepository) GetLimits(hash string) (*entities.TaskLimits, error) {
 	if m.limitsError != nil {
 		return nil, m.limitsError

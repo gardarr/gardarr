@@ -142,6 +142,31 @@ func ToTaskFilesResponse(files []*entities.TaskFile) []models.TaskFileResponse {
 	return response
 }
 
+func ToTaskTrackerResponse(e *entities.TaskTracker) models.TaskTrackerResponse {
+	return models.TaskTrackerResponse{
+		URL:           e.URL,
+		Status:        e.Status,
+		Tier:          e.Tier,
+		NumPeers:      e.NumPeers,
+		NumSeeds:      e.NumSeeds,
+		NumLeeches:    e.NumLeeches,
+		NumDownloaded: e.NumDownloaded,
+		Message:       e.Message,
+	}
+}
+
+func ToTaskTrackersResponse(trackers []*entities.TaskTracker) []models.TaskTrackerResponse {
+	if trackers == nil {
+		return []models.TaskTrackerResponse{}
+	}
+
+	response := make([]models.TaskTrackerResponse, len(trackers))
+	for i, t := range trackers {
+		response[i] = ToTaskTrackerResponse(t)
+	}
+	return response
+}
+
 func ToTaskStatsResponse(e *entities.TaskStats) models.TaskStatsResponse {
 	return models.TaskStatsResponse{
 		TotalDiskSize:        e.TotalDiskSize,

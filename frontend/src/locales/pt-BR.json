@@ -994,6 +994,10 @@
       "category": "Definir categoria",
       "removeCategory": "Remover categoria",
       "tags": "Adicionar tags",
+      "trackers": "Trackers",
+      "trackerPlaceholder": "Uma URL de tracker por linha",
+      "addTracker": "Adicionar",
+      "removeTracker": "Remover",
       "limits": "Limites",
       "delete": "Excluir",
       "apply": "Aplicar",
@@ -1571,13 +1575,42 @@
       "exactSource": "Exact Source:",
       "trackers": "Trackers:"
     },
+    "trackersLive": {
+      "title": "Trackers",
+      "loading": "Carregando trackers...",
+      "loadError": "Falha ao carregar trackers",
+      "retry": "Tentar novamente",
+      "empty": "Nenhum tracker encontrado",
+      "addPlaceholder": "Adicionar URL do tracker",
+      "add": "Adicionar",
+      "edit": "Editar",
+      "remove": "Remover",
+      "tier": "Camada",
+      "seeds": "Seeds",
+      "peers": "Peers",
+      "leeches": "Leechers",
+      "status": {
+        "0": "Desabilitado",
+        "1": "Não contatado",
+        "2": "Funcionando",
+        "3": "Atualizando",
+        "4": "Não funciona",
+        "unknown": "Desconhecido"
+      }
+    },
     "toasts": {
       "categoryUpdateSuccess": "Categoria atualizada com sucesso",
       "categoryUpdateError": "Falha ao atualizar categoria",
       "tagsUpdateSuccess": "Tags atualizadas com sucesso",
       "tagsUpdateError": "Falha ao atualizar tags",
       "nameUpdateSuccess": "Nome atualizado com sucesso",
-      "nameUpdateError": "Erro ao atualizar nome"
+      "nameUpdateError": "Erro ao atualizar nome",
+      "trackerAddSuccess": "Tracker adicionado",
+      "trackerAddError": "Falha ao adicionar tracker",
+      "trackerRemoveSuccess": "Tracker removido",
+      "trackerRemoveError": "Falha ao remover tracker",
+      "trackerEditSuccess": "Tracker atualizado",
+      "trackerEditError": "Falha ao atualizar tracker"
     },
     "description": {
       "label": "Descrição",

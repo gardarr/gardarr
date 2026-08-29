@@ -673,6 +673,42 @@ func (r *Repository) ListWorkerTaskFiles(worker *entities.Worker, taskID string)
 	return taskservice.New(client).ListTaskFiles(context.Background(), taskID)
 }
 
+func (r *Repository) ListWorkerTaskTrackers(worker *entities.Worker, taskID string) ([]*entities.TaskTracker, error) {
+	client, err := r.getClient(worker)
+	if err != nil {
+		return nil, err
+	}
+
+	return taskservice.New(client).ListTaskTrackers(context.Background(), taskID)
+}
+
+func (r *Repository) AddWorkerTaskTrackers(worker *entities.Worker, taskID string, urls []string) error {
+	client, err := r.getClient(worker)
+	if err != nil {
+		return err
+	}
+
+	return taskservice.New(client).AddTaskTrackers(context.Background(), taskID, urls)
+}
+
+func (r *Repository) RemoveWorkerTaskTrackers(worker *entities.Worker, taskID string, urls []string) error {
+	client, err := r.getClient(worker)
+	if err != nil {
+		return err
+	}
+
+	return taskservice.New(client).RemoveTaskTrackers(context.Background(), taskID, urls)
+}
+
+func (r *Repository) EditWorkerTaskTracker(worker *entities.Worker, taskID, origURL, newURL string) error {
+	client, err := r.getClient(worker)
+	if err != nil {
+		return err
+	}
+
+	return taskservice.New(client).EditTaskTracker(context.Background(), taskID, origURL, newURL)
+}
+
 func (r *Repository) SetWorkerTaskTags(worker *entities.Worker, taskID string, schema schemas.TaskSetTagsSchema) error {
 	client, err := r.getClient(worker)
 	if err != nil {

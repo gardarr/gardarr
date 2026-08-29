@@ -968,6 +968,10 @@
       "category": "Set category",
       "removeCategory": "Remove category",
       "tags": "Add tags",
+      "trackers": "Trackers",
+      "trackerPlaceholder": "One tracker URL per line",
+      "addTracker": "Add",
+      "removeTracker": "Remove",
       "limits": "Limits",
       "delete": "Delete",
       "apply": "Apply",
@@ -1515,13 +1519,42 @@
       "exactSource": "Exact Source:",
       "trackers": "Trackers:"
     },
+    "trackersLive": {
+      "title": "Trackers",
+      "loading": "Loading trackers...",
+      "loadError": "Failed to load trackers",
+      "retry": "Try again",
+      "empty": "No trackers found",
+      "addPlaceholder": "Add tracker URL",
+      "add": "Add",
+      "edit": "Edit",
+      "remove": "Remove",
+      "tier": "Tier",
+      "seeds": "Seeds",
+      "peers": "Peers",
+      "leeches": "Leeches",
+      "status": {
+        "0": "Disabled",
+        "1": "Not contacted",
+        "2": "Working",
+        "3": "Updating",
+        "4": "Not working",
+        "unknown": "Unknown"
+      }
+    },
     "toasts": {
       "categoryUpdateSuccess": "Category updated successfully",
       "categoryUpdateError": "Failed to update category",
       "tagsUpdateSuccess": "Tags updated successfully",
       "tagsUpdateError": "Failed to update tags",
       "nameUpdateSuccess": "Name updated successfully",
-      "nameUpdateError": "Failed to update name"
+      "nameUpdateError": "Failed to update name",
+      "trackerAddSuccess": "Tracker added",
+      "trackerAddError": "Failed to add tracker",
+      "trackerRemoveSuccess": "Tracker removed",
+      "trackerRemoveError": "Failed to remove tracker",
+      "trackerEditSuccess": "Tracker updated",
+      "trackerEditError": "Failed to update tracker"
     },
     "description": {
       "label": "Description",

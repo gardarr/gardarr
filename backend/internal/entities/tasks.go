@@ -82,6 +82,20 @@ type TaskFile struct {
 	Availability float64
 }
 
+// TaskTracker is a single tracker entry reported by qBittorrent for a
+// torrent. Status follows qBittorrent's own tracker status codes (0
+// disabled, 1 not contacted, 2 working, 3 updating, 4 not working).
+type TaskTracker struct {
+	URL           string
+	Status        int
+	Tier          int
+	NumPeers      int
+	NumSeeds      int
+	NumLeeches    int
+	NumDownloaded int
+	Message       string
+}
+
 // TaskStatuses is the map reference of status in qBittorrent API
 var TaskStatuses = map[string]string{
 	"error":              "ERROR",

@@ -172,6 +172,63 @@ describe('TorrentService', () => {
     });
   });
 
+  describe('listTaskTrackers', () => {
+    it('should call api.get with correct endpoint', async () => {
+      const workerId = 'worker-123';
+      const taskId = 'task-456';
+      vi.mocked(api.get).mockResolvedValue({ data: [], error: undefined });
+
+      await torrentService.listTaskTrackers(workerId, taskId);
+
+      expect(api.get).toHaveBeenCalledWith(`/worker/${workerId}/task/${taskId}/trackers`);
+    });
+  });
+
+  describe('addTaskTrackers', () => {
+    it('should call api.post with correct endpoint and urls', async () => {
+      const workerId = 'worker-123';
+      const taskId = 'task-456';
+      const urls = ['http://tracker.example.com/announce'];
+      vi.mocked(api.post).mockResolvedValue({ data: null, error: undefined });
+
+      await torrentService.addTaskTrackers(workerId, taskId, urls);
+
+      expect(api.post).toHaveBeenCalledWith(`/worker/${workerId}/task/${taskId}/trackers`, { urls });
+    });
+  });
+
+  describe('removeTaskTrackers', () => {
+    it('should call api.delete with urls as repeated query params', async () => {
+      const workerId = 'worker-123';
+      const taskId = 'task-456';
+      const urls = ['http://tracker1.example.com', 'http://tracker2.example.com'];
+      vi.mocked(api.delete).mockResolvedValue({ data: null, error: undefined });
+
+      await torrentService.removeTaskTrackers(workerId, taskId, urls);
+
+      expect(api.delete).toHaveBeenCalledWith(
+        `/worker/${workerId}/task/${taskId}/trackers?url=${encodeURIComponent(urls[0])}&url=${encodeURIComponent(urls[1])}`
+      );
+    });
+  });
+
+  describe('editTaskTracker', () => {
+    it('should call api.put with the original and new tracker urls', async () => {
+      const workerId = 'worker-123';
+      const taskId = 'task-456';
+      const origUrl = 'http://old.example.com';
+      const newUrl = 'http://new.example.com';
+      vi.mocked(api.put).mockResolvedValue({ data: null, error: undefined });
+
+      await torrentService.editTaskTracker(workerId, taskId, origUrl, newUrl);
+
+      expect(api.put).toHaveBeenCalledWith(`/worker/${workerId}/task/${taskId}/trackers`, {
+        orig_url: origUrl,
+        new_url: newUrl,
+      });
+    });
+  });
+
   describe('pauseTask', () => {
     it('should call api.post with correct stop endpoint', async () => {
       const workerId = 'worker-123';

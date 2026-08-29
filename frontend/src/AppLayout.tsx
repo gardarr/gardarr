@@ -32,9 +32,12 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const { openAddModal } = useAddTorrent();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (window.innerWidth < 768) return false;
+    return localStorage.getItem("sidebarOpen") === "true";
+  });
   const [isDark, setIsDark] = useState<boolean>(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
   const location = useLocation();
 
   useEffect(() => {
@@ -52,7 +55,16 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const checkIsMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+      const nowMobile = window.innerWidth < 768;
+      setIsMobile((wasMobile) => {
+        if (wasMobile && !nowMobile) {
+          // Resizing from mobile to desktop: sidebarOpen was forced closed
+          // for mobile, so restore the stored desktop preference instead of
+          // letting the persistence effect below overwrite it with false.
+          setSidebarOpen(localStorage.getItem("sidebarOpen") === "true");
+        }
+        return nowMobile;
+      });
     };
 
     checkIsMobile();
@@ -60,6 +72,12 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
 
     return () => window.removeEventListener('resize', checkIsMobile);
   }, []);
+
+  useEffect(() => {
+    if (!isMobile) {
+      localStorage.setItem("sidebarOpen", String(sidebarOpen));
+    }
+  }, [sidebarOpen, isMobile]);
 
   function toggleTheme() {
     const root = document.documentElement;
@@ -128,6 +146,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
 
       {/* Sidebar Esquerda - Responsiva para mobile */}
       <div
+        data-testid="app-sidebar"
         className={`bg-sidebar border-r border-border flex-col transition-all duration-300 ease-in-out overflow-hidden
           ${sidebarOpen
             ? 'flex fixed inset-y-0 left-0 z-50 w-52 translate-x-0 md:relative md:z-auto md:w-52'
