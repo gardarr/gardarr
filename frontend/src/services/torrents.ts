@@ -11,7 +11,13 @@ export type BulkTaskAction =
   | 'add_tags'
   | 'delete'
   | 'add_tracker'
-  | 'remove_tracker';
+  | 'remove_tracker'
+  | 'queue_top'
+  | 'queue_up'
+  | 'queue_down'
+  | 'queue_bottom';
+
+export type QueuePriorityAction = 'top' | 'up' | 'down' | 'bottom';
 
 export interface BulkTaskItem {
   worker_id: string;
@@ -35,6 +41,7 @@ import type {
   TaskMagnetLink,
   TaskFile,
   TaskTracker,
+  TaskPeer,
   TaskLimits,
   TaskListResponse
 } from '../types/torrent';
@@ -276,6 +283,31 @@ export class TorrentService {
       indexes,
       priority,
     });
+  }
+
+  /**
+   * Reordena um torrent na fila de download do qBittorrent
+   */
+  async setTaskQueuePriority(
+    workerId: string,
+    taskId: string,
+    action: QueuePriorityAction
+  ): Promise<ApiResponse<null>> {
+    return api.put<null>(`/worker/${workerId}/task/${taskId}/priority`, { action });
+  }
+
+  /**
+   * Lista os peers conectados de uma task/torrent específica
+   */
+  async listTaskPeers(workerId: string, taskId: string): Promise<ApiResponse<TaskPeer[]>> {
+    return api.get<TaskPeer[]>(`/worker/${workerId}/task/${taskId}/peers`);
+  }
+
+  /**
+   * Bane um peer em todo o worker (instance-wide, não apenas neste torrent)
+   */
+  async banPeer(workerId: string, ip: string, port: number): Promise<ApiResponse<null>> {
+    return api.post<null>(`/worker/${workerId}/peers/ban`, { ip, port });
   }
 }
 

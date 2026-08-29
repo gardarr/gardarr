@@ -624,6 +624,58 @@ func (s *Repository) EditTracker(hash, origURL, newURL string) error {
 	return nil
 }
 
+// SetQueuePriority reorders a torrent within qBittorrent's download queue.
+// action must be one of "top", "up", "down", "bottom" - already validated by
+// schemas.TaskSetQueuePrioritySchema's binding tag before reaching here.
+func (s *Repository) SetQueuePriority(hash string, action string) error {
+	var err error
+	switch action {
+	case "top":
+		err = s.client.TopTorrentsPriority(hash)
+	case "up":
+		err = s.client.IncreaseTorrentsPriority(hash)
+	case "down":
+		err = s.client.DecreaseTorrentsPriority(hash)
+	case "bottom":
+		err = s.client.BottomTorrentsPriority(hash)
+	default:
+		return fmt.Errorf("unsupported queue priority action: %s", action)
+	}
+	if err != nil {
+		return errors.Wrap(err, "failed to set torrent queue priority")
+	}
+	return nil
+}
+
+func (s *Repository) ListPeers(hash string) ([]*entities.TaskPeer, error) {
+	peers, err := s.client.GetTorrentPeers(hash)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to list torrent peers")
+	}
+
+	result := make([]*entities.TaskPeer, len(peers))
+	for i, p := range peers {
+		result[i] = &entities.TaskPeer{
+			IP:            p.IP,
+			Port:          p.Port,
+			Client:        p.Client,
+			Flags:         p.Flags,
+			FlagsDesc:     p.FlagsDesc,
+			Connection:    p.Connection,
+			Country:       p.Country,
+			CountryCode:   p.CountryCode,
+			Downloaded:    p.Downloaded,
+			DownloadSpeed: p.DownloadSpeed,
+			Progress:      p.Progress,
+			Uploaded:      p.Uploaded,
+			UploadSpeed:   p.UploadSpeed,
+			Relevance:     p.Relevance,
+		}
+	}
+
+	return result, nil
+}
+
 func (s *Repository) GetLimits(hash string) (*entities.TaskLimits, error) {
 	dlLimit, err := s.client.GetTorrentDownloadLimit(hash)
 	if err != nil {

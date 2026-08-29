@@ -936,7 +936,8 @@
       "renameSuccess": "Torrent renamed successfully",
       "renameError": "Error renaming torrent",
       "pathChangeSuccess": "Path changed successfully",
-      "pathChangeError": "Error changing torrent path"
+      "pathChangeError": "Error changing torrent path",
+      "queuePrioritySuccess": "Queue priority updated"
     },
     "actionButtons": {
       "play": "Start/Resume",
@@ -949,6 +950,8 @@
     "forceDownload": "Force download",
     "forceReannounce": "Force reannounce",
     "forceRecheck": "Force recheck",
+    "queuePriority": "Reorder queue",
+    "queueRank": "Queue position #{{position}}",
     "metrics": "Metrics",
     "metadata": "Metadata",
     "showDetails": "Details",
@@ -972,6 +975,10 @@
       "trackerPlaceholder": "One tracker URL per line",
       "addTracker": "Add",
       "removeTracker": "Remove",
+      "queueTop": "Move to top of queue",
+      "queueUp": "Move up in queue",
+      "queueDown": "Move down in queue",
+      "queueBottom": "Move to bottom of queue",
       "limits": "Limits",
       "delete": "Delete",
       "apply": "Apply",
@@ -1382,12 +1389,17 @@
       "overview": "Overview",
       "files": "Files",
       "trackers": "Trackers",
+      "peers": "Peers",
       "image": "Image"
     },
     "actions": {
       "forceDownload": "Force Download",
       "forceReannounce": "Force Reannounce",
       "forceRecheck": "Force Recheck",
+      "queueTop": "Move to top of queue",
+      "queueUp": "Move up in queue",
+      "queueDown": "Move down in queue",
+      "queueBottom": "Move to bottom of queue",
       "share": "Share card"
     },
     "shareCard": {
@@ -1556,6 +1568,22 @@
         "4": "Not working",
         "unknown": "Unknown"
       }
+    },
+    "peers": {
+      "title": "Peers",
+      "loading": "Loading peers...",
+      "loadError": "Failed to load peers",
+      "retry": "Try again",
+      "empty": "No peers connected",
+      "progress": "Progress",
+      "banTooltip": "Ban this peer on every torrent on this worker",
+      "banSuccess": "Peer banned on this worker",
+      "banError": "Failed to ban peer",
+      "banConfirmTitle": "Ban this peer?",
+      "banConfirmDescription": "This bans {{peer}} from every torrent on this worker, not just this one.",
+      "banCancel": "Cancel",
+      "banConfirm": "Ban peer",
+      "unknownCountry": "Unknown"
     },
     "toasts": {
       "categoryUpdateSuccess": "Category updated successfully",

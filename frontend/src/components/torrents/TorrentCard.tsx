@@ -3,6 +3,7 @@ import { memo, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RatioBadge } from "@/components/RatioBadge";
 import { StatusBadge } from "@/components/StatusBadge";
+import { QueueRankBadge } from "@/components/QueueRankBadge";
 import { formatBytes, formatBytesPerSecond } from "@/utils/bytes";
 import { Download, Upload } from "lucide-react";
 import SeedersAndPeersBadge from "@/components/SeedersAndPeersBadge";
@@ -116,6 +117,7 @@ export const TorrentCard = memo(function TorrentCard({
                   />
                 )}
                 <StatusBadge status={torrent.status} size="sm" showTooltip={false} />
+                <QueueRankBadge priority={torrent.priority} />
                 <CardTitle className="text-[11px] font-medium text-muted-foreground dark:text-gray-400 truncate">
                   <TorrentDisplayName torrent={torrent} className="truncate" />
                 </CardTitle>
@@ -182,8 +184,9 @@ export const TorrentCard = memo(function TorrentCard({
                     onToggleSelect={onToggleSelect}
                   />
                 )}
-                <div className="flex-shrink-0">
+                <div className="flex-shrink-0 flex items-center gap-1.5">
                   <StatusBadge status={torrent.status} size="lg" />
+                  <QueueRankBadge priority={torrent.priority} />
                 </div>
                 <CardTitle
                   className="text-sm font-medium text-muted-foreground dark:text-gray-400 truncate"

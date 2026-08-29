@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, SortAsc, SortDesc } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { RatioBadge } from "@/components/RatioBadge";
 import { StatusBadge } from "@/components/StatusBadge";
+import { QueueRankBadge } from "@/components/QueueRankBadge";
 import SeedersAndPeersBadge from "@/components/SeedersAndPeersBadge";
 import { formatBytes } from "@/utils/bytes";
 import { useTorrentOpenHandler } from "./hooks";
@@ -73,6 +74,7 @@ const TorrentRow = memo(function TorrentRow({ torrent, actions, selection, selec
                 status={torrent.status}
                 size={compact ? "sm" : "md"}
               />
+              <QueueRankBadge priority={torrent.priority} />
               <TorrentDisplayName torrent={torrent} />
             </div>
           </td>

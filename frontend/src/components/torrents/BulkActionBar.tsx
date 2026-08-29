@@ -3,9 +3,27 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckSquare, Play, Pause, RefreshCw, RadioTower, Folder, Tag, Gauge, Trash2, X, Link2 } from "lucide-react";
-import type { BulkTaskAction } from "@/services/torrents";
+import { CheckSquare, Play, Pause, RefreshCw, RadioTower, Folder, Tag, Gauge, Trash2, X, Link2, ChevronsUp, ChevronUp, ChevronDown, ChevronsDown } from "lucide-react";
+import type { BulkTaskAction, QueuePriorityAction } from "@/services/torrents";
 import type { Category } from "@/types/category";
+import { useActionPulse } from "@/hooks/useActionPulse";
+
+// Queue-priority direction -> transient pulse styling shown on the clicked
+// icon (see useActionPulse). Reuses Tailwind's built-in animate-bounce, no
+// custom keyframes needed.
+const QUEUE_PULSE_CLASSNAME: Record<QueuePriorityAction, string> = {
+  top: "animate-bounce text-emerald-300",
+  up: "animate-bounce text-emerald-300",
+  down: "animate-bounce text-amber-300",
+  bottom: "animate-bounce text-amber-300",
+};
+
+const QUEUE_DIRECTION_TO_BULK_ACTION: Record<QueuePriorityAction, BulkTaskAction> = {
+  top: "queue_top",
+  up: "queue_up",
+  down: "queue_down",
+  bottom: "queue_bottom",
+};
 
 interface BulkActionBarProps {
   selectedCount: number;
@@ -34,6 +52,7 @@ export function BulkActionBar({
   const [pendingTags, setPendingTags] = useState<Set<string>>(new Set());
   const [trackerOpen, setTrackerOpen] = useState(false);
   const [trackerUrls, setTrackerUrls] = useState("");
+  const { pulsedAction, pulseToken, trigger: triggerPulse } = useActionPulse<QueuePriorityAction>();
 
   const disabled = selectedCount === 0;
 
@@ -54,6 +73,31 @@ export function BulkActionBar({
       {icon}
     </Button>
   );
+
+  const queueIconButton = (label: string, icon: React.ReactElement, direction: QueuePriorityAction) => {
+    const isPulsing = pulsedAction === direction;
+    return (
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 rounded-full hover:bg-primary-foreground/20"
+        onClick={() => {
+          triggerPulse(direction);
+          onAction(QUEUE_DIRECTION_TO_BULK_ACTION[direction]);
+        }}
+        disabled={disabled}
+        aria-label={label}
+        title={label}
+      >
+        <span
+          key={isPulsing ? pulseToken : "idle"}
+          className={`inline-flex ${isPulsing ? QUEUE_PULSE_CLASSNAME[direction] : ""}`}
+        >
+          {icon}
+        </span>
+      </Button>
+    );
+  };
 
   const togglePendingTag = (tag: string) => {
     setPendingTags(prev => {
@@ -226,6 +270,11 @@ export function BulkActionBar({
             </div>
           </PopoverContent>
         </Popover>
+
+        {queueIconButton(t('torrents.bulk.queueTop', { defaultValue: 'Move to top of queue' }), <ChevronsUp className="h-4 w-4" />, "top")}
+        {queueIconButton(t('torrents.bulk.queueUp', { defaultValue: 'Move up in queue' }), <ChevronUp className="h-4 w-4" />, "up")}
+        {queueIconButton(t('torrents.bulk.queueDown', { defaultValue: 'Move down in queue' }), <ChevronDown className="h-4 w-4" />, "down")}
+        {queueIconButton(t('torrents.bulk.queueBottom', { defaultValue: 'Move to bottom of queue' }), <ChevronsDown className="h-4 w-4" />, "bottom")}
 
         {iconButton(t('torrents.bulk.limits'), <Gauge className="h-4 w-4" />, onLimits)}
         {iconButton(t('torrents.bulk.delete'), <Trash2 className="h-4 w-4" />, onDelete)}

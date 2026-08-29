@@ -229,6 +229,41 @@ describe('TorrentService', () => {
     });
   });
 
+  describe('setTaskQueuePriority', () => {
+    it('should call api.put with the priority endpoint and action', async () => {
+      const workerId = 'worker-123';
+      const taskId = 'task-456';
+      vi.mocked(api.put).mockResolvedValue({ data: null, error: undefined });
+
+      await torrentService.setTaskQueuePriority(workerId, taskId, 'top');
+
+      expect(api.put).toHaveBeenCalledWith(`/worker/${workerId}/task/${taskId}/priority`, { action: 'top' });
+    });
+  });
+
+  describe('listTaskPeers', () => {
+    it('should call api.get with the peers endpoint', async () => {
+      const workerId = 'worker-123';
+      const taskId = 'task-456';
+      vi.mocked(api.get).mockResolvedValue({ data: [], error: undefined });
+
+      await torrentService.listTaskPeers(workerId, taskId);
+
+      expect(api.get).toHaveBeenCalledWith(`/worker/${workerId}/task/${taskId}/peers`);
+    });
+  });
+
+  describe('banPeer', () => {
+    it('should call api.post with ip and port on the worker-scoped ban endpoint', async () => {
+      const workerId = 'worker-123';
+      vi.mocked(api.post).mockResolvedValue({ data: null, error: undefined });
+
+      await torrentService.banPeer(workerId, '203.0.113.5', 51413);
+
+      expect(api.post).toHaveBeenCalledWith(`/worker/${workerId}/peers/ban`, { ip: '203.0.113.5', port: 51413 });
+    });
+  });
+
   describe('pauseTask', () => {
     it('should call api.post with correct stop endpoint', async () => {
       const workerId = 'worker-123';

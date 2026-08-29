@@ -769,6 +769,35 @@ func (r *Repository) SetWorkerTaskCategory(worker *entities.Worker, taskID strin
 	return taskservice.New(client).SetTaskCategory(context.Background(), taskID, schema)
 }
 
+func (r *Repository) SetWorkerTaskQueuePriority(worker *entities.Worker, taskID string, schema schemas.TaskSetQueuePrioritySchema) error {
+	client, err := r.getClient(worker)
+	if err != nil {
+		return err
+	}
+
+	return taskservice.New(client).SetTaskQueuePriority(context.Background(), taskID, schema)
+}
+
+func (r *Repository) ListWorkerTaskPeers(worker *entities.Worker, taskID string) ([]*entities.TaskPeer, error) {
+	client, err := r.getClient(worker)
+	if err != nil {
+		return nil, err
+	}
+
+	return taskservice.New(client).ListTaskPeers(context.Background(), taskID)
+}
+
+// BanWorkerPeer bans a peer instance-wide on the given worker's qBittorrent
+// server - it affects every torrent on that instance, not just one task.
+func (r *Repository) BanWorkerPeer(worker *entities.Worker, ip string, port int) error {
+	client, err := r.getClient(worker)
+	if err != nil {
+		return err
+	}
+
+	return client.BanPeers([]string{fmt.Sprintf("%s:%d", ip, port)})
+}
+
 func (r *Repository) GetWorkerTaskLimits(worker *entities.Worker, taskID string) (*entities.TaskLimits, error) {
 	client, err := r.getClient(worker)
 	if err != nil {

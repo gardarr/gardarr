@@ -1,5 +1,6 @@
 import { memo, useMemo } from "react";
 import { StatusBadge } from "@/components/StatusBadge";
+import { QueueRankBadge } from "@/components/QueueRankBadge";
 import { getBlurPixels, useTorrentBlurIntensity, useTorrentOpenHandler } from "./hooks";
 import {
   TorrentContextMenuWrapper,
@@ -135,8 +136,9 @@ const TorrentCompactRow = memo(function TorrentCompactRow({
                 />
               )}
 
-              <div className="flex-shrink-0">
+              <div className="flex-shrink-0 flex items-center gap-1.5">
                 <StatusBadge status={torrent.status} size="sm" />
+                <QueueRankBadge priority={torrent.priority} />
               </div>
 
               <div className="flex-1 min-w-0">

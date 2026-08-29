@@ -962,7 +962,8 @@
       "renameSuccess": "Torrent renomeado com sucesso",
       "renameError": "Erro ao renomear torrent",
       "pathChangeSuccess": "Caminho alterado com sucesso",
-      "pathChangeError": "Erro ao alterar caminho do torrent"
+      "pathChangeError": "Erro ao alterar caminho do torrent",
+      "queuePrioritySuccess": "Prioridade de fila atualizada"
     },
     "actionButtons": {
       "play": "Iniciar/Retomar",
@@ -975,6 +976,8 @@
     "forceDownload": "Forçar download",
     "forceReannounce": "Forçar reannounce",
     "forceRecheck": "Forçar recheck",
+    "queuePriority": "Reordenar fila",
+    "queueRank": "Posição #{{position}} na fila",
     "metrics": "Métricas",
     "metadata": "Metadados",
     "showDetails": "Detalhes",
@@ -998,6 +1001,10 @@
       "trackerPlaceholder": "Uma URL de tracker por linha",
       "addTracker": "Adicionar",
       "removeTracker": "Remover",
+      "queueTop": "Mover para o topo da fila",
+      "queueUp": "Mover para cima na fila",
+      "queueDown": "Mover para baixo na fila",
+      "queueBottom": "Mover para o final da fila",
       "limits": "Limites",
       "delete": "Excluir",
       "apply": "Aplicar",
@@ -1408,12 +1415,17 @@
       "overview": "Visão Geral",
       "files": "Arquivos",
       "trackers": "Trackers",
+      "peers": "Peers",
       "image": "Imagem"
     },
     "actions": {
       "forceDownload": "Forçar Download",
       "forceReannounce": "Forçar Reannounce",
       "forceRecheck": "Forçar Recheck",
+      "queueTop": "Mover para o topo da fila",
+      "queueUp": "Mover para cima na fila",
+      "queueDown": "Mover para baixo na fila",
+      "queueBottom": "Mover para o final da fila",
       "share": "Compartilhar card"
     },
     "shareCard": {
@@ -1612,6 +1624,22 @@
         "4": "Não funciona",
         "unknown": "Desconhecido"
       }
+    },
+    "peers": {
+      "title": "Peers",
+      "loading": "Carregando peers...",
+      "loadError": "Falha ao carregar peers",
+      "retry": "Tentar novamente",
+      "empty": "Nenhum peer conectado",
+      "progress": "Progresso",
+      "banTooltip": "Bane este peer em todos os torrents deste worker",
+      "banSuccess": "Peer banido neste worker",
+      "banError": "Falha ao banir peer",
+      "banConfirmTitle": "Banir este peer?",
+      "banConfirmDescription": "Isso bane {{peer}} de todos os torrents deste worker, não só deste.",
+      "banCancel": "Cancelar",
+      "banConfirm": "Banir peer",
+      "unknownCountry": "Desconhecido"
     },
     "toasts": {
       "categoryUpdateSuccess": "Categoria atualizada com sucesso",

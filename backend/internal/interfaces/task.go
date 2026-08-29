@@ -28,6 +28,8 @@ type TaskService interface {
 	AddTaskTags(context.Context, string, []string) error
 	SetTaskCategory(context.Context, string, schemas.TaskSetCategorySchema) error
 	ListTaskFiles(context.Context, string) ([]*entities.TaskFile, error)
+	SetTaskQueuePriority(context.Context, string, schemas.TaskSetQueuePrioritySchema) error
+	ListTaskPeers(context.Context, string) ([]*entities.TaskPeer, error)
 	GetTasksStats(context.Context) (*entities.TaskStats, error)
 	GetTaskLimits(context.Context, string) (*entities.TaskLimits, error)
 	SetTaskShareLimit(context.Context, string, schemas.TaskSetShareLimitSchema) error
@@ -78,4 +80,6 @@ type TaskRepositoryInterface interface {
 	AddTrackers(hash string, urls []string) error
 	RemoveTrackers(hash string, urls []string) error
 	EditTracker(hash, origURL, newURL string) error
+	SetQueuePriority(hash string, action string) error
+	ListPeers(hash string) ([]*entities.TaskPeer, error)
 }

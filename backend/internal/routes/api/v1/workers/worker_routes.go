@@ -73,6 +73,7 @@ func (m Module) Register() {
 	adminWorker.DELETE("/:id", m.deleteWorker)
 	adminWorker.POST("/:id/speed/limits", m.setWorkerSpeedLimits)
 	adminWorker.POST("/:id/active/limits", m.setWorkerMaxActiveTorrents)
+	adminWorker.POST("/:id/peers/ban", m.banWorkerPeer)
 
 	m.workerRouter.GET("/:id", m.getWorker)
 
@@ -108,6 +109,8 @@ func (m Module) Register() {
 	m.workerRouter.PUT("/:id/task/:task_id/category", m.setWorkerTaskCategory)
 	m.workerRouter.GET("/:id/task/:task_id/files", m.listWorkerTaskFiles)
 	m.workerRouter.PUT("/:id/task/:task_id/files/priority", m.setWorkerTaskFilePriority)
+	m.workerRouter.PUT("/:id/task/:task_id/priority", m.setWorkerTaskQueuePriority)
+	m.workerRouter.GET("/:id/task/:task_id/peers", m.listWorkerTaskPeers)
 	m.workerRouter.GET(taskTrackersPath, m.listWorkerTaskTrackers)
 	m.workerRouter.POST(taskTrackersPath, m.addWorkerTaskTrackers)
 	m.workerRouter.DELETE(taskTrackersPath, m.removeWorkerTaskTrackers)
@@ -716,6 +719,59 @@ func (m *Module) setWorkerTaskCategory(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Task category updated successfully"})
+}
+
+func (m *Module) setWorkerTaskQueuePriority(c *gin.Context) {
+	workerID := c.Param("id")
+	taskID := c.Param("task_id")
+
+	var body schemas.TaskSetQueuePrioritySchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	if err := m.service.SetWorkerTaskQueuePriority(c.Request.Context(), workerID, taskID, body); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Task queue priority updated successfully"})
+}
+
+func (m *Module) listWorkerTaskPeers(c *gin.Context) {
+	workerID := c.Param("id")
+	taskID := c.Param("task_id")
+
+	peers, err := m.service.ListWorkerTaskPeers(c.Request.Context(), workerID, taskID)
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, mappers.ToTaskPeersResponse(peers))
+}
+
+// banWorkerPeer bans a peer instance-wide - this affects every torrent on
+// the worker's qBittorrent instance, not just the task the peer was found
+// on. It's an admin-only action (see adminWorker group in Register).
+func (m *Module) banWorkerPeer(c *gin.Context) {
+	workerID := c.Param("id")
+
+	var body schemas.WorkerBanPeerSchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	if err := m.service.BanWorkerPeer(c.Request.Context(), workerID, body); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Peer banned successfully"})
 }
 
 func (m *Module) getWorkerVersion(c *gin.Context) {

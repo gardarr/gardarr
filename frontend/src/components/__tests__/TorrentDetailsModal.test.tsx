@@ -52,11 +52,19 @@ vi.mock("@/services/preferences", () => ({
 }));
 
 vi.mock("@/components/ui/dialog", () => ({
-  Dialog: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  Dialog: ({ children, open }: { children: ReactNode; open?: boolean }) =>
+    open === false ? null : <div>{children}</div>,
   DialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   DialogDescription: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   DialogHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+}));
+
+vi.mock("@/components/ui/popover", () => ({
+  Popover: ({ children }: { children: ReactNode }) => <>{children}</>,
+  PopoverTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
+  PopoverContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock("@/components/ui/tabs", () => ({

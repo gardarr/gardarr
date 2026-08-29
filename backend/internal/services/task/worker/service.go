@@ -176,6 +176,14 @@ func (s *service) EditTaskTracker(ctx context.Context, hash, origURL, newURL str
 	return s.repository.EditTracker(hash, origURL, newURL)
 }
 
+func (s *service) SetTaskQueuePriority(ctx context.Context, hash string, schema schemas.TaskSetQueuePrioritySchema) error {
+	return s.repository.SetQueuePriority(hash, schema.Action)
+}
+
+func (s *service) ListTaskPeers(ctx context.Context, hash string) ([]*entities.TaskPeer, error) {
+	return s.repository.ListPeers(hash)
+}
+
 func (s *service) GetTasksStats(ctx context.Context) (*entities.TaskStats, error) {
 	tasks, err := s.repository.List()
 	if err != nil {

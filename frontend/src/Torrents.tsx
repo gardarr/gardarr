@@ -9,7 +9,7 @@ import { SortAsc, SortDesc, Plus, Download, Server, Activity, Folder, Tag, Alert
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
-import { torrentService, type BulkTaskAction } from "./services/torrents";
+import { torrentService, type BulkTaskAction, type QueuePriorityAction } from "./services/torrents";
 import { BulkActionBar } from "@/components/torrents/BulkActionBar";
 import { workerService } from "./services/workers";
 import { categoryService } from "./services/categories";
@@ -104,6 +104,7 @@ function mapTaskToTorrent(task: Task, categories: Category[]): Torrent {
     createdAt: "",
     progress: task.progress,
     ratio: task.ratio,
+    priority: task.priority,
     numSeeds: task.pairs?.seeders || 0,
     numLeechs: task.pairs?.leechers || 0,
     workerName: task.worker?.name,
@@ -582,7 +583,12 @@ export default function TorrentsPage() {
     torrentId: string,
     actionName: string,
     actionFn: (workerId: string, taskId: string) => Promise<{ error?: string }>,
-    successMessage: string
+    successMessage: string,
+    // Most actions get patched in via TORRENT_STATE_CHANGE and don't need
+    // this - only actions whose effect isn't carried by that event's payload
+    // (e.g. queue reorder, which also shifts every other torrent's rank)
+    // need a full resync.
+    resyncAfter = false
   ) => {
     try {
       const task = originalTasksRef.current.find(t => t.id === torrentId);
@@ -600,10 +606,13 @@ export default function TorrentsPage() {
       toast.success(successMessage);
 
       // A UI será atualizada via WebSocket (evento TORRENT_STATE_CHANGE)
+      if (resyncAfter) {
+        requestSync();
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : `Erro ao ${actionName}`);
     }
-  }, [t]);
+  }, [t, requestSync]);
 
   const handlePlayTorrent = useCallback((torrentId: string) =>
     handleGenericTorrentAction(
@@ -643,6 +652,15 @@ export default function TorrentsPage() {
       t('torrents.forceRecheck'),
       torrentService.forceRecheckTask,
       t('torrents.notifications.forceRecheckSuccess')
+    ), [handleGenericTorrentAction, t]);
+
+  const handleQueuePriority = useCallback((torrentId: string, action: QueuePriorityAction) =>
+    handleGenericTorrentAction(
+      torrentId,
+      t('torrents.queuePriority', { defaultValue: 'reordenar fila' }),
+      (workerId, taskId) => torrentService.setTaskQueuePriority(workerId, taskId, action),
+      t('torrents.notifications.queuePrioritySuccess', { defaultValue: 'Prioridade de fila atualizada' }),
+      true
     ), [handleGenericTorrentAction, t]);
 
   const handleSetLocationTorrent = useCallback(async (torrentId: string, location: string) => {
@@ -1312,6 +1330,7 @@ export default function TorrentsPage() {
           onForceDownload={handleForceDownloadTorrent}
           onForceReannounce={handleForceReannounceTorrent}
           onForceRecheck={handleForceRecheckTorrent}
+          onQueuePriority={handleQueuePriority}
           onSetLocation={handleSetLocationTorrent}
           onUpdate={handleMetadataUpdate}
           onCategoryTagsUpdate={handleCategoryTagsUpdate}

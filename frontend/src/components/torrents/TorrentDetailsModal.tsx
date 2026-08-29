@@ -8,17 +8,19 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CustomScrollArea } from "@/components/ui/custom-scroll-area";
-import { FileText, Files, Radio, Image } from "lucide-react";
+import { FileText, Files, Radio, Image, Users } from "lucide-react";
 import { DeleteTorrentModal } from "@/components/DeleteTorrentModal";
 import { useTranslation } from "react-i18next";
 import type { Task, TaskMetadata } from "@/types/torrent";
 import type { Category } from "@/types/category";
+import type { QueuePriorityAction } from "@/services/torrents";
 import { TorrentFilesList } from "./TorrentFilesList";
 import { TorrentImageEditor } from "./TorrentImageEditor";
 import { TorrentHeroHeader } from "./details/TorrentHeroHeader";
 import { TorrentActionBar } from "./details/TorrentActionBar";
 import { OverviewTab } from "./details/OverviewTab";
 import { TrackersTab } from "./details/TrackersTab";
+import { PeersTab } from "./details/PeersTab";
 import { TorrentPathField } from "./details/TorrentPathField";
 import { ShareableTorrentCardDialog } from "./share/ShareableTorrentCardDialog";
 
@@ -32,6 +34,7 @@ interface TorrentDetailsModalProps {
   onForceDownload?: (torrentId: string) => void;
   onForceReannounce?: (torrentId: string) => void;
   onForceRecheck?: (torrentId: string) => void;
+  onQueuePriority?: (torrentId: string, action: QueuePriorityAction) => void;
   onSetLocation?: (torrentId: string, location: string) => void;
   onUpdate?: (metadata?: TaskMetadata) => Promise<void> | void;
   onCategoryTagsUpdate?: (torrentId: string, patch: { category?: string; tags?: string[] }) => void;
@@ -47,6 +50,7 @@ export function TorrentDetailsModal({
   onForceDownload,
   onForceReannounce,
   onForceRecheck,
+  onQueuePriority,
   onSetLocation,
   onUpdate,
   onCategoryTagsUpdate,
@@ -85,13 +89,14 @@ export function TorrentDetailsModal({
             onForceDownload={onForceDownload}
             onForceReannounce={onForceReannounce}
             onForceRecheck={onForceRecheck}
+            onQueuePriority={onQueuePriority}
             onShare={() => setIsShareModalOpen(true)}
             onDelete={onDelete ? () => setIsDeleteModalOpen(true) : undefined}
           />
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col min-h-0 overflow-hidden">
-          <TabsList className="grid w-full grid-cols-4 shrink-0">
+          <TabsList className="grid w-full grid-cols-5 shrink-0">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <FileText className="h-4 w-4 hidden sm:block" />
               {t("torrentDetails.tabs.overview", { defaultValue: "Visão Geral" })}
@@ -107,6 +112,10 @@ export function TorrentDetailsModal({
             <TabsTrigger value="trackers" className="flex items-center gap-2">
               <Radio className="h-4 w-4 hidden sm:block" />
               {t("torrentDetails.tabs.trackers", { defaultValue: "Trackers" })}
+            </TabsTrigger>
+            <TabsTrigger value="peers" className="flex items-center gap-2">
+              <Users className="h-4 w-4 hidden sm:block" />
+              {t("torrentDetails.tabs.peers", { defaultValue: "Peers" })}
             </TabsTrigger>
           </TabsList>
 
@@ -135,6 +144,10 @@ export function TorrentDetailsModal({
 
             <TabsContent value="trackers" className="mt-4">
               <TrackersTab torrent={torrent} />
+            </TabsContent>
+
+            <TabsContent value="peers" className="mt-4">
+              <PeersTab torrent={torrent} />
             </TabsContent>
 
             <TabsContent value="image" className="mt-2">

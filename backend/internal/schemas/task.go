@@ -66,6 +66,19 @@ type TaskSetCategorySchema struct {
 	Category string `json:"category" binding:"required,min=1"`
 }
 
+// TaskSetQueuePrioritySchema reorders a torrent within qBittorrent's download
+// queue. Only meaningful when the instance has queueing enabled.
+type TaskSetQueuePrioritySchema struct {
+	Action string `json:"action" binding:"required,oneof=top up down bottom"`
+}
+
+// WorkerBanPeerSchema bans a peer instance-wide (not scoped to a single
+// torrent), matching qBittorrent's own /api/v2/transfer/banPeers behavior.
+type WorkerBanPeerSchema struct {
+	IP   string `json:"ip" binding:"required,ip"`
+	Port int    `json:"port" binding:"required,min=1,max=65535"`
+}
+
 // TaskSetFilePrioritySchema sets the download priority of one or more files
 // within a torrent. Priority is a pointer so 0 ("do not download") survives
 // binding validation instead of being rejected as a missing value.
@@ -84,7 +97,7 @@ type BulkTaskItemSchema struct {
 // multiple workers. Hashes are grouped per worker and sent to qBittorrent in
 // a single batched call (hashes separated by "|").
 type BulkTaskActionSchema struct {
-	Action string               `json:"action" binding:"required,oneof=stop start force_resume force_recheck force_reannounce set_category add_tags delete add_tracker remove_tracker"`
+	Action string               `json:"action" binding:"required,oneof=stop start force_resume force_recheck force_reannounce set_category add_tags delete add_tracker remove_tracker queue_top queue_up queue_down queue_bottom"`
 	Items  []BulkTaskItemSchema `json:"items" binding:"required,min=1,max=500,dive"`
 
 	// Category is required when Action is "set_category" (empty string removes the category).

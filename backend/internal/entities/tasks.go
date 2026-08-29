@@ -97,6 +97,25 @@ type TaskTracker struct {
 	Message       string
 }
 
+// TaskPeer is a single peer entry reported by qBittorrent for a torrent.
+// Country/CountryCode come from qBittorrent's own GeoIP resolution.
+type TaskPeer struct {
+	IP            string
+	Port          int
+	Client        string
+	Flags         string
+	FlagsDesc     string
+	Connection    string
+	Country       string
+	CountryCode   string
+	Downloaded    int64
+	DownloadSpeed int
+	Progress      float64
+	Uploaded      int64
+	UploadSpeed   int
+	Relevance     float64
+}
+
 // TaskStatuses is the map reference of status in qBittorrent API
 var TaskStatuses = map[string]string{
 	"error":              "ERROR",

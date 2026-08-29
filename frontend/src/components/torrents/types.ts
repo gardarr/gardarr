@@ -25,6 +25,7 @@ export type TorrentListItem = {
   createdAt: string;
   progress: number;
   ratio: number;
+  priority?: number;
   numSeeds: number;
   numLeechs: number;
   workerName?: string;

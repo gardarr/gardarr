@@ -14,14 +14,17 @@ import (
 
 // mockRepository is a mock implementation of the task repository for testing
 type mockRepository struct {
-	tasks             map[string]*entities.Task
-	stopError         error
-	startError        error
-	forceError        error
-	deleteError       error
-	createError       error
-	limitsError       error
-	filePriorityError error
+	tasks              map[string]*entities.Task
+	stopError          error
+	startError         error
+	forceError         error
+	deleteError        error
+	createError        error
+	limitsError        error
+	filePriorityError  error
+	queuePriorityError error
+	peersError         error
+	lastQueueAction    string
 }
 
 func newMockRepository() *mockRepository {
@@ -276,6 +279,26 @@ func (m *mockRepository) RemoveTrackers(hash string, urls []string) error {
 
 func (m *mockRepository) EditTracker(hash, origURL, newURL string) error {
 	return m.requireExistingTask(hash)
+}
+
+func (m *mockRepository) SetQueuePriority(hash string, action string) error {
+	m.lastQueueAction = action
+	if m.queuePriorityError != nil {
+		return m.queuePriorityError
+	}
+	return m.requireExistingTask(hash)
+}
+
+func (m *mockRepository) ListPeers(hash string) ([]*entities.TaskPeer, error) {
+	if m.peersError != nil {
+		return nil, m.peersError
+	}
+	if _, exists := m.tasks[hash]; exists {
+		return []*entities.TaskPeer{
+			{IP: "203.0.113.5", Port: 51413, Client: "qBittorrent/4.6.0", Country: "Brazil", CountryCode: "BR"},
+		}, nil
+	}
+	return nil, errors.New("task not found")
 }
 
 func (m *mockRepository) GetLimits(hash string) (*entities.TaskLimits, error) {
@@ -636,6 +659,64 @@ func TestServiceSetFilePriority(t *testing.T) {
 	// Test repository error propagation
 	mockRepo.filePriorityError = fmt.Errorf("qbittorrent unavailable")
 	err = service.SetFilePriority(ctx, "test-hash", schema)
+	if err == nil {
+		t.Error("Expected error when repository fails, got nil")
+	}
+}
+
+func TestServiceSetTaskQueuePriority(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := newMockRepository()
+	service := &service{repository: mockRepo}
+
+	task := &entities.Task{ID: "test-hash", Hash: "test-hash", Name: "Test Task"}
+	mockRepo.tasks["test-hash"] = task
+
+	schema := schemas.TaskSetQueuePrioritySchema{Action: "top"}
+
+	err := service.SetTaskQueuePriority(ctx, "test-hash", schema)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	if mockRepo.lastQueueAction != "top" {
+		t.Errorf("Expected action 'top' to reach repository, got %q", mockRepo.lastQueueAction)
+	}
+
+	err = service.SetTaskQueuePriority(ctx, "non-existent-hash", schema)
+	if err == nil {
+		t.Error("Expected error for non-existent task, got nil")
+	}
+
+	mockRepo.queuePriorityError = fmt.Errorf("qbittorrent unavailable")
+	err = service.SetTaskQueuePriority(ctx, "test-hash", schema)
+	if err == nil {
+		t.Error("Expected error when repository fails, got nil")
+	}
+}
+
+func TestServiceListTaskPeers(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := newMockRepository()
+	service := &service{repository: mockRepo}
+
+	task := &entities.Task{ID: "test-hash", Hash: "test-hash", Name: "Test Task"}
+	mockRepo.tasks["test-hash"] = task
+
+	peers, err := service.ListTaskPeers(ctx, "test-hash")
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if len(peers) != 1 || peers[0].CountryCode != "BR" {
+		t.Errorf("Expected one BR peer, got %+v", peers)
+	}
+
+	_, err = service.ListTaskPeers(ctx, "non-existent-hash")
+	if err == nil {
+		t.Error("Expected error for non-existent task, got nil")
+	}
+
+	mockRepo.peersError = fmt.Errorf("qbittorrent unavailable")
+	_, err = service.ListTaskPeers(ctx, "test-hash")
 	if err == nil {
 		t.Error("Expected error when repository fails, got nil")
 	}

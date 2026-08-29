@@ -10,6 +10,7 @@ import { useTorrentBlurIntensity, getBlurPixels } from "../hooks";
 import { formatBytes } from "@/utils/bytes";
 import { AutoSaveField } from "./AutoSaveField";
 import { TorrentProgressIndicator } from "../shared";
+import { QueueRankBadge } from "@/components/QueueRankBadge";
 import type { Task, TaskMetadata } from "@/types/torrent";
 
 interface TorrentHeroHeaderProps {
@@ -111,6 +112,7 @@ export function TorrentHeroHeader({ torrent, onUpdate }: TorrentHeroHeaderProps)
                 <span>{t(getStatusTranslationKey(torrent.state as TorrentStatus))}</span>
               </div>
             </div>
+            <QueueRankBadge priority={torrent.priority} />
             {torrent.worker && (
               <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md container-content-background/60 border">
                 <WorkerIcon iconName={torrent.worker.icon} color={torrent.worker.color} size="sm" />

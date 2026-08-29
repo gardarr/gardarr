@@ -3,6 +3,7 @@ import { memo, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { RatioBadge } from "@/components/RatioBadge";
 import { StatusBadge } from "@/components/StatusBadge";
+import { QueueRankBadge } from "@/components/QueueRankBadge";
 import { Upload, Download } from "lucide-react";
 import SeedersAndPeersBadge from "@/components/SeedersAndPeersBadge";
 import { formatBytes, formatBytesPerSecond } from "@/utils/bytes";
@@ -134,6 +135,7 @@ export const TorrentCardCompact = memo(function TorrentCardCompact({
               )}
 
               <StatusBadge status={torrent.status} size="sm" showTooltip={false} />
+              <QueueRankBadge priority={torrent.priority} />
 
               <TorrentDisplayName
                 torrent={torrent}

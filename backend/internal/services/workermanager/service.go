@@ -644,6 +644,44 @@ func (s *Service) SetWorkerTaskFilePriority(ctx context.Context, workerID, taskI
 	return s.repository.SetWorkerTaskFilePriority(worker, taskID, schema)
 }
 
+// SetWorkerTaskQueuePriority reorders a torrent within qBittorrent's download
+// queue (top/up/down/bottom). No-ops silently on qBittorrent's side when the
+// instance has queueing disabled.
+func (s *Service) SetWorkerTaskQueuePriority(ctx context.Context, workerID, taskID string, schema schemas.TaskSetQueuePrioritySchema) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	return s.repository.SetWorkerTaskQueuePriority(worker, taskID, schema)
+}
+
+func (s *Service) ListWorkerTaskPeers(ctx context.Context, workerID, taskID string) ([]*entities.TaskPeer, error) {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return nil, err
+	}
+
+	peers, err := s.repository.ListWorkerTaskPeers(worker, taskID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list task peers: %w", err)
+	}
+
+	return peers, nil
+}
+
+// BanWorkerPeer bans a peer instance-wide on the given worker - it affects
+// every torrent on that qBittorrent instance, not just the one it was found
+// on, and persists in qBittorrent's own banned-IP list.
+func (s *Service) BanWorkerPeer(ctx context.Context, workerID string, schema schemas.WorkerBanPeerSchema) error {
+	worker, err := s.fetchWorker(workerID)
+	if err != nil {
+		return err
+	}
+
+	return s.repository.BanWorkerPeer(worker, schema.IP, schema.Port)
+}
+
 func (s *Service) ListWorkerTaskTrackers(ctx context.Context, workerID, taskID string) ([]*entities.TaskTracker, error) {
 	worker, err := s.fetchWorker(workerID)
 	if err != nil {
@@ -718,6 +756,10 @@ var validBulkTaskActions = map[string]struct{}{
 	"delete":           {},
 	"add_tracker":      {},
 	"remove_tracker":   {},
+	"queue_top":        {},
+	"queue_up":         {},
+	"queue_down":       {},
+	"queue_bottom":     {},
 }
 
 // validateBulkTaskAction checks that schema.Action is a supported action and
@@ -850,6 +892,14 @@ func (s *Service) runBulkAction(workerID string, hashes []string, schema schemas
 			}
 			return err
 		})
+	case "queue_top":
+		return s.repository.SetWorkerTaskQueuePriority(worker, joined, schemas.TaskSetQueuePrioritySchema{Action: "top"})
+	case "queue_up":
+		return s.repository.SetWorkerTaskQueuePriority(worker, joined, schemas.TaskSetQueuePrioritySchema{Action: "up"})
+	case "queue_down":
+		return s.repository.SetWorkerTaskQueuePriority(worker, joined, schemas.TaskSetQueuePrioritySchema{Action: "down"})
+	case "queue_bottom":
+		return s.repository.SetWorkerTaskQueuePriority(worker, joined, schemas.TaskSetQueuePrioritySchema{Action: "bottom"})
 	default:
 		return fmt.Errorf("unsupported bulk action: %s", schema.Action)
 	}

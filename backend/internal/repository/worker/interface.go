@@ -47,6 +47,9 @@ type RepositoryInterface interface {
 	AddWorkerTaskTrackers(worker *entities.Worker, taskID string, urls []string) error
 	RemoveWorkerTaskTrackers(worker *entities.Worker, taskID string, urls []string) error
 	EditWorkerTaskTracker(worker *entities.Worker, taskID, origURL, newURL string) error
+	SetWorkerTaskQueuePriority(worker *entities.Worker, taskID string, schema schemas.TaskSetQueuePrioritySchema) error
+	ListWorkerTaskPeers(worker *entities.Worker, taskID string) ([]*entities.TaskPeer, error)
+	BanWorkerPeer(worker *entities.Worker, ip string, port int) error
 	GetWorkerTasksStats(worker *entities.Worker) (*entities.TaskStats, error)
 	GetWorkerVersion(worker *entities.Worker) (*entities.WorkerVersion, error)
 	GetWorkerTaskLimits(worker *entities.Worker, taskID string) (*entities.TaskLimits, error)

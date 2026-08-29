@@ -168,6 +168,37 @@ func ToTaskTrackersResponse(trackers []*entities.TaskTracker) []models.TaskTrack
 	return response
 }
 
+func ToTaskPeerResponse(e *entities.TaskPeer) models.TaskPeerResponse {
+	return models.TaskPeerResponse{
+		IP:            e.IP,
+		Port:          e.Port,
+		Client:        e.Client,
+		Flags:         e.Flags,
+		FlagsDesc:     e.FlagsDesc,
+		Connection:    e.Connection,
+		Country:       e.Country,
+		CountryCode:   e.CountryCode,
+		Downloaded:    e.Downloaded,
+		DownloadSpeed: e.DownloadSpeed,
+		Progress:      e.Progress,
+		Uploaded:      e.Uploaded,
+		UploadSpeed:   e.UploadSpeed,
+		Relevance:     e.Relevance,
+	}
+}
+
+func ToTaskPeersResponse(peers []*entities.TaskPeer) []models.TaskPeerResponse {
+	if peers == nil {
+		return []models.TaskPeerResponse{}
+	}
+
+	response := make([]models.TaskPeerResponse, len(peers))
+	for i, p := range peers {
+		response[i] = ToTaskPeerResponse(p)
+	}
+	return response
+}
+
 func ToTaskStatsResponse(e *entities.TaskStats) models.TaskStatsResponse {
 	return models.TaskStatsResponse{
 		TotalDiskSize:        e.TotalDiskSize,

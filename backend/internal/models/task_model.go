@@ -80,6 +80,23 @@ type TaskTrackerResponse struct {
 	Message       string `json:"message,omitempty"`
 }
 
+type TaskPeerResponse struct {
+	IP            string  `json:"ip"`
+	Port          int     `json:"port"`
+	Client        string  `json:"client"`
+	Flags         string  `json:"flags"`
+	FlagsDesc     string  `json:"flags_desc"`
+	Connection    string  `json:"connection"`
+	Country       string  `json:"country"`
+	CountryCode   string  `json:"country_code"`
+	Downloaded    int64   `json:"downloaded"`
+	DownloadSpeed int     `json:"dl_speed"`
+	Progress      float64 `json:"progress"`
+	Uploaded      int64   `json:"uploaded"`
+	UploadSpeed   int     `json:"up_speed"`
+	Relevance     float64 `json:"relevance"`
+}
+
 type TaskStatsResponse struct {
 	TotalDiskSize        int64          `json:"total_disk_size"`
 	CurrentUploadSpeed   int            `json:"current_upload_speed"`

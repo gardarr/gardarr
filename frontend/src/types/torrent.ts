@@ -118,6 +118,23 @@ export interface TaskTracker {
   message?: string;
 }
 
+export interface TaskPeer {
+  ip: string;
+  port: number;
+  client: string;
+  flags: string;
+  flags_desc: string;
+  connection: string;
+  country: string;
+  country_code: string;
+  downloaded: number;
+  dl_speed: number;
+  progress: number;
+  uploaded: number;
+  up_speed: number;
+  relevance: number;
+}
+
 export interface TaskLimits {
   download_limit: number;
   upload_limit: number;
