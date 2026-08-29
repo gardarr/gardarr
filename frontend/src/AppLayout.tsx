@@ -55,7 +55,16 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const checkIsMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+      const nowMobile = window.innerWidth < 768;
+      setIsMobile((wasMobile) => {
+        if (wasMobile && !nowMobile) {
+          // Resizing from mobile to desktop: sidebarOpen was forced closed
+          // for mobile, so restore the stored desktop preference instead of
+          // letting the persistence effect below overwrite it with false.
+          setSidebarOpen(localStorage.getItem("sidebarOpen") === "true");
+        }
+        return nowMobile;
+      });
     };
 
     checkIsMobile();

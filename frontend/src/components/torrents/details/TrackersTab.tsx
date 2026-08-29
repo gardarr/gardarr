@@ -45,7 +45,16 @@ export function TrackersTab({ torrent }: TrackersTabProps) {
   const [error, setError] = useState<string | null>(null);
   const [newUrl, setNewUrl] = useState("");
   const [adding, setAdding] = useState(false);
-  const [pendingUrl, setPendingUrl] = useState<string | null>(null);
+  // Tracker URLs with a mutation in flight, keyed by URL so concurrent
+  // operations on different trackers don't clear each other's pending state.
+  const [pendingUrls, setPendingUrls] = useState<Set<string>>(new Set());
+  const addPendingUrl = (url: string) => setPendingUrls((prev) => new Set(prev).add(url));
+  const removePendingUrl = (url: string) => setPendingUrls((prev) => {
+    if (!prev.has(url)) return prev;
+    const next = new Set(prev);
+    next.delete(url);
+    return next;
+  });
   const [editingUrl, setEditingUrl] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   // Tracks which torrent/worker the component is currently showing, so an
@@ -115,7 +124,7 @@ export function TrackersTab({ torrent }: TrackersTabProps) {
     const wId = workerId;
     const tId = torrent.id;
     if (!wId) return;
-    setPendingUrl(url);
+    addPendingUrl(url);
     try {
       const response = await torrentService.removeTaskTrackers(wId, tId, [url]);
       if (response.error) {
@@ -129,7 +138,7 @@ export function TrackersTab({ torrent }: TrackersTabProps) {
     } catch {
       toast.error(t("torrentDetails.toasts.trackerRemoveError", { defaultValue: "Failed to remove tracker" }));
     } finally {
-      setPendingUrl(null);
+      removePendingUrl(url);
     }
   };
 
@@ -152,7 +161,7 @@ export function TrackersTab({ torrent }: TrackersTabProps) {
       cancelEdit();
       return;
     }
-    setPendingUrl(origUrl);
+    addPendingUrl(origUrl);
     try {
       const response = await torrentService.editTaskTracker(wId, tId, origUrl, newValue);
       if (response.error) {
@@ -167,7 +176,7 @@ export function TrackersTab({ torrent }: TrackersTabProps) {
     } catch {
       toast.error(t("torrentDetails.toasts.trackerEditError", { defaultValue: "Failed to update tracker" }));
     } finally {
-      setPendingUrl(null);
+      removePendingUrl(origUrl);
     }
   };
 
@@ -237,7 +246,7 @@ export function TrackersTab({ torrent }: TrackersTabProps) {
                     variant="ghost"
                     size="sm"
                     className="h-8 w-8 p-0 flex-shrink-0"
-                    disabled={pendingUrl === tracker.url}
+                    disabled={pendingUrls.has(tracker.url)}
                     onClick={() => handleEditSave(tracker.url)}
                   >
                     <Check className="h-4 w-4 text-green-600" />
@@ -267,11 +276,11 @@ export function TrackersTab({ torrent }: TrackersTabProps) {
                     variant="ghost"
                     size="sm"
                     className="h-8 w-8 p-0"
-                    disabled={pendingUrl === tracker.url}
+                    disabled={pendingUrls.has(tracker.url)}
                     onClick={() => handleRemove(tracker.url)}
                     title={t("torrentDetails.trackersLive.remove", { defaultValue: "Remove" }) as string}
                   >
-                    {pendingUrl === tracker.url ? (
+                    {pendingUrls.has(tracker.url) ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Trash2 className="h-4 w-4 text-destructive" />

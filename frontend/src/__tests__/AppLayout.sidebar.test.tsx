@@ -97,4 +97,18 @@ describe("AppLayout sidebar persistence", () => {
 
     expect(localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe("true");
   });
+
+  it("restores the stored desktop preference after a mobile-to-desktop resize instead of overwriting it", () => {
+    localStorage.setItem(SIDEBAR_STORAGE_KEY, "true");
+    setWindowWidth(500);
+
+    renderLayout();
+    expect(screen.getByTestId("app-sidebar").className).toContain("-translate-x-full");
+
+    setWindowWidth(1024);
+    fireEvent(window, new Event("resize"));
+
+    expect(screen.getByTestId("app-sidebar").className).toContain("md:w-52");
+    expect(localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe("true");
+  });
 });
