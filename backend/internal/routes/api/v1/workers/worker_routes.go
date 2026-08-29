@@ -107,6 +107,7 @@ func (m Module) Register() {
 	m.workerRouter.PUT("/:id/task/:task_id/tags", m.setWorkerTaskTags)
 	m.workerRouter.PUT("/:id/task/:task_id/category", m.setWorkerTaskCategory)
 	m.workerRouter.GET("/:id/task/:task_id/files", m.listWorkerTaskFiles)
+	m.workerRouter.PUT("/:id/task/:task_id/files/priority", m.setWorkerTaskFilePriority)
 	m.workerRouter.GET(taskTrackersPath, m.listWorkerTaskTrackers)
 	m.workerRouter.POST(taskTrackersPath, m.addWorkerTaskTrackers)
 	m.workerRouter.DELETE(taskTrackersPath, m.removeWorkerTaskTrackers)
@@ -576,6 +577,25 @@ func (m *Module) listWorkerTaskFiles(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, mappers.ToTaskFilesResponse(files))
+}
+
+func (m *Module) setWorkerTaskFilePriority(c *gin.Context) {
+	workerID := c.Param("id")
+	taskID := c.Param("task_id")
+
+	var body schemas.TaskSetFilePrioritySchema
+	if err := c.ShouldBindJSON(&body); err != nil {
+		respErr := errors.NewBadRequestError("Invalid request body", err)
+		c.JSON(respErr.StatusCode, respErr)
+		return
+	}
+
+	if err := m.service.SetWorkerTaskFilePriority(c.Request.Context(), workerID, taskID, body); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Task file priority set successfully"})
 }
 
 func (m *Module) listWorkerTaskTrackers(c *gin.Context) {

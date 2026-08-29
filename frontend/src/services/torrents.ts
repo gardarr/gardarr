@@ -261,6 +261,22 @@ export class TorrentService {
       inactive_seeding_time_limit: inactiveSeedingTimeLimit
     });
   }
+
+  /**
+   * Define a prioridade de download de um ou mais arquivos de uma task/torrent.
+   * priority: 0 = não baixar, 1 = normal, 6 = alta, 7 = máxima
+   */
+  async setTaskFilePriority(
+    workerId: string,
+    taskId: string,
+    indexes: number[],
+    priority: number
+  ): Promise<ApiResponse<null>> {
+    return api.put<null>(`/worker/${workerId}/task/${taskId}/files/priority`, {
+      indexes,
+      priority,
+    });
+  }
 }
 
 // Instância padrão do serviço

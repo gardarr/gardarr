@@ -31,6 +31,7 @@ type TaskService interface {
 	GetTasksStats(context.Context) (*entities.TaskStats, error)
 	GetTaskLimits(context.Context, string) (*entities.TaskLimits, error)
 	SetTaskShareLimit(context.Context, string, schemas.TaskSetShareLimitSchema) error
+	SetFilePriority(context.Context, string, schemas.TaskSetFilePrioritySchema) error
 	ListTaskTrackers(context.Context, string) ([]*entities.TaskTracker, error)
 	AddTaskTrackers(context.Context, string, []string) error
 	RemoveTaskTrackers(context.Context, string, []string) error
@@ -72,6 +73,7 @@ type TaskRepositoryInterface interface {
 	SetDownloadLimit(hash string, schema schemas.TaskSetDownloadLimitSchema) error
 	SetUploadLimit(hash string, schema schemas.TaskSetUploadLimitSchema) error
 	ListFiles(hash string) ([]*entities.TaskFile, error)
+	SetFilePriority(hash string, schema schemas.TaskSetFilePrioritySchema) error
 	ListTrackers(hash string) ([]*entities.TaskTracker, error)
 	AddTrackers(hash string, urls []string) error
 	RemoveTrackers(hash string, urls []string) error

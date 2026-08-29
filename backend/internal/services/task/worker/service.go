@@ -156,6 +156,10 @@ func (s *service) ListTaskFiles(ctx context.Context, hash string) ([]*entities.T
 	return s.repository.ListFiles(hash)
 }
 
+func (s *service) SetFilePriority(ctx context.Context, hash string, schema schemas.TaskSetFilePrioritySchema) error {
+	return s.repository.SetFilePriority(hash, schema)
+}
+
 func (s *service) ListTaskTrackers(ctx context.Context, hash string) ([]*entities.TaskTracker, error) {
 	return s.repository.ListTrackers(hash)
 }

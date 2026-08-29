@@ -673,6 +673,15 @@ func (r *Repository) ListWorkerTaskFiles(worker *entities.Worker, taskID string)
 	return taskservice.New(client).ListTaskFiles(context.Background(), taskID)
 }
 
+func (r *Repository) SetWorkerTaskFilePriority(worker *entities.Worker, taskID string, schema schemas.TaskSetFilePrioritySchema) error {
+	client, err := r.getClient(worker)
+	if err != nil {
+		return err
+	}
+
+	return taskservice.New(client).SetFilePriority(context.Background(), taskID, schema)
+}
+
 func (r *Repository) ListWorkerTaskTrackers(worker *entities.Worker, taskID string) ([]*entities.TaskTracker, error) {
 	client, err := r.getClient(worker)
 	if err != nil {

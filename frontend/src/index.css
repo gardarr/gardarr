@@ -726,6 +726,22 @@ html[data-color-variant="custom"] {
   width: 50%;
 }
 
+/* Diagonal stripe motion for in-progress indicators (e.g. an unfinished
+   torrent's timeline). The tile shifts by exactly one background-size width
+   per loop so it moves seamlessly to the right. */
+@keyframes progress-stripes {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0.75rem 0;
+  }
+}
+
+.animate-progress-stripes {
+  animation: progress-stripes 0.75s linear infinite;
+}
+
 .torrent-progress-track {
   overflow: hidden;
   background: rgb(255 255 255 / 35%);

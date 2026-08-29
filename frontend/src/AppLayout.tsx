@@ -73,12 +73,6 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('resize', checkIsMobile);
   }, []);
 
-  useEffect(() => {
-    if (!isMobile) {
-      localStorage.setItem("sidebarOpen", String(sidebarOpen));
-    }
-  }, [sidebarOpen, isMobile]);
-
   function toggleTheme() {
     const root = document.documentElement;
     const nextDark = !root.classList.contains('dark');
@@ -355,7 +349,13 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
               variant="ghost"
               size="icon"
               aria-label={t("navigation.toggleSidebar")}
-              onClick={() => setSidebarOpen(!sidebarOpen)}
+              onClick={() => {
+                const next = !sidebarOpen;
+                setSidebarOpen(next);
+                if (!isMobile) {
+                  localStorage.setItem("sidebarOpen", String(next));
+                }
+              }}
               className="h-8 w-8 flex items-center justify-center"
             >
               <Menu className="h-4 w-4" />

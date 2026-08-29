@@ -14,13 +14,14 @@ import (
 
 // mockRepository is a mock implementation of the task repository for testing
 type mockRepository struct {
-	tasks       map[string]*entities.Task
-	stopError   error
-	startError  error
-	forceError  error
-	deleteError error
-	createError error
-	limitsError error
+	tasks             map[string]*entities.Task
+	stopError         error
+	startError        error
+	forceError        error
+	deleteError       error
+	createError       error
+	limitsError       error
+	filePriorityError error
 }
 
 func newMockRepository() *mockRepository {
@@ -218,6 +219,7 @@ func (m *mockRepository) ListFiles(hash string) ([]*entities.TaskFile, error) {
 		// Return mock files for testing
 		return []*entities.TaskFile{
 			{
+				Index:        0,
 				Name:         "file1.txt",
 				Size:         1024,
 				Progress:     0.5,
@@ -227,6 +229,7 @@ func (m *mockRepository) ListFiles(hash string) ([]*entities.TaskFile, error) {
 				Availability: 1.0,
 			},
 			{
+				Index:        1,
 				Name:         "file2.txt",
 				Size:         2048,
 				Progress:     1.0,
@@ -238,6 +241,13 @@ func (m *mockRepository) ListFiles(hash string) ([]*entities.TaskFile, error) {
 		}, nil
 	}
 	return nil, errors.New("task not found")
+}
+
+func (m *mockRepository) SetFilePriority(hash string, schema schemas.TaskSetFilePrioritySchema) error {
+	if m.filePriorityError != nil {
+		return m.filePriorityError
+	}
+	return m.requireExistingTask(hash)
 }
 
 func (m *mockRepository) ListTrackers(hash string) ([]*entities.TaskTracker, error) {
@@ -594,6 +604,40 @@ func TestServiceSetTaskShareLimit(t *testing.T) {
 	err = service.SetTaskShareLimit(ctx, "non-existent-hash", schema)
 	if err == nil {
 		t.Error("Expected error for non-existent task, got nil")
+	}
+}
+
+func TestServiceSetFilePriority(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := newMockRepository()
+	service := &service{repository: mockRepo}
+
+	task := &entities.Task{ID: "test-hash", Hash: "test-hash", Name: "Test Task"}
+	mockRepo.tasks["test-hash"] = task
+
+	priority := 0
+	schema := schemas.TaskSetFilePrioritySchema{
+		Indexes:  []int{0, 1},
+		Priority: &priority,
+	}
+
+	// Test successful file priority setting
+	err := service.SetFilePriority(ctx, "test-hash", schema)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	// Test with non-existent task
+	err = service.SetFilePriority(ctx, "non-existent-hash", schema)
+	if err == nil {
+		t.Error("Expected error for non-existent task, got nil")
+	}
+
+	// Test repository error propagation
+	mockRepo.filePriorityError = fmt.Errorf("qbittorrent unavailable")
+	err = service.SetFilePriority(ctx, "test-hash", schema)
+	if err == nil {
+		t.Error("Expected error when repository fails, got nil")
 	}
 }
 

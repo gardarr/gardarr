@@ -66,6 +66,14 @@ type TaskSetCategorySchema struct {
 	Category string `json:"category" binding:"required,min=1"`
 }
 
+// TaskSetFilePrioritySchema sets the download priority of one or more files
+// within a torrent. Priority is a pointer so 0 ("do not download") survives
+// binding validation instead of being rejected as a missing value.
+type TaskSetFilePrioritySchema struct {
+	Indexes  []int `json:"indexes" binding:"required,min=1,dive,min=0"`
+	Priority *int  `json:"priority" binding:"required,oneof=0 1 6 7"`
+}
+
 // BulkTaskItemSchema identifies a single task inside a bulk action request.
 type BulkTaskItemSchema struct {
 	WorkerID string `json:"worker_id" binding:"required,uuid"`

@@ -1480,7 +1480,22 @@
       "retry": "Try again",
       "empty": "No files found",
       "count_one": "{{count}} file",
-      "count_other": "{{count}} files"
+      "count_other": "{{count}} files",
+      "selectAll": "Select all",
+      "selectNone": "Select none",
+      "apply": "Apply",
+      "applying": "Applying...",
+      "deselectNote": "Deselecting a file stops further downloading, but does not delete what's already been downloaded. The torrent's progress is recalculated after applying.",
+      "toggleAria": "Include {{name}} in download",
+      "confirmTitle": "Apply file changes?",
+      "confirmDescription": "{{skip}} file(s) will stop being downloaded and {{download}} file(s) will be included in the download. Already-downloaded files are not deleted from disk, and the torrent's progress will be recalculated.",
+      "confirmCancel": "Cancel",
+      "confirmApply": "Confirm",
+      "priority": {
+        "normal": "Normal",
+        "high": "High",
+        "maximum": "Maximum"
+      }
     },
     "network": {
       "title": "Network & Peers",

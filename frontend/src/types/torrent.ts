@@ -97,6 +97,7 @@ export interface TaskDeleteResponse {
 }
 
 export interface TaskFile {
+  index: number;
   name: string;
   size: number;
   progress: number;
