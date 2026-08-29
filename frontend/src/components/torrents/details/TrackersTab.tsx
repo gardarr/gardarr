@@ -48,54 +48,62 @@ export function TrackersTab({ torrent }: TrackersTabProps) {
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const [editingUrl, setEditingUrl] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
-  const loadOperation = useRef(0);
+  // Tracks which torrent/worker the component is currently showing, so an
+  // in-flight request for a torrent the user has since navigated away from
+  // (e.g. a post-mutation refresh) can't overwrite the newly active one.
+  const activeTaskRef = useRef({ workerId, taskId: torrent.id });
+  activeTaskRef.current = { workerId, taskId: torrent.id };
+
+  const isCurrentTask = (wId: string, tId: string) =>
+    activeTaskRef.current.workerId === wId && activeTaskRef.current.taskId === tId;
 
   const statusLabel = (status: number) =>
     t(`torrentDetails.trackersLive.status.${status}`, { defaultValue: t("torrentDetails.trackersLive.status.unknown", { defaultValue: "Unknown" }) });
 
-  const loadTrackers = async () => {
-    if (!workerId || !torrent.id) return;
-    // Guard against a response for a previous torrent/worker landing after
-    // the component has already switched to a different one.
-    const operation = ++loadOperation.current;
+  const loadTrackers = async (wId: string = workerId, tId: string = torrent.id) => {
+    if (!wId || !tId || !isCurrentTask(wId, tId)) return;
     setLoading(true);
     setError(null);
     try {
-      const response = await torrentService.listTaskTrackers(workerId, torrent.id);
-      if (operation !== loadOperation.current) return;
+      const response = await torrentService.listTaskTrackers(wId, tId);
+      if (!isCurrentTask(wId, tId)) return;
       if (response.error) {
         setError(response.error);
       } else {
         setTrackers(response.data ?? []);
       }
     } catch (err) {
-      if (operation !== loadOperation.current) return;
+      if (!isCurrentTask(wId, tId)) return;
       setError(err instanceof Error ? err.message : "Failed to load trackers");
     } finally {
-      if (operation === loadOperation.current) {
+      if (isCurrentTask(wId, tId)) {
         setLoading(false);
       }
     }
   };
 
   useEffect(() => {
-    loadTrackers();
+    loadTrackers(workerId, torrent.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workerId, torrent.id]);
 
   const handleAdd = async () => {
     const url = newUrl.trim();
-    if (!url || !workerId) return;
+    const wId = workerId;
+    const tId = torrent.id;
+    if (!url || !wId) return;
     setAdding(true);
     try {
-      const response = await torrentService.addTaskTrackers(workerId, torrent.id, [url]);
+      const response = await torrentService.addTaskTrackers(wId, tId, [url]);
       if (response.error) {
         toast.error(response.error);
         return;
       }
-      setNewUrl("");
       toast.success(t("torrentDetails.toasts.trackerAddSuccess", { defaultValue: "Tracker added" }));
-      await loadTrackers();
+      if (isCurrentTask(wId, tId)) {
+        setNewUrl("");
+      }
+      await loadTrackers(wId, tId);
     } catch {
       toast.error(t("torrentDetails.toasts.trackerAddError", { defaultValue: "Failed to add tracker" }));
     } finally {
@@ -104,16 +112,20 @@ export function TrackersTab({ torrent }: TrackersTabProps) {
   };
 
   const handleRemove = async (url: string) => {
-    if (!workerId) return;
+    const wId = workerId;
+    const tId = torrent.id;
+    if (!wId) return;
     setPendingUrl(url);
     try {
-      const response = await torrentService.removeTaskTrackers(workerId, torrent.id, [url]);
+      const response = await torrentService.removeTaskTrackers(wId, tId, [url]);
       if (response.error) {
         toast.error(response.error);
         return;
       }
       toast.success(t("torrentDetails.toasts.trackerRemoveSuccess", { defaultValue: "Tracker removed" }));
-      setTrackers((prev) => prev.filter((tracker) => tracker.url !== url));
+      if (isCurrentTask(wId, tId)) {
+        setTrackers((prev) => prev.filter((tracker) => tracker.url !== url));
+      }
     } catch {
       toast.error(t("torrentDetails.toasts.trackerRemoveError", { defaultValue: "Failed to remove tracker" }));
     } finally {
@@ -133,21 +145,25 @@ export function TrackersTab({ torrent }: TrackersTabProps) {
 
   const handleEditSave = async (origUrl: string) => {
     const newValue = editValue.trim();
-    if (!newValue || !workerId) return;
+    const wId = workerId;
+    const tId = torrent.id;
+    if (!newValue || !wId) return;
     if (newValue === origUrl) {
       cancelEdit();
       return;
     }
     setPendingUrl(origUrl);
     try {
-      const response = await torrentService.editTaskTracker(workerId, torrent.id, origUrl, newValue);
+      const response = await torrentService.editTaskTracker(wId, tId, origUrl, newValue);
       if (response.error) {
         toast.error(response.error);
         return;
       }
       toast.success(t("torrentDetails.toasts.trackerEditSuccess", { defaultValue: "Tracker updated" }));
-      cancelEdit();
-      await loadTrackers();
+      if (isCurrentTask(wId, tId)) {
+        cancelEdit();
+      }
+      await loadTrackers(wId, tId);
     } catch {
       toast.error(t("torrentDetails.toasts.trackerEditError", { defaultValue: "Failed to update tracker" }));
     } finally {
@@ -185,7 +201,7 @@ export function TrackersTab({ torrent }: TrackersTabProps) {
             {t("torrentDetails.trackersLive.loadError", { defaultValue: "Failed to load trackers" })}
           </div>
           <div className="text-xs text-muted-foreground mb-3">{error}</div>
-          <Button variant="outline" size="sm" onClick={loadTrackers} className="h-8">
+          <Button variant="outline" size="sm" onClick={() => loadTrackers()} className="h-8">
             {t("torrentDetails.trackersLive.retry", { defaultValue: "Try again" })}
           </Button>
         </div>
