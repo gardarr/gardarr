@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
   {
-    ignores: ['dist', '@vitejs-plugin-react.d.ts'],
+    ignores: ['coverage', 'dist', '@vitejs-plugin-react.d.ts'],
   },
   {
     files: ['**/*.{ts,tsx}'],

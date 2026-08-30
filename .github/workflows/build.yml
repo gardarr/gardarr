@@ -17,17 +17,17 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       with:
         fetch-depth: 0  # Fetch full history for version info
 
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
       with:
         go-version: ${{ env.GO_VERSION }}
 
     - name: Cache Go modules
-      uses: actions/cache@v4
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
       with:
         path: |
           ~/.cache/go-build
@@ -49,7 +49,17 @@ jobs:
       working-directory: ./backend
       env:
         CGO_ENABLED: 1
-      run: go test -v ./...
+      run: |
+        mkdir -p coverage
+        go test -v -covermode=atomic -coverpkg=./... \
+          -coverprofile=coverage/backend.out ./...
+
+    - name: Upload backend coverage report
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: backend-coverage
+        path: backend/coverage/backend.out
+        retention-days: 1
 
     - name: Run backend linter
       working-directory: ./backend
@@ -72,10 +82,10 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
     - name: Set up Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
       with:
         node-version: '22.22.0'
         cache: 'npm'
@@ -87,7 +97,14 @@ jobs:
 
     - name: Run frontend tests
       working-directory: ./frontend
-      run: npx vitest run
+      run: npm run test:coverage
+
+    - name: Upload frontend coverage report
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: frontend-coverage
+        path: frontend/coverage/lcov.info
+        retention-days: 1
 
     - name: Run frontend linter
       working-directory: ./frontend
@@ -98,11 +115,50 @@ jobs:
       run: npm run build
 
     - name: Upload frontend artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
         name: frontend-dist
         path: frontend/dist/
         retention-days: 7
+
+  codacy-coverage:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    permissions:
+      contents: read
+    env:
+      CODACY_PROJECT_TOKEN: ${{ secrets.CODACY_PROJECT_TOKEN }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+    - name: Download backend coverage report
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      with:
+        name: backend-coverage
+        path: coverage/backend
+
+    - name: Download frontend coverage report
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      with:
+        name: frontend-coverage
+        path: coverage/frontend
+
+    - name: Upload coverage to Codacy
+      # Fork pull requests don't receive repository secrets, so this is skipped
+      # until their changes are merged or tested from a branch in this repository.
+      if: env.CODACY_PROJECT_TOKEN != ''
+      run: |
+        bash <(curl -Ls https://coverage.codacy.com/get.sh) report \
+          --partial \
+          --force-coverage-parser go \
+          -r coverage/backend/backend.out
+        bash <(curl -Ls https://coverage.codacy.com/get.sh) report \
+          --partial \
+          -l Javascript \
+          -r coverage/frontend/lcov.info
+        bash <(curl -Ls https://coverage.codacy.com/get.sh) final
 
   build:
     runs-on: ubuntu-latest
@@ -119,17 +175,17 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       with:
         fetch-depth: 0  # Fetch full history for version info
 
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
       with:
         go-version: ${{ env.GO_VERSION }}
 
     - name: Cache Go modules
-      uses: actions/cache@v4
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
       with:
         path: |
           ~/.cache/go-build
@@ -166,7 +222,7 @@ jobs:
         echo "Date: $DATE"
 
     - name: Download frontend artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
       with:
         name: frontend-dist
         path: frontend/dist/
@@ -205,7 +261,7 @@ jobs:
           .
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
         name: gardarr-${{ matrix.os }}-${{ matrix.arch }}
         path: dist/gardarr-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.os == 'windows' && '.exe' || '' }}
