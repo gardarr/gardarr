@@ -13,7 +13,7 @@ type UpdateHandler = (registration: ServiceWorkerRegistration) => void;
 export function registerServiceWorker(onUpdate?: UpdateHandler): void {
   if (!("serviceWorker" in navigator)) return;
 
-  window.addEventListener("load", () => {
+  const doRegister = () => {
     // Reload once the freshly activated worker takes control of the page.
     let refreshing = false;
     navigator.serviceWorker.addEventListener("controllerchange", () => {
@@ -45,7 +45,16 @@ export function registerServiceWorker(onUpdate?: UpdateHandler): void {
       .catch((error) => {
         console.error("SW registration failed:", error);
       });
-  });
+  };
+
+  // If `load` already fired before this runs (e.g. React mounts after the
+  // page finished loading), a `load` listener registered now would never
+  // fire, so register immediately in that case instead.
+  if (document.readyState === "complete") {
+    doRegister();
+  } else {
+    window.addEventListener("load", doRegister, { once: true });
+  }
 }
 
 /** Tells the waiting worker to activate; the controllerchange listener reloads. */

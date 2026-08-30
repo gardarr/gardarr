@@ -140,7 +140,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
   ].filter((section) => section.items.length > 0);
 
   return (
-    <div className="flex h-screen bg-background text-foreground overflow-hidden max-h-screen safe-left safe-right">
+    <div className="flex h-dvh bg-background text-foreground overflow-hidden max-h-dvh safe-left safe-right">
       {/* Mobile Sidebar Overlay */}
       <div
         className={`fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity duration-300 ${sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
@@ -391,7 +391,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
 
         {/* Conteúdo da Rota */}
         <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
-          <div className="w-full max-w-7xl mx-auto p-4 md:p-6 safe-bottom">
+          <div className="w-full max-w-7xl mx-auto p-4 md:p-6 pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-[max(1.5rem,env(safe-area-inset-bottom))]">
             <PageTransition>
               {children}
             </PageTransition>
