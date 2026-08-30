@@ -14,7 +14,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Gardarr" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <!-- iOS keeps Home Screen icons aggressively cached. Version the URL so a
+         newly installed or reinstalled PWA always receives Gardarr's icon. -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=20260830" />
+    <link rel="apple-touch-icon-precomposed" sizes="180x180" href="/apple-touch-icon.png?v=20260830" />
     
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json" />
