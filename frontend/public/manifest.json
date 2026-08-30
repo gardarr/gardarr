@@ -2,6 +2,8 @@
   "name": "Gardarr",
   "short_name": "Gardarr",
   "description": "Media and torrent management",
+  "lang": "en",
+  "dir": "ltr",
   "theme_color": "#0f172a",
   "background_color": "#0f172a",
   "display": "standalone",
@@ -12,18 +14,40 @@
     {
       "src": "/logo-192.png",
       "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/logo-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/logo-512.png",
       "sizes": "512x512",
       "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Add Torrent",
+      "short_name": "Add",
+      "url": "/torrents?add=1",
+      "icons": [{ "src": "/shortcut-96.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "Torrents",
+      "short_name": "Torrents",
+      "url": "/torrents",
+      "icons": [{ "src": "/shortcut-96.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "History",
+      "short_name": "History",
+      "url": "/history",
+      "icons": [{ "src": "/shortcut-96.png", "sizes": "96x96", "type": "image/png" }]
     }
   ]
 }

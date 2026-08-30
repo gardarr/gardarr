@@ -493,6 +493,7 @@ html[data-color-variant="custom"] {
     @apply bg-background text-foreground;
     height: 100%;
     max-height: 100vh;
+    max-height: 100dvh;
     margin: 0;
     padding: 0;
     overflow: hidden;
@@ -500,8 +501,19 @@ html[data-color-variant="custom"] {
   #root {
     height: 100%;
     max-height: 100vh;
+    max-height: 100dvh;
     overflow: hidden;
   }
+}
+
+@layer utilities {
+  /* Device safe-area insets: notch, status bar / battery area, home indicator */
+  .safe-top    { padding-top:    env(safe-area-inset-top); }
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+  .safe-left   { padding-left:   env(safe-area-inset-left); }
+  .safe-right  { padding-right:  env(safe-area-inset-right); }
+  /* Base spacing + inset combined, for sticky headers that sit under the notch */
+  .safe-header-top { padding-top: calc(0.5rem + env(safe-area-inset-top)); }
 }
 
 @layer base {

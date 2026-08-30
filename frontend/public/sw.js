@@ -1,22 +1,36 @@
-const CACHE_NAME = 'gardarr-v1';
+const CACHE_NAME = 'gardarr-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/logo.ico',
   '/logo-192.png',
   '/logo-512.png',
+  '/logo-512-maskable.png',
+  '/apple-touch-icon.png',
+  '/shortcut-96.png',
   '/manifest.json'
 ];
 
-// Install event - cache static assets
+// Install event - cache static assets. Do NOT skipWaiting here: the new worker
+// stays in "waiting" so the app can surface an update prompt and activate it on
+// demand via the SKIP_WAITING message below.
 globalThis.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
         return cache.addAll(STATIC_ASSETS);
       })
-      .then(() => globalThis.skipWaiting())
   );
+});
+
+// Allow the page to trigger activation of the waiting worker.
+// Same-origin check: a service worker can receive messages from any client
+// its scope covers, so verify the sender before acting on it.
+globalThis.addEventListener('message', (event) => {
+  if (event.origin !== globalThis.location.origin) return;
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    globalThis.skipWaiting();
+  }
 });
 
 // Activate event - cleanup old caches

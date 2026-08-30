@@ -2053,5 +2053,18 @@
       "feedFieldsRequired": "Selecione uma instância e informe a URL do feed",
       "ruleFieldsRequired": "Selecione uma instância e informe o nome da regra"
     }
+  },
+  "pwa": {
+    "update": {
+      "title": "Nova versão disponível",
+      "description": "Recarregue para obter a versão mais recente do Gardarr.",
+      "action": "Recarregar"
+    },
+    "install": {
+      "title": "Instalar Gardarr",
+      "description": "Adicione o Gardarr à tela inicial para uma experiência de app em tela cheia.",
+      "action": "Instalar",
+      "dismiss": "Dispensar"
+    }
   }
 }

@@ -9,6 +9,8 @@ import AppLayout from './AppLayout'
 import LoginPage from './Login'
 import InitialSetupPage from './InitialSetup'
 import { Toaster } from './components/ui/sonner'
+import { UpdatePrompt } from './components/pwa/UpdatePrompt'
+import { InstallPrompt } from './components/pwa/InstallPrompt'
 
 // Authenticated-area pages are lazy-loaded so the initial bundle only pays
 // for the pre-auth screens above; each route's code (and its dependencies,
@@ -61,6 +63,8 @@ function App() {
         <SetupProvider>
           <AuthProvider>
             <Toaster richColors />
+            <UpdatePrompt />
+            <InstallPrompt />
             <Suspense fallback={<RouteFallback />}>
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
