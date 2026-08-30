@@ -24,7 +24,10 @@ globalThis.addEventListener('install', (event) => {
 });
 
 // Allow the page to trigger activation of the waiting worker.
+// Same-origin check: a service worker can receive messages from any client
+// its scope covers, so verify the sender before acting on it.
 globalThis.addEventListener('message', (event) => {
+  if (event.origin !== globalThis.location.origin) return;
   if (event.data && event.data.type === 'SKIP_WAITING') {
     globalThis.skipWaiting();
   }
