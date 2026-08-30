@@ -1997,5 +1997,18 @@
       "feedFieldsRequired": "Select an instance and enter the feed URL",
       "ruleFieldsRequired": "Select an instance and enter the rule name"
     }
+  },
+  "pwa": {
+    "update": {
+      "title": "New version available",
+      "description": "Reload to get the latest version of Gardarr.",
+      "action": "Reload"
+    },
+    "install": {
+      "title": "Install Gardarr",
+      "description": "Add Gardarr to your home screen for a full-screen app experience.",
+      "action": "Install",
+      "dismiss": "Dismiss"
+    }
   }
 }

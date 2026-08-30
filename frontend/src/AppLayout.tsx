@@ -73,6 +73,16 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('resize', checkIsMobile);
   }, []);
 
+  // Open the Add Torrent modal when launched via the PWA "Add Torrent" shortcut (?add=1)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("add") === "1") {
+      openAddModal();
+      params.delete("add");
+      navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
+    }
+  }, [location.search, location.pathname, openAddModal, navigate]);
+
   function toggleTheme() {
     const root = document.documentElement;
     const nextDark = !root.classList.contains('dark');
@@ -130,7 +140,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
   ].filter((section) => section.items.length > 0);
 
   return (
-    <div className="flex h-screen bg-background text-foreground overflow-hidden max-h-screen">
+    <div className="flex h-screen bg-background text-foreground overflow-hidden max-h-screen safe-left safe-right">
       {/* Mobile Sidebar Overlay */}
       <div
         className={`fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity duration-300 ${sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
@@ -141,7 +151,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
       {/* Sidebar Esquerda - Responsiva para mobile */}
       <div
         data-testid="app-sidebar"
-        className={`bg-sidebar border-r border-border flex-col transition-all duration-300 ease-in-out overflow-hidden
+        className={`bg-sidebar border-r border-border flex-col transition-all duration-300 ease-in-out overflow-hidden safe-top safe-bottom safe-left
           ${sidebarOpen
             ? 'flex fixed inset-y-0 left-0 z-50 w-52 translate-x-0 md:relative md:z-auto md:w-52'
             : 'fixed inset-y-0 left-0 z-50 w-52 -translate-x-full md:flex md:relative md:translate-x-0 md:w-14'
@@ -343,7 +353,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
       {/* Conteúdo Principal - Ocupa todo o espaço restante */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden max-h-screen">
         {/* Header */}
-        <header className="h-12 min-h-12 max-h-12 border-b border-border bg-card flex items-center justify-between px-3 md:px-4 flex-shrink-0">
+        <header className="min-h-12 border-b border-border bg-card flex items-center justify-between px-3 md:px-4 flex-shrink-0 safe-top">
           <div className="flex items-center">
             <Button
               variant="ghost"
@@ -380,8 +390,8 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Conteúdo da Rota */}
-        <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden" style={{ maxHeight: 'calc(100vh - 3rem)' }}>
-          <div className="w-full max-w-7xl mx-auto p-4 md:p-6">
+        <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+          <div className="w-full max-w-7xl mx-auto p-4 md:p-6 safe-bottom">
             <PageTransition>
               {children}
             </PageTransition>
