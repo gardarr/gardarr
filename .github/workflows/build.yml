@@ -132,6 +132,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      with:
+        fetch-depth: 0
 
     - name: Download backend coverage report
       uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
@@ -150,15 +152,22 @@ jobs:
       # until their changes are merged or tested from a branch in this repository.
       if: env.CODACY_PROJECT_TOKEN != ''
       run: |
-        bash <(curl -Ls https://coverage.codacy.com/get.sh) report \
-          --partial \
-          --force-coverage-parser go \
-          -r coverage/backend/backend.out
-        bash <(curl -Ls https://coverage.codacy.com/get.sh) report \
-          --partial \
-          -l Javascript \
-          -r coverage/frontend/lcov.info
-        bash <(curl -Ls https://coverage.codacy.com/get.sh) final
+        curl -Ls https://coverage.codacy.com/get.sh -o /tmp/codacy-coverage-reporter
+        (
+          cd backend
+          bash /tmp/codacy-coverage-reporter report \
+            --partial \
+            --force-coverage-parser go \
+            -r ../coverage/backend/backend.out
+        )
+        (
+          cd frontend
+          bash /tmp/codacy-coverage-reporter report \
+            --partial \
+            -l Javascript \
+            -r ../coverage/frontend/lcov.info
+        )
+        bash /tmp/codacy-coverage-reporter final
 
   build:
     runs-on: ubuntu-latest
