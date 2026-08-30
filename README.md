@@ -9,19 +9,15 @@
   <img src="https://img.shields.io/github/v/release/jfxdev/gardarr" alt="Release" />
   <img src="https://img.shields.io/github/actions/workflow/status/jfxdev/gardarr/.github%2Fworkflows%2Fbuild.yml" alt="GitHub Actions" />
   <img src="https://img.shields.io/coderabbit/prs/github/jfxdev/gardarr?utm_source=oss&utm_medium=github&utm_campaign=gardarr%2Fgardarr&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews" alt="CodeRabbit Reviews" />
-  <br />
-  <a href="https://sonarcloud.io/summary/new_code?id=jfxdev_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=jfxdev_gardarr&metric=alert_status" alt="Quality Gate Status" /></a>
-  <a href="https://sonarcloud.io/summary/new_code?id=jfxdev_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=jfxdev_gardarr&metric=vulnerabilities" alt="Vulnerabilities" /></a>
-  <a href="https://sonarcloud.io/summary/new_code?id=jfxdev_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=jfxdev_gardarr&metric=bugs" alt="Bugs" /></a>
-  <a href="https://sonarcloud.io/summary/new_code?id=jfxdev_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=jfxdev_gardarr&metric=duplicated_lines_density" alt="Duplicated Lines" /></a>
-  <a href="https://sonarcloud.io/summary/new_code?id=jfxdev_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=jfxdev_gardarr&metric=sqale_rating" alt="Maintainability Rating" /></a>
-  <a href="https://sonarcloud.io/summary/new_code?id=jfxdev_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=jfxdev_gardarr&metric=security_rating" alt="Security Rating" /></a>
-  <a href="https://sonarcloud.io/summary/new_code?id=jfxdev_gardarr"><img src="https://sonarcloud.io/api/project_badges/measure?project=jfxdev_gardarr&metric=ncloc" alt="Lines of Code" /></a>
 </p>
 
 Gardarr is a **modern, lightweight multi-instance management platform for qBittorrent**. Connect, monitor, and control multiple qBittorrent servers from one centralized, mobile-first interface.
 
 **Open-source** project licensed under the GNU Affero General Public License v3.0 (AGPLv3), designed to be self-hosted by the community with clean and maintainable code.
+
+## Code quality
+
+Code quality and coverage are monitored with Codacy. The CI workflow publishes Go and frontend coverage when the repository secret `CODACY_PROJECT_TOKEN` is configured. After the repository is connected in Codacy, enable its GitHub status checks and add the project-provided quality and coverage badges here.
 
 ## 📸 Screenshots
 
@@ -88,6 +84,7 @@ Gardarr is a **modern, lightweight multi-instance management platform for qBitto
 ## 📑 Table of Contents
 
 - [📸 Screenshots](#-screenshots)
+- [Code quality](#code-quality)
 - [✨ Key Features](#-key-features)
 - [📋 Requirements](#-requirements)
 - [🚀 Getting Started](#-getting-started)
