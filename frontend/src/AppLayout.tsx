@@ -151,7 +151,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
       {/* Sidebar Esquerda - Responsiva para mobile */}
       <div
         data-testid="app-sidebar"
-        className={`bg-sidebar border-r border-border flex-col transition-all duration-300 ease-in-out overflow-hidden safe-top safe-bottom safe-left
+        className={`bg-sidebar border-r border-border flex-col transition-all duration-300 ease-in-out overflow-hidden safe-top safe-bottom max-md:safe-left
           ${sidebarOpen
             ? 'flex fixed inset-y-0 left-0 z-50 w-52 translate-x-0 md:relative md:z-auto md:w-52'
             : 'fixed inset-y-0 left-0 z-50 w-52 -translate-x-full md:flex md:relative md:translate-x-0 md:w-14'
